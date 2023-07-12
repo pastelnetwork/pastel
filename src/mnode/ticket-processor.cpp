@@ -22,6 +22,7 @@
 #include <mnode/mnode-controller.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/ticket-txmempool.h>
+#include <mnode/p2fms-txbuilder.h>
 
 using json = nlohmann::json;
 using namespace std;
@@ -1312,8 +1313,8 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
     if (tv.IsNotValid())
         throw runtime_error(strprintf("Ticket (%s) is invalid. %s", ticket.GetTicketName(), tv.errorMsg));
 
-    vector<CTxOut> extraOutputs;
-    const CAmount extraAmount = ticket.GetExtraOutputs(extraOutputs);
+    vector<CTxOut> vExtraOutputs;
+    const CAmount nExtraAmountInPat = ticket.GetExtraOutputs(vExtraOutputs);
 
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     auto nTicketID = to_integral_type<TicketID>(ticket.ID());
@@ -1340,9 +1341,10 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
 #endif
 
     CMutableTransaction tx;
-    if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, 
-        ticket.TicketPricePSL(gl_nChainHeight + 1), sFundingAddress, error))
-        throw runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
+    CP2FMS_TX_Builder txBuilder(data_stream, ticket.TicketPricePSL(gl_nChainHeight + 1), sFundingAddress);
+    txBuilder.setExtraOutputs(move(vExtraOutputs), nExtraAmountInPat);
+    if (!txBuilder.build(error, tx))
+        throw runtime_error(strprintf("Failed to create P2FMS from data provided. %s", error));
 
     if (!StoreP2FMSTransaction(tx, error))
         throw runtime_error(strprintf("Failed to send P2FMS transaction - %s", error));
@@ -1351,18 +1353,19 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
 
 #ifdef ENABLE_WALLET
 bool CPastelTicketProcessor::CreateP2FMSTransaction(const string& input_string, CMutableTransaction& tx_out, 
-    const CAmount pricePSL, const opt_string_t& sFundingAddress, string& error_ret)
+    const CAmount nPricePSL, const opt_string_t& sFundingAddress, string& error_ret)
 {
     // Convert string data into binary buffer
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     data_stream << input_string;
-    return CreateP2FMSTransaction(data_stream, tx_out, pricePSL, sFundingAddress, error_ret);
+    return CreateP2FMSTransaction(data_stream, tx_out, nPricePSL, sFundingAddress, error_ret);
 }
 
 bool CPastelTicketProcessor::CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, 
-    const CAmount pricePSL, const opt_string_t& sFundingAddress, string& error_ret)
+    const CAmount nPricePSL, const opt_string_t& sFundingAddress, string& error_ret)
 {
-    return CreateP2FMSTransactionWithExtra(input_stream, vector<CTxOut>{}, 0, tx_out, pricePSL, sFundingAddress, error_ret);
+    CP2FMS_TX_Builder txBuilder(input_stream, nPricePSL, sFundingAddress);
+    return txBuilder.build(error_ret, tx_out);
 }
 
 /**
@@ -1540,204 +1543,6 @@ void CPastelTicketProcessor::SearchForNFTs(const search_thumbids_t& p, function<
             return true;
         });
     } // for
-}
-
-/**
- * Create scripts for P2FMS (Pay-to-Fake-Multisig) transaction.
- * 
- * \param input_stream - input data stream
- * \param vOutScripts - returns vector of output scripts for P2FMS transaction
- * \return returns input data size
- */
-size_t CPastelTicketProcessor::CreateP2FMSScripts(const CDataStream& input_stream, vector<CScript>& vOutScripts)
-{
-    // fake key size - transaction data should be aligned to this size
-    constexpr size_t FAKE_KEY_SIZE = 33;
-    // position of the input stream data in vInputData vector
-    constexpr size_t STREAM_DATA_POS = uint256::SIZE + sizeof(uint64_t);
-
-    // +--------------  vInputData ---------------------------+
-    // |     8 bytes     |    32 bytes     |  nDataStreamSize | 
-    // +-----------------+-----------------+------------------+
-    // | nDataStreamSize | input data hash |    input data    |  
-    // +-----------------+-----------------+------------------+
-    v_uint8 vInputData;
-    const uint64_t nDataStreamSize = input_stream.size();
-    // input data size without padding
-    const size_t nDataSizeNotPadded = STREAM_DATA_POS + nDataStreamSize;
-    const size_t nInputDataSize = nDataSizeNotPadded + (FAKE_KEY_SIZE - (nDataSizeNotPadded % FAKE_KEY_SIZE));
-    vInputData.resize(nInputDataSize, 0);
-    input_stream.read_buf(vInputData.data() + STREAM_DATA_POS, input_stream.size());
-
-    auto p = vInputData.data();
-    // set size of the original data upfront
-    auto* input_len_bytes = reinterpret_cast<const unsigned char*>(&nDataStreamSize);
-    memcpy(p, input_len_bytes, sizeof(uint64_t)); // sizeof(uint64_t) == 8
-    p += sizeof(uint64_t);
-
-    // Calculate sha256 hash of the input data (without padding) and set it at offset 8
-    const uint256 input_hash = Hash(vInputData.cbegin() + STREAM_DATA_POS, vInputData.cbegin() + nDataSizeNotPadded);
-    memcpy(p, input_hash.begin(), input_hash.size());
-
-    // Create output P2FMS scripts
-    //    each CScript can hold up to 3 chunks (fake keys)
-    v_uint8 vChunk;
-    vChunk.resize(FAKE_KEY_SIZE);
-    for (size_t nChunkPos = 0; nChunkPos < nInputDataSize;)
-    {
-        CScript script;
-        script << CScript::EncodeOP_N(1);
-        int m = 0;
-        for (; m < 3 && nChunkPos < nInputDataSize; ++m, nChunkPos += FAKE_KEY_SIZE)
-        {
-            memcpy(vChunk.data(), vInputData.data() + nChunkPos, FAKE_KEY_SIZE);
-            script << vChunk;
-        }
-        // add chunks count (up to 3)
-        script << CScript::EncodeOP_N(m) << OP_CHECKMULTISIG;
-        vOutScripts.push_back(script);
-    }
-    return nInputDataSize;
-}
-
-bool CPastelTicketProcessor::CreateP2FMSTransactionWithExtra(const CDataStream& input_stream, 
-    const vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
-    const CAmount priceInPSL, const opt_string_t& sFundingAddress, string& error_ret)
-{
-    assert(pwalletMain != nullptr);
-
-    if (pwalletMain->IsLocked())
-    {
-        error_ret = "Wallet is locked. Try again later";
-        return false;
-    }
-    if (input_stream.empty())
-    {
-        error_ret = "Input data is empty";
-        return false;
-    }
-
-    // Create output P2FMS scripts
-    vector<CScript> vOutScripts;
-    const size_t nInputDataSize = CreateP2FMSScripts(input_stream, vOutScripts);
-    if (vOutScripts.empty())
-    {
-        error_ret = "No fake transactions after parsing input data";
-        return false;
-    }
-    const auto& chainParams = Params();
-
-    // process funding address if specified
-    CTxDestination fundingAddress;
-    bool bUseFundingAddress = false;
-    if (sFundingAddress.has_value() && !sFundingAddress.value().empty())
-    {
-        // support only taddr for now
-        KeyIO keyIO(chainParams);
-        fundingAddress = keyIO.DecodeDestination(sFundingAddress.value());
-        if (!IsValidDestination(fundingAddress))
-        {
-            error_ret = strprintf("Not a valid transparent address [%s] used for funding the transaction", sFundingAddress.value());
-            return false;
-        }
-        bUseFundingAddress = true;
-    }
-
-    // calculate approximate required amount
-    CAmount nApproxFeeNeeded = payTxFee.GetFee(nInputDataSize) * 2;
-    if (nApproxFeeNeeded < payTxFee.GetFeePerK())
-        nApproxFeeNeeded = payTxFee.GetFeePerK();
-
-    const size_t nFakeTxCount = vOutScripts.size();
-    // Amount in patoshis per output
-    const CAmount perOutputAmount = (priceInPSL * COIN) / nFakeTxCount;
-    // MUST be precise!!! in patoshis
-    const CAmount lost = (priceInPSL * COIN) - perOutputAmount * nFakeTxCount;
-    // total amount to spend in patoshis
-    const CAmount allSpentAmount = (priceInPSL * COIN) + nApproxFeeNeeded + extraAmount;
-
-    auto nActiveChainHeight = gl_nChainHeight + 1;
-    if (!chainParams.IsRegTest())
-        nActiveChainHeight = max(nActiveChainHeight, APPROX_RELEASE_HEIGHT);
-    auto consensusBranchId = CurrentEpochBranchId(nActiveChainHeight, chainParams.GetConsensus());
-
-    // Create empty transaction
-    tx_out = CreateNewContextualCMutableTransaction(chainParams.GetConsensus(), nActiveChainHeight);
-
-    // Find funding (unspent) transaction with enough coins to cover all outputs (single - for simplicity)
-    bool bOk = false;
-    {
-        vector<COutput> vecOutputs;
-        LOCK2(cs_main, pwalletMain->cs_wallet);
-        pwalletMain->AvailableCoins(vecOutputs, false, nullptr, true);
-        for (const auto &out : vecOutputs)
-        {
-            const auto& txOut = out.tx->vout[out.i];
-            if (bUseFundingAddress)
-            {
-                if (!out.fSpendable)
-                    continue;
-                // use utxo only from the specified funding address
-                CTxDestination txOutAddress;
-                if (!ExtractDestination(txOut.scriptPubKey, txOutAddress))
-                    continue;
-                if (txOutAddress != fundingAddress)
-                    continue;
-            }
-            if (txOut.nValue > allSpentAmount)
-            {
-                // found coin transaction with needed amount - populate new transaction
-                const CScript& prevPubKey = txOut.scriptPubKey;
-                const CAmount& prevAmount = txOut.nValue;
-
-                tx_out.vin.resize(1);
-                tx_out.vin[0].prevout.n = out.i;
-                tx_out.vin[0].prevout.hash = out.tx->GetHash();
-
-                //Add fake output scripts
-                tx_out.vout.resize(nFakeTxCount + 1); //+1 for change
-                for (int i = 0; i < nFakeTxCount; i++)
-                {
-                    tx_out.vout[i].nValue = perOutputAmount;
-                    tx_out.vout[i].scriptPubKey = vOutScripts[i];
-                }
-                // MUST be precise!!!
-                tx_out.vout[0].nValue = perOutputAmount + lost;
-
-                if (extraAmount != 0)
-                {
-                    for (const auto& extra : extraOutputs)
-                        tx_out.vout.emplace_back(extra);
-                }
-
-                // Send change output back to input address
-                tx_out.vout[nFakeTxCount].nValue = prevAmount - static_cast<CAmount>(priceInPSL * COIN) - extraAmount;
-                tx_out.vout[nFakeTxCount].scriptPubKey = prevPubKey;
-
-                // Calculate correct fee
-                const size_t nTxSize = EncodeHexTx(tx_out).length();
-                CAmount nFeeNeeded = pwalletMain->GetMinimumFee(nTxSize, nTxConfirmTarget, mempool);
-                if (nFeeNeeded < payTxFee.GetFeePerK())
-                    nFeeNeeded = payTxFee.GetFeePerK();
-
-                // nFakeTxCount is index of the change output
-                tx_out.vout[nFakeTxCount].nValue -= nFeeNeeded;
-
-                // sign transaction - unlock input
-                SignatureData sigdata;
-                ProduceSignature(MutableTransactionSignatureCreator(pwalletMain, &tx_out, 0, prevAmount, to_integral_type(SIGHASH::ALL)), prevPubKey, sigdata, consensusBranchId);
-                UpdateTransaction(tx_out, 0, sigdata);
-
-                bOk = true;
-                break;
-            }
-        }
-    }
-
-    if (!bOk)
-        error_ret = strprintf("No unspent transaction found%s - cannot send data to the blockchain!", 
-            bUseFundingAddress ? strprintf(" for address [%s]", sFundingAddress.value()) : "");
-    return bOk;
 }
 #endif // ENABLE_WALLET
 
@@ -2058,9 +1863,10 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
     data_stream << ticket;
 
     CMutableTransaction tx;
-    string sFundingAddress;
-    if (!CreateP2FMSTransactionWithExtra(data_stream, extraOutputs, extraAmount, tx, ticketPricePSL, sFundingAddress, error))
-        throw runtime_error(strprintf("Failed to create P2FMS from data provided - %s", error));
+    CP2FMS_TX_Builder txBuilder(data_stream, ticketPricePSL);
+    txBuilder.setExtraOutputs(move(extraOutputs), extraAmount);
+    if (!txBuilder.build(error, tx))
+        throw runtime_error(strprintf("Failed to create P2FMS from data provided. %s", error));
 
     if (bSend)
     {

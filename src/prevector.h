@@ -169,16 +169,19 @@ private:
                 _size -= N + 1;
             }
         } else {
-            if (!is_direct()) {
+            if (!is_direct())
+            {
                 /* FIXME: Because malloc/realloc here won't call new_handler if allocation fails, assert
                     success. These should instead use an allocator or new/delete so that handlers
                     are called as necessary, but performance would be slightly degraded by doing so. */
                 _union.indirect = static_cast<char*>(realloc(_union.indirect, ((size_t)sizeof(T)) * new_capacity));
-                if (!_union.indirect) { new_handler_terminate(); }
+                if (!_union.indirect)
+                    new_handler_terminate();
                 _union.capacity = new_capacity;
             } else {
                 char* new_indirect = static_cast<char*>(malloc(((size_t)sizeof(T)) * new_capacity));
-                if (!new_indirect) { new_handler_terminate(); }
+                if (!new_indirect)
+                    new_handler_terminate();
                 T* src = direct_ptr(0);
                 T* dst = reinterpret_cast<T*>(new_indirect);
                 memcpy(dst, src, size() * sizeof(T));
@@ -196,23 +199,24 @@ public:
     void assign(size_type n, const T& val)
     {
         clear();
-        if (capacity() < n) {
+        if (capacity() < n)
             change_capacity(n);
-        }
-        while (size() < n) {
+        while (size() < n)
+        {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T(val);
         }
     }
 
     template<typename InputIterator>
-    void assign(InputIterator first, InputIterator last) {
+    void assign(InputIterator first, InputIterator last)
+    {
         size_type n = last - first;
         clear();
-        if (capacity() < n) {
+        if (capacity() < n)
             change_capacity(n);
-        }
-        while (first != last) {
+        while (first != last)
+        {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T(*first);
             ++first;
@@ -224,8 +228,43 @@ public:
         _union()
     {}
 
-    prevector(prevector&& p) = default;
-    prevector& operator=(prevector&& p) = default;
+    prevector(prevector&& p) noexcept
+    {
+        _size = p._size;
+        if (p.is_direct())
+        {
+			memcpy(_union.direct, p._union.direct, _size * sizeof(T));
+        }
+        else
+        {
+			_union.indirect = p._union.indirect;
+			_union.capacity = p._union.capacity;
+			p._union.indirect = nullptr;
+			p._union.capacity = 0;
+		}
+		p._size = 0;
+    }
+    prevector& operator=(prevector&& p) noexcept
+    {
+        if (this != &p)
+        {
+			clear();
+			_size = p._size;
+            if (p.is_direct())
+            {
+				memcpy(_union.direct, p._union.direct, _size * sizeof(T));
+            }
+            else
+            {
+				_union.indirect = p._union.indirect;
+				_union.capacity = p._union.capacity;
+				p._union.indirect = nullptr;
+				p._union.capacity = 0;
+			}
+			p._size = 0;
+		}
+		return *this;
+    }
 
     explicit prevector(const size_type n) : 
         _size(0)
@@ -256,24 +295,27 @@ public:
         }
     }
 
-    prevector(const prevector<N, T, Size, Diff>& other) : _size(0) {
+    prevector(const prevector<N, T, Size, Diff>& other) : _size(0)
+    {
         change_capacity(other.size());
         const_iterator it = other.begin();
-        while (it != other.end()) {
+        while (it != other.end())
+        {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T(*it);
             ++it;
         }
     }
 
-    prevector& operator=(const prevector<N, T, Size, Diff>& other) {
-        if (&other == this) {
+    prevector& operator=(const prevector<N, T, Size, Diff>& other)
+    {
+        if (&other == this)
             return *this;
-        }
         resize(0);
         change_capacity(other.size());
         const_iterator it = other.begin();
-        while (it != other.end()) {
+        while (it != other.end())
+        {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T(*it);
             ++it;
@@ -321,27 +363,30 @@ public:
         return *item_ptr(pos);
     }
 
-    void resize(size_type new_size) {
-        while (size() > new_size) {
+    void resize(size_type new_size)
+    {
+        while (size() > new_size)
+        {
             item_ptr(size() - 1)->~T();
             _size--;
         }
-        if (new_size > capacity()) {
+        if (new_size > capacity())
             change_capacity(new_size);
-        }
-        while (size() < new_size) {
+        while (size() < new_size)
+        {
             _size++;
             new(static_cast<void*>(item_ptr(size() - 1))) T();
         }
     }
 
-    void reserve(size_type new_capacity) {
-        if (new_capacity > capacity()) {
+    void reserve(size_type new_capacity) 
+    {
+        if (new_capacity > capacity())
             change_capacity(new_capacity);
-        }
     }
 
-    void shrink_to_fit() {
+    void shrink_to_fit()
+    {
         change_capacity(size());
     }
 
@@ -350,59 +395,62 @@ public:
         resize(0);
     }
 
-    iterator insert(iterator pos, const T& value) {
+    iterator insert(iterator pos, const T& value)
+    {
         size_type p = pos - begin();
         size_type new_size = size() + 1;
-        if (capacity() < new_size) {
+        if (capacity() < new_size)
             change_capacity(new_size + (new_size >> 1));
-        }
         memmove(item_ptr(p + 1), item_ptr(p), (size() - p) * sizeof(T));
         _size++;
         new(static_cast<void*>(item_ptr(p))) T(value);
         return iterator(item_ptr(p));
     }
 
-    void insert(iterator pos, size_type count, const T& value) {
+    void insert(iterator pos, size_type count, const T& value)
+    {
         size_type p = pos - begin();
         size_type new_size = size() + count;
-        if (capacity() < new_size) {
+        if (capacity() < new_size)
             change_capacity(new_size + (new_size >> 1));
-        }
         memmove(item_ptr(p + count), item_ptr(p), (size() - p) * sizeof(T));
         _size += count;
-        for (size_type i = 0; i < count; i++) {
+        for (size_type i = 0; i < count; i++)
             new(static_cast<void*>(item_ptr(p + i))) T(value);
-        }
     }
 
     template<typename InputIterator>
-    void insert(iterator pos, InputIterator first, InputIterator last) {
+    void insert(iterator pos, InputIterator first, InputIterator last)
+    {
         size_type p = pos - begin();
         difference_type count = static_cast<difference_type>(last - first);
         size_type new_size = size() + count;
-        if (capacity() < new_size) {
+        if (capacity() < new_size)
             change_capacity(new_size + (new_size >> 1));
-        }
         memmove(item_ptr(p + count), item_ptr(p), (size() - p) * sizeof(T));
         _size += count;
-        while (first != last) {
+        while (first != last)
+        {
             new(static_cast<void*>(item_ptr(p))) T(*first);
             ++p;
             ++first;
         }
     }
 
-    iterator erase(iterator pos) {
+    iterator erase(iterator pos)
+    {
         (*pos).~T();
         memmove(&(*pos), &(*pos) + 1, ((char*)&(*end())) - ((char*)(1 + &(*pos))));
         _size--;
         return pos;
     }
 
-    iterator erase(iterator first, iterator last) {
+    iterator erase(iterator first, iterator last)
+    {
         iterator p = first;
         char* endp = (char*)&(*end());
-        while (p != last) {
+        while (p != last)
+        {
             (*p).~T();
             _size--;
             ++p;
@@ -411,7 +459,8 @@ public:
         return first;
     }
 
-    void push_back(const T& value) {
+    void push_back(const T& value)
+    {
         size_type new_size = size() + 1;
         if (capacity() < new_size) {
             change_capacity(new_size + (new_size >> 1));
@@ -459,62 +508,61 @@ public:
     virtual ~prevector()
     {
         clear();
-        if (!is_direct()) {
+        if (!is_direct())
+        {
             free(_union.indirect);
             _union.indirect = nullptr;
         }
     }
 
-    bool operator==(const prevector<N, T, Size, Diff>& other) const {
-        if (other.size() != size()) {
+    bool operator==(const prevector<N, T, Size, Diff>& other) const
+    {
+        if (other.size() != size())
             return false;
-        }
         const_iterator b1 = begin();
         const_iterator b2 = other.begin();
         const_iterator e1 = end();
-        while (b1 != e1) {
-            if ((*b1) != (*b2)) {
+        while (b1 != e1)
+        {
+            if ((*b1) != (*b2))
                 return false;
-            }
             ++b1;
             ++b2;
         }
         return true;
     }
 
-    bool operator!=(const prevector<N, T, Size, Diff>& other) const {
+    bool operator!=(const prevector<N, T, Size, Diff>& other) const
+    {
         return !(*this == other);
     }
 
-    bool operator<(const prevector<N, T, Size, Diff>& other) const {
-        if (size() < other.size()) {
+    bool operator<(const prevector<N, T, Size, Diff>& other) const
+    {
+        if (size() < other.size())
             return true;
-        }
-        if (size() > other.size()) {
+        if (size() > other.size())
             return false;
-        }
         const_iterator b1 = begin();
         const_iterator b2 = other.begin();
         const_iterator e1 = end();
-        while (b1 != e1) {
-            if ((*b1) < (*b2)) {
+        while (b1 != e1)
+        {
+            if ((*b1) < (*b2))
                 return true;
-            }
-            if ((*b2) < (*b1)) {
+            if ((*b2) < (*b1))
                 return false;
-            }
             ++b1;
             ++b2;
         }
         return false;
     }
 
-    size_t allocated_memory() const {
-        if (is_direct()) {
+    size_t allocated_memory() const
+    {
+        if (is_direct())
             return 0;
-        } else {
-            return ((size_t)(sizeof(T))) * _union.capacity;
-        }
+        return ((size_t)(sizeof(T))) * _union.capacity;
     }
 };
 #pragma pack(pop)

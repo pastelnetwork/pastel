@@ -8,9 +8,9 @@
 /**
  * Utilities for converting data from/to strings.
  */
-#include <stdint.h>
+#include <cstdint>
 
-#include "vector_types.h"
+#include <vector_types.h>
 
 #define BEGIN(a)            ((char*)&(a))
 #define END(a)              ((char*)&((&(a))[1]))

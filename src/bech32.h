@@ -9,8 +9,9 @@
 // 6 characters of which are a checksum.
 //
 // For more information, see BIP 173.
-#include <stdint.h>
-#include "vector_types.h"
+#include <cstdint>
+
+#include <vector_types.h>
 
 namespace bech32
 {

@@ -3,32 +3,36 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <limits>
 
 #include <amount.h>
+#include <consensus/consensus.h>
 #include <tinyformat.h>
 
-const std::string CURRENCY_UNIT = "PSL";
-const std::string MINOR_CURRENCY_UNIT = "patoshis";
+using namespace std;
 
-CFeeRate::CFeeRate(const CAmount& nFeePaid, size_t nSize)
+const string CURRENCY_UNIT = "PSL";
+const string MINOR_CURRENCY_UNIT = "patoshis";
+
+CFeeRate::CFeeRate(const CAmount nFeePaidPerK, size_t nSize)
 {
     if (nSize > 0)
-        m_nPatoshisPerK = nFeePaid*1000/nSize;
+        m_nPatoshisPerK = min(nFeePaidPerK * 1000 / nSize, numeric_limits<uint64_t>::max() / MAX_BLOCK_SIZE);
     else
         m_nPatoshisPerK = 0;
 }
 
 CAmount CFeeRate::GetFee(const size_t nSize) const noexcept
 {
-    CAmount nFee = m_nPatoshisPerK*nSize / 1000;
+    CAmount nFeeInPat = m_nPatoshisPerK * nSize / 1000;
 
-    if (nFee == 0 && m_nPatoshisPerK > 0)
-        nFee = m_nPatoshisPerK;
+    if (nFeeInPat == 0 && m_nPatoshisPerK > 0)
+        nFeeInPat = m_nPatoshisPerK; // use nSize - 1000 bytes
 
-    return nFee;
+    return nFeeInPat;
 }
 
-std::string CFeeRate::ToString() const
+string CFeeRate::ToString() const
 {
-    return strprintf("%d.%05d %s/kB", m_nPatoshisPerK / COIN, m_nPatoshisPerK % COIN, CURRENCY_UNIT);
+    return strprintf("%d.%05d %s per 1000 bytes", m_nPatoshisPerK / COIN, m_nPatoshisPerK % COIN, CURRENCY_UNIT);
 }

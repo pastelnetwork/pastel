@@ -1,7 +1,7 @@
 #pragma once
 #ifdef _MSC_VER
 #include <intrin.h>
-#include <stdint.h>
+#include <cstdint>
 
 static inline int __builtin_ctz(unsigned x)
 {

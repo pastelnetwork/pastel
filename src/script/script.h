@@ -362,28 +362,26 @@ typedef prevector<28, unsigned char> CScriptBase;
 /** Serialized script, used inside transaction inputs and outputs */
 class CScript : public CScriptBase
 {
-protected:
-    CScript& push_int64(int64_t n)
-    {
-        if (n == -1 || (n >= 1 && n <= 16))
-        {
-            push_back(static_cast<int8_t>(n) + (OP_1 - 1));
-        }
-        else if (n == 0)
-        {
-            push_back(OP_0);
-        }
-        else
-        {
-            *this << CScriptNum::serialize(n);
-        }
-        return *this;
-    }
 public:
-    CScript() { }
+    CScript() {}
     CScript(const CScript& b) : 
         CScriptBase(b.begin(), b.end())
     {}
+    CScript(CScript&& b) noexcept :
+        CScriptBase(std::move(b))
+    {}
+    CScript& operator=(const CScript& b)
+    {
+		if (this != &b)
+			CScriptBase::operator=(b);
+		return *this;
+	}
+    CScript& operator=(CScript&& b) noexcept
+    {
+        if (this != &b)
+            CScriptBase::operator=(std::move(b));
+        return *this;
+    }
     CScript(const_iterator pbegin, const_iterator pend) : 
         CScriptBase(pbegin, pend)
     {}
@@ -498,57 +496,7 @@ public:
         return GetOp2(pc, opcodeRet, nullptr);
     }
 
-    bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, v_uint8* pvchRet) const
-    {
-        opcodeRet = OP_INVALIDOPCODE;
-        if (pvchRet)
-            pvchRet->clear();
-        if (pc >= end())
-            return false;
-
-        // Read instruction
-        if (end() - pc < 1)
-            return false;
-        unsigned int opcode = *pc++;
-
-        // Immediate operand
-        if (opcode <= OP_PUSHDATA4)
-        {
-            unsigned int nSize = 0;
-            if (opcode < OP_PUSHDATA1)
-            {
-                nSize = opcode;
-            }
-            else if (opcode == OP_PUSHDATA1)
-            {
-                if (end() - pc < 1)
-                    return false;
-                nSize = *pc++;
-            }
-            else if (opcode == OP_PUSHDATA2)
-            {
-                if (end() - pc < 2)
-                    return false;
-                nSize = ReadLE16(&pc[0]);
-                pc += 2;
-            }
-            else if (opcode == OP_PUSHDATA4)
-            {
-                if (end() - pc < 4)
-                    return false;
-                nSize = ReadLE32(&pc[0]);
-                pc += 4;
-            }
-            if (end() - pc < 0 || (unsigned int)(end() - pc) < nSize)
-                return false;
-            if (pvchRet)
-                pvchRet->assign(pc, pc + nSize);
-            pc += nSize;
-        }
-
-        opcodeRet = (opcodetype)opcode;
-        return true;
-    }
+    bool GetOp2(const_iterator& pc, opcodetype& opcodeRet, v_uint8* pvchRet) const;
 
     /** Encode/decode small integers: */
     static int DecodeOP_N(opcodetype opcode)
@@ -606,6 +554,9 @@ public:
         // The default std::vector::clear() does not release memory.
         CScriptBase().swap(*this);
     }
+
+protected:  
+    CScript& push_int64(const int64_t n);
 };
 
 template<typename Stream> inline void Serialize(Stream& s, ScriptType a )

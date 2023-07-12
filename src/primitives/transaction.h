@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
@@ -193,6 +193,39 @@ public:
         n = nIn;
     }
 
+    BaseOutPoint(BaseOutPoint&& other) noexcept :
+        hash(std::move(other.hash)),
+        n(other.n)
+    {
+        other.SetNull();
+    }
+
+    BaseOutPoint(const BaseOutPoint& other) noexcept :
+        hash(other.hash),
+        n(other.n)
+    {}
+
+    BaseOutPoint& operator=(const BaseOutPoint& other) noexcept
+    {
+        if (this != &other)
+        {
+			hash = other.hash;
+			n = other.n;
+		}
+		return *this;
+    }
+
+    BaseOutPoint& operator=(BaseOutPoint&& other) noexcept
+    {
+        if (this != &other)
+        {
+            hash = std::move(other.hash);
+            n = other.n;
+            other.SetNull();
+        }
+        return *this;
+    }
+
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream>
@@ -236,6 +269,27 @@ public:
         BaseOutPoint(hashIn, nIn)
     {}
 
+    COutPoint(COutPoint&& other) noexcept :
+        BaseOutPoint(std::move(other))
+    {}
+    COutPoint(const COutPoint& other) noexcept :
+		BaseOutPoint(other)
+	{}
+
+    COutPoint& operator=(const COutPoint& other) noexcept
+    {
+        if (this != &other)
+			BaseOutPoint::operator=(other);
+		return *this;
+    }
+
+    COutPoint& operator=(COutPoint&& other) noexcept
+    {
+        if (this != &other)
+            BaseOutPoint::operator=(std::move(other));
+        return *this;
+    }
+
     std::string ToString() const;
     // returns outpoint in short form txid-index
     std::string ToStringShort() const;
@@ -254,6 +308,26 @@ public:
     SaplingOutPoint(const uint256 &hashIn, const uint32_t nIn) noexcept : 
         BaseOutPoint(hashIn, nIn)
     {}
+
+    SaplingOutPoint(SaplingOutPoint&& other) noexcept :
+        BaseOutPoint(std::move(other))
+    {}
+
+    SaplingOutPoint(const SaplingOutPoint& other) noexcept :
+		BaseOutPoint(other)
+	{}
+    SaplingOutPoint& operator=(SaplingOutPoint&& other) noexcept
+    {
+        if (this != &other)
+            BaseOutPoint::operator=(std::move(other));
+        return *this;
+    }
+    SaplingOutPoint& operator=(const SaplingOutPoint& other) noexcept
+    {
+		if (this != &other)
+            BaseOutPoint::operator=(other);
+        return *this;
+    }
 
     std::string ToString() const;
 };
@@ -275,7 +349,10 @@ public:
     {
         nSequence = std::numeric_limits<unsigned int>::max();
     }
-
+    CTxIn(const CTxIn& other);
+    CTxIn(CTxIn&& other) noexcept;
+    CTxIn& operator=(CTxIn&& other) noexcept;
+    CTxIn& operator=(const CTxIn& other) noexcept;
     explicit CTxIn(const COutPoint &prevoutIn, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
     CTxIn(const uint256 &hashPrevTx, const uint32_t nOut, CScript scriptSigIn=CScript(), uint32_t nSequenceIn=std::numeric_limits<uint32_t>::max());
 
@@ -307,7 +384,7 @@ public:
 
     friend bool operator<(const CTxIn& a, const CTxIn& b)
     {
-        return a.prevout<b.prevout;
+        return a.prevout < b.prevout;
     }
 
     std::string ToString() const;

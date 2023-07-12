@@ -97,6 +97,7 @@ TEST(Mempool, OverwinterNotActiveYet)
     CValidationState state(TxOrigin::MSG_TX);
 
     CTransaction tx1(mtx);
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
     EXPECT_EQ(state.GetRejectReason(), "tx-overwinter-not-active");
 
@@ -120,6 +121,7 @@ TEST(Mempool, SproutV3TxFailsAsExpected)
     CValidationState state(TxOrigin::MSG_TX);
     CTransaction tx1(mtx);
 
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
     EXPECT_EQ(state.GetRejectReason(), "version");
 }
@@ -141,6 +143,7 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive)
     CValidationState state(TxOrigin::MSG_TX);
     CTransaction tx1(mtx);
 
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
     EXPECT_EQ(state.GetRejectReason(), "tx-overwintered-flag-not-set");
 
@@ -175,6 +178,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
         EXPECT_EQ(tx1.nVersion, -3);
 
         CValidationState state(TxOrigin::MSG_TX);
+        LOCK(cs_main);
         EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
         EXPECT_EQ(state.GetRejectReason(), "bad-txns-version-too-low");
     }
@@ -191,6 +195,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
         EXPECT_EQ(tx1.nVersion, -2147483645);
 
         CValidationState state(TxOrigin::MSG_TX);
+        LOCK(cs_main);
         EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
         EXPECT_EQ(state.GetRejectReason(), "bad-txns-version-too-low");
     }
@@ -222,6 +227,7 @@ TEST(Mempool, ExpiringSoonTxRejection)
         CValidationState state(TxOrigin::MSG_TX);
         CTransaction tx1(mtx);
 
+        LOCK(cs_main);
         EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
         EXPECT_EQ(state.GetRejectReason(), "tx-expiring-soon");
     }

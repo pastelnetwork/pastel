@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <assert.h>
@@ -36,14 +36,23 @@ public:
 
     base_blob(base_blob && b) noexcept
     {
+        std::swap(data, b.data);
+    }
+    base_blob& operator=(base_blob && b) noexcept
+    {
+        if (this != &b)
+            std::swap(data, b.data);
+        return *this;
+    }
+    base_blob(const base_blob &b) noexcept
+    {
 #ifdef _MSC_VER
         memcpy_s(data, sizeof(data), b.data, sizeof(b.data));
 #else
         memcpy(data, b.data, sizeof(data));
 #endif
-        b.SetNull();
     }
-    base_blob& operator=(base_blob && b) noexcept
+    base_blob& operator=(const base_blob &b) noexcept
     {
         if (this != &b)
         {
@@ -52,25 +61,7 @@ public:
 #else
             memcpy(data, b.data, sizeof(data));
 #endif
-            b.SetNull();
         }
-        return *this;
-    }
-    base_blob(const base_blob & b)
-    {
-#ifdef _MSC_VER
-        memcpy_s(data, sizeof(data), b.data, sizeof(b.data));
-#else
-        memcpy(data, b.data, sizeof(data));
-#endif
-    }
-    base_blob& operator=(const base_blob & b) noexcept
-    {
-#ifdef _MSC_VER
-        memcpy_s(data, sizeof(data), b.data, sizeof(b.data));
-#else
-        memcpy(data, b.data, sizeof(data));
-#endif
         return *this;
     }
 
@@ -112,6 +103,16 @@ public:
     }
 
     const unsigned char* end() const noexcept
+    {
+        return &data[WIDTH];
+    }
+
+    const unsigned char* cbegin() const noexcept
+    {
+        return &data[0];
+    }
+
+    const unsigned char* cend() const noexcept
     {
         return &data[WIDTH];
     }
@@ -159,7 +160,8 @@ public:
  * opaque blob of 256 bits and has no integer operations. Use arith_uint256 if
  * those are required.
  */
-class uint256 : public base_blob<256> {
+class uint256 : public base_blob<256>
+{
 public:
     uint256() noexcept {}
     uint256(const base_blob<256>& b) noexcept : 

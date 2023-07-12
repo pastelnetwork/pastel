@@ -8,7 +8,7 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
-#include <stdint.h>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
@@ -864,7 +864,7 @@ public:
     /**
      * populate vCoins with vector of available COutputs.
      */
-    void AvailableCoins(std::vector<COutput>& vCoins,
+    virtual void AvailableCoins(std::vector<COutput>& vCoins,
 		bool fOnlyConfirmed=true,
 		const CCoinControl *coinControl = nullptr,
 		bool fIncludeZeroValue=false,

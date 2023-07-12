@@ -1,7 +1,6 @@
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <unistd.h>
 #include <sys/types.h>
 #include <limits>
@@ -14,7 +13,7 @@ using namespace std;
 ///////////////////////////////////////////////////////////////////////////
 
 /* Partitioning algorithm for QuickSort and QuickSelect */
-static ssize_t partition(vector<CAmount>& v, const ssize_t low, const ssize_t high)
+static ssize_t partition(v_amounts& v, const ssize_t low, const ssize_t high)
 {
     // Pick the first element to be the pivot.
     const ssize_t pivotIndex = low;
@@ -34,7 +33,7 @@ static ssize_t partition(vector<CAmount>& v, const ssize_t low, const ssize_t hi
 }
 
 /* QuickSort algorithm */
-static void quickSort(vector<CAmount>& v, const ssize_t nFirst, const ssize_t nLast)
+static void quickSort(v_amounts& v, const ssize_t nFirst, const ssize_t nLast)
 {
     if (nLast - nFirst >= 1) {
         const ssize_t pivotIndex = partition(v, nFirst, nLast);
@@ -45,7 +44,7 @@ static void quickSort(vector<CAmount>& v, const ssize_t nFirst, const ssize_t nL
 }
 
 /* QuickSelect algorithm */
-static CAmount quickSelect(vector<CAmount>& v, const CAmount first, const CAmount last, const CAmount k)
+static CAmount quickSelect(v_amounts& v, const CAmount first, const CAmount last, const CAmount k)
 {
     if (last - first >= 1) {
         const CAmount pivotIndex = partition(v, first, last);
@@ -63,7 +62,7 @@ static CAmount quickSelect(vector<CAmount>& v, const CAmount first, const CAmoun
 }
 
 /* Calculate mean given starting and ending array index */
-inline static double mean(const vector<CAmount>& v, const ssize_t low, const ssize_t high)
+inline static double mean(const v_amounts& v, const ssize_t low, const ssize_t high)
 {
     CAmount acc = 0;
 
@@ -86,7 +85,7 @@ inline static double mean(const vector<CAmount>& v, const ssize_t low, const ssi
 //
 // If any errors are encountered, return NaN. If the errorno argument is defined, additional information
 // about the offending error will be provided in the form of an error code.
-double TRIMMEAN(const std::vector<CAmount>& vInput, const double percent, TrimmeanErrorNumber* pErrNo)
+double TRIMMEAN(const v_amounts& vInput, const double percent, TrimmeanErrorNumber* pErrNo)
 {
     /* Error Handling */
     TrimmeanErrorNumber err = TrimmeanErrorNumber::ENOERROR;
@@ -111,7 +110,7 @@ double TRIMMEAN(const std::vector<CAmount>& vInput, const double percent, Trimme
 
     // Copy input data into a local array which we will sort: we don't want to modify the original
     // input array.
-    vector<CAmount> v(vInput);
+    v_amounts v(vInput);
 
     // Use QuickSort algorithm to sort the array.
     quickSort(v, 0, v.size() - 1);

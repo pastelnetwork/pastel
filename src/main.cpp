@@ -2080,7 +2080,7 @@ bool AbortNode(const string& strMessage, const string& userMessage="")
     strMiscWarning = strMessage;
     LogPrintf("*** %s\n", strMessage);
     uiInterface.ThreadSafeMessageBox(
-        userMessage.empty() ? _("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
+        userMessage.empty() ? translate("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
         "", CClientUIInterface::MSG_ERROR);
     StartShutdown();
     return false;
@@ -2315,13 +2315,13 @@ void PartitionCheck(
     if (p <= alertThreshold && nBlocks < BLOCKS_EXPECTED)
     {
         // Many fewer blocks than expected: alert!
-        strWarning = strprintf(_("WARNING: check your network connection, %d blocks received in the last %d hours (%d expected)"),
+        strWarning = strprintf(translate("WARNING: check your network connection, %d blocks received in the last %d hours (%d expected)"),
                                nBlocks, SPAN_HOURS, BLOCKS_EXPECTED);
     }
     else if (p <= alertThreshold && nBlocks > BLOCKS_EXPECTED)
     {
         // Many more blocks than expected: alert!
-        strWarning = strprintf(_("WARNING: abnormally high number of blocks generated, %d blocks received in the last %d hours (%d expected)"),
+        strWarning = strprintf(translate("WARNING: abnormally high number of blocks generated, %d blocks received in the last %d hours (%d expected)"),
                                nBlocks, SPAN_HOURS, BLOCKS_EXPECTED);
     }
     if (!strWarning.empty())
@@ -2746,7 +2746,7 @@ void static UpdateTip(const CChainParams& chainparams, CBlockIndex* pindexNew)
         if (nUpgraded > 100/2)
         {
             // strMiscWarning is read by GetWarnings(), called by the JSON-RPC code to warn the user:
-            strMiscWarning = _("Warning: This version is obsolete; upgrade required!");
+            strMiscWarning = translate("Warning: This version is obsolete; upgrade required!");
             CAlert::Notify(strMiscWarning, true);
             fWarned = true;
         }
@@ -2990,18 +2990,18 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
     static_assert(MAX_REORG_LENGTH > 0, "We must be able to reorg some distance");
     if (reorgLength > MAX_REORG_LENGTH)
     {
-        auto msg = strprintf(_(
+        auto msg = strprintf(translate(
             "A block chain reorganization has been detected that would roll back %d blocks! "
             "This is larger than the maximum of %d blocks, and so the node is shutting down for your safety."
             ), reorgLength, MAX_REORG_LENGTH) + "\n\n" +
-            _("Reorganization details") + ":\n" +
-            "- " + strprintf(_("Current tip: %s, height %d, work %s"),
+            translate("Reorganization details") + ":\n" +
+            "- " + strprintf(translate("Current tip: %s, height %d, work %s"),
                 pindexOldTip->phashBlock->GetHex(), pindexOldTip->nHeight, pindexOldTip->nChainWork.GetHex()) + "\n" +
-            "- " + strprintf(_("New tip:     %s, height %d, work %s"),
+            "- " + strprintf(translate("New tip:     %s, height %d, work %s"),
                 pindexMostWork->phashBlock->GetHex(), pindexMostWork->nHeight, pindexMostWork->nChainWork.GetHex()) + "\n" +
-            "- " + strprintf(_("Fork point:  %s, height %d"),
+            "- " + strprintf(translate("Fork point:  %s, height %d"),
                 pindexFork->phashBlock->GetHex(), pindexFork->nHeight) + "\n\n" +
-            _("Please help, human!");
+            translate("Please help, human!");
         LogPrintf("*** %s\n", msg);
         uiInterface.ThreadSafeMessageBox(msg, "", CClientUIInterface::MSG_ERROR);
         StartShutdown();
@@ -4013,7 +4013,7 @@ bool CheckDiskSpace(uint64_t nAdditionalBytes)
 
     // Check for nMinDiskSpace bytes (currently 50MB)
     if (nFreeBytesAvailable < nMinDiskSpace + nAdditionalBytes)
-        return AbortNode("Disk space is low!", _("Error: Disk space is low!"));
+        return AbortNode("Disk space is low!", translate("Error: Disk space is low!"));
 
     return true;
 }
@@ -4216,7 +4216,7 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
 
 CVerifyDB::CVerifyDB()
 {
-    uiInterface.ShowProgress(_("Verifying blocks..."), 0);
+    uiInterface.ShowProgress(translate("Verifying blocks..."), 0);
 }
 
 CVerifyDB::~CVerifyDB()
@@ -4248,7 +4248,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     for (CBlockIndex* pindex = chainActive.Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {
         func_thread_interrupt_point();
-        uiInterface.ShowProgress(_("Verifying blocks..."), max(1, min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
+        uiInterface.ShowProgress(translate("Verifying blocks..."), max(1, min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
         if (pindex->nHeight < chainActive.Height()-nCheckDepth)
             break;
 
@@ -4298,7 +4298,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         while (pindex != chainActive.Tip())
         {
             func_thread_interrupt_point();
-            uiInterface.ShowProgress(_("Verifying blocks..."), max(1, min(99, 100 - (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
+            uiInterface.ShowProgress(translate("Verifying blocks..."), max(1, min(99, 100 - (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
             pindex = chainActive.Next(pindex);
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex, consensusParams))
@@ -4359,7 +4359,7 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
         clearWitnessCaches = (rewindLength > MAX_REORG_LENGTH && intendedRewind);
 
         if (clearWitnessCaches) {
-            auto msg = strprintf(_(
+            auto msg = strprintf(translate(
                 "An intended block chain rewind has been detected: network %s, hash %s, height %d"
                 ), networkID, phashFirstInsufValidated->GetHex(), nHeight);
             LogPrintf("*** %s\n", msg);
@@ -4368,16 +4368,16 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
         if (rewindLength > MAX_REORG_LENGTH && !intendedRewind) {
             auto pindexOldTip = chainActive.Tip();
             auto pindexRewind = chainActive[nHeight - 1];
-            auto msg = strprintf(_(
+            auto msg = strprintf(translate(
                 "A block chain rewind has been detected that would roll back %d blocks! "
                 "This is larger than the maximum of %d blocks, and so the node is shutting down for your safety."
                 ), rewindLength, MAX_REORG_LENGTH) + "\n\n" +
-                _("Rewind details") + ":\n" +
-                "- " + strprintf(_("Current tip:   %s, height %d"),
+                translate("Rewind details") + ":\n" +
+                "- " + strprintf(translate("Current tip:   %s, height %d"),
                     pindexOldTip->phashBlock->GetHex(), pindexOldTip->nHeight) + "\n" +
-                "- " + strprintf(_("Rewinding to:  %s, height %d"),
+                "- " + strprintf(translate("Rewinding to:  %s, height %d"),
                     pindexRewind->phashBlock->GetHex(), pindexRewind->nHeight) + "\n\n" +
-                _("Please help, human!");
+                translate("Please help, human!");
             LogPrintf("*** %s\n", msg);
             uiInterface.ThreadSafeMessageBox(msg, "", CClientUIInterface::MSG_ERROR);
             StartShutdown();
@@ -4903,7 +4903,7 @@ string GetWarnings(const string& strFor)
     string strRPC;
 
     if (!CLIENT_VERSION_IS_RELEASE)
-        strStatusBar = _("This is a pre-release test build - use at your own risk - do not use for mining or merchant applications");
+        strStatusBar = translate("This is a pre-release test build - use at your own risk - do not use for mining or merchant applications");
 
     if (GetBoolArg("-testsafemode", false))
         strStatusBar = strRPC = "testsafemode enabled";
@@ -4918,12 +4918,12 @@ string GetWarnings(const string& strFor)
     if (fLargeWorkForkFound)
     {
         nPriority = 2000;
-        strStatusBar = strRPC = _("Warning: The network does not appear to fully agree! Some miners appear to be experiencing issues.");
+        strStatusBar = strRPC = translate("Warning: The network does not appear to fully agree! Some miners appear to be experiencing issues.");
     }
     else if (fLargeWorkInvalidChainFound)
     {
         nPriority = 2000;
-        strStatusBar = strRPC = _("Warning: We do not appear to fully agree with our peers! You may need to upgrade, or other nodes may need to upgrade.");
+        strStatusBar = strRPC = translate("Warning: We do not appear to fully agree with our peers! You may need to upgrade, or other nodes may need to upgrade.");
     }
 
     // Alerts

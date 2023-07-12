@@ -1,17 +1,18 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <cmath>
+
 #include <gtest/gtest.h>
 
 #include <policy/fees.h>
 #include <txmempool.h>
 #include <uint256.h>
 #include <util.h>
+#include <amount.h>
 
-#include "test_mempool_entryhelper.h"
+#include <test_mempool_entryhelper.h>
 
 using namespace std;
 using namespace testing;
@@ -24,7 +25,7 @@ TEST(test_policyestimator, BlockPolicyEstimates)
     double basepri = 1e6;
     CAmount deltaFee(100);
     double deltaPri=5e5;
-    vector<CAmount> feeV[2];
+    v_amounts feeV[2];
     v_doubles priV[2];
 
     // Populate vectors of increasing fees or priorities
@@ -95,7 +96,7 @@ TEST(test_policyestimator, BlockPolicyEstimates)
         }
     }
 
-    vector<CAmount> origFeeEst;
+    v_amounts origFeeEst;
     v_doubles origPriEst;
     // Highest feerate is 10*baseRate and gets in all blocks,
     // second highest feerate is 9*baseRate and gets in 9/10 blocks = 90%,

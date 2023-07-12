@@ -1,5 +1,5 @@
 // Copyright (c) 2016 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
@@ -162,13 +162,13 @@ static bool metrics_ThreadSafeMessageBox(const string& message,
     // Check for usage of predefined caption
     switch (style) {
     case CClientUIInterface::MSG_ERROR:
-        strCaption += _("Error");
+        strCaption += translate("Error");
         break;
     case CClientUIInterface::MSG_WARNING:
-        strCaption += _("Warning");
+        strCaption += translate("Warning");
         break;
     case CClientUIInterface::MSG_INFORMATION:
-        strCaption += _("Information");
+        strCaption += translate("Information");
         break;
     default:
         strCaption += caption; // Use supplied caption (can be empty)
@@ -226,15 +226,15 @@ int printStats(bool mining)
     if (fnIsInitialBlockDownload(consensusParams)) {
         int netheight = EstimateNetHeight(height, tipmediantime, Params());
         int downloadPercent = netheight == 0? netheight: height * 100 / netheight;
-        cout << "     " << _("Downloading blocks") << " | " << height << " / ~" << netheight << " (" << downloadPercent << "%)" << endl;
+        cout << "     " << translate("Downloading blocks") << " | " << height << " / ~" << netheight << " (" << downloadPercent << "%)" << endl;
     } else
-        cout << "           " << _("Block height") << " | " << height << endl;
+        cout << "           " << translate("Block height") << " | " << height << endl;
     
-    cout << "            " << _("Connections") << " | " << connections << endl;
-    cout << "  " << _("Network solution rate") << " | " << netsolps << " Sol/s" << endl;
+    cout << "            " << translate("Connections") << " | " << connections << endl;
+    cout << "  " << translate("Network solution rate") << " | " << netsolps << " Sol/s" << endl;
     if (mining && miningTimer.running())
     {
-        cout << "    " << _("Local solution rate") << " | " << strprintf("%.4f Sol/s", localsolps) << endl;
+        cout << "    " << translate("Local solution rate") << " | " << strprintf("%.4f Sol/s", localsolps) << endl;
         lines++;
     }
     cout << endl;
@@ -252,7 +252,7 @@ int printMiningStatus(bool mining)
         auto nThreads = miningTimer.threadCount();
         const auto& consensusParams = Params().GetConsensus();
         if (nThreads > 0) {
-            cout << strprintf(_("You are mining with the %s solver on %d threads."),
+            cout << strprintf(translate("You are mining with the %s solver on %d threads."),
                                    GetArg("-equihashsolver", "default"), nThreads) << endl;
         } else {
             bool fvNodesEmpty;
@@ -261,17 +261,17 @@ int printMiningStatus(bool mining)
                 fvNodesEmpty = vNodes.empty();
             }
             if (fvNodesEmpty) {
-                cout << _("Mining is paused while waiting for connections.") << endl;
+                cout << translate("Mining is paused while waiting for connections.") << endl;
             } else if (fnIsInitialBlockDownload(consensusParams)) {
-                cout << _("Mining is paused while downloading blocks.") << endl;
+                cout << translate("Mining is paused while downloading blocks.") << endl;
             } else {
-                cout << _("Mining is paused (a JoinSplit may be in progress).") << endl;
+                cout << translate("Mining is paused (a JoinSplit may be in progress).") << endl;
             }
         }
         lines++;
     } else {
-        cout << _("You are currently not mining.") << endl;
-        cout << _("To enable mining, add 'gen=1' to your pastel.conf and restart.") << endl;
+        cout << translate("You are currently not mining.") << endl;
+        cout << translate("To enable mining, add 'gen=1' to your pastel.conf and restart.") << endl;
         lines += 2;
     }
     cout << endl;
@@ -297,29 +297,29 @@ int printMetrics(size_t cols, bool mining)
     // Display uptime
     string duration;
     if (days > 0)
-        duration = strprintf(_("%d days, %d hours, %d minutes, %d seconds"), days, hours, minutes, seconds);
+        duration = strprintf(translate("%d days, %d hours, %d minutes, %d seconds"), days, hours, minutes, seconds);
     else if (hours > 0)
-        duration = strprintf(_("%d hours, %d minutes, %d seconds"), hours, minutes, seconds);
+        duration = strprintf(translate("%d hours, %d minutes, %d seconds"), hours, minutes, seconds);
     else if (minutes > 0)
-        duration = strprintf(_("%d minutes, %d seconds"), minutes, seconds);
+        duration = strprintf(translate("%d minutes, %d seconds"), minutes, seconds);
     else
-        duration = strprintf(_("%d seconds"), seconds);
+        duration = strprintf(translate("%d seconds"), seconds);
 
-    string strDuration = strprintf(_("Since starting this node %s ago:"), duration);
+    string strDuration = strprintf(translate("Since starting this node %s ago:"), duration);
     cout << strDuration << endl;
     lines += static_cast<int>(strDuration.size() / cols);
 
     const auto validatedCount = transactionsValidated.get();
     if (validatedCount > 1)
-      cout << "- " << strprintf(_("You have validated %d transactions!"), validatedCount) << endl;
+      cout << "- " << strprintf(translate("You have validated %d transactions!"), validatedCount) << endl;
     else if (validatedCount == 1)
-      cout << "- " << _("You have validated a transaction!") << endl;
+      cout << "- " << translate("You have validated a transaction!") << endl;
     else
-      cout << "- " << _("You have validated no transactions.") << endl;
+      cout << "- " << translate("You have validated no transactions.") << endl;
 
     if (mining && loaded)
     {
-        cout << "- " << strprintf(_("You have completed %d Equihash solver runs."), ehSolverRuns.get()) << endl;
+        cout << "- " << strprintf(translate("You have completed %d Equihash solver runs."), ehSolverRuns.get()) << endl;
         lines++;
 
         uint64_t mined = 0;
@@ -358,9 +358,9 @@ int printMetrics(size_t cols, bool mining)
         if (mined > 0)
         {
             string units = Params().CurrencyUnits();
-            cout << "- " << strprintf(_("You have mined %" PRIu64 " blocks!"), mined) << endl;
+            cout << "- " << strprintf(translate("You have mined %" PRIu64 " blocks!"), mined) << endl;
             cout << "  "
-                      << strprintf(_("Orphaned: %" PRIu64 " blocks, Immature: %u %s, Mature: %u %s"),
+                      << strprintf(translate("Orphaned: %" PRIu64 " blocks, Immature: %u %s, Mature: %u %s"),
                                      orphaned,
                                      FormatMoney(immature), units,
                                      FormatMoney(mature), units)
@@ -381,7 +381,7 @@ int printMessageBox(size_t cols)
         return 0;
 
     int lines = static_cast<int>(2 + u->size());
-    cout << _("Messages:") << endl;
+    cout << translate("Messages:") << endl;
     for (auto it = u->cbegin(); it != u->cend(); ++it)
     {
         auto msg = FormatParagraph(*it, cols, 2);
@@ -410,10 +410,10 @@ int printInitMessage()
     }
 
     string msg = *initMessage;
-    cout << _("Init message:") << " " << msg << endl;
+    cout << translate("Init message:") << " " << msg << endl;
     cout << endl;
 
-    if (msg == _("Done loading")) {
+    if (msg == translate("Done loading")) {
         loaded = true;
     }
 
@@ -483,8 +483,8 @@ void ThreadShowMetricsScreen()
         // cout << endl;
 
         // Thank you text
-        cout << _("Thank you for running a Pastel node!") << endl;
-        cout << _("You're helping to strengthen the network and contributing to a social good :)") << endl;
+        cout << translate("Thank you for running a Pastel node!") << endl;
+        cout << translate("You're helping to strengthen the network and contributing to a social good :)") << endl;
 
         // Privacy notice text
         cout << PrivacyInfo();
@@ -535,11 +535,11 @@ void ThreadShowMetricsScreen()
             // Explain how to exit
             cout << "[";
 #ifdef WIN32
-            cout << _("'pascal-cli.exe stop' to exit");
+            cout << translate("'pascal-cli.exe stop' to exit");
 #else
-            cout << _("Press Ctrl+C to exit");
+            cout << translate("Press Ctrl+C to exit");
 #endif
-            cout << "] [" << _("Set 'showmetrics=0' to hide") << "]" << endl;
+            cout << "] [" << translate("Set 'showmetrics=0' to hide") << "]" << endl;
         } else {
             // Print delineator
             cout << "----------------------------------------" << endl;

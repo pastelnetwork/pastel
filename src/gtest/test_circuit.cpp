@@ -1,33 +1,37 @@
-#include <gtest/gtest.h>
-#include "uint256.h"
-#include "zcash/util.h"
-
 #include <optional>
 
+#include <gtest/gtest.h>
+
+#include <uint256.h>
+
+#ifdef DEBUG
+#undef DEBUG
+#endif
 #include <libsnark/common/default_types/r1cs_ppzksnark_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include <libsnark/gadgetlib1/gadgets/hashes/sha256/sha256_gadget.hpp>
 #include <libsnark/gadgetlib1/gadgets/merkle_tree/merkle_tree_check_read_gadget.hpp>
 
+#include <zcash/util.h>
 #include "zcash/IncrementalMerkleTree.hpp"
 
 using namespace libsnark;
 using namespace libzcash;
 
-#include "zcash/circuit/utils.tcc"
-#include "zcash/circuit/merkle.tcc"
+#include <zcash/circuit/utils.tcc>
+#include <zcash/circuit/merkle.tcc>
 
 template<typename FieldT>
 void test_value_equals(uint64_t i) {
     protoboard<FieldT> pb;
     pb_variable_array<FieldT> num;
-    num.allocate(pb, 64, "");
+    num.allocate(pb, 64, "pb");
     num.fill_with_bits(pb, uint64_to_bool_vector(i));
     pb.add_r1cs_constraint(r1cs_constraint<FieldT>(
         packed_addition(num),
         FieldT::one(),
         FieldT::one() * i
-    ), "");
+    ), "pb");
     ASSERT_TRUE(pb.is_satisfied());
 }
 
@@ -90,9 +94,9 @@ bool test_merkle_gadget(
     digest_variable<FieldT> commitment2(pb, 256, "commitment2");
 
     pb_variable<FieldT> commitment1_read;
-    commitment1_read.allocate(pb);
+    commitment1_read.allocate(pb, "commitment1");
     pb_variable<FieldT> commitment2_read;
-    commitment2_read.allocate(pb);
+    commitment2_read.allocate(pb, "commitment2");
 
     merkle_tree_gadget<FieldT> mgadget1(pb, commitment1, root, commitment1_read);
     merkle_tree_gadget<FieldT> mgadget2(pb, commitment2, root, commitment2_read);

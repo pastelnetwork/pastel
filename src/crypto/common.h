@@ -1,14 +1,13 @@
 #pragma once
 // Copyright (c) 2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #if defined(HAVE_CONFIG_H)
 #include "bitcoin-config.h"
 #endif
 
-#include <stdint.h>
+#include <cstdint>
 #include <assert.h>
 #include <string.h>
 

@@ -3,8 +3,7 @@
 // Copyright (c) 2018-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
-#include <stdint.h>
+#include <cstdint>
 #include <numeric>
 #include <variant>
 

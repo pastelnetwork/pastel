@@ -13,7 +13,7 @@
 #include <fstream>
 
 using namespace std;
-using ::testing::StrictMock;
+using namespace testing;
 using namespace boost::placeholders;
 
 static const string CLIENT_VERSION_STR = FormatVersion(CLIENT_VERSION);
@@ -34,7 +34,8 @@ static bool ThreadSafeMessageBox(MockUIInterface *mock,
     return mock->ThreadSafeMessageBox(message, caption, style);
 }
 
-class DeprecationTest : public ::testing::Test {
+class DeprecationTest : public Test
+{
 protected:
     virtual void SetUp() {
         uiInterface.ThreadSafeMessageBox.disconnect_all_slots();
@@ -71,7 +72,7 @@ TEST_F(DeprecationTest, NonDeprecatedNodeKeepsRunning) {
 
 TEST_F(DeprecationTest, NodeNearDeprecationIsWarned) {
     EXPECT_FALSE(ShutdownRequested());
-    EXPECT_CALL(mock_, ThreadSafeMessageBox(::testing::_, "", CClientUIInterface::MSG_WARNING));
+    EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_WARNING));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT - DEPRECATION_WARN_LIMIT);
     EXPECT_FALSE(ShutdownRequested());
 }
@@ -84,14 +85,14 @@ TEST_F(DeprecationTest, NodeNearDeprecationWarningIsNotDuplicated) {
 
 TEST_F(DeprecationTest, NodeNearDeprecationWarningIsRepeatedOnStartup) {
     EXPECT_FALSE(ShutdownRequested());
-    EXPECT_CALL(mock_, ThreadSafeMessageBox(::testing::_, "", CClientUIInterface::MSG_WARNING));
+    EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_WARNING));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT - DEPRECATION_WARN_LIMIT + 1, true);
     EXPECT_FALSE(ShutdownRequested());
 }
 
 TEST_F(DeprecationTest, DeprecatedNodeShutsDown) {
     EXPECT_FALSE(ShutdownRequested());
-    EXPECT_CALL(mock_, ThreadSafeMessageBox(::testing::_, "", CClientUIInterface::MSG_ERROR));
+    EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_ERROR));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT);
     EXPECT_TRUE(ShutdownRequested());
 }
@@ -104,7 +105,7 @@ TEST_F(DeprecationTest, DeprecatedNodeErrorIsNotDuplicated) {
 
 TEST_F(DeprecationTest, DeprecatedNodeErrorIsRepeatedOnStartup) {
     EXPECT_FALSE(ShutdownRequested());
-    EXPECT_CALL(mock_, ThreadSafeMessageBox(::testing::_, "", CClientUIInterface::MSG_ERROR));
+    EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_ERROR));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT + 1, true);
     EXPECT_TRUE(ShutdownRequested());
 }
@@ -130,7 +131,7 @@ TEST_F(DeprecationTest, AlertNotify)
 
     mapArgs["-alertnotify"] = string("echo %s >> ") + temp.string();
 
-    EXPECT_CALL(mock_, ThreadSafeMessageBox(::testing::_, "", CClientUIInterface::MSG_WARNING));
+    EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_WARNING));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT - DEPRECATION_WARN_LIMIT, false, false);
 
     vector<string> r = read_lines(temp);

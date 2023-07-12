@@ -1897,9 +1897,9 @@ bool BindListenPort(const CService &addrBind, string& strError, bool fWhiteliste
     {
         int nErr = WSAGetLastError();
         if (nErr == WSAEADDRINUSE)
-            strError = strprintf(_("Unable to bind to %s on this computer. Pastel is probably already running."), addrBind.ToString());
+            strError = strprintf(translate("Unable to bind to %s on this computer. Pastel is probably already running."), addrBind.ToString());
         else
-            strError = strprintf(_("Unable to bind to %s on this computer (bind returned error %s)"), addrBind.ToString(), GetErrorString(nErr));
+            strError = strprintf(translate("Unable to bind to %s on this computer (bind returned error %s)"), addrBind.ToString(), GetErrorString(nErr));
         LogFnPrintf("%s", strError);
         CloseSocket(hListenSocket);
         return false;
@@ -1909,7 +1909,7 @@ bool BindListenPort(const CService &addrBind, string& strError, bool fWhiteliste
     // Listen for incoming connections
     if (listen(hListenSocket, SOMAXCONN) == SOCKET_ERROR)
     {
-        strError = strprintf(_("ERROR: Listening for incoming connections failed (listen returned error %s)"), GetErrorString(WSAGetLastError()));
+        strError = strprintf(translate("ERROR: Listening for incoming connections failed (listen returned error %s)"), GetErrorString(WSAGetLastError()));
         LogFnPrintf("%s", strError);
         CloseSocket(hListenSocket);
         return false;
@@ -2085,7 +2085,7 @@ void static Discover()
 
 void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
-    uiInterface.InitMessage(_("Loading addresses..."));
+    uiInterface.InitMessage(translate("Loading addresses..."));
     // Load addresses for peers.dat
     int64_t nStart = GetTimeMillis();
     {

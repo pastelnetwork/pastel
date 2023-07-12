@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
@@ -81,7 +81,7 @@ TEST_F(TestTicketProcessor, ticket_compression)
     EXPECT_CALL(*ticket, GetVersion).WillRepeatedly([&]() -> short { return ticket->CChangeUsernameTicket::GetVersion(); });
     EXPECT_CALL(*ticket, VersionMgmt).WillRepeatedly([&](string& error, const bool bRead) -> bool 
         { return ticket->CChangeUsernameTicket::VersionMgmt(error, bRead); });
-    EXPECT_CALL(*ticket, SerializationOp(testing::_, SERIALIZE_ACTION::Write)).WillOnce([&](CDataStream& s, const SERIALIZE_ACTION ser_action)
+    EXPECT_CALL(*ticket, SerializationOp(_, SERIALIZE_ACTION::Write)).WillOnce([&](CDataStream& s, const SERIALIZE_ACTION ser_action)
         { ticket->CChangeUsernameTicket::SerializationOp(s, ser_action); });
 
     // serialize ticket, convert to tx, add to mempool, validate tx

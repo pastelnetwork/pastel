@@ -23,7 +23,6 @@
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/ticket.h>
 
-constexpr int DATASTREAM_VERSION = 1;
 constexpr uint8_t TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
 constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
 
@@ -157,12 +156,11 @@ public:
     // search for NFT registration tickets, calls functor for each matching ticket
     void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
 
-    static size_t CreateP2FMSScripts(const CDataStream& input_stream, std::vector<CScript>& vOutScripts);
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, 
-        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
+        const CAmount nPricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
     static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, 
-        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
+        const CAmount nPricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
 #endif // ENABLE_WALLET
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
@@ -199,8 +197,5 @@ public:
     static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();
 
 protected:
-    static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, 
-        const std::vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
-        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
     static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, std::unique_ptr<CPastelTicket>&& ticket) noexcept;
 };

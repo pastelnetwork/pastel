@@ -1,9 +1,10 @@
 #pragma once
-// Copyright (c) 2021-2022 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <gmock/gmock.h>
+
 #include <mnode/ticket-txmempool.h>
 
 class MockTicketTxMemPoolTracker : public CTicketTxMemPoolTracker
@@ -32,5 +33,4 @@ public:
     }
 };
 
-CMutableTransaction CreateTicketTransaction(const TicketID ticket_id, const std::function<void(CPastelTicket& tkt)>& fnSetTicketData);
-CMutableTransaction CreateTestTransaction();
+

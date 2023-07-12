@@ -1,17 +1,15 @@
+#pragma once
 // Copyright (c) 2014-2018 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_COMPAT_ENDIAN_H
-#define BITCOIN_COMPAT_ENDIAN_H
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #if defined(HAVE_CONFIG_H)
 #include <config/bitcoin-config.h>
 #endif
 
-#include <compat/byteswap.h>
+#include <cstdint>
 
-#include <stdint.h>
+#include <compat/byteswap.h>
 
 #if defined(HAVE_ENDIAN_H)
 #include <endian.h>
@@ -237,5 +235,3 @@ inline uint64_t le64toh(uint64_t little_endian_64bits)
 #endif // HAVE_DECL_LE64TOH
 
 #endif // WORDS_BIGENDIAN
-
-#endif // BITCOIN_COMPAT_ENDIAN_H

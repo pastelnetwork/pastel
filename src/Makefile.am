@@ -159,6 +159,7 @@ MNODE_CPP =\
   mnode/mnode-governance.cpp\
   mnode/mnode-messageproc.cpp\
   mnode/ticket-processor.cpp\
+  mnode/p2fms-txbuilder.cpp\
   mnode/ticket-mempool-processor.cpp\
   mnode/ticket-txmempool.cpp\
   mnode/mnode-notificationinterface.cpp\
@@ -217,6 +218,7 @@ MNODE_H = \
   mnode/mnode-governance.h\
   mnode/mnode-messageproc.h\
   mnode/ticket-processor.h\
+  mnode/p2fms-txbuilder.h\
   mnode/ticket-mempool-processor.h\
   mnode/ticket-txmempool.h\
   mnode/mnode-controller.h\

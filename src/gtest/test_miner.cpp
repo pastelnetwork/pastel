@@ -37,7 +37,7 @@ TEST(Miner, GetMinerScriptPubKey) {
     
 #ifdef ENABLE_WALLET
     MockReserveKey reservekey;
-    EXPECT_CALL(reservekey, GetReservedKey(::testing::_))
+    EXPECT_CALL(reservekey, GetReservedKey(_))
         .WillRepeatedly(Return(false));
 #endif
 

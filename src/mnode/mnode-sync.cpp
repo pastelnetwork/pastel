@@ -63,13 +63,13 @@ string CMasternodeSync::GetSyncStatus()
 {
     switch (syncState)
     {
-        case MasternodeSyncState::Initial:      return _("Synchroning blockchain...");
-        case MasternodeSyncState::Waiting:      return _("Synchronization pending...");
-        case MasternodeSyncState::List:         return _("Synchronizing masternodes...");
-        case MasternodeSyncState::Winners:      return _("Synchronizing masternode payments...");
-        case MasternodeSyncState::Governance:   return _("Synchronizing governance payments...");
-        case MasternodeSyncState::Failed:       return _("Synchronization failed");
-        case MasternodeSyncState::Finished:     return _("Synchronization finished");
+        case MasternodeSyncState::Initial:      return translate("Synchroning blockchain...");
+        case MasternodeSyncState::Waiting:      return translate("Synchronization pending...");
+        case MasternodeSyncState::List:         return translate("Synchronizing masternodes...");
+        case MasternodeSyncState::Winners:      return translate("Synchronizing masternode payments...");
+        case MasternodeSyncState::Governance:   return translate("Synchronizing governance payments...");
+        case MasternodeSyncState::Failed:       return translate("Synchronization failed");
+        case MasternodeSyncState::Finished:     return translate("Synchronization finished");
         default:                                return "";
     }
 }

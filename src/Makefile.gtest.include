@@ -46,6 +46,9 @@ pastel_gtest_SOURCES += \
 endif
 pastel_gtest_SOURCES +=\
 	gtest/test_mnode/mock_ticket.h\
+	gtest/test_mnode/mock_wallet.h\
+	gtest/test_mnode/mock_p2fms_txbuilder.h\
+	gtest/test_mnode/mock_p2fms_txbuilder.cpp\
 	gtest/test_mnode/test_governance.cpp\
 	gtest/test_mnode/test_mnode_rpc.cpp\
 	gtest/test_mnode/test_pastel.cpp\
@@ -60,6 +63,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_mnode/test_ticket_offer.cpp\
 	gtest/test_mnode/test_ticket_processor.cpp\
 	gtest/test_mnode/test_ticket_types.cpp\
+	gtest/test_mnode/test_p2fms_txbuilder.cpp\
 	gtest/test_addrman.cpp\
 	gtest/test_alert.cpp\
 	gtest/test_allocator.cpp\

@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -29,6 +29,13 @@ string SaplingOutPoint::ToString() const
     return strprintf("SaplingOutPoint(%s, %u)", hash.ToString().substr(0, 10), n);
 }
 
+CTxIn::CTxIn(const CTxIn& other)
+{
+	prevout = other.prevout;
+	scriptSig = other.scriptSig;
+	nSequence = other.nSequence;
+}
+
 CTxIn::CTxIn(const COutPoint &prevoutIn, CScript scriptSigIn, uint32_t nSequenceIn)
 {
     prevout = prevoutIn;
@@ -41,6 +48,38 @@ CTxIn::CTxIn(const uint256 &hashPrevTx, uint32_t nOut, CScript scriptSigIn, uint
     prevout = COutPoint(hashPrevTx, nOut);
     scriptSig = scriptSigIn;
     nSequence = nSequenceIn;
+}
+
+CTxIn::CTxIn(CTxIn&& other) noexcept :
+    prevout(std::move(other.prevout)),
+    scriptSig(std::move(other.scriptSig)),
+    nSequence(other.nSequence)
+{
+    other.nSequence = std::numeric_limits<unsigned int>::max();
+}
+
+CTxIn& CTxIn::operator=(CTxIn&& other) noexcept
+{
+    if (this != &other)
+    {
+        prevout = std::move(other.prevout);
+        scriptSig = std::move(other.scriptSig);
+        nSequence = other.nSequence;
+
+        other.nSequence = std::numeric_limits<unsigned int>::max();
+    }
+    return *this;
+}
+
+CTxIn& CTxIn::operator=(const CTxIn& other) noexcept
+{
+    if (this != &other)
+    {
+		prevout = other.prevout;
+		scriptSig = other.scriptSig;
+		nSequence = other.nSequence;
+	}
+    return *this;
 }
 
 string CTxIn::ToString() const
