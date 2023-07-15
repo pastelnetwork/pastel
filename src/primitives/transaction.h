@@ -359,7 +359,8 @@ public:
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream>
-    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action) {
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
         READWRITE(prevout);
         READWRITE(*(CScriptBase*)(&scriptSig));
         READWRITE(nSequence);
@@ -403,8 +404,11 @@ public:
     {
         Clear();
     }
-
     CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn) noexcept;
+    CTxOut(const CTxOut& other);
+    CTxOut(CTxOut&& other) noexcept;
+    CTxOut& operator=(CTxOut&& other) noexcept;
+    CTxOut& operator=(const CTxOut& other) noexcept;
 
     ADD_SERIALIZE_METHODS;
 

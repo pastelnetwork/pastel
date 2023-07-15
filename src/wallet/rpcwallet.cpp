@@ -810,7 +810,7 @@ As a json rpc call
     return ValueFromAmount(nAmount);
 }
 
-CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminetype& filter)
+CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMinDepth, const isminetype filter)
 {
     // Tally wallet transactions
     CAmount nBalance = 0;
@@ -833,7 +833,7 @@ CAmount GetAccountBalance(CWalletDB& walletdb, const string& strAccount, int nMi
     return nBalance;
 }
 
-CAmount GetAccountBalance(const string& strAccount, int nMinDepth, const isminetype& filter)
+CAmount GetAccountBalance(const string& strAccount, int nMinDepth, const isminetype filter)
 {
     CWalletDB walletdb(pwalletMain->strWalletFile);
     return GetAccountBalance(walletdb, strAccount, nMinDepth, filter);
@@ -1479,7 +1479,7 @@ static void MaybePushAddress(UniValue & entry, const CTxDestination &dest)
  * \param  ret        The UniValue into which the result is stored.
  * \param  filter     The "is mine" filter.
  */
-void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, UniValue& ret, const isminetype& filter)
+void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDepth, bool fLong, UniValue& ret, const isminetype filter)
 {
     CAmount nFee;
     string strSentAccount;
@@ -1939,19 +1939,18 @@ Examples:
     hash.SetHex(params[0].get_str());
 
     isminetype filter = isminetype::SPENDABLE;
-    if(params.size() > 1)
-        if(params[1].get_bool())
-            filter = isminetype::ALL;
+    if ((params.size() > 1) && params[1].get_bool())
+        filter = isminetype::ALL;
 
     UniValue entry(UniValue::VOBJ);
     if (!pwalletMain->mapWallet.count(hash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
     const auto& wtx = pwalletMain->mapWallet[hash];
 
-    CAmount nCredit = wtx.GetCredit(filter);
-    CAmount nDebit = wtx.GetDebit(filter);
-    CAmount nNet = nCredit - nDebit;
-    CAmount nFee = (wtx.IsFromMe(filter) ? wtx.GetValueOut() - nDebit : 0);
+    const CAmount nCredit = wtx.GetCredit(filter);
+    const CAmount nDebit = wtx.GetDebit(filter);
+    const CAmount nNet = nCredit - nDebit;
+    const CAmount nFee = (wtx.IsFromMe(filter) ? wtx.GetValueOut() - nDebit : 0);
 
     entry.pushKV("amount", ValueFromAmount(nNet - nFee));
     entry.pushKV("amountPat", nNet - nFee);
@@ -4554,6 +4553,96 @@ Examples:
     return ret;
 }
 
+#ifdef ENABLE_WALLET
+bool GetWalletTransaction(const uint256 &txid, CTransaction &tx, uint256& hashBlock)
+{
+    if (!pwalletMain->mapWallet.count(txid))
+        return false;
+    const auto wtx = pwalletMain->mapWallet[txid];
+    hashBlock = wtx.hashBlock;
+    tx = *dynamic_cast<const CTransaction*>(&wtx);
+    return true;
+}
+#endif // ENABLE_WALLET
+
+UniValue gettxfee(const UniValue& params, bool fHelp)
+{
+    UniValue resultObj(UniValue::VOBJ);
+#ifdef ENABLE_WALLET
+    if (params.empty() || fHelp)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(gettxfee "txid"
+Get transaction fee by txid.
+
+Arguments:
+1. "txid"  (string, required) transaction id
+
+Returns:
+{
+    "txid": "txid",                  // transaction id
+    "height": <ticket_block_height>, // block height of the transaction, may be omited if transaction is in mempool only
+    "txFeePat": <ticket_tx_fee_pat>, // transaction fee in patoshis
+    "txFee": <ticket_tx_fee>         // transaction fee in PSL
+}
+
+Example:
+)" + HelpExampleCli("gettxfee", R"(""e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4"")") +
+R"(
+As json rpc:
+)" + HelpExampleRpc("gettxfee", R"("e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4")"));
+
+
+    string sTxId = params[0].get_str();
+    string error;
+    uint256 txid;
+    // extract and validate ticket txid
+    if (!parse_uint256(error, txid, sTxId, "txid"))
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            strprintf("Invalid 'txid' parameter. %s", error.c_str()));
+
+    const auto& consensusParams = Params().GetConsensus();
+    uint32_t nTicketHeight = numeric_limits<uint32_t>::max();
+    uint256 hashBlock;
+    CTransaction tx;
+    if (!GetTransaction(txid, tx, consensusParams, hashBlock, true, &nTicketHeight) &&
+        !GetWalletTransaction(txid, tx, hashBlock))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
+
+    resultObj.pushKV("txid", sTxId);
+    if (nTicketHeight != numeric_limits<uint32_t>::max())
+        resultObj.pushKV("height", static_cast<uint64_t>(nTicketHeight));
+    if (!hashBlock.IsNull())
+        resultObj.pushKV("blockHash", hashBlock.GetHex());
+
+    CAmount nDebit = 0;
+    unordered_map<uint256, CTransaction> txMap;
+    uint256 prevHashBlock, prevTxHash;
+    for (const CTxIn& txin : tx.vin)
+    {
+        prevTxHash = txin.prevout.hash;
+        const auto &it = txMap.find(prevTxHash);
+        if (it != txMap.end())
+            nDebit += it->second.vout[txin.prevout.n].nValue;
+        else
+        {
+            CTransaction txOut;
+            if (!GetTransaction(prevTxHash, txOut, consensusParams, prevHashBlock, true) &&
+                !GetWalletTransaction(prevTxHash, txOut, prevHashBlock))
+                throw runtime_error(strprintf(
+                    "No information available about input transaction [%s]",
+                    prevTxHash.ToString()));
+            nDebit += txOut.vout[txin.prevout.n].nValue;
+            txMap.emplace(prevTxHash, move(txOut));
+        }
+    }
+    const CAmount nCredit = tx.GetValueOut();
+    const CAmount nTxFeePat = nDebit - nCredit;
+    resultObj.pushKV("txFeePat", nTxFeePat);
+    resultObj.pushKV("txFee", ValueFromAmount(nTxFeePat));
+#endif // ENABLE_WALLET
+    return resultObj;
+}
+
 extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
 extern UniValue importprivkey(const UniValue& params, bool fHelp);
 extern UniValue importaddress(const UniValue& params, bool fHelp);
@@ -4585,6 +4674,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "getreceivedbyaccount",     &getreceivedbyaccount,     false },
     { "wallet",             "getreceivedbyaddress",     &getreceivedbyaddress,     false },
     { "wallet",             "gettransaction",           &gettransaction,           false },
+    { "wallet",             "gettxfee",                 &gettxfee,                 false },
     { "wallet",             "getunconfirmedbalance",    &getunconfirmedbalance,    false },
     { "wallet",             "getwalletinfo",            &getwalletinfo,            false },
     { "wallet",             "importprivkey",            &importprivkey,            true  },

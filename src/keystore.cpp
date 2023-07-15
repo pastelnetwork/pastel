@@ -1,8 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
 #include <keystore.h>
 #include <key.h>
 #include <pubkey.h>
@@ -10,17 +10,20 @@
 
 using namespace std;
 
-bool CKeyStore::AddKey(const CKey &key) {
+bool CKeyStore::AddKey(const CKey &key)
+{
     return AddKeyPubKey(key, key.GetPubKey());
 }
 
 bool CBasicKeyStore::GetPubKey(const CKeyID &address, CPubKey &vchPubKeyOut) const
 {
     CKey key;
-    if (!GetKey(address, key)) {
+    if (!GetKey(address, key))
+    {
         LOCK(cs_KeyStore);
-        WatchKeyMap::const_iterator it = mapWatchKeys.find(address);
-        if (it != mapWatchKeys.end()) {
+        auto it = mapWatchKeys.find(address);
+        if (it != mapWatchKeys.cend())
+        {
             vchPubKeyOut = it->second;
             return true;
         }
@@ -33,7 +36,8 @@ bool CBasicKeyStore::GetPubKey(const CKeyID &address, CPubKey &vchPubKeyOut) con
 bool CBasicKeyStore::SetHDSeed(const HDSeed& seed)
 {
     LOCK(cs_KeyStore);
-    if (!hdSeed.IsNull()) {
+    if (!hdSeed.IsNull())
+    {
         // Don't allow an existing seed to be changed. We can maybe relax this
         // restriction later once we have worked out the UX implications.
         return false;
@@ -51,12 +55,12 @@ bool CBasicKeyStore::HaveHDSeed() const
 bool CBasicKeyStore::GetHDSeed(HDSeed& seedOut) const
 {
     LOCK(cs_KeyStore);
-    if (hdSeed.IsNull()) {
+
+    if (hdSeed.IsNull())
         return false;
-    } else {
-        seedOut = hdSeed;
-        return true;
-    }
+
+    seedOut = hdSeed;
+    return true;
 }
 
 bool CBasicKeyStore::AddKeyPubKey(const CKey& key, const CPubKey &pubkey)
@@ -72,6 +76,7 @@ bool CBasicKeyStore::AddCScript(const CScript& redeemScript)
         return error("CBasicKeyStore::AddCScript(): redeemScripts > %i bytes are invalid", MAX_SCRIPT_ELEMENT_SIZE);
 
     LOCK(cs_KeyStore);
+
     mapScripts[CScriptID(redeemScript)] = redeemScript;
     return true;
 }
@@ -85,10 +90,10 @@ bool CBasicKeyStore::HaveCScript(const CScriptID& hash) const
 bool CBasicKeyStore::GetCScript(const CScriptID &hash, CScript& redeemScriptOut) const
 {
     LOCK(cs_KeyStore);
-    ScriptMap::const_iterator mi = mapScripts.find(hash);
-    if (mi != mapScripts.end())
+    auto mi = mapScripts.find(hash);
+    if (mi != mapScripts.cend())
     {
-        redeemScriptOut = (*mi).second;
+        redeemScriptOut = mi->second;
         return true;
     }
     return false;
@@ -150,12 +155,10 @@ bool CBasicKeyStore::AddSaplingSpendingKey(
     auto extfvk = sk.ToXFVK();
 
     // if extfvk is not in SaplingFullViewingKeyMap, add it
-    if (!CBasicKeyStore::AddSaplingFullViewingKey(extfvk)) {
+    if (!CBasicKeyStore::AddSaplingFullViewingKey(extfvk))
         return false;
-    }
 
     mapSaplingSpendingKeys[extfvk] = sk;
-
     return true;
 }
 
@@ -179,7 +182,6 @@ bool CBasicKeyStore::AddSaplingIncomingViewingKey(
 
     // Add addr -> SaplingIncomingViewing to SaplingIncomingViewingKeyMap
     mapSaplingIncomingViewingKeys[addr] = ivk;
-
     return true;
 }
 
@@ -199,8 +201,10 @@ bool CBasicKeyStore::GetSaplingFullViewingKey(const libzcash::SaplingIncomingVie
                                    libzcash::SaplingExtendedFullViewingKey &extfvkOut) const
 {
     LOCK(cs_KeyStore);
-    SaplingFullViewingKeyMap::const_iterator mi = mapSaplingFullViewingKeys.find(ivk);
-    if (mi != mapSaplingFullViewingKeys.end()) {
+
+    auto mi = mapSaplingFullViewingKeys.find(ivk);
+    if (mi != mapSaplingFullViewingKeys.cend())
+    {
         extfvkOut = mi->second;
         return true;
     }
@@ -211,8 +215,10 @@ bool CBasicKeyStore::GetSaplingIncomingViewingKey(const libzcash::SaplingPayment
                                    libzcash::SaplingIncomingViewingKey &ivkOut) const
 {
     LOCK(cs_KeyStore);
-    SaplingIncomingViewingKeyMap::const_iterator mi = mapSaplingIncomingViewingKeys.find(addr);
-    if (mi != mapSaplingIncomingViewingKeys.end()) {
+
+    auto mi = mapSaplingIncomingViewingKeys.find(addr);
+    if (mi != mapSaplingIncomingViewingKeys.cend())
+    {
         ivkOut = mi->second;
         return true;
     }
@@ -220,11 +226,13 @@ bool CBasicKeyStore::GetSaplingIncomingViewingKey(const libzcash::SaplingPayment
 }
 
 bool CBasicKeyStore::GetSaplingExtendedSpendingKey(const libzcash::SaplingPaymentAddress &addr, 
-                                    libzcash::SaplingExtendedSpendingKey &extskOut) const {
+                                    libzcash::SaplingExtendedSpendingKey &extskOut) const
+{
     libzcash::SaplingIncomingViewingKey ivk;
     libzcash::SaplingExtendedFullViewingKey extfvk;
 
     LOCK(cs_KeyStore);
+
     return GetSaplingIncomingViewingKey(addr, ivk) &&
             GetSaplingFullViewingKey(ivk, extfvk) &&
             GetSaplingSpendingKey(extfvk, extskOut);

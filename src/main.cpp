@@ -1525,7 +1525,7 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
                 int nHeight = -1;
                 if (pcoinsTip)
                 {
-                    CCoinsViewCache& view = *pcoinsTip;
+                    const CCoinsViewCache& view = *pcoinsTip;
                     const CCoins* coins = view.AccessCoins(txid);
                     if (coins)
                         nHeight = coins->nHeight;

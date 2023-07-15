@@ -89,9 +89,11 @@ bool CCompressedDataStream::LibDataDecompress(std::string& error, size_t& nDecom
  * \param bCompressed - if true, vData passed in compressed format, otherwise regular data
  * \param nStreamPos - skip uncompressed data in vData up to this position
  * \param vData - (uncompressed data upto nStreamPos) + (compressed data)
+ * \param bUncompressData - if true, uncompress data (if compressed), default is true
  * \return true if successfully set data
  */
-bool CCompressedDataStream::SetData(string& error, const bool bCompressed, const size_t nStreamPos, vector_type&& vData)
+bool CCompressedDataStream::SetData(string& error, const bool bCompressed, const size_t nStreamPos, vector_type&& vData,
+    const bool bUncompressData)
 {
     m_bCompressed = bCompressed;
     vch = move(vData);
@@ -106,7 +108,15 @@ bool CCompressedDataStream::SetData(string& error, const bool bCompressed, const
         }
         nReadPos = nStreamPos;
         if (bCompressed)
-            bRet = Decompress(error);
+        {
+            if (bUncompressData)
+                bRet = Decompress(error);
+            else
+            {
+                m_nSavedCompressedSize = vch.size();
+                bRet = true;
+            }
+        }
         else
         {
             m_nSavedDecompressedSize = vch.size();

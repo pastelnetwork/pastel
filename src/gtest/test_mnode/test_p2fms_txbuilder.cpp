@@ -249,20 +249,20 @@ TEST_F(Test_CP2FMS_TX_Builder, build)
 		m_nPriceInPSL = 50;
 		m_DataStream.clear();
 		// 2nd pass)
-		//   - tx size = 46574 + 2 (signatures per input) * 72 (signature size) = 46718 bytes
-		//   - tx fee = 46718 * 100 = 4'671'800 ~46 PSL, need 4th output to cover tx fee
+		//   - tx size = 46317 + 2 (signatures per input) * 139 (approximate signature script size) = 46595 bytes
+		//   - tx fee = 46595 * 100 = 4'659'500, need 4th output to cover tx fee (~46 PSL)
 		// 3rd pass)
-		//   - tx size = 46738 + 4 (signatures per input) * 72 (signature size) = 47026 bytes
-		//   - tx fee = 47026 * 100 = 4'702'600 ~47 PSL
-		ticket.setUserName(string(20000, 'a'));
+		//   - tx size = 46399 + 4 (signatures per input) * 139 (approximate signature script size) = 46955 bytes
+		//   - tx fee = 46955 * 100 = 4'695'500
+		ticket.setUserName(string(40000, 'a'));
 		m_DataStream << ticket;
 		EXPECT_TRUE(build(error, txOut));
 		EXPECT_EQ(4, m_vSelectedOutputs.size());
 		CAmount nTotalOut = 0;
 		for (const auto &out: txOut.vout)
 			nTotalOut += out.nValue;
-		// outputs should have 50 PSL + tx fee (~47 PSL)
-		EXPECT_EQ(140 * COIN - 4'702'600, nTotalOut);
+		// outputs should have 50 PSL + tx fee (~46 PSL)
+		EXPECT_EQ(140 * COIN - 4'695'500, nTotalOut);
 		clearTestCoins();
 	}
 }

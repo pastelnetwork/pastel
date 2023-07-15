@@ -9,13 +9,11 @@
 #include <climits>
 #include <limits>
 #include <stdexcept>
-#include <stdint.h>
-#include <string.h>
 
+#include <vector_types.h>
 #include <crypto/common.h>
 #include <prevector.h>
 #include <uint256.h>
-#include <vector_types.h>
 #include <serialize.h>
 #include <script/scripttype.h>
 

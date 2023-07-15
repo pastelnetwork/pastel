@@ -277,6 +277,7 @@ BITCOIN_CORE_H = \
   core_memusage.h \
   datacompressor.h\
   deprecation.h \
+  ecc_context.h \
   enum_util.h \
   fs.h \
   hash.h \
@@ -521,6 +522,7 @@ libbitcoin_common_a_SOURCES = \
   core_read.cpp \
   core_write.cpp \
   datacompressor.cpp\
+  ecc_context.cpp\
   hash.cpp \
   key.cpp \
   key_io.cpp \

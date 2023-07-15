@@ -1160,7 +1160,7 @@ uint256 SignatureHash(
     const CTransaction& txTo,
     unsigned int nIn,
     const uint8_t nHashType,
-    const CAmount& amount,
+    const CAmount amount,
     uint32_t consensusBranchId,
     const PrecomputedTransactionData* cache)
 {

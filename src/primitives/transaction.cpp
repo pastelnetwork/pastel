@@ -103,6 +103,37 @@ CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn) noexcept
     scriptPubKey = scriptPubKeyIn;
 }
 
+CTxOut::CTxOut(const CTxOut& other)
+{
+	nValue = other.nValue;
+	scriptPubKey = other.scriptPubKey;
+}
+
+CTxOut::CTxOut(CTxOut&& other) noexcept :
+    nValue(move(other.nValue)),
+    scriptPubKey(move(other.scriptPubKey))
+{}
+
+CTxOut& CTxOut::operator=(CTxOut&& other) noexcept
+{
+    if (this != &other)
+    {
+		nValue = move(other.nValue);
+		scriptPubKey = move(other.scriptPubKey);
+	}
+	return *this;
+}
+
+CTxOut& CTxOut::operator=(const CTxOut& other) noexcept
+{
+    if (this != &other)
+    {
+		nValue = other.nValue;
+		scriptPubKey = other.scriptPubKey;
+	}
+	return *this;
+}
+
 uint256 CTxOut::GetHash() const
 {
     return SerializeHash(*this);
@@ -225,7 +256,8 @@ CTransaction::CTransaction(CMutableTransaction &&tx) :
     UpdateHash();
 }
 
-CTransaction& CTransaction::operator=(const CTransaction &tx) {
+CTransaction& CTransaction::operator=(const CTransaction &tx)
+{
     *const_cast<bool*>(&fOverwintered) = tx.fOverwintered;
     *const_cast<int*>(&nVersion) = tx.nVersion;
     *const_cast<uint32_t*>(&nVersionGroupId) = tx.nVersionGroupId;
@@ -251,13 +283,13 @@ CAmount CTransaction::GetValueOut() const
             throw runtime_error("CTransaction::GetValueOut(): value out of range");
     }
 
-    if (valueBalance <= 0) {
+    if (valueBalance <= 0)
+    {
         // NB: negative valueBalance "takes" money from the transparent value pool just as outputs do
         nValueOut += -valueBalance;
 
-        if (!MoneyRange(-valueBalance) || !MoneyRange(nValueOut)) {
+        if (!MoneyRange(-valueBalance) || !MoneyRange(nValueOut))
             throw runtime_error("CTransaction::GetValueOut(): value out of range");
-        }
     }
 
     return nValueOut;
@@ -267,13 +299,13 @@ CAmount CTransaction::GetShieldedValueIn() const
 {
     CAmount nValue = 0;
 
-    if (valueBalance >= 0) {
+    if (valueBalance >= 0)
+    {
         // NB: positive valueBalance "gives" money to the transparent value pool just as inputs do
         nValue += valueBalance;
 
-        if (!MoneyRange(valueBalance) || !MoneyRange(nValue)) {
+        if (!MoneyRange(valueBalance) || !MoneyRange(nValue))
             throw runtime_error("CTransaction::GetShieldedValueIn(): value out of range");
-        }
     }
 
     return nValue;
@@ -293,7 +325,7 @@ size_t CTransaction::CalculateModifiedSize(const size_t nTxSize) const
     // In order to avoid disincentivizing cleaning up the UTXO set we don't count
     // the constant overhead for each txin and up to 110 bytes of scriptSig (which
     // is enough to cover a compressed pubkey p2sh redemption) for priority.
-    // Providing any more cleanup incentive than making additional inputs free would
+    // Providing any more cleanup incentive than making additional inputs fee would
     // risk encouraging people to create junk outputs to redeem later.
     size_t nTransactionSize = nTxSize;
     if (nTransactionSize == 0)

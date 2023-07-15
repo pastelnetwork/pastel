@@ -1534,7 +1534,7 @@ isminetype CWallet::GetIsMine(const CTxIn &txin) const
     return isminetype::NO;
 }
 
-CAmount CWallet::GetDebit(const CTxIn &txin, const isminetype& filter) const
+CAmount CWallet::GetDebit(const CTxIn &txin, const isminetype filter) const
 {
     {
         LOCK(cs_wallet);
@@ -1555,7 +1555,7 @@ isminetype CWallet::GetIsMine(const CTxOut& txout) const
     return ::GetIsMine(*this, txout.scriptPubKey);
 }
 
-CAmount CWallet::GetCredit(const CTxOut& txout, const isminetype& filter) const
+CAmount CWallet::GetCredit(const CTxOut& txout, const isminetype filter) const
 {
     if (!MoneyRange(txout.nValue))
         throw runtime_error("CWallet::GetCredit(): value out of range");
@@ -1613,7 +1613,7 @@ bool CWallet::IsFromMe(const CTransaction& tx) const
     return false;
 }
 
-CAmount CWallet::GetDebit(const CTransaction& tx, const isminetype& filter) const
+CAmount CWallet::GetDebit(const CTransaction& tx, const isminetype filter) const
 {
     CAmount nDebit = 0;
     for (const auto& txin : tx.vin)
@@ -1625,7 +1625,7 @@ CAmount CWallet::GetDebit(const CTransaction& tx, const isminetype& filter) cons
     return nDebit;
 }
 
-CAmount CWallet::GetCredit(const CTransaction& tx, const isminetype& filter) const
+CAmount CWallet::GetCredit(const CTransaction& tx, const isminetype filter) const
 {
     CAmount nCredit = 0;
     for (const auto& txout: tx.vout)
@@ -1941,7 +1941,7 @@ int CWalletTx::GetRequestCount() const
 
 // GetAmounts will determine the transparent debits and credits for a given wallet tx.
 void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
-                           list<COutputEntry>& listSent, CAmount& nFee, string& strSentAccount, const isminetype& filter) const
+                           list<COutputEntry>& listSent, CAmount& nFee, string& strSentAccount, const isminetype filter) const
 {
     nFee = 0;
     listReceived.clear();
@@ -1954,7 +1954,7 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 
     // Compute fee if we sent this transaction.
     if (isFromMyTaddr) {
-        CAmount nValueOut = GetValueOut();  // transparent outputs plus all Sprout vpub_old and negative Sapling valueBalance
+        CAmount nValueOut = GetValueOut();  // transparent outputs plus all negative Sapling valueBalance
         CAmount nValueIn = GetShieldedValueIn();
         nFee = nDebit - nValueOut + nValueIn;
     }
@@ -2011,7 +2011,7 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 }
 
 void CWalletTx::GetAccountAmounts(const string& strAccount, CAmount& nReceived,
-                                  CAmount& nSent, CAmount& nFee, const isminetype& filter) const
+                                  CAmount& nSent, CAmount& nFee, const isminetype filter) const
 {
     nReceived = nSent = nFee = 0;
 
@@ -2184,7 +2184,7 @@ set<uint256> CWalletTx::GetConflicts() const
     return result;
 }
 
-CAmount CWalletTx::GetDebit(const isminetype& filter) const
+CAmount CWalletTx::GetDebit(const isminetype filter) const
 {
     if (vin.empty())
         return 0;
@@ -2215,7 +2215,7 @@ CAmount CWalletTx::GetDebit(const isminetype& filter) const
     return debit;
 }
 
-CAmount CWalletTx::GetCredit(const isminetype& filter) const
+CAmount CWalletTx::GetCredit(const isminetype filter) const
 {
     // Must wait until coinbase is safely deep enough in the chain before valuing it
     if (IsCoinBase() && GetBlocksToMaturity() > 0)
@@ -3445,7 +3445,7 @@ int64_t CWallet::GetOldestKeyPoolTime()
     return keypool.nTime;
 }
 
-BalanceMap_t CWallet::GetAddressBalances(const isminetype& isMineFilter)
+BalanceMap_t CWallet::GetAddressBalances(const isminetype isMineFilter)
 {
     BalanceMap_t balanceMap;
     {

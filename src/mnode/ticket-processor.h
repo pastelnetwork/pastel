@@ -61,6 +61,20 @@ typedef struct _search_thumbids_t
 // Check if json value passes fuzzy search filter
 bool isValuePassFuzzyFilter(const nlohmann::json& jProp, const std::string& sPropFilterValue) noexcept;
 
+typedef struct _ticket_parse_data_t
+{
+    CTransaction tx;
+    std::unique_ptr<CMutableTransaction> mtx;
+    uint256 hashBlock;
+    uint32_t nTicketHeight = std::numeric_limits<uint32_t>::max();
+    TicketID ticket_id = TicketID::InvalidID;
+    CCompressedDataStream data_stream;
+
+    _ticket_parse_data_t() :
+        data_stream(SER_NETWORK, DATASTREAM_VERSION)
+    {}
+} ticket_parse_data_t;
+
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor
 {
@@ -189,9 +203,12 @@ public:
         const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif // FAKE_TICKET
 
+    static bool GetTicketToStream(const uint256& txid, std::string& error,
+        ticket_parse_data_t &data, const bool bUncompressData = true);
+
     // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CCompressedDataStream object.
-    static bool preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream, 
-        TicketID& ticket_id, std::string& error, const bool bLog = true);
+    static bool preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream,
+        TicketID& ticket_id, std::string& error, const bool bLog = true, const bool bUncompressData = true);
 
     // Get mempool tracker for ticket transactions
     static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();

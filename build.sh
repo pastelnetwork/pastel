@@ -131,12 +131,13 @@ while (( "$#" )); do
       shift
       ;;
     --enable-debug)
-      # PARAMS+=" $1"
-#      if [[ "$HOST" == *mingw32* ]]; then
-        PARAMS+=" CFLAGS=-ggdb"
-#      else
-#        PARAMS+=" --enable-debug=yes"
-#      fi
+      PARAMS+=" $1"
+      if [[ "$HOST" == *mingw32* ]]; then
+        PARAMS+=" CFLAGS=-ggdb -O0"
+      else
+        PARAMS+=" --enable-debug=yes"
+      fi
+      POSARGS+=" DEBUG=1"
       bDebugMode=1
       build_mode="debug"
       shift

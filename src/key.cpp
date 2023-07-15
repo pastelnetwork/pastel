@@ -1,23 +1,21 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2017 The Zcash developers
-// Copyright (c) 2018-2022 Pastel Core developers
+// Copyright (c) 2018-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
+#include <secp256k1_recovery.h>
 
 #include <key.h>
-
 #include <arith_uint256.h>
 #include <crypto/common.h>
 #include <crypto/hmac_sha512.h>
 #include <pubkey.h>
 #include <random.h>
-
-#include <secp256k1.h>
-#include <secp256k1_recovery.h>
+#include <ecc_context.h>
 
 using namespace std;
 
-static secp256k1_context* secp256k1_context_sign = nullptr;
 
 /** These functions are taken from the libsecp256k1 distribution and are very ugly. */
 
@@ -165,6 +163,7 @@ static int ec_privkey_export_der(const secp256k1_context *ctx, unsigned char *pr
 
 bool CKey::Check(const unsigned char *vch)
 {
+    secp256k1_context* secp256k1_context_sign = ECCContext::getSignContext();
     return secp256k1_ec_seckey_verify(secp256k1_context_sign, vch);
 }
 
@@ -185,6 +184,7 @@ void CKey::MakeNewKey(const bool fCompressedIn)
 
 bool CKey::SetPrivKey(const CPrivKey &privkey, const bool fCompressedIn)
 {
+    secp256k1_context* secp256k1_context_sign = ECCContext::getSignContext();
     if (!ec_privkey_import_der(secp256k1_context_sign, (unsigned char*)begin(), &privkey[0], privkey.size()))
         return false;
     fCompressed = fCompressedIn;
@@ -197,9 +197,9 @@ CPrivKey CKey::GetPrivKey() const
     assert(fValid);
     CPrivKey privkey;
     int ret;
-    size_t privkeylen;
+    size_t privkeylen = PRIVATE_KEY_SIZE;
     privkey.resize(PRIVATE_KEY_SIZE);
-    privkeylen = PRIVATE_KEY_SIZE;
+    secp256k1_context* secp256k1_context_sign = ECCContext::getSignContext();
     ret = ec_privkey_export_der(secp256k1_context_sign, privkey.data(), &privkeylen, begin(), fCompressed ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED);
     assert(ret);
     privkey.resize(privkeylen);
@@ -212,6 +212,7 @@ CPubKey CKey::GetPubKey() const
     secp256k1_pubkey pubkey;
     size_t clen = CPubKey::PUBLIC_KEY_SIZE;
     CPubKey result;
+    secp256k1_context* secp256k1_context_sign = ECCContext::getSignContext();
     int ret = secp256k1_ec_pubkey_create(secp256k1_context_sign, &pubkey, begin());
     assert(ret);
     secp256k1_ec_pubkey_serialize(secp256k1_context_sign, (unsigned char*)result.begin(), &clen, &pubkey, fCompressed ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED);
@@ -229,6 +230,7 @@ bool CKey::Sign(const uint256& hash, v_uint8& vchSig, const uint32_t test_case) 
     unsigned char extra_entropy[KEY_SIZE] = {0};
     WriteLE32(extra_entropy, test_case);
     secp256k1_ecdsa_signature sig;
+    secp256k1_context* secp256k1_context_sign = ECCContext::getSignContext();
     int ret = secp256k1_ecdsa_sign(secp256k1_context_sign, &sig, hash.begin(), begin(), secp256k1_nonce_function_rfc6979, test_case ? extra_entropy : nullptr);
     assert(ret);
     secp256k1_ecdsa_signature_serialize_der(secp256k1_context_sign, (unsigned char*)&vchSig[0], &nSigLen, &sig);
@@ -257,6 +259,7 @@ bool CKey::SignCompact(const uint256& hash, v_uint8& vchSig) const
     vchSig.resize(CPubKey::COMPACT_SIGNATURE_SIZE);
     int rec = -1;
     secp256k1_ecdsa_recoverable_signature sig;
+    secp256k1_context* secp256k1_context_sign = ECCContext::getSignContext();
     int ret = secp256k1_ecdsa_sign_recoverable(secp256k1_context_sign, &sig, hash.begin(), begin(), secp256k1_nonce_function_rfc6979, nullptr);
     assert(ret);
     secp256k1_ecdsa_recoverable_signature_serialize_compact(secp256k1_context_sign, (unsigned char*)&vchSig[1], &rec, &sig);
@@ -268,6 +271,7 @@ bool CKey::SignCompact(const uint256& hash, v_uint8& vchSig) const
 
 bool CKey::Load(CPrivKey &privkey, CPubKey &vchPubKey, const bool fSkipCheck)
 {
+    secp256k1_context* secp256k1_context_sign = ECCContext::getSignContext();
     if (!ec_privkey_import_der(secp256k1_context_sign, (unsigned char*)begin(), &privkey[0], privkey.size()))
         return false;
     fCompressed = vchPubKey.IsCompressed();
@@ -294,6 +298,7 @@ bool CKey::Derive(CKey& keyChild, ChainCode &ccChild, const unsigned int nChild,
     }
     memcpy(ccChild.begin(), vout.data() + KEY_SIZE, KEY_SIZE);
     memcpy((unsigned char*)keyChild.cbegin(), cbegin(), KEY_SIZE);
+    secp256k1_context* secp256k1_context_sign = ECCContext::getSignContext();
     const bool ret = secp256k1_ec_privkey_tweak_add(secp256k1_context_sign, (unsigned char*)keyChild.cbegin(), vout.data());
     keyChild.fCompressed = true;
     keyChild.fValid = ret;
@@ -354,32 +359,4 @@ bool ECC_InitSanityCheck() {
     key.MakeNewKey(true);
     CPubKey pubkey = key.GetPubKey();
     return key.VerifyPubKey(pubkey);
-}
-
-void ECC_Start()
-{
-    assert(secp256k1_context_sign == nullptr);
-
-    secp256k1_context *ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN);
-    assert(ctx != nullptr);
-
-    {
-        // Pass in a random blinding seed to the secp256k1 context.
-        vector<unsigned char, secure_allocator<unsigned char>> vseed(32);
-        GetRandBytes(vseed.data(), 32);
-        bool ret = secp256k1_context_randomize(ctx, vseed.data());
-        assert(ret);
-    }
-
-    secp256k1_context_sign = ctx;
-}
-
-void ECC_Stop()
-{
-    secp256k1_context *ctx = secp256k1_context_sign;
-    secp256k1_context_sign = nullptr;
-
-    if (ctx) {
-        secp256k1_context_destroy(ctx);
-    }
 }

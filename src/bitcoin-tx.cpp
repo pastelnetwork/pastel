@@ -518,24 +518,9 @@ static void MutateTxSign(CMutableTransaction& tx, const std::string& strInput)
     tx = mergedTx;
 }
 
-class Secp256k1Init
-{
-    ECCVerifyHandle globalVerifyHandle;
-
-public:
-    Secp256k1Init() {
-        ECC_Start();
-    }
-    ~Secp256k1Init() {
-        ECC_Stop();
-    }
-};
-
 static void MutateTx(CMutableTransaction& tx, const std::string& command,
                      const std::string& commandVal)
 {
-    unique_ptr<Secp256k1Init> ecc;
-
     if (command == "nversion")
         MutateTxVersion(tx, commandVal);
     else if (command == "locktime")
@@ -556,8 +541,6 @@ static void MutateTx(CMutableTransaction& tx, const std::string& command,
         MutateTxAddOutScript(tx, commandVal);
 
     else if (command == "sign") {
-        if (!ecc)
-            ecc = make_unique<Secp256k1Init>();
         MutateTxSign(tx, commandVal);
     }
     else if (command == "load")

@@ -167,7 +167,6 @@ public:
 
 static CCoinsViewDB *pcoinsdbview = nullptr;
 static CCoinsViewErrorCatcher* pcoinscatcher = nullptr;
-static unique_ptr<ECCVerifyHandle> globalVerifyHandle;
 
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
@@ -274,8 +273,6 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 #ifdef ENABLE_WALLET
     safe_delete_obj(pwalletMain);
 #endif
-    globalVerifyHandle.reset();
-    ECC_Stop();
     LogFnPrintf("done");
 }
 
@@ -690,7 +687,8 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
  */
 bool InitSanityCheck(void)
 {
-    if(!ECC_InitSanityCheck()) {
+    if(!ECC_InitSanityCheck())
+    {
         InitError("Elliptic curve cryptography sanity check failure. Aborting.");
         return false;
     }
@@ -1148,10 +1146,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (init_and_check_sodium() == -1) {
         return false;
     }
-
-    // Initialize elliptic curve code
-    ECC_Start();
-    globalVerifyHandle = make_unique<ECCVerifyHandle>();
 
     // Sanity check
     if (!InitSanityCheck())

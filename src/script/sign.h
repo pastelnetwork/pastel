@@ -16,9 +16,11 @@ class CTransaction;
 struct CMutableTransaction;
 
 constexpr size_t DEFAULT_TX_SIGNATURE_SIZE = 72;
+constexpr size_t TX_SIGNATURE_SCRIPT_SIZE = 139;
 
 /** Virtual base class for signature creators. */
-class BaseSignatureCreator {
+class BaseSignatureCreator
+{
 protected:
     const CKeyStore* keystore;
 
@@ -39,7 +41,7 @@ class TransactionSignatureCreator : public BaseSignatureCreator
 {
 public:
     TransactionSignatureCreator(const CKeyStore* keystoreIn, const CTransaction* txToIn, unsigned int nInIn, 
-        const CAmount& amountIn, const uint8_t nHashTypeIn = to_integral_type(SIGHASH::ALL));
+        const CAmount amountIn, const uint8_t nHashTypeIn = to_integral_type(SIGHASH::ALL));
     const BaseSignatureChecker& Checker() const noexcept override { return checker; }
     bool CreateSig(v_uint8& vchSig, const CKeyID& keyid, const CScript& scriptCode, uint32_t consensusBranchId) const override;
 
@@ -54,7 +56,7 @@ protected:
 class MutableTransactionSignatureCreator : public TransactionSignatureCreator
 {
 public:
-    MutableTransactionSignatureCreator(const CKeyStore* keystoreIn, const CMutableTransaction* txToIn, unsigned int nInIn, const CAmount& amount, const uint8_t nHashTypeIn) : 
+    MutableTransactionSignatureCreator(const CKeyStore* keystoreIn, const CMutableTransaction* txToIn, unsigned int nInIn, const CAmount amount, const uint8_t nHashTypeIn) : 
         TransactionSignatureCreator(keystoreIn, &tx, nInIn, amount, nHashTypeIn),
         tx(*txToIn)
     {}
@@ -79,7 +81,9 @@ struct SignatureData
     CScript scriptSig;
 
     SignatureData() {}
-    explicit SignatureData(const CScript& script) : scriptSig(script) {}
+    explicit SignatureData(const CScript& script) :
+        scriptSig(script)
+    {}
 };
 
 /** Produce a script signature using a generic signature creator. */
@@ -91,7 +95,7 @@ bool SignSignature(
     const CScript& fromPubKey,
     CMutableTransaction& txTo,
     unsigned int nIn,
-    const CAmount& amount,
+    const CAmount amount,
     const uint8_t nHashType,
     uint32_t consensusBranchId);
 bool SignSignature(

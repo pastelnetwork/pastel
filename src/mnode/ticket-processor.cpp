@@ -188,11 +188,12 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
  * \param data_stream - compressed data stream ()
  * \param ticket_id - ticket id (first byte in the data stream)
  * \param error - returns error message if any
- * \param bLog - log flag
+ * \param bLog - log flag, default is true
+ * \param bUncompressData - uncompress ticket data (if stored in compressed zstd format), default is true
  * \return - true if ticket was parsed successfully
  */
 bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream,
-    TicketID& ticket_id, string& error, const bool bLog)
+    TicketID& ticket_id, string& error, const bool bLog, const bool bUncompressData)
 {
     CSerializeData vOutputData;
     bool bRet = false;
@@ -223,7 +224,7 @@ bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CComp
         }
         ticket_id = static_cast<TicketID>(nTicketID);
         const size_t nOutputDataSize = vOutputData.size();
-        bRet = data_stream.SetData(error, bCompressed, 1, move(vOutputData));
+        bRet = data_stream.SetData(error, bCompressed, 1, move(vOutputData), bUncompressData);
         if (!bRet)
             error = strprintf("Failed to uncompress data for '%s' ticket. %s", GetTicketDescription(ticket_id), error);
         else if (bCompressed)
@@ -551,7 +552,8 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
     if (!preParseTicket(tx, data_stream, ticket_id, error_ret))
         return false;
 
-    try {
+    try
+    {
         string txid = tx.GetHash().GetHex();
 
         LogFnPrintf("Processing ticket ['%s', txid=%s, nBlockHeight=%u]",
@@ -592,6 +594,26 @@ string CPastelTicketProcessor::GetTicketJSON(const uint256& txid, const bool bDe
     return "";
 }
 
+bool CPastelTicketProcessor::GetTicketToStream(const uint256& txid, string &error, ticket_parse_data_t &data, const bool bUncompressData)
+{
+    // get ticket transaction by txid, also may return ticket height
+    if (!GetTransaction(txid, data.tx, Params().GetConsensus(), data.hashBlock, true, &data.nTicketHeight))
+    {
+        error = "No information available about transaction";
+        return false;
+    }
+
+    data.mtx = make_unique<CMutableTransaction>(data.tx);
+
+    // parse ticket transaction into data_stream
+    if (!preParseTicket(*data.mtx, data.data_stream, data.ticket_id, error, true, bUncompressData))
+    {
+        error = strprintf("Failed to parse P2FMS transaction from data provided. %s", error);
+        return false;
+    }
+    return true;
+}
+
 /**
  * Get Pastel ticket by transaction id (txid).
  * May throw runtime_error exception in case:
@@ -604,65 +626,49 @@ string CPastelTicketProcessor::GetTicketJSON(const uint256& txid, const bool bDe
  */
 unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
 {
-    CTransaction tx;
-    uint256 hashBlock;
-    // undefined ticket height = -1
-    uint32_t nTicketHeight = numeric_limits<uint32_t>::max();
-
-    // get ticket transaction by txid, also may return ticket height
-    if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, true, &nTicketHeight))
-        throw runtime_error("No information available about transaction");
-
-    CMutableTransaction mtx(tx);
-
-    TicketID ticket_id;
-    string error_ret;
-    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-
-    // parse ticket transaction into data_stream
-    if (!preParseTicket(mtx, data_stream, ticket_id, error_ret))
-        throw runtime_error(strprintf(
-            "Failed to parse P2FMS transaction from data provided. %s",
-            error_ret));
+    string error;
+    ticket_parse_data_t data;
+    if (!GetTicketToStream(txid, error, data, true))
+		throw runtime_error(error);
 
     unique_ptr<CPastelTicket> ticket;
-    string ticketBlockTxIdStr = tx.GetHash().GetHex();
+    string sTxId = data.tx.GetHash().GetHex();
     try
     {
-        if (nTicketHeight == numeric_limits<uint32_t>::max())
+        if (data.nTicketHeight == numeric_limits<uint32_t>::max())
         {
             // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
-            if (mapBlockIndex.count(hashBlock) != 0)
-                nTicketHeight = mapBlockIndex[hashBlock]->nHeight;
+            if (mapBlockIndex.count(data.hashBlock) != 0)
+                data.nTicketHeight = mapBlockIndex[data.hashBlock]->nHeight;
         }
 
         // create Pastel ticket by id
-        ticket = CreateTicket(ticket_id);
+        ticket = CreateTicket(data.ticket_id);
         if (ticket)
         {
             // deserialize data to ticket object
-            data_stream >> *ticket;
-            ticket->SetTxId(move(ticketBlockTxIdStr));
-            ticket->SetBlock(nTicketHeight);
-            ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
-            if (data_stream.IsCompressed())
-                ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());
+            data.data_stream >> *ticket;
+            ticket->SetTxId(move(sTxId));
+            ticket->SetBlock(data.nTicketHeight);
+            ticket->SetSerializedSize(data.data_stream.GetSavedDecompressedSize());
+            if (data.data_stream.IsCompressed())
+                ticket->SetCompressedSize(data.data_stream.GetSavedCompressedSize());
         }
         else
-            error_ret = strprintf("unknown ticket_id %hhu", to_integral_type<TicketID>(ticket_id));
+            error = strprintf("unknown ticket_id %hhu", to_integral_type<TicketID>(data.ticket_id));
     }
     catch (const exception& ex)
     {
-        error_ret = strprintf("Failed to parse and unpack ticket - %s", ex.what());
+        error = strprintf("Failed to parse and unpack ticket - %s", ex.what());
     }
     catch (...)
     {
-        error_ret = "Failed to parse and unpack ticket - Unknown exception";
+        error = "Failed to parse and unpack ticket - Unknown exception";
     }
 
     if (!ticket)
         LogFnPrintf("Invalid ticket ['%s', txid=%s]. ERROR: %s", 
-            GetTicketDescription(ticket_id), tx.GetHash().GetHex(), error_ret);
+            GetTicketDescription(data.ticket_id), data.tx.GetHash().GetHex(), error);
 
     return ticket;
 }

@@ -102,16 +102,18 @@ size_t CCoinsViewCache::DynamicMemoryUsage() const {
            cachedCoinsUsage;
 }
 
-CCoinsMap::const_iterator CCoinsViewCache::FetchCoins(const uint256 &txid) const {
-    CCoinsMap::iterator it = cacheCoins.find(txid);
-    if (it != cacheCoins.end())
+CCoinsMap::const_iterator CCoinsViewCache::FetchCoins(const uint256 &txid) const
+{
+    const auto it = cacheCoins.find(txid);
+    if (it != cacheCoins.cend())
         return it;
     CCoins tmp;
     if (!base->GetCoins(txid, tmp))
-        return cacheCoins.end();
-    CCoinsMap::iterator ret = cacheCoins.insert(make_pair(txid, CCoinsCacheEntry())).first;
+        return cacheCoins.cend();
+    const auto ret = cacheCoins.emplace(txid, CCoinsCacheEntry()).first;
     tmp.swap(ret->second.coins);
-    if (ret->second.coins.IsPruned()) {
+    if (ret->second.coins.IsPruned())
+    {
         // The parent only has an empty entry for this txid; we can consider our
         // version as fresh.
         ret->second.flags = CCoinsCacheEntry::FRESH;
@@ -359,7 +361,8 @@ CCoinsModifier CCoinsViewCache::ModifyCoins(const uint256 &txid) {
     return CCoinsModifier(*this, ret.first, cachedCoinUsage);
 }
 
-CCoinsModifier CCoinsViewCache::ModifyNewCoins(const uint256 &txid) {
+CCoinsModifier CCoinsViewCache::ModifyNewCoins(const uint256 &txid)
+{
     assert(!hasModifier);
     pair<CCoinsMap::iterator, bool> ret = cacheCoins.insert(make_pair(txid, CCoinsCacheEntry()));
     ret.first->second.coins.Clear();
@@ -368,22 +371,23 @@ CCoinsModifier CCoinsViewCache::ModifyNewCoins(const uint256 &txid) {
     return CCoinsModifier(*this, ret.first, 0);
 }
 
-const CCoins* CCoinsViewCache::AccessCoins(const uint256 &txid) const {
-    CCoinsMap::const_iterator it = FetchCoins(txid);
-    if (it == cacheCoins.end()) {
+const CCoins* CCoinsViewCache::AccessCoins(const uint256 &txid) const
+{
+    const auto it = FetchCoins(txid);
+    if (it == cacheCoins.cend())
         return nullptr;
-    } else {
-        return &it->second.coins;
-    }
+
+    return &it->second.coins;
 }
 
-bool CCoinsViewCache::HaveCoins(const uint256 &txid) const {
-    CCoinsMap::const_iterator it = FetchCoins(txid);
+bool CCoinsViewCache::HaveCoins(const uint256 &txid) const
+{
+    const auto it = FetchCoins(txid);
     // We're using vtx.empty() instead of IsPruned here for performance reasons,
     // as we only care about the case where a transaction was replaced entirely
     // in a reorganization (which wipes vout entirely, as opposed to spending
     // which just cleans individual outputs).
-    return (it != cacheCoins.end() && !it->second.coins.vout.empty());
+    return (it != cacheCoins.cend() && !it->second.coins.vout.empty());
 }
 
 uint256 CCoinsViewCache::GetBestBlock() const {

@@ -1,12 +1,12 @@
 #pragma once
 #include <util.h>
-
 #include <assert.h>
 #include <stdlib.h>
-#include <stdint.h>
+#include <cstdint>
 #include <string.h>
-
 #include <iterator>
+
+#include <util.h>
 
 #pragma pack(push, 1)
 /** Implements a drop-in replacement for std::vector<T> which stores up to N
@@ -174,19 +174,22 @@ private:
                 /* FIXME: Because malloc/realloc here won't call new_handler if allocation fails, assert
                     success. These should instead use an allocator or new/delete so that handlers
                     are called as necessary, but performance would be slightly degraded by doing so. */
-                _union.indirect = static_cast<char*>(realloc(_union.indirect, ((size_t)sizeof(T)) * new_capacity));
-                if (!_union.indirect)
-                    new_handler_terminate();
+                 char* temp = static_cast<char*>(realloc(_union.indirect, ((size_t)sizeof(T)) * new_capacity));
+                 if (!temp)
+                     new_handler_terminate();
+                 _union.indirect = temp;
                 _union.capacity = new_capacity;
             } else {
                 char* new_indirect = static_cast<char*>(malloc(((size_t)sizeof(T)) * new_capacity));
                 if (!new_indirect)
                     new_handler_terminate();
-                T* src = direct_ptr(0);
+                // copy data from direct to indirect
+                const T* src = direct_ptr(0);
                 T* dst = reinterpret_cast<T*>(new_indirect);
                 memcpy(dst, src, size() * sizeof(T));
                 _union.indirect = new_indirect;
                 _union.capacity = new_capacity;
+                // set _size to the end of direct data
                 _size += N + 1;
             }
         }
@@ -224,9 +227,11 @@ public:
     }
 
     prevector() noexcept : 
-        _size(0), 
+        _size(0),
         _union()
-    {}
+    {
+        _union.capacity = 0;
+    }
 
     prevector(prevector&& p) noexcept
     {
@@ -267,24 +272,38 @@ public:
     }
 
     explicit prevector(const size_type n) : 
-        _size(0)
+        _size(0),
+        _union()
     {
         resize(n);
     }
 
     explicit prevector(const size_type n, const T& val = T()) : 
-        _size(0)
+        _size(0),
+        _union()
     {
         change_capacity(n);
-        while (size() < n)
+        if (is_direct())
         {
-            _size++;
-            new(static_cast<void*>(item_ptr(size() - 1))) T(val);
+            for (size_type i = 0; i < n; ++i)
+            {
+                new(static_cast<void*>(direct_ptr(i))) T(val);
+                ++_size;
+            }
+        } else
+        {
+            for (size_type i = 0; i < n; ++i)
+            {
+                new(static_cast<void*>(indirect_ptr(i))) T(val);
+                ++_size;
+            }
         }
     }
 
     template<typename InputIterator>
-    prevector(InputIterator first, InputIterator last) : _size(0) {
+    prevector(InputIterator first, InputIterator last) :
+        _size(0)
+    {
         size_type n = static_cast<size_type>(std::distance(first, last));
         change_capacity(n);
         while (first != last)
@@ -295,30 +314,37 @@ public:
         }
     }
 
-    prevector(const prevector<N, T, Size, Diff>& other) : _size(0)
+    prevector(const prevector& other) :
+        _size(0),
+        _union()
     {
         change_capacity(other.size());
-        const_iterator it = other.begin();
-        while (it != other.end())
+
+        size_type size_other = other.size();
+        const T* other_data = other.is_direct() ? other.direct_ptr(0) : other.indirect_ptr(0);
+
+        for (size_type i = 0; i < size_other; ++i)
         {
             _size++;
-            new(static_cast<void*>(item_ptr(size() - 1))) T(*it);
-            ++it;
+            new(static_cast<void*>(item_ptr(size() - 1))) T(other_data[i]);
         }
     }
 
-    prevector& operator=(const prevector<N, T, Size, Diff>& other)
+    prevector& operator=(const prevector& other)
     {
         if (&other == this)
             return *this;
+
         resize(0);
         change_capacity(other.size());
-        const_iterator it = other.begin();
-        while (it != other.end())
+
+        size_type size_other = other.size();
+        const T* other_data = other.is_direct() ? other.direct_ptr(0) : other.indirect_ptr(0);
+
+        for (size_type i = 0; i < size_other; ++i)
         {
             _size++;
-            new(static_cast<void*>(item_ptr(size() - 1))) T(*it);
-            ++it;
+            new(static_cast<void*>(item_ptr(size() - 1))) T(other_data[i]);
         }
         return *this;
     }
@@ -345,12 +371,7 @@ public:
 
     size_t capacity() const noexcept
     {
-        size_t nCapacity;
-        if (is_direct())
-            nCapacity = N;
-        else
-            nCapacity = _union.capacity;
-        return nCapacity;
+        return is_direct() ? N : _union.capacity;
     }
 
     T& operator[](size_type pos) noexcept
@@ -440,22 +461,22 @@ public:
     iterator erase(iterator pos)
     {
         (*pos).~T();
-        memmove(&(*pos), &(*pos) + 1, ((char*)&(*end())) - ((char*)(1 + &(*pos))));
+        memmove(&(*pos), &(*pos) + 1, ((const char*)&(*end())) - ((const char*)(1 + &(*pos))));
         _size--;
         return pos;
     }
 
-    iterator erase(iterator first, iterator last)
+    iterator erase(iterator first, iterator last) noexcept
     {
         iterator p = first;
-        char* endp = (char*)&(*end());
+        const char* endp = reinterpret_cast<const char*>(&(*end()));
         while (p != last)
         {
             (*p).~T();
             _size--;
             ++p;
         }
-        memmove(&(*first), &(*last), endp - ((char*)(&(*last))));
+        memmove(&(*first), &(*last), endp - (reinterpret_cast<const char*>(&(*last))));
         return first;
     }
 

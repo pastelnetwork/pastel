@@ -34,15 +34,15 @@ inline bool IsMine(const CKeyStore& keystore, const CTxDestination& dest)
     return GetIsMine(keystore, dest) != isminetype::NO;
 }
 
-inline bool IsMineWatchOnly(const isminetype& ismine) noexcept { return ismine == isminetype::WATCH_ONLY || ismine == isminetype::ALL; }
-inline bool IsMineSpendable(const isminetype& ismine) noexcept { return ismine == isminetype::SPENDABLE || ismine == isminetype::ALL; }
+inline bool IsMineWatchOnly(const isminetype ismine) noexcept { return ismine == isminetype::WATCH_ONLY || ismine == isminetype::ALL; }
+inline bool IsMineSpendable(const isminetype ismine) noexcept { return ismine == isminetype::SPENDABLE || ismine == isminetype::ALL; }
 /**
 * Returns true if ismine type passes the filter.
 * If filter is NO, returns true only for ismine=NO
 * 
 * \param ismine - isimetype to test
 */
-inline bool IsMineType(const isminetype& ismine, const isminetype& filter) noexcept
+inline bool IsMineType(const isminetype ismine, const isminetype filter) noexcept
 {
     const uint8_t N = to_integral_type<isminetype>(ismine);
     const uint8_t nFilter = to_integral_type<isminetype>(filter);

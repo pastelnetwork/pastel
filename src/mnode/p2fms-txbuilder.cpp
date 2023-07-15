@@ -191,9 +191,9 @@ bool CP2FMS_TX_Builder::BuildTransaction(CMutableTransaction& tx_out)
         if (nPass != 0) // Not the first pass
         {
             // calculate correct transaction fee based on the transaction size
-            size_t nTxSize = EncodeHexTx(tx_out).length();
+            size_t nTxSize = GetSerializeSize(tx_out, SER_NETWORK, PROTOCOL_VERSION);
             // add signature size for each input
-    		nTxSize += tx_out.vin.size() * DEFAULT_TX_SIGNATURE_SIZE;
+    		nTxSize += tx_out.vin.size() * TX_SIGNATURE_SCRIPT_SIZE;
             CAmount nNewTxFeeInPat = pwalletMain->GetMinimumFee(nTxSize, nTxConfirmTarget, mempool);
 
             // if the new fee is within 1% of the previous fee, then we are done
@@ -209,6 +209,13 @@ bool CP2FMS_TX_Builder::BuildTransaction(CMutableTransaction& tx_out)
                 // we have enough coins to cover the new fee, no need to add more inputs
                 // just need to update the change output, send change (in patoshis) output back to the last input address
                 setChangeOutput(tx_out, nTotalValueInPat - nAllSpentAmountInPat);
+                LogFnPrintf("tx fee is %zu patoshis, nTxSize=%zu, minTxFee=%zu, payTxFee=%zu, minRelayTxFee=%zu, estimateFee=%zu", 
+                    static_cast<uint64_t>(nTxFeeInPat),
+                    nTxSize,
+                    static_cast<uint64_t>(CWallet::minTxFee.GetFee(nTxSize)),
+                    static_cast<uint64_t>(payTxFee.GetFee(nTxSize)),
+                    static_cast<uint64_t>(minRelayTxFee.GetFee(nTxSize)),
+                    static_cast<uint64_t>(mempool.estimateFee(nTxConfirmTarget).GetFee(nTxSize)));
                 break;
             }
             // we don't want more iterations to adjust the tx fee - it's already close enough
@@ -309,8 +316,9 @@ bool CP2FMS_TX_Builder::SignTransaction(CMutableTransaction& tx_out)
                 const CScript& prevPubKey = txOut.scriptPubKey;
                 const CAmount prevAmount = txOut.nValue;
                 SignatureData sigdata;
-                if (!ProduceSignature(MutableTransactionSignatureCreator(pwalletMain, &tx_out,
-                    i, prevAmount, to_integral_type(SIGHASH::ALL)), prevPubKey, sigdata, m_consensusBranchId))
+                if (!ProduceSignature(
+                        MutableTransactionSignatureCreator(pwalletMain, &tx_out, i, prevAmount, to_integral_type(SIGHASH::ALL)),
+                        prevPubKey, sigdata, m_consensusBranchId))
                     throw runtime_error("Failed to produce a signature script");
                 UpdateTransaction(tx_out, i, sigdata);
             } catch (const exception& e)

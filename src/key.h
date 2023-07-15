@@ -1,18 +1,17 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2017 The Zcash developers
+// Copyright (c) 2017-2018 The Zcash developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <stdexcept>
+#include <vector>
 
 #include <pubkey.h>
 #include <serialize.h>
 #include <support/allocators/secure.h>
 #include <uint256.h>
-
-#include <stdexcept>
-#include <vector>
-
 
 /**
  * secure_allocator is defined in allocators.h
@@ -64,8 +63,16 @@ public:
     }
 
     //! Destructor (again necessary because of memlocking).
-    ~CKey()
+    ~CKey() = default;
+
+    CKey& operator=(const CKey& other)
     {
+        if (this == &other)
+			return *this;
+        fValid = other.fValid;
+		fCompressed = other.fCompressed;
+		keydata = other.keydata;
+		return *this;
     }
 
     friend bool operator==(const CKey& a, const CKey& b)
@@ -196,12 +203,6 @@ struct CExtKey {
         Decode(code);
     }
 };
-
-/** Initialize the elliptic curve support. May not be called twice without calling ECC_Stop first. */
-void ECC_Start(void);
-
-/** Deinitialize the elliptic curve support. No-op if ECC_Start wasn't called first. */
-void ECC_Stop(void);
 
 /** Check that required EC support is available at runtime. */
 bool ECC_InitSanityCheck(void);

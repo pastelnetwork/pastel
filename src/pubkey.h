@@ -1,15 +1,16 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2017 The Zcash developers
+// Copyright (c) 2017-2018 The Zcash developers
+// Copyright (c) 2018-2023 The Pastel core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <stdexcept>
+
+#include <vector_types.h>
 #include <hash.h>
 #include <serialize.h>
 #include <uint256.h>
-
-#include <stdexcept>
-#include <vector>
 
 constexpr size_t BIP32_EXTKEY_SIZE = 74;
 
@@ -92,7 +93,7 @@ public:
     }
 
     //! Construct a public key from a byte vector.
-    CPubKey(const std::vector<unsigned char>& vch)
+    CPubKey(const v_uint8& vch)
     {
         Set(vch.begin(), vch.end());
     }
@@ -238,15 +239,3 @@ struct CExtPubKey {
         Decode(code);
     }
 };
-
-/** Users of this module must hold an ECCVerifyHandle. The constructor and
- *  destructor of these are not allowed to run in parallel, though. */
-class ECCVerifyHandle
-{
-    static int refcount;
-
-public:
-    ECCVerifyHandle();
-    ~ECCVerifyHandle();
-};
-

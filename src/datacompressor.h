@@ -67,7 +67,8 @@ public:
     size_t GetSavedDecompressedSize() const noexcept { return m_nSavedDecompressedSize; }
 
     // set stream data, supports data compressed with zstd
-    bool SetData(std::string &error, const bool bCompressed, const size_t nStreamPos, vector_type&& vData);
+    bool SetData(std::string &error, const bool bCompressed, const size_t nStreamPos, vector_type&& vData,
+        const bool bUncompressData = true);
     // compress stream data
     bool CompressData(std::string& error, const size_t nKeepUncompressedSize, fnUncompressedDataHandler handler);
     virtual double GetCompressDiscardThreshold() const noexcept { return COMPRESS_DISCARD_THRESHOLD; }

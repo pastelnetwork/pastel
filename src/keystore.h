@@ -1,6 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <key.h>
@@ -131,8 +132,8 @@ public:
     {
         {
             LOCK(cs_KeyStore);
-            KeyMap::const_iterator mi = mapKeys.find(address);
-            if (mi != mapKeys.end())
+            auto mi = mapKeys.find(address);
+            if (mi != mapKeys.cend())
             {
                 keyOut = mi->second;
                 return true;
@@ -165,8 +166,8 @@ public:
         {
             LOCK(cs_KeyStore);
 
-            SaplingSpendingKeyMap::const_iterator mi = mapSaplingSpendingKeys.find(extfvk);
-            if (mi != mapSaplingSpendingKeys.end())
+            auto mi = mapSaplingSpendingKeys.find(extfvk);
+            if (mi != mapSaplingSpendingKeys.cend())
             {
                 skOut = mi->second;
                 return true;
