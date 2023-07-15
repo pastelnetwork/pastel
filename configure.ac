@@ -191,11 +191,11 @@ AX_CHECK_COMPILE_FLAG([-Werror],[CXXFLAG_WERROR="-Werror"],[CXXFLAG_WERROR=""])
 if test "x$enable_debug" = xyes; then
     CPPFLAGS="$CPPFLAGS -DDEBUG_LOCKORDER"
     if test "x$GCC" = xyes; then
-        CFLAGS="$CFLAGS -ggdb -O0"
+        CFLAGS="$CFLAGS -ggdb -O1"
     fi
 
     if test "x$GXX" = xyes; then
-        CXXFLAGS="$CXXFLAGS -ggdb -O0"
+        CXXFLAGS="$CXXFLAGS -ggdb -O1"
     fi
 fi
 
