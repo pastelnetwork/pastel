@@ -4579,10 +4579,11 @@ Arguments:
 
 Returns:
 {
-    "txid": "txid",                  // transaction id
-    "height": <ticket_block_height>, // block height of the transaction, may be omited if transaction is in mempool only
-    "txFeePat": <ticket_tx_fee_pat>, // transaction fee in patoshis
-    "txFee": <ticket_tx_fee>         // transaction fee in PSL
+    "txid": "txid",                      // transaction id
+    "height": <ticket_block_height>,     // block height of the transaction, may be omited if transaction is in mempool only
+    "blockHash": <ticket_tx_block_hash>, // block hash of the transaction, may be omited if transaction is in mempool only
+    "txFeePat": <ticket_tx_fee_pat>,     // transaction fee in patoshis
+    "txFee": <ticket_tx_fee>             // transaction fee in PSL
 }
 
 Example:

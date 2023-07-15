@@ -2,7 +2,7 @@
 # Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
-import math
+from math import isclose
 import json
 import time
 from decimal import getcontext
@@ -449,12 +449,13 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                            acceptor_pastelid1, self.passphrase)["txid"]
         assert_true(ticket.transfer_txid, "No Transfer ticket was created")
         self.wait_for_min_confirmations()
+        tx_fee = self.nodes[acceptor_node].gettxfee(ticket.transfer_txid)["txFee"]
 
         # check correct amount of change and correct amount spent
         acceptor_coins_after = self.nodes[acceptor_node].getbalance()
-        print(f"acceptor: {acceptor_coins_before} -> {acceptor_coins_after}")
+        print(f"acceptor: {acceptor_coins_before} -> {acceptor_coins_after}, tx fee: {tx_fee}")
         # ticket cost is Transfer ticket price, NFT cost is nft_price
-        assert_true(math.isclose(acceptor_coins_after, acceptor_coins_before - transfer_ticket.ticket_price - nft_price, rel_tol=0.005))
+        assert_true(isclose(acceptor_coins_after, acceptor_coins_before - transfer_ticket.ticket_price - nft_price - tx_fee, rel_tol=0.005))
 
         # check that current owner gets correct amount
         offerer_coins_after = self.nodes[offerer_node].getreceivedbyaddress(offerer_address)
@@ -463,7 +464,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         if self.is_green: # green fee is 2% of item price
             offerer_coins_expected_to_receive -= round(nft_price / 50)
         print(f"Current owner is expected to receive {offerer_coins_expected_to_receive} PSL")
-        assert_true(math.isclose(offerer_coins_after - offerer_coins_before, offerer_coins_expected_to_receive, rel_tol=0.005))
+        assert_true(isclose(offerer_coins_after - offerer_coins_before, offerer_coins_expected_to_receive, rel_tol=0.005))
 
         # from another node - get ticket transaction and check
         #   - there are 2 possible outputs to current owner
@@ -482,7 +483,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                     offerer_amount += amount
                     print(f"transfer transaction to current owner's address - {amount}")
         print(f"transfer transaction multisig fee_amount - {multi_fee}")
-        assert_true(math.isclose(offerer_amount, offerer_coins_expected_to_receive, rel_tol=0.005))
+        assert_true(isclose(offerer_amount, offerer_coins_expected_to_receive, rel_tol=0.005))
         assert_equal(multi_fee, self.tickets[TicketType.ID].ticket_price)
 
 

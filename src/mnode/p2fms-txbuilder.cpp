@@ -209,13 +209,6 @@ bool CP2FMS_TX_Builder::BuildTransaction(CMutableTransaction& tx_out)
                 // we have enough coins to cover the new fee, no need to add more inputs
                 // just need to update the change output, send change (in patoshis) output back to the last input address
                 setChangeOutput(tx_out, nTotalValueInPat - nAllSpentAmountInPat);
-                LogFnPrintf("tx fee is %zu patoshis, nTxSize=%zu, minTxFee=%zu, payTxFee=%zu, minRelayTxFee=%zu, estimateFee=%zu", 
-                    static_cast<uint64_t>(nTxFeeInPat),
-                    nTxSize,
-                    static_cast<uint64_t>(CWallet::minTxFee.GetFee(nTxSize)),
-                    static_cast<uint64_t>(payTxFee.GetFee(nTxSize)),
-                    static_cast<uint64_t>(minRelayTxFee.GetFee(nTxSize)),
-                    static_cast<uint64_t>(mempool.estimateFee(nTxConfirmTarget).GetFee(nTxSize)));
                 break;
             }
             // we don't want more iterations to adjust the tx fee - it's already close enough
