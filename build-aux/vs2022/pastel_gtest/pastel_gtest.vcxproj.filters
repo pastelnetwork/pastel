@@ -334,7 +334,10 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_payments.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
-    <ClCompile Include="test_mnode_cache.cpp">
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\mock_p2fms_txbuilder.cpp">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_p2fms_txbuilder.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
   </ItemGroup>
@@ -376,6 +379,12 @@
       <Filter>UnitTest Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\gtest\test_mnode\test_data.h">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_p2fms_txbuilder.h">
+      <Filter>UnitTest Files\test_mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_wallet.h">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClInclude>
   </ItemGroup>

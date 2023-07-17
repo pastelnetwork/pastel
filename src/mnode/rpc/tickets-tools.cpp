@@ -1,25 +1,26 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <univalue.h>
 #include "json/json.hpp"
 
-#include "rpc/rpc_consts.h"
-#include "rpc/rpc_parser.h"
-#include "rpc/server.h"
+#include <utilstrencodings.h>
+#include <vector_types.h>
+#include <map_types.h>
+#include <str_utils.h>
+#include <numeric_range.h>
+#include <init.h>
+#include <rpc/rpc_consts.h>
+#include <rpc/rpc_parser.h>
+#include <rpc/server.h>
+#include <script/sign.h>
 #include "mnode/rpc/mnode-rpc-utils.h"
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/tickets/username-change.h>
 #include <mnode/tickets/ethereum-address-change.h>
-#include "mnode/tickets/ticket.h"
-#include "mnode/ticket-processor.h"
-#include "mnode/mnode-controller.h"
-#include "utilstrencodings.h"
-#include "vector_types.h"
-#include "map_types.h"
-#include "str_utils.h"
-#include "numeric_range.h"
+#include <mnode/tickets/ticket.h>
+#include <mnode/ticket-processor.h>
+#include <mnode/mnode-controller.h>
 
 using namespace std;
 using json = nlohmann::json;
@@ -187,7 +188,7 @@ UniValue tickets_tools_validateownership(const UniValue& params)
     if (params.size() < 5)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets tools validateownership "item_txid" "pastelid" "passphrase"
-Get item ownership validation by pastelid.
+Get item ownership validation by Pastel ID.
 
 Returns:
     {
@@ -200,7 +201,7 @@ Returns:
 
 Arguments:
 1. "txid"       (string, required) txid of the original nft registration 
-2. "pastelid"   (string, required) Registered pastelid which (according to the request) shall be the owner or the author of the registered item (of argument 1's txid)
+2. "pastelid"   (string, required) Registered Pastel ID which (according to the request) shall be the owner or the author of the registered item (of argument 1's txid)
 3. "passphrase" (string, required) The passphrase to the private key associated with Pastel ID and stored inside node. See "pastelid newkey".
 
 Validate ownership
@@ -229,7 +230,7 @@ As json rpc
         if (!CPastelID::isValidPassphrase(sPastelId, strKeyPass))
             throw JSONRPCError(RPC_WALLET_PASSPHRASE_INCORRECT, "Error: Failed to validate passphrase!");
 
-        const auto result = masterNodeCtrl.masternodeTickets.ValidateOwnership(item_txid, sPastelId);
+        auto result = masterNodeCtrl.masternodeTickets.ValidateOwnership(item_txid, sPastelId);
         if (result.has_value())
         {
             retVal.pushKV("type", GetTicketName(get<0>(result.value())));
@@ -429,7 +430,31 @@ As json rpc:
 UniValue tickets_tools(const UniValue& params)
 {
     RPC_CMD_PARSER2(TOOLS, params, printtradingchain, getregbytrade, getregbytransfer,
-        gettotalstoragefee, validateusername, validateethereumaddress, validateownership, searchthumbids);
+        gettotalstoragefee, validateusername, validateethereumaddress, validateownership,
+        searchthumbids);
+
+    if (!TOOLS.IsCmdSupported() || params.size() < 2)
+        throw runtime_error(
+R"(tickets tools "command"...
+Set of Pastel ticket tools.
+
+Arguments:
+1. "command" (string, required) The command to execute
+
+Available commands:
+  printtradingchain       ... show ticket register-transfer chain
+  getregbytransfer        ... get registration ticket by transfer txid
+  gettotalstoragefee      ... get full storage fee for the NFT registration
+  validateusername        ... validate username for username-change ticket
+  validateethereumaddress ... validate ethereum address for ethereum-address-change ticket
+  validateownership       ... validate item ownership by Pastel ID
+  searchthumbids          ... search for the NFT registration tickets and thumbnail hash
+  
+Examples:
+)"
++ HelpExampleCli("tickets tools", "")
++ HelpExampleRpc("tickets tools", "")
+        );
 
     UniValue result;
     switch (TOOLS.cmd())

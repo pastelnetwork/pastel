@@ -7,6 +7,7 @@ import time
 import string
 import re
 from decimal import Decimal, getcontext
+from math import isclose
 from test_framework.util import (
     assert_equal,
     assert_equals,
@@ -22,6 +23,7 @@ from mn_common import (
     MasterNodeCommon,
     TicketData,
     MnFeeType,
+    AMOUNT_TOLERANCE,
     MIN_TICKET_CONFIRMATIONS,
 )
 from ticket_type import (
@@ -36,7 +38,7 @@ import test_framework.rpc_consts as rpc
 getcontext().prec = 16
 
 TEST_COLLECTION_NAME = "My Collection"
-
+MSG_BALANCE_NOMATCH = "Balance doesn't match after ticket transaction"
 class MasterNodeTicketsTest(MasterNodeCommon):
     def __init__(self):
         super().__init__()
@@ -228,8 +230,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # check correct amount of change
         balance_after = self.nodes[new_node_id].getbalance()
-        assert_equal(balance_after, balance_before - id_ticket.ticket_price)  # no fee yet
-        print(f"Node{node_id} balance changes: {balance_before} -> {balance_after}, diff: {balance_after - balance_before}")
+        tx_fee = self.nodes[new_node_id].gettxfee(royalty_id_txid)["txFee"]
+        print(f"Node{node_id} balance changes: {balance_before} -> {balance_after}, tx fee: {tx_fee}, diff: {balance_after - balance_before}")
+        assert_true(isclose(balance_after, balance_before - id_ticket.ticket_price - tx_fee, rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         # Royalty ticket registration tests
         # tickets register royalty "nft-txid" "new-pastelid" "old-pastelid" "passphrase" ["address"]
@@ -300,8 +303,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             royalty_ticket.reg_pastelid, old_royalty_pastelid, self.passphrase)
 
         balance_after = self.nodes[node_id].getbalance()
-        print(f"Node{node_id} balance changes: {balance_before} -> {balance_after}, diff: {balance_after - balance_before}")
-        assert_equal(balance_before - balance_after, royalty_ticket.ticket_price)
+        tx_fee = self.nodes[node_id].gettxfee(royalty_ticket.reg_txid)["txFee"]
+        print(f"Node{node_id} balance changes: {balance_before} -> {balance_after}, tx fee: {tx_fee}, diff: {balance_after - balance_before}")
+        assert_true(isclose(balance_before - balance_after - tx_fee, royalty_ticket.ticket_price, rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         # from another node - get ticket transaction and check
         #   - amounts is totaling 10 PSL
@@ -604,10 +608,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.inc_ticket_counter(TicketType.ID)
         self.wait_for_ticket_tnx()
 
+        tx_fee = self.nodes[self.non_mn3].gettxfee(nonmn3_ticket1_txid)["txFee"]
+        
         #       a.a.5 check correct amount of change
         coins_after = self.nodes[self.non_mn3].getbalance()
-        print(f"Coins after '{ticket_type_name}' registration: {coins_after}")
-        assert_equal(coins_after, coins_before - ticket.ticket_price)  # no fee yet
+        print(f"Coins after '{ticket_type_name}' registration: {coins_after}, tx fee: {tx_fee}")
+        assert_true(isclose(coins_after, coins_before - ticket.ticket_price - tx_fee, rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         #       b.a.6 from another node - get ticket transaction and check
         #           - there are P2FMS outputs with non-zero amounts
@@ -957,11 +963,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print(top_mn_node.getblockcount())
         self.inc_ticket_counter(action_type.reg_ticket_type)
         self.wait_for_ticket_tnx()
+        tx_fee = self.nodes[ticket.reg_node_id].gettxfee(ticket.reg_txid)["txFee"]
 
         # check correct amount of change and correct amount spent
         coins_after = top_mn_node.getbalance()
-        print(f"coins after ticket registration: {coins_after}")
-        assert_equal(coins_after, coins_before - ticket.ticket_price)  # no fee yet, but ticket cost action_ticket_price
+        print(f"coins after {desc} ticket registration: {coins_after}, tx fee: {tx_fee}")
+        assert_true(isclose(coins_after, coins_before - ticket.ticket_price - tx_fee, rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         #   find registration ticket:
         #      1. by creators Pastel ID (this is MultiValue key)
@@ -1080,6 +1087,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(collection_ticket.reg_txid, "No collection ticket was created")
         self.inc_ticket_counter(TicketType.COLLECTION)
         self.wait_for_ticket_tnx()
+        tx_fee = self.nodes[collection_ticket.reg_node_id].gettxfee(collection_ticket.reg_txid)["txFee"]
+        
         # collection reg ticket creator-height + 2
         print(top_mn_node.getblockcount())
         tkt = top_mn_node.tickets("get", collection_ticket.reg_txid)
@@ -1087,8 +1096,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       c.a.7 check correct amount of change and correct amount spent
         coins_after = top_mn_node.getbalance()
-        print(f"Coins after '{ticket_type_name}' registration: {coins_after}")
-        assert_equal(coins_after, coins_before - collection_ticket.ticket_price)  # no fee yet, but ticket cost NFT ticket price
+        print(f"Coins after '{ticket_type_name}' registration: {coins_after}, tx fee: {tx_fee}")
+        assert_true(isclose(coins_after, coins_before - collection_ticket.ticket_price - tx_fee, rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         #   c.b find registration ticket
         #       c.b.1 by creators Pastel ID (this is MultiValue key)
@@ -1291,8 +1300,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         other_mn_fee = self.storage_fee90percent/5
 
         coins_after = self.nodes[self.non_mn3].getbalance()
-        print(f"Coins after '{collection_ticket_type_name}' registration: {coins_after}")
-        assert_equal(coins_after, coins_before-Decimal(self.storage_fee90percent)-Decimal(collection_activate_ticket_price))  # no fee yet, but ticket cost act ticket price
+        tx_fee = self.nodes[self.non_mn3].gettxfee(collection_reg_ticket.act_txid)["txFee"]
+        print(f"Coins after '{collection_ticket_type_name}' registration: {coins_after}, tx fee: {tx_fee}")
+        
+        assert_true(isclose(coins_after, coins_before-Decimal(self.storage_fee90percent)-Decimal(collection_activate_ticket_price) - tx_fee, 
+                            rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         # MN's collateral addresses belong to hot_node - non_mn2
         mn0_coins_after = self.nodes[self.hot_node_num].getreceivedbyaddress(mn0_collateral_address)
@@ -1667,8 +1679,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         #       c.a.7 check correct amount of change and correct amount spent
         coins_after = top_mn_node.getbalance()
-        print(f"Coins after '{ticket_type_name}' registration: {coins_after}")
-        assert_equal(round(coins_after), round(coins_before - ticket.ticket_price))  # no fee yet, but ticket cost NFT ticket price
+        tx_fee = self.nodes[ticket.reg_node_id].gettxfee(ticket.reg_txid)["txFee"]
+        print(f"Coins after '{ticket_type_name}' registration: {coins_after}, tx fee: {tx_fee}")
+        assert_true(isclose(coins_after, coins_before - ticket.ticket_price - tx_fee, rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         #   c.b find registration ticket
         #       c.b.1 by creators Pastel ID (this is MultiValue key)
@@ -1959,8 +1972,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         other_mn_fee = self.storage_fee90percent/5
 
         coins_after = self.nodes[self.non_mn3].getbalance()
-        print(f"Coins after '{ticket_type_name}' registration: {coins_after}")
-        assert_equal(coins_after, coins_before - Decimal(self.storage_fee90percent) - Decimal(nftact_ticket_price))  # no fee yet, but ticket cost act ticket price
+        tx_fee = self.nodes[self.non_mn3].gettxfee(ticket.act_txid)["txFee"]
+        print(f"Coins after '{ticket_type_name}' registration: {coins_after}, tx fee {tx_fee}")
+        assert_true(isclose(coins_after, coins_before - Decimal(self.storage_fee90percent) - Decimal(nftact_ticket_price) - tx_fee, 
+                            rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         # MN's collateral addresses belong to hot_node - non_mn2
         mn0_coins_after = self.nodes[self.hot_node_num].getreceivedbyaddress(mn0_collateral_address)
@@ -2138,8 +2153,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         other_mn_fee = self.storage_fee80percent/5
 
         coins_after = self.nodes[self.non_mn3].getbalance()
-        print(f"Coins after '{ticket_type_name}' registration: {coins_after}")
-        assert_equal(coins_after, coins_before-Decimal(self.storage_fee80percent)-Decimal(actionact_ticket_price))  # no fee yet, but ticket cost act ticket price
+        tx_fee = self.nodes[self.non_mn3].gettxfee(ticket.act_txid)["txFee"]
+        print(f"Coins after '{ticket_type_name}' registration: {coins_after}, tx fee: {tx_fee}")
+        assert_true(isclose(coins_after, coins_before-Decimal(self.storage_fee80percent)-Decimal(actionact_ticket_price) - tx_fee,
+                            rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         # MN's collateral addresses belong to hot_node - non_mn2
         mn0_coins_after = self.nodes[self.hot_node_num].getreceivedbyaddress(mn0_collateral_address)
@@ -2456,7 +2473,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nodes[self.non_mn3].tickets, "register", ticket_type_name,
             ticket.act_txid, str(0), ticket.reg_pastelid, self.passphrase)
 
-        # Create Offer ticket
+        # Create Offer ticket successfully
         ticket.offer_txid = self.nodes[self.non_mn3].tickets("register", ticket_type_name,
             ticket.act_txid, str(ticket.item_price), ticket.reg_pastelid, self.passphrase)["txid"]
         assert_true(ticket.offer_txid, f"No {item_type.description} Offer ticket was created")
@@ -2465,8 +2482,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # check correct amount of change and correct amount spent
         coins_after = self.nodes[self.non_mn3].getbalance()
-        print(f"{desc} coins after '{ticket_type_name}' ticket registration: {coins_after}")
-        assert_equal(round(coins_after), round(coins_before - offer_ticket_fee))
+        tx_fee = self.nodes[self.non_mn3].gettxfee(ticket.offer_txid)["txFee"]
+        print(f"{desc} coins after '{ticket_type_name}' ticket registration: {coins_after}, tx fee: {tx_fee}")
+        assert_true(isclose(coins_after, coins_before - offer_ticket_fee - tx_fee, rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         # find Offer ticket
         #   - by item activation txid and index
@@ -2578,7 +2596,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             self.nodes[self.non_mn4].tickets, "register", ticket_type_name,
             ticket.offer_txid, str("100"), self.nonmn4_pastelid1, self.passphrase)
 
-        # Create accept ticket
+        # Create accept ticket successfully
         ticket.accept_txid = self.nodes[self.non_mn4].tickets("register", ticket_type_name,
             ticket.offer_txid, str(ticket.item_price), self.nonmn4_pastelid1, self.passphrase)["txid"]
         assert_true(ticket.accept_txid, "No Accept ticket was created")
@@ -2587,8 +2605,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # check correct amount of change and correct amount spent
         coins_after = self.nodes[self.non_mn4].getbalance()
-        print(f"{desc} coins after '{ticket_type_name}' registration: {coins_after}")
-        assert_equal(round(coins_after), round(coins_before - accept_ticket_fee))  # ticket cost price/100 PSL (100000/100=1000)
+        tx_fee = self.nodes[self.non_mn4].gettxfee(ticket.accept_txid)["txFee"]
+        print(f"{desc} coins after '{ticket_type_name}' registration: {coins_after}, tx fee {tx_fee}")
+        # ticket cost price/100 PSL (100000/100=1000)
+        assert_true(isclose(coins_after, coins_before - accept_ticket_fee - tx_fee, rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         # fail if there is another accept ticket referring to that offer ticket
         assert_raises_rpc(rpc.RPC_MISC_ERROR, f"Accept ticket [{ticket.accept_txid}] already exists and is not yet 1h old "
@@ -2714,9 +2734,12 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # check correct amount of change and correct amount spent
         coins_after = self.nodes[self.non_mn4].getbalance()
-        print(f"{desc} node{self.non_mn4} balance changes: {coins_before} -> {coins_after}")
+        tx_fee = self.nodes[self.non_mn4].gettxfee(ticket.transfer_txid)["txFee"]
+        print(f"{desc} node{self.non_mn4} balance changes: {coins_before} -> {coins_after}, tx fee {tx_fee}")
+        
         # ticket cost is transfer ticket price, item cost is 100'000
-        assert_equal(round(coins_after), round(coins_before - ticket.item_price - transfer_ticket_price))
+        assert_true(isclose(coins_after, coins_before - ticket.item_price - transfer_ticket_price - tx_fee,
+                            rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
 
         # check offerer gets correct amount
         offerer_coins_after = round(self.nodes[self.non_mn3].getreceivedbyaddress(offerer_address))
@@ -2892,8 +2915,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         assert_true(offer_ticket.reg_txid, "No Offer ticket was created")
         self.inc_ticket_counter(TicketType.OFFER, 1, item_type)
         print(f"{desc} offer_ticket_txid: {offer_ticket.reg_txid}")
-
         self.wait_for_ticket_tnx()
+        tx_fee_offer = self.nodes[offerer_node].gettxfee(offer_ticket.reg_txid)["txFee"]
+        print(f"{desc} offer ticket tx fee: {tx_fee_offer}")
+        
         balance_tracker.new_operation()
         self.wait_for_min_confirmations()
         balance_tracker.new_operation()
@@ -2907,6 +2932,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.inc_ticket_counter(TicketType.ACCEPT, 1, item_type)
         print(f"{desc} accept_ticket_txid: {accept_ticket.reg_txid}")
         self.wait_for_ticket_tnx()
+        tx_fee_accept = self.nodes[acceptor_node].gettxfee(accept_ticket.reg_txid)["txFee"]
+        print(f"{desc} accept ticket tx fee: {tx_fee_accept}")
 
         balance_tracker.new_operation()
         self.wait_for_min_confirmations()
@@ -2929,14 +2956,23 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         if (re.match("A{1,4}", test_id)):
             # This Pastel ID (and generated transfers) holds the ownership of copies (2-4)
             self.single_offer_transfer_txids.append(transfer_ticket.reg_txid)
-
         self.wait_for_ticket_tnx()
+        tx_fee_transfer = self.nodes[acceptor_node].gettxfee(transfer_ticket.reg_txid)["txFee"]
+        print(f"{desc} transfer ticket tx fee: {tx_fee_transfer}")
 
-        balance_tracker.new_operation(True, True)
+        balance_tracker.new_operation(log_balances=True, log_total_diff=True)
 
         # check correct amount of change and correct amount spent
-        assert_equal(balance_tracker.acceptor_balances[-1],
-            balance_tracker.acceptor_balances[0] - accept_ticket.ticket_price - transfer_ticket.ticket_price - ticket.item_price)
+        print(f"{balance_tracker.acceptor_balances[-1]} = {balance_tracker.acceptor_balances[0]}"
+              f" - {accept_ticket.ticket_price} - {tx_fee_accept} - {transfer_ticket.ticket_price}"
+              f" - {tx_fee_transfer} - {ticket.item_price}")
+        assert_true(isclose(balance_tracker.acceptor_balances[-1],
+            balance_tracker.acceptor_balances[0]
+                - accept_ticket.ticket_price - tx_fee_accept
+                - transfer_ticket.ticket_price - tx_fee_transfer
+                - ticket.item_price, 
+                rel_tol=AMOUNT_TOLERANCE),
+            MSG_BALANCE_NOMATCH)
         # example for NFT:
         #   accept ticket cost is 10 (1000/100),
         #   transfer ticket cost is 10,
@@ -2950,8 +2986,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 royalty_fee = round(ticket.item_price * self.royalty)  # self.royalty = 0.075 (75 PSL)
             if is_green:
                 green_fee = round(ticket.item_price / 50) # green fee is 2% of item price (20 PSL)
-        assert_equal(balance_tracker.offerer_balances[-1],
-            balance_tracker.offerer_balances[0] + ticket.item_price - offer_ticket_fee - royalty_fee - green_fee)
+        print(f"{balance_tracker.offerer_balances[-1]} = {balance_tracker.offerer_balances[0]} + {ticket.item_price}"
+              f" - {offer_ticket_fee} - {tx_fee_offer} - {royalty_fee} - {green_fee}")
+        assert_true(isclose(balance_tracker.offerer_balances[-1],
+            balance_tracker.offerer_balances[0] + ticket.item_price - offer_ticket_fee - tx_fee_offer - royalty_fee - green_fee,
+            rel_tol=AMOUNT_TOLERANCE), MSG_BALANCE_NOMATCH)
         # Offer ticket cost is 20 (1000/50), NFT cost is 1000
 
         if not skip_last_fail_test and item_to_offer_type_name == "transfer":

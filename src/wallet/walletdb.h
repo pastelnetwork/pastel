@@ -1,9 +1,13 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <list>
+#include <cstdint>
+#include <string>
+#include <utility>
 
 #include <amount.h>
 #include <wallet/db.h>
@@ -11,11 +15,6 @@
 #include <keystore.h>
 #include <vector_types.h>
 #include <zcash/Address.hpp>
-
-#include <list>
-#include <stdint.h>
-#include <string>
-#include <utility>
 #include <svc_thread.h>
 
 class CAccount;

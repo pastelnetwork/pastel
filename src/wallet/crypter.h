@@ -153,13 +153,13 @@ public:
         fDecryptionThoroughlyChecked(false)
     {}
 
-    bool IsCrypted() const noexcept
+    virtual bool IsCrypted() const noexcept
     {
         LOCK(cs_KeyStore);
         return fUseCrypto;
     }
 
-    bool IsLocked() const noexcept
+    virtual bool IsLocked() const noexcept
     {
         LOCK(cs_KeyStore);
         return fUseCrypto && vMasterKey.empty();

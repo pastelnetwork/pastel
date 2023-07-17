@@ -4,19 +4,20 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include <stdint.h>
+#include <cstdint>
 #include <variant>
 
 #include <univalue.h>
 
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
+#include <chain_options.h>
 #include <core_io.h>
 #include <init.h>
 #include <deprecation.h>
 #include <key_io.h>
 #include <keystore.h>
-#include <main.h>
+#include <accept_to_mempool.h>
 #include <merkleblock.h>
 #include <net.h>
 #include <primitives/transaction.h>

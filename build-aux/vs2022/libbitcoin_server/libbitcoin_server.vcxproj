@@ -87,6 +87,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\src\accept_to_mempool.cpp" />
     <ClCompile Include="..\..\..\src\addrman.cpp" />
     <ClCompile Include="..\..\..\src\alert.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcoperation.cpp" />
@@ -116,6 +117,7 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-notificationinterface.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-payments.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-requesttracker.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\p2fms-txbuilder.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\masternode.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\ingest.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\masternodebroadcast.cpp" />
@@ -188,6 +190,7 @@
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\src\accept_to_mempool.h" />
     <ClInclude Include="..\..\..\src\addrman.h" />
     <ClInclude Include="..\..\..\src\alert.h" />
     <ClInclude Include="..\..\..\src\asyncrpcoperation.h" />
@@ -213,6 +216,7 @@
     <ClInclude Include="..\..\..\src\merkleblock.h" />
     <ClInclude Include="..\..\..\src\metrics.h" />
     <ClInclude Include="..\..\..\src\miner.h" />
+    <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\ingest.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\masternode.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\masternodebroadcast.h" />

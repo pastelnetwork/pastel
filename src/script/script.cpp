@@ -1,8 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <script/script.h>
 
@@ -162,6 +162,75 @@ string GetOpName(opcodetype opcode)
     default:
         return "OP_UNKNOWN";
     }
+}
+
+CScript& CScript::push_int64(const int64_t n)
+{
+    if (n == -1 || (n >= 1 && n <= 16))
+    {
+        push_back(static_cast<int8_t>(n) + (OP_1 - 1));
+    }
+    else if (n == 0)
+    {
+        push_back(OP_0);
+    }
+    else
+    {
+        *this << CScriptNum::serialize(n);
+    }
+    return *this;
+}
+
+bool CScript::GetOp2(const_iterator& pc, opcodetype& opcodeRet, v_uint8* pvchRet) const
+{
+    opcodeRet = OP_INVALIDOPCODE;
+    if (pvchRet)
+        pvchRet->clear();
+    if (pc >= end())
+        return false;
+
+    // Read instruction
+    if (end() - pc < 1)
+        return false;
+    unsigned int opcode = *pc++;
+
+    // Immediate operand
+    if (opcode <= OP_PUSHDATA4)
+    {
+        unsigned int nSize = 0;
+        if (opcode < OP_PUSHDATA1)
+        {
+            nSize = opcode;
+        }
+        else if (opcode == OP_PUSHDATA1)
+        {
+            if (end() - pc < 1)
+                return false;
+            nSize = *pc++;
+        }
+        else if (opcode == OP_PUSHDATA2)
+        {
+            if (end() - pc < 2)
+                return false;
+            nSize = ReadLE16(&pc[0]);
+            pc += 2;
+        }
+        else if (opcode == OP_PUSHDATA4)
+        {
+            if (end() - pc < 4)
+                return false;
+            nSize = ReadLE32(&pc[0]);
+            pc += 4;
+        }
+        if (end() - pc < 0 || (unsigned int)(end() - pc) < nSize)
+            return false;
+        if (pvchRet)
+            pvchRet->assign(pc, pc + nSize);
+        pc += nSize;
+    }
+
+    opcodeRet = (opcodetype)opcode;
+    return true;
 }
 
 unsigned int CScript::GetSigOpCount(bool fAccurate) const

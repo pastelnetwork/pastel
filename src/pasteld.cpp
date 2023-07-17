@@ -1,21 +1,21 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdio.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 
-#include "clientversion.h"
-#include "rpc/server.h"
-#include "init.h"
-#include "main.h"
-#include "noui.h"
-#include "scheduler.h"
-#include "util.h"
-#include "httpserver.h"
-#include "httprpc.h"
+#include <clientversion.h>
+#include <rpc/server.h>
+#include <init.h>
+#include <main.h>
+#include <noui.h>
+#include <scheduler.h>
+#include <util.h>
+#include <httpserver.h>
+#include <httprpc.h>
 
 /* Introduction text for doxygen: */
 
@@ -66,7 +66,7 @@ bool AppInit(int argc, char* argv[])
     // Process help and version before taking care about datadir
     if (mapArgs.count("-?") || mapArgs.count("-h") ||  mapArgs.count("-help") || mapArgs.count("-version"))
     {
-        std::string strUsage = _("Pastel Daemon") + " " + _("version") + " " + FormatFullVersion() + "\n" + PrivacyInfo();
+        std::string strUsage = translate("Pastel Daemon") + " " + translate("version") + " " + FormatFullVersion() + "\n" + PrivacyInfo();
 
         if (mapArgs.count("-version"))
         {
@@ -74,8 +74,8 @@ bool AppInit(int argc, char* argv[])
         }
         else
         {
-            strUsage += "\n" + _("Usage:") + "\n" +
-                  "  pasteld [options]                     " + _("Start Pastel Daemon") + "\n";
+            strUsage += "\n" + translate("Usage:") + "\n" +
+                  "  pasteld [options]                     " + translate("Start Pastel Daemon") + "\n";
 
             strUsage += "\n" + HelpMessage(HMM_BITCOIND);
         }
@@ -96,7 +96,7 @@ bool AppInit(int argc, char* argv[])
             ReadConfigFile(mapArgs, mapMultiArgs);
         } catch (const missing_pastel_conf& ) {
             fprintf(stderr,
-                (_("Before starting pasteld, you need to create a configuration file:\n"
+                (translate("Before starting pasteld, you need to create a configuration file:\n"
                    "%s\n"
                    "It can be completely empty! That indicates you are happy with the default\n"
                    "configuration of pasteld. But requiring a configuration file to start ensures\n"
@@ -106,7 +106,7 @@ bool AppInit(int argc, char* argv[])
                    "You can look at the example configuration file for suggestions of default\n"
                    "options that you may want to change. It should be in one of these locations,\n"
                    "depending on how you installed Pastel:\n") +
-                 _("- Source code:  %s\n"
+                 translate("- Source code:  %s\n"
                    "- .deb package: %s\n")).c_str(),
                 GetConfigFile().string().c_str(),
                 "contrib/debian/examples/pastel.conf",

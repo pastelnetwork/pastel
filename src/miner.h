@@ -1,14 +1,15 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "primitives/block.h"
-#include "chainparams.h"
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <optional>
-#include <stdint.h>
+#include <cstdint>
+
+#include <primitives/block.h>
+#include <chainparams.h>
+#include <amount.h>
 
 class CBlockIndex;
 class CScript;
@@ -21,7 +22,7 @@ namespace Consensus { struct Params; };
 struct CBlockTemplate
 {
     CBlock block;
-    std::vector<CAmount> vTxFees;
+    v_amounts vTxFees;
     std::vector<int64_t> vTxSigOps;
 };
 

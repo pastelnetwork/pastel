@@ -1,11 +1,10 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <fstream>
 #include <optional>
-#include <stdint.h>
+#include <cstdint>
 #include <variant>
 
 #include <univalue.h>
@@ -311,7 +310,7 @@ UniValue importwallet_impl(const UniValue& params, bool fHelp, bool fImportZKeys
 
     KeyIO keyIO(Params());
 
-    pwalletMain->ShowProgress(_("Importing..."), 0); // show progress dialog in GUI
+    pwalletMain->ShowProgress(translate("Importing..."), 0); // show progress dialog in GUI
     string sKeyError;
     v_strings vstr;
     while (file.good()) {

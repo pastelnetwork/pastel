@@ -5,9 +5,12 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <clientversion.h>
+#include <chainparams.h>
 #include <fs.h>
 #include <util.h>
+#include <hash.h>
 #include <serialize.h>
+#include <streams.h>
 
 /** 
 *   Generic Dumping and Loading

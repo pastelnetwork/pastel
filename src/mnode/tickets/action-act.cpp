@@ -253,7 +253,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
  *      - mn2 (20% of 80% - 16% of all storage fee)
  *      - mn3 (20% of 80% - 16% of all storage fee)
  * 
- * \param outputs - extra outputs
+ * \param outputs - extra outputs return
  * \return total amount of extra outputs in patoshis
  */
 CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const

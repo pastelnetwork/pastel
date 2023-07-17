@@ -9,6 +9,7 @@
 #include <consensus/validation.h>
 #include <fs.h>
 #include <key_io.h>
+#include <accept_to_mempool.h>
 #include <main.h>
 #include <protocol.h>
 #include <serialize.h>
@@ -22,7 +23,7 @@ using namespace std;
 
 static uint64_t nAccountingEntryNumber = 0;
 
-static atomic<unsigned int> nWalletDBUpdateCounter;
+static atomic_uint32_t nWalletDBUpdateCounter;
 
 //
 // CWalletDB

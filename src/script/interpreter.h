@@ -1,9 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <climits>
 #include <stdint.h>
@@ -110,7 +110,7 @@ uint256 SignatureHash(
     const CTransaction& txTo,
     unsigned int nIn,
     const uint8_t nHashType,
-    const CAmount& amount,
+    const CAmount amount,
     uint32_t consensusBranchId,
     const PrecomputedTransactionData* cache = nullptr);
 

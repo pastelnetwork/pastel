@@ -3,6 +3,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
+#include <accept_to_mempool.h>
 #include <mnode/mnode-validation.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/tickets/ticket-types.h>

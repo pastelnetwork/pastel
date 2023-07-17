@@ -1,9 +1,9 @@
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <cmath>
 #include <limits>
+
 #include <gtest/gtest.h>
 
 #include <trimmean.h>
@@ -11,7 +11,7 @@
 using namespace testing;
 using namespace std;
 
-class PTest_TrimMean : public TestWithParam<tuple<vector<CAmount>, double, double>>
+class PTest_TrimMean : public TestWithParam<tuple<v_amounts, double, double>>
 {};
 
 inline double round3(const double value) noexcept
@@ -34,14 +34,14 @@ TEST_P(PTest_TrimMean, data)
 }
 
 INSTANTIATE_TEST_SUITE_P(TrimMean, PTest_TrimMean, Values(
-	make_tuple(vector<CAmount>({ 4, 5, 6, 7, 2, 3, 4, 5, 1, 2, 3 }), 0.2, 3.778),
-	make_tuple(vector<CAmount>({ 3,4,14,20,22,30,36,41,44,52,59,65,66,72,78,81,84,85,86,97}), 0.25, 53.063)
+	make_tuple(v_amounts({ 4, 5, 6, 7, 2, 3, 4, 5, 1, 2, 3 }), 0.2, 3.778),
+	make_tuple(v_amounts({ 3,4,14,20,22,30,36,41,44,52,59,65,66,72,78,81,84,85,86,97}), 0.25, 53.063)
 ));
 
 TEST(trimMean, invalid_data)
 {
 	TrimmeanErrorNumber errNo = TrimmeanErrorNumber::ENOERROR;
-	vector<CAmount> vData{ 1, 2, 3 };
+	v_amounts vData{ 1, 2, 3 };
 
 	// no errNo parameter
 	EXPECT_NO_THROW(TRIMMEAN(vData, -0.25));

@@ -4,14 +4,15 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <assert.h>
+#include <cstdint>
+#include <unordered_map>
+
 #include <compressor.h>
 #include <core_memusage.h>
 #include <memusage.h>
 #include <serialize.h>
 #include <uint256.h>
-#include <assert.h>
-#include <stdint.h>
-#include <unordered_map>
 #include <zcash/IncrementalMerkleTree.hpp>
 
 /** 

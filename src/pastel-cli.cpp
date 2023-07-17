@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdio.h>
@@ -30,20 +30,20 @@ using namespace std;
 string HelpMessageCli()
 {
     string strUsage;
-    strUsage += HelpMessageGroup(_("Options:"));
-    strUsage += HelpMessageOpt("-?", _("This help message"));
-    strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), "pastel.conf"));
-    strUsage += HelpMessageOpt("-datadir=<dir>", _("Specify data directory"));
-    strUsage += HelpMessageOpt("-testnet", _("Use the test network"));
-    strUsage += HelpMessageOpt("-regtest", _("Enter regression test mode, which uses a special chain in which blocks can be "
+    strUsage += HelpMessageGroup(translate("Options:"));
+    strUsage += HelpMessageOpt("-?", translate("This help message"));
+    strUsage += HelpMessageOpt("-conf=<file>", strprintf(translate("Specify configuration file (default: %s)"), "pastel.conf"));
+    strUsage += HelpMessageOpt("-datadir=<dir>", translate("Specify data directory"));
+    strUsage += HelpMessageOpt("-testnet", translate("Use the test network"));
+    strUsage += HelpMessageOpt("-regtest", translate("Enter regression test mode, which uses a special chain in which blocks can be "
                                              "solved instantly. This is intended for regression testing tools and app development."));
-    strUsage += HelpMessageOpt("-rpcconnect=<ip>", strprintf(_("Send commands to node running on <ip> (default: %s)"), "127.0.0.1"));
-    strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(_("Connect to JSON-RPC on <port> (default: %u or testnet: %u)"), MAINNET_DEFAULT_RPC_PORT, TESTNET_DEFAULT_RPC_PORT));
-    strUsage += HelpMessageOpt("-rpcwait", _("Wait for RPC server to start"));
-    strUsage += HelpMessageOpt("-rpcuser=<user>", _("Username for JSON-RPC connections"));
-    strUsage += HelpMessageOpt("-rpcpassword=<pw>", _("Password for JSON-RPC connections"));
-    strUsage += HelpMessageOpt("-rpcclienttimeout=<n>", strprintf(_("Timeout in seconds during HTTP requests, or 0 for no timeout. (default: %d)"), DEFAULT_HTTP_CLIENT_TIMEOUT));
-    strUsage += HelpMessageOpt("-stdin", _("Read extra arguments from standard input, one per line until EOF/Ctrl-D (recommended for sensitive information such as passphrases)"));
+    strUsage += HelpMessageOpt("-rpcconnect=<ip>", strprintf(translate("Send commands to node running on <ip> (default: %s)"), "127.0.0.1"));
+    strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(translate("Connect to JSON-RPC on <port> (default: %u or testnet: %u)"), MAINNET_DEFAULT_RPC_PORT, TESTNET_DEFAULT_RPC_PORT));
+    strUsage += HelpMessageOpt("-rpcwait", translate("Wait for RPC server to start"));
+    strUsage += HelpMessageOpt("-rpcuser=<user>", translate("Username for JSON-RPC connections"));
+    strUsage += HelpMessageOpt("-rpcpassword=<pw>", translate("Password for JSON-RPC connections"));
+    strUsage += HelpMessageOpt("-rpcclienttimeout=<n>", strprintf(translate("Timeout in seconds during HTTP requests, or 0 for no timeout. (default: %d)"), DEFAULT_HTTP_CLIENT_TIMEOUT));
+    strUsage += HelpMessageOpt("-stdin", translate("Read extra arguments from standard input, one per line until EOF/Ctrl-D (recommended for sensitive information such as passphrases)"));
 
     return strUsage;
 }
@@ -82,12 +82,12 @@ static int AppInitRPC(int argc, char* argv[])
     //
     ParseParameters(argc, argv);
     if (argc<2 || mapArgs.count("-?") || mapArgs.count("-h") || mapArgs.count("-help") || mapArgs.count("-version")) {
-        string strUsage = _("Pastel RPC client version") + " " + FormatFullVersion() + "\n" + PrivacyInfo();
+        string strUsage = translate("Pastel RPC client version") + " " + FormatFullVersion() + "\n" + PrivacyInfo();
         if (!mapArgs.count("-version")) {
-            strUsage += "\n" + _("Usage:") + "\n" +
-                  "  pastel-cli [options] <command> [params]  " + _("Send command to Pastel") + "\n" +
-                  "  pastel-cli [options] help                " + _("List commands") + "\n" +
-                  "  pastel-cli [options] help <command>      " + _("Get help for a command") + "\n";
+            strUsage += "\n" + translate("Usage:") + "\n" +
+                  "  pastel-cli [options] <command> [params]  " + translate("Send command to Pastel") + "\n" +
+                  "  pastel-cli [options] help                " + translate("List commands") + "\n" +
+                  "  pastel-cli [options] help <command>      " + translate("Get help for a command") + "\n";
 
             strUsage += "\n" + HelpMessageCli();
         } else {
@@ -218,7 +218,7 @@ UniValue CallRPC(const std::string& strMethod, const UniValue& params)
         // Try fall back to cookie-based authentication if no password is provided
         if (!GetAuthCookie(&strRPCUserColonPass)) {
             throw std::runtime_error(strprintf(
-                _("Could not locate RPC credentials. No authentication cookie could be found,\n"
+                translate("Could not locate RPC credentials. No authentication cookie could be found,\n"
                   "and no rpcpassword is set in the configuration file (%s)."),
                     GetConfigFile().string().c_str()));
 

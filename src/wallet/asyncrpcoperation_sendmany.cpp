@@ -1,7 +1,13 @@
 // Copyright (c) 2016 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
+#include <array>
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <string>
+#include <variant>
 
 #include <wallet/asyncrpcoperation_sendmany.h>
 #include <asyncrpcqueue.h>
@@ -13,6 +19,7 @@
 #include <main.h>
 #include <net.h>
 #include <netbase.h>
+#include <chain_options.h>
 #include <rpc/protocol.h>
 #include <rpc/server.h>
 #include <rpc/rpc_consts.h>
@@ -24,13 +31,6 @@
 #include <zcash/IncrementalMerkleTree.hpp>
 #include <sodium.h>
 #include <miner.h>
-
-#include <array>
-#include <iostream>
-#include <chrono>
-#include <thread>
-#include <string>
-#include <variant>
 
 using namespace libzcash;
 using namespace std;
@@ -246,7 +246,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         secret.MakeNewKey(true);
         CScript scriptPubKey = GetScriptForDestination(secret.GetPubKey().GetID());
         CTxOut out(CAmount(1), scriptPubKey);
-        CAmount dustThreshold = out.GetDustThreshold(minRelayTxFee);
+        CAmount dustThreshold = out.GetDustThreshold(gl_ChainOptions.minRelayTxFee);
         CAmount dustChange = -1;
 
         vector<SendManyInputUTXO> selectedTInputs;

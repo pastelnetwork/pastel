@@ -8,7 +8,7 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
-#include <stdint.h>
+#include <cstdint>
 #include <utility>
 #include <vector>
 
@@ -449,8 +449,8 @@ public:
         libzcash::SaplingPaymentAddress>> RecoverSaplingNoteWithoutLeadByteCheck(SaplingOutPoint op, std::set<uint256>& ovks) const;
 
     //! filter decides which addresses will count towards the debit
-    CAmount GetDebit(const isminetype& filter) const;
-    CAmount GetCredit(const isminetype& filter) const;
+    CAmount GetDebit(const isminetype filter) const;
+    CAmount GetCredit(const isminetype filter) const;
     CAmount GetImmatureCredit(const bool fUseCache=true) const;
     CAmount GetAvailableCredit(const bool fUseCache=true) const;
     CAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
@@ -458,12 +458,12 @@ public:
     CAmount GetChange() const;
 
     void GetAmounts(std::list<COutputEntry>& listReceived,
-                    std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminetype& filter) const;
+                    std::list<COutputEntry>& listSent, CAmount& nFee, std::string& strSentAccount, const isminetype filter) const;
 
     void GetAccountAmounts(const std::string& strAccount, CAmount& nReceived,
-                           CAmount& nSent, CAmount& nFee, const isminetype& filter) const;
+                           CAmount& nSent, CAmount& nFee, const isminetype filter) const;
 
-    bool IsFromMe(const isminetype& filter) const
+    bool IsFromMe(const isminetype filter) const
     {
         return (GetDebit(filter) > 0);
     }
@@ -864,7 +864,7 @@ public:
     /**
      * populate vCoins with vector of available COutputs.
      */
-    void AvailableCoins(std::vector<COutput>& vCoins,
+    virtual void AvailableCoins(std::vector<COutput>& vCoins,
 		bool fOnlyConfirmed=true,
 		const CCoinControl *coinControl = nullptr,
 		bool fIncludeZeroValue=false,
@@ -1038,7 +1038,7 @@ public:
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
 
     std::set< std::set<CTxDestination> > GetAddressGroupings();
-    BalanceMap_t GetAddressBalances(const isminetype &isMineFilter);
+    BalanceMap_t GetAddressBalances(const isminetype isMineFilter);
 
     std::set<CTxDestination> GetAccountAddresses(const std::string& strAccount) const;
 
@@ -1055,16 +1055,16 @@ public:
     bool IsMine(const CTxIn& txin) const { return GetIsMine(txin) != isminetype::NO; }
     bool IsMine(const CTxOut& txout) const { return GetIsMine(txout) != isminetype::NO; }
 
-    CAmount GetDebit(const CTxIn& txin, const isminetype& filter) const;
-    CAmount GetCredit(const CTxOut& txout, const isminetype& filter) const;
+    CAmount GetDebit(const CTxIn& txin, const isminetype filter) const;
+    CAmount GetCredit(const CTxOut& txout, const isminetype filter) const;
 
     bool IsChange(const CTxOut& txout) const;
     CAmount GetChange(const CTxOut& txout) const;
     bool IsMine(const CTransaction& tx) const;
     /** should probably be renamed to IsRelevantToMe */
     bool IsFromMe(const CTransaction& tx) const;
-    CAmount GetDebit(const CTransaction& tx, const isminetype& filter) const;
-    CAmount GetCredit(const CTransaction& tx, const isminetype& filter) const;
+    CAmount GetDebit(const CTransaction& tx, const isminetype filter) const;
+    CAmount GetCredit(const CTransaction& tx, const isminetype filter) const;
     CAmount GetChange(const CTransaction& tx) const;
     void ChainTip(const CBlockIndex *pindex, const CBlock *pblock, SaplingMerkleTree saplingTree, bool added) override;
     /** Saves witness caches and best block locator to disk. */

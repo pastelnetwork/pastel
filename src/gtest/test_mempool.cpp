@@ -7,11 +7,13 @@
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <core_io.h>
-#include <main.h>
+#include <chain_options.h>
+#include <accept_to_mempool.h>
 #include <primitives/transaction.h>
 #include <txmempool.h>
 #include <policy/fees.h>
 #include <util.h>
+#include <main.h>
 
 #include <pastel_gtest_main.h>
 #include <test_mempool_entryhelper.h>
@@ -87,7 +89,7 @@ TEST(Mempool, OverwinterNotActiveYet)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = true;
@@ -97,6 +99,7 @@ TEST(Mempool, OverwinterNotActiveYet)
     CValidationState state(TxOrigin::MSG_TX);
 
     CTransaction tx1(mtx);
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
     EXPECT_EQ(state.GetRejectReason(), "tx-overwinter-not-active");
 
@@ -112,7 +115,7 @@ TEST(Mempool, SproutV3TxFailsAsExpected)
 {
     SelectParams(ChainNetwork::TESTNET);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = false;
@@ -120,6 +123,7 @@ TEST(Mempool, SproutV3TxFailsAsExpected)
     CValidationState state(TxOrigin::MSG_TX);
     CTransaction tx1(mtx);
 
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
     EXPECT_EQ(state.GetRejectReason(), "version");
 }
@@ -133,7 +137,7 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = false;
@@ -141,6 +145,7 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive)
     CValidationState state(TxOrigin::MSG_TX);
     CTransaction tx1(mtx);
 
+    LOCK(cs_main);
     EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
     EXPECT_EQ(state.GetRejectReason(), "tx-overwintered-flag-not-set");
 
@@ -156,7 +161,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = false;
@@ -175,6 +180,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
         EXPECT_EQ(tx1.nVersion, -3);
 
         CValidationState state(TxOrigin::MSG_TX);
+        LOCK(cs_main);
         EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
         EXPECT_EQ(state.GetRejectReason(), "bad-txns-version-too-low");
     }
@@ -191,6 +197,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
         EXPECT_EQ(tx1.nVersion, -2147483645);
 
         CValidationState state(TxOrigin::MSG_TX);
+        LOCK(cs_main);
         EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
         EXPECT_EQ(state.GetRejectReason(), "bad-txns-version-too-low");
     }
@@ -204,7 +211,7 @@ TEST(Mempool, ExpiringSoonTxRejection)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = true;
@@ -222,6 +229,7 @@ TEST(Mempool, ExpiringSoonTxRejection)
         CValidationState state(TxOrigin::MSG_TX);
         CTransaction tx1(mtx);
 
+        LOCK(cs_main);
         EXPECT_FALSE(AcceptToMemoryPool(Params(), pool, state, tx1, false, &missingInputs));
         EXPECT_EQ(state.GetRejectReason(), "tx-expiring-soon");
     }

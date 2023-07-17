@@ -1,8 +1,8 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <stdint.h>
+#include <cstdint>
 #include <gtest/gtest.h>
 
 #include <wallet/db.h>

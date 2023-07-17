@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -13,7 +13,7 @@
 
 using namespace std;
 
-TransactionSignatureCreator::TransactionSignatureCreator(const CKeyStore* keystoreIn, const CTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, const uint8_t nHashTypeIn) : 
+TransactionSignatureCreator::TransactionSignatureCreator(const CKeyStore* keystoreIn, const CTransaction* txToIn, unsigned int nInIn, const CAmount amountIn, const uint8_t nHashTypeIn) : 
     BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), 
     nHashType(nHashTypeIn), 
     amount(amountIn), 
@@ -35,7 +35,7 @@ bool TransactionSignatureCreator::CreateSig(v_uint8& vchSig, const CKeyID& addre
 
     if (!key.Sign(hash, vchSig))
         return false;
-    vchSig.push_back((unsigned char)nHashType);
+    vchSig.push_back(nHashType);
     return true;
 }
 
@@ -89,18 +89,18 @@ static bool SignStep(const BaseSignatureCreator& creator, const CScript& scriptP
         keyID = CPubKey(vSolutions[0]).GetID();
         return Sign1(keyID, creator, scriptPubKey, ret, consensusBranchId);
     case TX_PUBKEYHASH:
-        keyID = CKeyID(uint160(vSolutions[0]));
-        if (!Sign1(keyID, creator, scriptPubKey, ret, consensusBranchId))
-            return false;
-        else
         {
+            keyID = CKeyID(uint160(vSolutions[0]));
+            if (!Sign1(keyID, creator, scriptPubKey, ret, consensusBranchId))
+                return false;
             CPubKey vch;
             creator.KeyStore().GetPubKey(keyID, vch);
             ret.push_back(ToByteVector(vch));
+            return true;
         }
-        return true;
     case TX_SCRIPTHASH:
-        if (creator.KeyStore().GetCScript(uint160(vSolutions[0]), scriptRet)) {
+        if (creator.KeyStore().GetCScript(uint160(vSolutions[0]), scriptRet))
+        {
             ret.push_back(v_uint8(scriptRet.begin(), scriptRet.end()));
             return true;
         }
@@ -120,13 +120,12 @@ static CScript PushAll(const vector<v_uint8>& values)
     CScript result;
     for (const auto &v : values)
     {
-        if (v.size() == 0) {
+        if (v.empty())
             result << OP_0;
-        } else if (v.size() == 1 && v[0] >= 1 && v[0] <= 16) {
+        else if (v.size() == 1 && v[0] >= 1 && v[0] <= 16)
             result << CScript::EncodeOP_N(v[0]);
-        } else {
+        else
             result << v;
-        }
     }
     return result;
 }
@@ -175,7 +174,7 @@ bool SignSignature(
     const CScript& fromPubKey,
     CMutableTransaction& txTo,
     unsigned int nIn,
-    const CAmount& amount,
+    const CAmount amount,
     const uint8_t nHashType,
     uint32_t consensusBranchId)
 {
@@ -269,12 +268,16 @@ struct Stacks
     vector<v_uint8> script;
 
     Stacks() {}
-    explicit Stacks(const vector<v_uint8>& scriptSigStack_) : script(scriptSigStack_) {}
-    explicit Stacks(const SignatureData& data, uint32_t consensusBranchId) {
+    explicit Stacks(const vector<v_uint8>& scriptSigStack_) :
+        script(scriptSigStack_)
+    {}
+    explicit Stacks(const SignatureData& data, uint32_t consensusBranchId)
+    {
         EvalScript(script, data.scriptSig, SCRIPT_VERIFY_STRICTENC, BaseSignatureChecker(), consensusBranchId);
     }
 
-    SignatureData Output() const {
+    SignatureData Output() const
+    {
         SignatureData result;
         result.scriptSig = PushAll(script);
         return result;

@@ -16,6 +16,7 @@
 #include <util.h>
 #include <metrics.h>
 #include <orphan-tx.h>
+#include <accept_to_mempool.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif // ENABLE_WALLET
@@ -23,12 +24,6 @@
 #include <pastel_gtest_main.h>
 #include <pastel_gtest_utils.h>
 
-struct ECCryptoClosure
-{
-    ECCVerifyHandle handle;
-};
-
-ECCryptoClosure instance_of_eccryptoclosure;
 CPastelTest_Environment *gl_pPastelTestEnv = nullptr;
 
 #ifdef ENABLE_WALLET
@@ -106,7 +101,6 @@ void init_zksnark_params()
 void CPastelTest_Environment::SetUp()
 {
     ASSERT_EQ(init_and_check_sodium(), 0);
-    ECC_Start();
 
     fnIsInitialBlockDownload = TestIsInitialBlockDownload;
 
@@ -118,7 +112,6 @@ void CPastelTest_Environment::SetUp()
 
 void CPastelTest_Environment::TearDown()
 {
-    ECC_Stop();
 }
 
 void CPastelTest_Environment::generate_coins(const size_t N)

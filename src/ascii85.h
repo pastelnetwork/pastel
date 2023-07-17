@@ -1,3 +1,4 @@
+#pragma once
 /** @file ascii85.h
  *
  * @brief Ascii85 encoder and decoder
@@ -20,16 +21,12 @@
  * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
  * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-**/
-
-#ifndef SLI_ASCII85_H
-#define SLI_ASCII85_H
-
+ **/
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdint.h>
+#include <cstdint>
 
 enum ascii85_errs_e
 {
@@ -52,4 +49,3 @@ int32_t ascii85_get_max_decoded_length (int32_t in_length);
 }
 #endif
 
-#endif /* SLI_ASCII85_H */

@@ -1,30 +1,30 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
-#include "clientversion.h"
-#include "coins.h"
-#include "consensus/consensus.h"
-#include "consensus/upgrades.h"
-#include "core_io.h"
-#include "key_io.h"
-#include "keystore.h"
-#include "primitives/transaction.h"
-#include "script/script.h"
-#include "script/sign.h"
-#include <univalue.h>
-#include "util.h"
-#include "utilmoneystr.h"
-#include "utilstrencodings.h"
-#include <svc_thread.h>
-
 #include <stdio.h>
+
+#include <clientversion.h>
+#include <coins.h>
+#include <consensus/consensus.h>
+#include <consensus/upgrades.h>
+#include <core_io.h>
+#include <key_io.h>
+#include <keystore.h>
+#include <primitives/transaction.h>
+#include <script/script.h>
+#include <script/sign.h>
+#include <univalue.h>
+#include <util.h>
+#include <utilmoneystr.h>
+#include <utilstrencodings.h>
 #include <str_utils.h>
+#include <svc_thread.h>
 
 using namespace std;
 
 static bool fCreateBlank;
-static map<std::string,UniValue> registers;
+static map<std::string, UniValue> registers;
 static const int CONTINUE_EXECUTION=-1;
 
 //
@@ -49,42 +49,42 @@ static int AppInitRawTx(int argc, char* argv[])
     if (argc<2 || mapArgs.count("-?") || mapArgs.count("-h") || mapArgs.count("-help"))
     {
         // First part of help message is specific to this utility
-        std::string strUsage = _("Pastel pastel-tx utility version") + " " + FormatFullVersion() + "\n\n" +
-            _("Usage:") + "\n" +
-              "  pastel-tx [options] <hex-tx> [commands]  " + _("Update hex-encoded pastel transaction") + "\n" +
-              "  pastel-tx [options] -create [commands]   " + _("Create hex-encoded pastel transaction") + "\n" +
+        std::string strUsage = translate("Pastel pastel-tx utility version") + " " + FormatFullVersion() + "\n\n" +
+            translate("Usage:") + "\n" +
+              "  pastel-tx [options] <hex-tx> [commands]  " + translate("Update hex-encoded pastel transaction") + "\n" +
+              "  pastel-tx [options] -create [commands]   " + translate("Create hex-encoded pastel transaction") + "\n" +
               "\n";
 
         fprintf(stdout, "%s", strUsage.c_str());
 
-        strUsage = HelpMessageGroup(_("Options:"));
-        strUsage += HelpMessageOpt("-?", _("This help message"));
-        strUsage += HelpMessageOpt("-create", _("Create new, empty TX."));
-        strUsage += HelpMessageOpt("-json", _("Select JSON output"));
-        strUsage += HelpMessageOpt("-txid", _("Output only the hex-encoded transaction id of the resultant transaction."));
-        strUsage += HelpMessageOpt("-regtest", _("Enter regression test mode, which uses a special chain in which blocks can be solved instantly."));
-        strUsage += HelpMessageOpt("-testnet", _("Use the test network"));
+        strUsage = HelpMessageGroup(translate("Options:"));
+        strUsage += HelpMessageOpt("-?", translate("This help message"));
+        strUsage += HelpMessageOpt("-create", translate("Create new, empty TX."));
+        strUsage += HelpMessageOpt("-json", translate("Select JSON output"));
+        strUsage += HelpMessageOpt("-txid", translate("Output only the hex-encoded transaction id of the resultant transaction."));
+        strUsage += HelpMessageOpt("-regtest", translate("Enter regression test mode, which uses a special chain in which blocks can be solved instantly."));
+        strUsage += HelpMessageOpt("-testnet", translate("Use the test network"));
 
         fprintf(stdout, "%s", strUsage.c_str());
 
-        strUsage = HelpMessageGroup(_("Commands:"));
-        strUsage += HelpMessageOpt("delin=N", _("Delete input N from TX"));
-        strUsage += HelpMessageOpt("delout=N", _("Delete output N from TX"));
-        strUsage += HelpMessageOpt("in=TXID:VOUT(:SEQUENCE_NUMBER)", _("Add input to TX"));
-        strUsage += HelpMessageOpt("locktime=N", _("Set TX lock time to N"));
-        strUsage += HelpMessageOpt("nversion=N", _("Set TX version to N"));
-        strUsage += HelpMessageOpt("outaddr=VALUE:ADDRESS", _("Add address-based output to TX"));
-        strUsage += HelpMessageOpt("outscript=VALUE:SCRIPT", _("Add raw script output to TX"));
-        strUsage += HelpMessageOpt("sign=HEIGHT:SIGHASH-FLAGS", _("Add zero or more signatures to transaction") + ". " +
-            _("This command requires JSON registers:") +
-            _("prevtxs=JSON object") + ", " +
-            _("privatekeys=JSON object") + ". " +
-            _("See signrawtransaction docs for format of sighash flags, JSON objects."));
+        strUsage = HelpMessageGroup(translate("Commands:"));
+        strUsage += HelpMessageOpt("delin=N", translate("Delete input N from TX"));
+        strUsage += HelpMessageOpt("delout=N", translate("Delete output N from TX"));
+        strUsage += HelpMessageOpt("in=TXID:VOUT(:SEQUENCE_NUMBER)", translate("Add input to TX"));
+        strUsage += HelpMessageOpt("locktime=N", translate("Set TX lock time to N"));
+        strUsage += HelpMessageOpt("nversion=N", translate("Set TX version to N"));
+        strUsage += HelpMessageOpt("outaddr=VALUE:ADDRESS", translate("Add address-based output to TX"));
+        strUsage += HelpMessageOpt("outscript=VALUE:SCRIPT", translate("Add raw script output to TX"));
+        strUsage += HelpMessageOpt("sign=HEIGHT:SIGHASH-FLAGS", translate("Add zero or more signatures to transaction") + ". " +
+            translate("This command requires JSON registers:") +
+            translate("prevtxs=JSON object") + ", " +
+            translate("privatekeys=JSON object") + ". " +
+            translate("See signrawtransaction docs for format of sighash flags, JSON objects."));
         fprintf(stdout, "%s", strUsage.c_str());
 
-        strUsage = HelpMessageGroup(_("Register Commands:"));
-        strUsage += HelpMessageOpt("load=NAME:FILENAME", _("Load JSON file FILENAME into register NAME"));
-        strUsage += HelpMessageOpt("set=NAME:JSON-STRING", _("Set register NAME to given JSON-STRING"));
+        strUsage = HelpMessageGroup(translate("Register Commands:"));
+        strUsage += HelpMessageOpt("load=NAME:FILENAME", translate("Load JSON file FILENAME into register NAME"));
+        strUsage += HelpMessageOpt("set=NAME:JSON-STRING", translate("Set register NAME to given JSON-STRING"));
         fprintf(stdout, "%s", strUsage.c_str());
 
         if (argc < 2) {
@@ -518,24 +518,9 @@ static void MutateTxSign(CMutableTransaction& tx, const std::string& strInput)
     tx = mergedTx;
 }
 
-class Secp256k1Init
-{
-    ECCVerifyHandle globalVerifyHandle;
-
-public:
-    Secp256k1Init() {
-        ECC_Start();
-    }
-    ~Secp256k1Init() {
-        ECC_Stop();
-    }
-};
-
 static void MutateTx(CMutableTransaction& tx, const std::string& command,
                      const std::string& commandVal)
 {
-    unique_ptr<Secp256k1Init> ecc;
-
     if (command == "nversion")
         MutateTxVersion(tx, commandVal);
     else if (command == "locktime")
@@ -556,8 +541,6 @@ static void MutateTx(CMutableTransaction& tx, const std::string& command,
         MutateTxAddOutScript(tx, commandVal);
 
     else if (command == "sign") {
-        if (!ecc)
-            ecc = make_unique<Secp256k1Init>();
         MutateTxSign(tx, commandVal);
     }
     else if (command == "load")

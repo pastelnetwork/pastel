@@ -1,9 +1,11 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <set>
+#include <optional>
+
 #include <gmock/gmock.h>
 #include <sodium.h>
 
@@ -19,8 +21,6 @@
 #include <wallet/wallet.h>
 #include <zcash/Note.hpp>
 #include <zcash/NoteEncryption.hpp>
-
-#include <optional>
 
 using namespace std;
 using ::testing::Return;
@@ -959,8 +959,7 @@ static void add_coin(const CAmount& nValue, int nAge = 6*24, bool fIsFromMe = fa
 
 static void empty_wallet(void)
 {
-    // BOOST_FOREACH(COutput output, vCoins) //-V1044
-    for (auto& output : vCoins) //-V1044
+    for (auto& output : vCoins)
         delete output.tx;
     vCoins.clear();
 }

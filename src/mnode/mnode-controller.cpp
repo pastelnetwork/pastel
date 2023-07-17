@@ -287,8 +287,8 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
 
     if ((m_fMasterNode || masternodeConfig.getCount() > 0) && !fTxIndex)
     {
-        strErrors << _("Enabling Masternode support requires turning on transaction indexing.")
-                << _("Please add txindex=1 to your configuration and start with -reindex");
+        strErrors << translate("Enabling Masternode support requires turning on transaction indexing.")
+                << translate("Please add txindex=1 to your configuration and start with -reindex");
         return false;
     }
 
@@ -301,7 +301,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
         {
             if (!CMessageSigner::GetKeysFromSecret(strMasterNodePrivKey, activeMasternode.keyMasternode, activeMasternode.pubKeyMasternode))
             {
-                strErrors << _("Invalid masternodeprivkey. Please see documentation.");
+                strErrors << translate("Invalid masternodeprivkey. Please see documentation.");
                 return false;
             }
 
@@ -311,7 +311,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
 
             LogPrintf("  pubKeyMasternode: %s\n", address);
         } else {
-            strErrors << _("You must specify a masternodeprivkey in the configuration. Please see documentation for help.");
+            strErrors << translate("You must specify a masternodeprivkey in the configuration. Please see documentation for help.");
             return false;
         }
     }
@@ -323,7 +323,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     // LOAD SERIALIZED DAT FILES INTO DATA CACHES FOR INTERNAL USE
     fs::path pathDB = GetDataDir();
 
-    uiInterface.InitMessage(_("Loading masternode cache..."));
+    uiInterface.InitMessage(translate("Loading masternode cache..."));
     CFlatDB<CMasternodeMan> flatDB1(MNCACHE_FILENAME, MNCACHE_CACHE_MAGIC_STR);
     if (!flatDB1.Load(masternodeManager))
     {
@@ -332,38 +332,38 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
 
     if (!masternodeManager.empty())
     {
-        uiInterface.InitMessage(_("Loading masternode payment cache..."));
+        uiInterface.InitMessage(translate("Loading masternode payment cache..."));
         CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
         if (!flatDB2.Load(masternodePayments))
         {
             LogFnPrintf("WARNING ! Could not load masternode payments cache from [%s]", flatDB2.getFilePath());
         }
     } else
-        uiInterface.InitMessage(_("Masternode cache is empty, skipping payments and governance cache..."));
+        uiInterface.InitMessage(translate("Masternode cache is empty, skipping payments and governance cache..."));
 
 #ifdef GOVERNANCE_TICKETS
-    uiInterface.InitMessage(_("Loading governance cache..."));
+    uiInterface.InitMessage(translate("Loading governance cache..."));
     CFlatDB<CMasternodeGovernance> flatDB3(MN_GOVERNANCE_FILENAME, MN_GOVERNANCE_MAGIC_CACHE_STR);
     if (!flatDB3.Load(masternodeGovernance))
     {
-        strErrors << _("Failed to load governance cache from") + "\n" + flatDB3.getFilePath();
+        strErrors << translate("Failed to load governance cache from") + "\n" + flatDB3.getFilePath();
         return false;
     }
 #endif // GOVERNANCE_TICKETS
 
-    uiInterface.InitMessage(_("Loading fulfilled requests cache..."));
+    uiInterface.InitMessage(translate("Loading fulfilled requests cache..."));
     CFlatDB<CMasternodeRequestTracker> flatDB4(MN_REQUEST_TRACKER_FILENAME, MN_REQUEST_TRACKER_MAGIC_CACHE_STR);
     if (!flatDB4.Load(requestTracker))
     {
-        strErrors << _("Failed to load fulfilled requests cache from") + "\n" + flatDB4.getFilePath();
+        strErrors << translate("Failed to load fulfilled requests cache from") + "\n" + flatDB4.getFilePath();
         return false;
     }
 
-    uiInterface.InitMessage(_("Loading messages cache..."));
+    uiInterface.InitMessage(translate("Loading messages cache..."));
     CFlatDB<CMasternodeMessageProcessor> flatDB5(MN_MESSAGES_FILENAME, MN_MESSAGES_MAGIC_CACHE_STR);
     if (!flatDB5.Load(masternodeMessages))
     {
-        strErrors << _("Failed to load messages cache from") + "\n" + flatDB5.getFilePath();
+        strErrors << translate("Failed to load messages cache from") + "\n" + flatDB5.getFilePath();
         return false;
     }
 	
@@ -619,7 +619,7 @@ CAmount CMasterNodeController::GetNetworkMedianMNFee(const MN_FEE mnFee) const n
         const auto mapMasternodes = masternodeManager.GetFullMasternodeMap();
         if (!mapMasternodes.empty())
         {
-            vector<CAmount> vFee(mapMasternodes.size());
+            v_amounts vFee(mapMasternodes.size());
             size_t cnt = 0;
             for (const auto& [op, mn] : mapMasternodes)
                 vFee[cnt++] = mn.GetMNFee(mnFee);

@@ -2,7 +2,7 @@
 # Copyright (c) 2021-2022 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
-from decimal import getcontext
+from decimal import getcontext, Decimal
 
 from test_framework.util import (
     assert_equal,
@@ -13,6 +13,7 @@ from test_framework.util import (
     start_nodes,
     connect_nodes_bi
 )
+import math
 from pastel_test_framework import PastelTestFramework
 import test_framework.rpc_consts as rpc
 
@@ -66,9 +67,9 @@ class UserNameChangeTest(PastelTestFramework):
         print(f">> username '{username}'' is registered to {pastelid}, fee {fee}")
 
 
-    def check_balance(self, delta):
+    def check_balance(self, delta, tx_fee):
         newbalance = self.nodes[1].getbalance()
-        assert_equal(self.node1_balance - delta, newbalance, "node balance is not matching")
+        assert_equal(self.node1_balance - delta - tx_fee, newbalance, "node balance is not matching")
         self.node1_balance = newbalance
 
 
@@ -146,6 +147,8 @@ class UserNameChangeTest(PastelTestFramework):
         txid = result["txid"]
         print(f"Registered '{username1} on node #1 for Pastel ID #1: {result}")
         assert_true(txid, "No username-change ticket was created")
+        tx_fee = self.nodes[1].gettxfee(txid)["txFee"]
+        print(f"tx_fee: {tx_fee}")
 
         # try to register the same username - mempool transaction exists with the same username
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "same username in the memory pool", 
@@ -157,7 +160,7 @@ class UserNameChangeTest(PastelTestFramework):
         self.generate_and_sync_inc(1)
         self.list_username_tickets(1)
         self.check_username_change_ticket(txid, username1, self.n1_pastelid1, self.USERNAME_CHANGE_FEE_FIRST_TIME)
-        self.check_balance(self.USERNAME_CHANGE_FEE_FIRST_TIME)
+        self.check_balance(self.USERNAME_CHANGE_FEE_FIRST_TIME, tx_fee)
 
         # now let's try to register same username again - username is already registered in the blockchain
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already registered in blockchain", 
@@ -191,6 +194,8 @@ class UserNameChangeTest(PastelTestFramework):
         # if, for example, node0 don't have this tx in mempool, next tx "register username1 for Pastel ID #2" 
         # will be rejected because it's taken (registered to Pastel ID #1)
         self.sync_all()
+        tx_fee2 = self.nodes[1].gettxfee(txid2)["txFee"]
+        print(f"tx_fee2: {tx_fee2}")
 
         # 'Morpheus' username registered to n1_pastelid1 is not active now (ticket transaction is in the mempool, but not yet in blockchain)
         # n1_pastelid2 can use this username now - first username change for this pastelid
@@ -200,12 +205,14 @@ class UserNameChangeTest(PastelTestFramework):
         assert_true(txid1, "No username-change ticket was created")
         # commit transactions for both username1 & username2 changes
         self.generate_and_sync_inc(1)
+        tx_fee1 = self.nodes[1].gettxfee(txid1)["txFee"]
+        print(f"tx_fee1: {tx_fee1}")
 
         # check txid1,txid2 transactions
         self.list_username_tickets(2)
         self.check_username_change_ticket(txid1, username1, self.n1_pastelid2, self.USERNAME_CHANGE_FEE_FIRST_TIME)
         self.check_username_change_ticket(txid2, username2, self.n1_pastelid1, self.USERNAME_CHANGE_FEE_SECOND_TIME)
-        self.check_balance(self.USERNAME_CHANGE_FEE_FIRST_TIME + self.USERNAME_CHANGE_FEE_SECOND_TIME)
+        self.check_balance(self.USERNAME_CHANGE_FEE_FIRST_TIME + self.USERNAME_CHANGE_FEE_SECOND_TIME, tx_fee1 + tx_fee2)
 
         # not enough coins on node3
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Not enough coins", 
@@ -219,6 +226,9 @@ class UserNameChangeTest(PastelTestFramework):
         txid3 = result["txid"]
         assert_true(txid3, "No username-change ticket was created")
         self.generate_and_sync_inc(1)
+        tx_fee3 = self.nodes[3].gettxfee(txid3)["txFee"]
+        print(f"tx_fee3: {tx_fee3}")
+        
         # check txid3 transaction
         self.list_username_tickets(3)
         self.check_username_change_ticket(txid3, username3, self.n3_pastelid, self.USERNAME_CHANGE_FEE_FIRST_TIME)
@@ -255,11 +265,14 @@ class UserNameChangeTest(PastelTestFramework):
         txid4 = result["txid"]
         assert_true(txid4, "No username-change ticket was created")
         self.generate_and_sync_inc(1)
+        tx_fee4 = self.nodes[1].gettxfee(txid4)["txFee"]
+        print(f"tx_fee4: {tx_fee4}")
+        
         self.list_username_tickets(4)
         self.check_username_change_ticket(txid4, username5, self.n1_pastelid2, self.USERNAME_CHANGE_FEE_SECOND_TIME)
         amounts = self.nodes[1].listaddressamounts(False, "all")
-        nT1 -= self.USERNAME_CHANGE_FEE_SECOND_TIME
-        assert_equal(nT1, amounts[addr[1]], "node1 taddr1 amount does not match")
+        nT1 -= self.USERNAME_CHANGE_FEE_SECOND_TIME + float(tx_fee4)
+        assert_true(math.isclose(nT1, amounts[addr[1]], rel_tol=1e-5), "node1 taddr1 amount does not match")
         self.generate_and_sync_inc(10) # allow next username change
         # not enough funds on the address
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "No unspent transaction found for address", 
@@ -268,14 +281,16 @@ class UserNameChangeTest(PastelTestFramework):
         result = self.nodes[1].tickets("register", "username", username6, self.n1_pastelid1, self.passphrase, n1_taddr2)
         print(result)
         txid5 = result["txid"]
-        assert_true(txid4, "No username-change ticket was created")
+        assert_true(txid5, "No username-change ticket was created")
         self.generate_and_sync_inc(1)
         self.list_username_tickets(5)
         self.check_username_change_ticket(txid5, username6, self.n1_pastelid1, self.USERNAME_CHANGE_FEE_SECOND_TIME)
         # check taddr2 funds
+        tx_fee5 = self.nodes[1].gettxfee(txid5)["txFee"]
+        print(f"tx_fee5: {tx_fee5}")
         amounts = self.nodes[1].listaddressamounts(False, "all")
-        nT2 -= self.USERNAME_CHANGE_FEE_SECOND_TIME
-        assert_equal(nT2, amounts[n1_taddr2], "node1 taddr2 amount does not match")
+        nT2 -= self.USERNAME_CHANGE_FEE_SECOND_TIME + float(tx_fee5)
+        assert_true(math.isclose(nT2, amounts[n1_taddr2], rel_tol=1e-5), "node1 taddr2 amount does not match")
 
         print(" - UserName validation")
         # too short

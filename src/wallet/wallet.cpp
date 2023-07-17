@@ -8,10 +8,9 @@
 #include <random>
 #include <thread>
 #include <variant>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <wallet/wallet.h>
-
 #include <asyncrpcqueue.h>
 #include <checkpoints.h>
 #include <coincontrol.h>
@@ -19,9 +18,11 @@
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <consensus/consensus.h>
+#include <chain_options.h>
 #include <fs.h>
 #include <init.h>
 #include <key_io.h>
+#include <accept_to_mempool.h>
 #include <main.h>
 #include <net.h>
 #include <rpc/protocol.h>
@@ -629,7 +630,7 @@ bool CWallet::Verify(const string& walletFile, string& warningString, string& er
         // try again
         if (!bitdb.Open(GetDataDir())) {
             // if it still fails, it probably means we can't even create the database env
-            string msg = strprintf(_("Error initializing wallet database environment %s!"), GetDataDir());
+            string msg = strprintf(translate("Error initializing wallet database environment %s!"), GetDataDir());
             errorString += msg;
             return true;
         }
@@ -647,13 +648,13 @@ bool CWallet::Verify(const string& walletFile, string& warningString, string& er
         CDBEnv::VerifyResult r = bitdb.Verify(walletFile, CWalletDB::Recover);
         if (r == CDBEnv::RECOVER_OK)
         {
-            warningString += strprintf(_("Warning: wallet.dat corrupt, data salvaged!"
+            warningString += strprintf(translate("Warning: wallet.dat corrupt, data salvaged!"
                                      " Original wallet.dat saved as wallet.{timestamp}.bak in %s; if"
                                      " your balance or transactions are incorrect you should"
                                      " restore from a backup."), GetDataDir());
         }
         if (r == CDBEnv::RECOVER_FAIL)
-            errorString += _("wallet.dat corrupt, salvage failed");
+            errorString += translate("wallet.dat corrupt, salvage failed");
     }
 
     return true;
@@ -1534,7 +1535,7 @@ isminetype CWallet::GetIsMine(const CTxIn &txin) const
     return isminetype::NO;
 }
 
-CAmount CWallet::GetDebit(const CTxIn &txin, const isminetype& filter) const
+CAmount CWallet::GetDebit(const CTxIn &txin, const isminetype filter) const
 {
     {
         LOCK(cs_wallet);
@@ -1555,7 +1556,7 @@ isminetype CWallet::GetIsMine(const CTxOut& txout) const
     return ::GetIsMine(*this, txout.scriptPubKey);
 }
 
-CAmount CWallet::GetCredit(const CTxOut& txout, const isminetype& filter) const
+CAmount CWallet::GetCredit(const CTxOut& txout, const isminetype filter) const
 {
     if (!MoneyRange(txout.nValue))
         throw runtime_error("CWallet::GetCredit(): value out of range");
@@ -1613,7 +1614,7 @@ bool CWallet::IsFromMe(const CTransaction& tx) const
     return false;
 }
 
-CAmount CWallet::GetDebit(const CTransaction& tx, const isminetype& filter) const
+CAmount CWallet::GetDebit(const CTransaction& tx, const isminetype filter) const
 {
     CAmount nDebit = 0;
     for (const auto& txin : tx.vin)
@@ -1625,7 +1626,7 @@ CAmount CWallet::GetDebit(const CTransaction& tx, const isminetype& filter) cons
     return nDebit;
 }
 
-CAmount CWallet::GetCredit(const CTransaction& tx, const isminetype& filter) const
+CAmount CWallet::GetCredit(const CTransaction& tx, const isminetype filter) const
 {
     CAmount nCredit = 0;
     for (const auto& txout: tx.vout)
@@ -1941,7 +1942,7 @@ int CWalletTx::GetRequestCount() const
 
 // GetAmounts will determine the transparent debits and credits for a given wallet tx.
 void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
-                           list<COutputEntry>& listSent, CAmount& nFee, string& strSentAccount, const isminetype& filter) const
+                           list<COutputEntry>& listSent, CAmount& nFee, string& strSentAccount, const isminetype filter) const
 {
     nFee = 0;
     listReceived.clear();
@@ -1954,7 +1955,7 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 
     // Compute fee if we sent this transaction.
     if (isFromMyTaddr) {
-        CAmount nValueOut = GetValueOut();  // transparent outputs plus all Sprout vpub_old and negative Sapling valueBalance
+        CAmount nValueOut = GetValueOut();  // transparent outputs plus all negative Sapling valueBalance
         CAmount nValueIn = GetShieldedValueIn();
         nFee = nDebit - nValueOut + nValueIn;
     }
@@ -2011,7 +2012,7 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 }
 
 void CWalletTx::GetAccountAmounts(const string& strAccount, CAmount& nReceived,
-                                  CAmount& nSent, CAmount& nFee, const isminetype& filter) const
+                                  CAmount& nSent, CAmount& nFee, const isminetype filter) const
 {
     nReceived = nSent = nFee = 0;
 
@@ -2074,13 +2075,13 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
         while (pindex && nTimeFirstKey && (pindex->GetBlockTime() < (nTimeFirstKey - 7200)))
             pindex = chainActive.Next(pindex);
 
-        ShowProgress(_("Rescanning..."), 0); // show rescan progress in GUI as dialog or on splashscreen, if -rescan on startup
+        ShowProgress(translate("Rescanning..."), 0); // show rescan progress in GUI as dialog or on splashscreen, if -rescan on startup
         double dProgressStart = Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex, false);
         double dProgressTip = Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), chainActive.Tip(), false);
         while (pindex)
         {
             if (pindex->nHeight % 100 == 0 && dProgressTip - dProgressStart > 0.0)
-                ShowProgress(_("Rescanning..."), max(1, min(99, (int)((Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex, false) - dProgressStart) / (dProgressTip - dProgressStart) * 100))));
+                ShowProgress(translate("Rescanning..."), max(1, min(99, (int)((Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex, false) - dProgressStart) / (dProgressTip - dProgressStart) * 100))));
 
             CBlock block;
             ReadBlockFromDisk(block, pindex, Params().GetConsensus());
@@ -2127,7 +2128,7 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
             }
         }
 
-        ShowProgress(_("Rescanning..."), 100); // hide progress dialog in GUI
+        ShowProgress(translate("Rescanning..."), 100); // hide progress dialog in GUI
     }
     return ret;
 }
@@ -2184,7 +2185,7 @@ set<uint256> CWalletTx::GetConflicts() const
     return result;
 }
 
-CAmount CWalletTx::GetDebit(const isminetype& filter) const
+CAmount CWalletTx::GetDebit(const isminetype filter) const
 {
     if (vin.empty())
         return 0;
@@ -2215,7 +2216,7 @@ CAmount CWalletTx::GetDebit(const isminetype& filter) const
     return debit;
 }
 
-CAmount CWalletTx::GetCredit(const isminetype& filter) const
+CAmount CWalletTx::GetCredit(const isminetype filter) const
 {
     // Must wait until coinbase is safely deep enough in the chain before valuing it
     if (IsCoinBase() && GetBlocksToMaturity() > 0)
@@ -2825,7 +2826,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     {
         if (nValue < 0 || recipient.nAmount < 0)
         {
-            strFailReason = _("Transaction amounts must be positive");
+            strFailReason = translate("Transaction amounts must be positive");
             return false;
         }
         nValue += recipient.nAmount;
@@ -2835,7 +2836,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     }
     if (vecSend.empty() || nValue < 0)
     {
-        strFailReason = _("Transaction amounts must be positive");
+        strFailReason = translate("Transaction amounts must be positive");
         return false;
     }
 
@@ -2853,7 +2854,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     {
         if (txNew.nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD)
         {
-            strFailReason = _("nExpiryHeight must be less than TX_EXPIRY_HEIGHT_THRESHOLD.");
+            strFailReason = translate("nExpiryHeight must be less than TX_EXPIRY_HEIGHT_THRESHOLD.");
             return false;
         }
     }
@@ -2918,17 +2919,17 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         }
                     }
 
-                    if (txout.IsDust(::minRelayTxFee))
+                    if (txout.IsDust(gl_ChainOptions.minRelayTxFee))
                     {
                         if (recipient.fSubtractFeeFromAmount && nFeeRet > 0)
                         {
                             if (txout.nValue < 0)
-                                strFailReason = _("The transaction amount is too small to pay the fee");
+                                strFailReason = translate("The transaction amount is too small to pay the fee");
                             else
-                                strFailReason = _("The transaction amount is too small to send after the fee has been deducted");
+                                strFailReason = translate("The transaction amount is too small to send after the fee has been deducted");
                         }
                         else
-                            strFailReason = _("Transaction amount too small");
+                            strFailReason = translate("Transaction amount too small");
                         return false;
                     }
                     txNew.vout.push_back(txout);
@@ -2941,7 +2942,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 bool fNeedCoinbaseCoins = false;
                 if (!SelectCoins(nTotalValue, setCoins, nValueIn, fOnlyCoinbaseCoins, fNeedCoinbaseCoins, coinControl))
                 {
-                    strFailReason = _("Insufficient funds");
+                    strFailReason = translate("Insufficient funds");
                     return false;
                 }
                 for (const auto &[pTx, nOut] : setCoins)
@@ -2996,18 +2997,18 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     // We do not move dust-change to fees, because the sender would end up paying more than requested.
                     // This would be against the purpose of the all-inclusive feature.
                     // So instead we raise the change and deduct from the recipient.
-                    if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(::minRelayTxFee))
+                    if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(gl_ChainOptions.minRelayTxFee))
                     {
-                        CAmount nDust = newTxOut.GetDustThreshold(::minRelayTxFee) - newTxOut.nValue;
+                        CAmount nDust = newTxOut.GetDustThreshold(gl_ChainOptions.minRelayTxFee) - newTxOut.nValue;
                         newTxOut.nValue += nDust; // raise change until no more dust
                         for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
                         {
                             if (vecSend[i].fSubtractFeeFromAmount)
                             {
                                 txNew.vout[i].nValue -= nDust;
-                                if (txNew.vout[i].IsDust(::minRelayTxFee))
+                                if (txNew.vout[i].IsDust(gl_ChainOptions.minRelayTxFee))
                                 {
-                                    strFailReason = _("The transaction amount is too small to send after the fee has been deducted");
+                                    strFailReason = translate("The transaction amount is too small to send after the fee has been deducted");
                                     return false;
                                 }
                                 break;
@@ -3017,7 +3018,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                     // Never create dust outputs; if we would, just
                     // add the dust to the fee.
-                    if (newTxOut.IsDust(::minRelayTxFee))
+                    if (newTxOut.IsDust(gl_ChainOptions.minRelayTxFee))
                     {
                         nFeeRet += nChange;
                         reservekey.ReturnKey();
@@ -3058,7 +3059,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                     if (!signSuccess)
                     {
-                        strFailReason = _("Signing transaction failed");
+                        strFailReason = translate("Signing transaction failed");
                         return false;
                     } else
                         UpdateTransaction(txNew, nIn, sigdata);
@@ -3081,7 +3082,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                 // Limit size
                 if (nBytes >= static_cast<size_t>(max_tx_size))
                 {
-                    strFailReason = _("Transaction too large");
+                    strFailReason = translate("Transaction too large");
                     return false;
                 }
 
@@ -3105,10 +3106,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                 // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
                 // because we must be at the maximum allowed fee.
-                if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes))
+                if (nFeeNeeded < gl_ChainOptions.minRelayTxFee.GetFee(nBytes))
                 {
                     strFailReason = strprintf("Transaction too large for fee policy: fee needed = %s; minRelayTxFee for %zu bytes is set to %s",
-                                              FormatMoney(nFeeNeeded), nBytes, FormatMoney(::minRelayTxFee.GetFee(nBytes)));
+                                              FormatMoney(nFeeNeeded), nBytes, FormatMoney(gl_ChainOptions.minRelayTxFee.GetFee(nBytes)));
                     return false;
                 }
 
@@ -3180,23 +3181,23 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 CAmount CWallet::GetMinimumFee(const size_t nTxBytes, unsigned int nConfirmTarget, const CTxMemPool& pool)
 {
     // payTxFee is user-set "I want to pay this much"
-    CAmount nFeeNeeded = payTxFee.GetFee(nTxBytes);
+    CAmount nFeeNeededPat = payTxFee.GetFee(nTxBytes);
     // user selected total at least (default=true)
-    if (fPayAtLeastCustomFee && nFeeNeeded > 0 && nFeeNeeded < payTxFee.GetFeePerK())
-        nFeeNeeded = payTxFee.GetFeePerK();
+    if (fPayAtLeastCustomFee && nFeeNeededPat > 0 && nFeeNeededPat < payTxFee.GetFeePerK())
+        nFeeNeededPat = payTxFee.GetFeePerK();
     // User didn't set: use -txconfirmtarget to estimate...
-    if (nFeeNeeded == 0)
-        nFeeNeeded = pool.estimateFee(nConfirmTarget).GetFee(nTxBytes);
+    if (nFeeNeededPat == 0)
+        nFeeNeededPat = pool.estimateFee(nConfirmTarget).GetFee(nTxBytes);
     // ... unless we don't have enough mempool data, in which case fall back to a hard-coded fee
-    if (nFeeNeeded == 0)
-        nFeeNeeded = minTxFee.GetFee(nTxBytes);
+    if (nFeeNeededPat == 0)
+        nFeeNeededPat = minTxFee.GetFee(nTxBytes);
     // prevent user from paying a non-sense fee (like 1 patoshi): 0 < fee < minRelayFee
-    if (nFeeNeeded < ::minRelayTxFee.GetFee(nTxBytes))
-        nFeeNeeded = ::minRelayTxFee.GetFee(nTxBytes);
+    if (nFeeNeededPat < gl_ChainOptions.minRelayTxFee.GetFee(nTxBytes))
+        nFeeNeededPat = gl_ChainOptions.minRelayTxFee.GetFee(nTxBytes);
     // But always obey the maximum
-    if (nFeeNeeded > maxTxFee)
-        nFeeNeeded = maxTxFee;
-    return nFeeNeeded;
+    if (nFeeNeededPat > maxTxFee)
+        nFeeNeededPat = maxTxFee;
+    return nFeeNeededPat;
 }
 
 DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
@@ -3445,7 +3446,7 @@ int64_t CWallet::GetOldestKeyPoolTime()
     return keypool.nTime;
 }
 
-BalanceMap_t CWallet::GetAddressBalances(const isminetype& isMineFilter)
+BalanceMap_t CWallet::GetAddressBalances(const isminetype isMineFilter)
 {
     BalanceMap_t balanceMap;
     {

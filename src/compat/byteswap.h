@@ -1,15 +1,11 @@
 // Copyright (c) 2014 The Bitcoin developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_COMPAT_BYTESWAP_H
-#define BITCOIN_COMPAT_BYTESWAP_H
-
+#pragma once
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
 
-#include <stdint.h>
+#include <cstdint>
 
 #if defined(HAVE_BYTESWAP_H)
 #include <byteswap.h>
@@ -43,5 +39,3 @@ inline uint64_t bswap_64(uint64_t x)
           | ((x & 0x00000000000000ffull) << 56));
 }
 #endif // HAVE_DECL_BSWAP64
-
-#endif // BITCOIN_COMPAT_BYTESWAP_H

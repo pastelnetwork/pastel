@@ -41,8 +41,8 @@ bool isOutIdxValid(string& outIdx, const string &alias, string& strErr)
 
     if(p && *p != '\0')
     {
-        strErr = _("Failed to parse outIndex string") + "\n" +
-                strprintf(_("Alias: %s"), alias);
+        strErr = translate("Failed to parse outIndex string") + "\n" +
+                strprintf(translate("Alias: %s"), alias);
         return false;
     }
     else {
@@ -52,8 +52,8 @@ bool isOutIdxValid(string& outIdx, const string &alias, string& strErr)
             return true;
         }
 
-        strErr = _("Failed to parse outIndex string. Value shall be between 0 and 1000000") + "\n" +
-                strprintf(_("Alias: %s"), alias);
+        strErr = translate("Failed to parse outIndex string. Value shall be between 0 and 1000000") + "\n" +
+                strprintf(translate("Alias: %s"), alias);
         return false;
     }
 
@@ -75,17 +75,17 @@ bool checkIPAddressPort(string& address, const string &alias, const bool checkPo
         if(Params().IsMainNet()) {
             if(port != MAINNET_DEFAULT_PORT)
             {
-                strErr = _("Invalid port detected in masternode.conf") + "\n" +
-                        strprintf(_("Port: %d"), port) + "\n" +
-                        strprintf(_("Alias: %s"), alias) + "\n" +
-                        strprintf(_("(must be %hu for mainnet)"), MAINNET_DEFAULT_PORT);
+                strErr = translate("Invalid port detected in masternode.conf") + "\n" +
+                        strprintf(translate("Port: %d"), port) + "\n" +
+                        strprintf(translate("Alias: %s"), alias) + "\n" +
+                        strprintf(translate("(must be %hu for mainnet)"), MAINNET_DEFAULT_PORT);
                 return false;
             }
         } else if (port == MAINNET_DEFAULT_PORT)
         {
-            strErr = _("Invalid port detected in masternode.conf") + "\n" +
-                    strprintf(_("Alias: %s"), alias) + "\n" +
-                     strprintf(_("(%hu could be used only on mainnet)"), MAINNET_DEFAULT_PORT);
+            strErr = translate("Invalid port detected in masternode.conf") + "\n" +
+                    strprintf(translate("Alias: %s"), alias) + "\n" +
+                     strprintf(translate("(%hu could be used only on mainnet)"), MAINNET_DEFAULT_PORT);
             return false;
         }
     }

@@ -62,7 +62,7 @@ public:
         READWRITE(txval);
     }
 
-    bool operator==(const CSerializeMethodsTestSingle& rhs)
+    bool operator==(const CSerializeMethodsTestSingle& rhs) const
     {
         return  intval == rhs.intval && \
                 boolval == rhs.boolval && \
@@ -432,18 +432,18 @@ TEST(test_serialize, class_methods)
     CSerializeMethodsTestMany methodtest4;
     CDataStream ss(SER_DISK, PROTOCOL_VERSION);
     // EXPECT_EQ needs to rewrite operator==
-    EXPECT_TRUE(methodtest1 == methodtest2);
+    EXPECT_EQ(methodtest1, methodtest2);
     ss << methodtest1;
     ss >> methodtest4;
     ss << methodtest2;
     ss >> methodtest3;
-    EXPECT_TRUE(methodtest1 == methodtest2);
-    EXPECT_TRUE(methodtest2 == methodtest3);
-    EXPECT_TRUE(methodtest3 == methodtest4);
+    EXPECT_EQ(methodtest1, methodtest2);
+    EXPECT_EQ(methodtest2, methodtest3);
+    EXPECT_EQ(methodtest3, methodtest4);
 
     CDataStream ss2(SER_DISK, PROTOCOL_VERSION, intval, boolval, stringval, FLATDATA(charstrval), txval);
     ss2 >> methodtest3;
-    EXPECT_TRUE(methodtest3 == methodtest4);
+    EXPECT_EQ(methodtest3, methodtest4);
 }
 
 // protected serialization

@@ -1,8 +1,12 @@
 #include <sodium.h>
-#include <mock_validation_state.h>
 
-#include <main.h>
+#include <consensus/upgrades.h>
 #include <primitives/transaction.h>
+#include <utilstrencodings.h>
+#include <chain_options.h>
+#include <accept_to_mempool.h>
+
+#include <mock_validation_state.h>
 #include <gtest/pastel_gtest_utils.h>
 
 using namespace testing;
@@ -631,6 +635,7 @@ TEST(checktransaction_tests, OverwinteredContextualCreateTx)
 
     ContextualCreateTxCheck(consensusParams, overwinterActivationHeight - 1,
         1, false, 0, 0);
+    const auto expiryDelta = gl_ChainOptions.expiryDelta;
     // Overwinter activates
     ContextualCreateTxCheck(consensusParams, overwinterActivationHeight,
         OVERWINTER_TX_VERSION, true, OVERWINTER_VERSION_GROUP_ID, overwinterActivationHeight + expiryDelta);

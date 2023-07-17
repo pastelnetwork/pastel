@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -67,9 +67,9 @@ public:
     {
         BN_ULONG n = BN_get_word(bn);
         if (!BN_is_negative(bn))
-            return (n > (BN_ULONG)std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : n);
-        else
-            return (n > (BN_ULONG)std::numeric_limits<int>::max() ? std::numeric_limits<int>::min() : -(int)n);
+            return (n > (BN_ULONG)std::numeric_limits<int>::max() ? std::numeric_limits<int>::max() : static_cast<int>(n));
+
+        return (n > (BN_ULONG)std::numeric_limits<int>::max() ? std::numeric_limits<int>::min() : -static_cast<int>(n));
     }
 
     void setint64(int64_t sn)
@@ -109,18 +109,18 @@ public:
             }
             *p++ = c;
         }
-        unsigned int nSize = p - (pch + 4);
+        uint32_t nSize = static_cast<uint32_t>(p - (pch + 4));
         pch[0] = (nSize >> 24) & 0xff;
         pch[1] = (nSize >> 16) & 0xff;
         pch[2] = (nSize >> 8) & 0xff;
         pch[3] = (nSize) & 0xff;
-        BN_mpi2bn(pch, p - pch, bn);
+        BN_mpi2bn(pch, static_cast<int>(p - pch), bn);
     }
 
     void setvch(const v_uint8& vch)
     {
         v_uint8 vch2(vch.size() + 4);
-        unsigned int nSize = vch.size();
+        uint32_t nSize = static_cast<uint32_t>(vch.size());
         // BIGNUM's byte stream format expects 4 bytes of
         // big endian size data info at the front
         vch2[0] = (nSize >> 24) & 0xff;
@@ -129,7 +129,7 @@ public:
         vch2[3] = (nSize >> 0) & 0xff;
         // swap data to big endian
         reverse_copy(vch.begin(), vch.end(), vch2.begin() + 4);
-        BN_mpi2bn(&vch2[0], vch2.size(), bn);
+        BN_mpi2bn(&vch2[0], static_cast<int>(vch2.size()), bn);
     }
 
     v_uint8 getvch() const

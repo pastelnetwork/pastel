@@ -22,11 +22,11 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **/
 
-#include "ascii85.h"
-
-#include <stdint.h>
-#include "util.h"
+#include <cstdint>
+#include <util.h>
 #include <stdbool.h>
+
+#include <ascii85.h>
 
 // From Wikipedia re: Ascii85 length...
 // Adobe adopted the basic btoa encoding, but with slight changes, and gave it the name Ascii85.

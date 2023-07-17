@@ -62,12 +62,6 @@ static constexpr unsigned int MAX_REORG_LENGTH = COINBASE_MATURITY - 1;
 static constexpr unsigned int MAX_P2SH_SIGOPS = 15;
 /** The maximum number of sigops we're willing to relay/mine in a single tx */
 static constexpr unsigned int MAX_STANDARD_TX_SIGOPS = MAX_BLOCK_SIGOPS/5;
-/** Default for -minrelaytxfee, minimum relay fee for transactions */
-static constexpr unsigned int DEFAULT_MIN_RELAY_TX_FEE = 100;
-/** Default for -txexpirydelta, in number of blocks */
-static constexpr uint32_t DEFAULT_TX_EXPIRY_DELTA = 20;
-/** The number of blocks within expiry height when a tx is considered to be expiring soon */
-static constexpr uint32_t TX_EXPIRING_SOON_THRESHOLD = 3;
 /** The maximum size of a blk?????.dat file (since 0.8) */
 static constexpr unsigned int MAX_BLOCKFILE_SIZE = 0x8000000; // 128 MiB
 /** The pre-allocation chunk size for blk?????.dat files (since 0.8) */
@@ -125,7 +119,6 @@ extern bool fAddressIndex;
 extern bool fSpentIndex;
 
 extern std::string STR_MSG_MAGIC;
-extern unsigned int expiryDelta;
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern CTxMemPool mempool;
@@ -145,7 +138,6 @@ extern bool fCheckBlockIndex;
 extern bool fCheckpointsEnabled;
 
 extern size_t nCoinCacheUsage;
-extern CFeeRate minRelayTxFee;
 extern bool fAlerts;
 extern int64_t nMaxTipAge;
 
@@ -229,10 +221,6 @@ bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom);
  */
 bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle);
 
-/** Check whether we are doing an initial block download (synchronizing from disk or network) */
-using funcIsInitialBlockDownload_t = std::function<bool(const Consensus::Params& params)>;
-extern funcIsInitialBlockDownload_t fnIsInitialBlockDownload;
-
 /** Try to detect Partition (network isolation) attacks against us */
 void PartitionCheck(
     const Consensus::Params& consensusParams,
@@ -283,15 +271,6 @@ void FlushStateToDisk();
 /** Prune block files and flush state to disk. */
 void PruneAndFlush();
 
-/** (try to) add transaction to memory pool **/
-bool AcceptToMemoryPool(
-     const CChainParams& chainparams,
-     CTxMemPool& pool, CValidationState &state,
-     const CTransaction &tx,
-     bool fLimitFree,
-     bool* pfMissingInputs, bool fRejectAbsurdFee=false);
-
-
 struct CNodeStateStats {
     int nMisbehavior;
     int nSyncHeight;
@@ -327,25 +306,6 @@ struct CDiskTxPos : public CDiskBlockPos
 
 CAmount GetMinRelayFee(const CTransaction& tx, const size_t nBytes, bool fAllowFree);
 
-/**
- * Check transaction inputs, and make sure any
- * pay-to-script-hash transactions are evaluating IsStandard scripts
- * 
- * Why bother? To avoid denial-of-service attacks; an attacker
- * can submit a standard HASH... OP_EQUAL transaction,
- * which will get accepted into blocks. The redemption
- * script can be anything; an attacker could use a very
- * expensive-to-check-upon-redemption script like:
- *   DUP CHECKSIG DROP ... repeated 100 times... OP_1
- */
-
-/** 
- * Check for standard transaction types
- * @param[in] mapInputs    Map of previous transactions that have outputs we're spending
- * @return True if all inputs (scriptSigs) use only standard transaction forms
- */
-bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs, uint32_t consensusBranchId);
-
 /** 
  * Count ECDSA signature operations the old-fashioned (pre-0.6) way
  * @return number of sigops this transaction's outputs will produce when spent
@@ -373,28 +333,8 @@ bool ContextualCheckInputs(const CTransaction& tx, CValidationState &state, cons
                            const Consensus::Params& consensusParams, uint32_t consensusBranchId,
                            std::vector<CScriptCheck> *pvChecks = nullptr);
 
-/** Check a transaction contextually against a set of consensus rules */
-bool ContextualCheckTransaction(
-    const CTransaction& tx,
-    CValidationState &state,
-    const CChainParams& chainparams,
-    const int nHeight,
-    funcIsInitialBlockDownload_t isInitBlockDownload = fnIsInitialBlockDownload);
-
-
 /** Apply the effects of this transaction on the UTXO set represented by view */
 void UpdateCoins(const CTransaction& tx, CCoinsViewCache& inputs, int nHeight);
-
-/** Transaction validation functions */
-
-/** Context-independent validity checks */
-bool CheckTransaction(const CTransaction& tx, CValidationState& state, libzcash::ProofVerifier& verifier);
-bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidationState &state);
-
-/** Check for standard transaction types
- * @return True if all outputs (scriptPubKeys) use only standard transaction forms
- */
-bool IsStandardTx(const CTransaction& tx, std::string& reason, const CChainParams& chainarams, const int nHeight = 0);
 
 namespace Consensus {
 
@@ -406,33 +346,6 @@ namespace Consensus {
 bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoinsViewCache& inputs, int nSpendHeight, const Consensus::Params& consensusParams);
 
 } // namespace Consensus
-
-/**
- * Check if transaction is final and can be included in a block with the
- * specified height and time. Consensus critical.
- */
-bool IsFinalTx(const CTransaction &tx, const uint32_t nBlockHeight, int64_t nBlockTime);
-
-/**
- * Check if transaction is expired and can be included in a block with the
- * specified height. Consensus critical.
- */
-bool IsExpiredTx(const CTransaction &tx, int nBlockHeight);
-
-/**
- * Check if transaction is expiring soon.  If yes, not propagating the transaction
- * can help DoS mitigation.  This is not consensus critical.
- */
-bool IsExpiringSoonTx(const CTransaction &tx, int nNextBlockHeight);
-
-/**
- * Check if transaction will be final in the next block to be created.
- *
- * Calls IsFinalTx() with current block height and appropriate block time.
- *
- * See consensus/consensus.h for flag definitions.
- */
-bool CheckFinalTx(const CTransaction &tx, int flags = -1);
 
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
 
@@ -625,8 +538,6 @@ extern CBlockTreeDB *pblocktree;
 int GetSpendHeight(const CCoinsViewCache& inputs);
 
 int GetChainHeight();
-/** Return a CMutableTransaction with contextual default values based on set of consensus rules at height */
-CMutableTransaction CreateNewContextualCMutableTransaction(const Consensus::Params& consensusParams, const uint32_t nHeight);
 
 //INGEST->!!!
 constexpr uint32_t INGEST_MINING_BLOCK = 1;

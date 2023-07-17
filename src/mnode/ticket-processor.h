@@ -23,7 +23,6 @@
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/ticket.h>
 
-constexpr int DATASTREAM_VERSION = 1;
 constexpr uint8_t TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
 constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
 
@@ -61,6 +60,20 @@ typedef struct _search_thumbids_t
 
 // Check if json value passes fuzzy search filter
 bool isValuePassFuzzyFilter(const nlohmann::json& jProp, const std::string& sPropFilterValue) noexcept;
+
+typedef struct _ticket_parse_data_t
+{
+    CTransaction tx;
+    std::unique_ptr<CMutableTransaction> mtx;
+    uint256 hashBlock;
+    uint32_t nTicketHeight = std::numeric_limits<uint32_t>::max();
+    TicketID ticket_id = TicketID::InvalidID;
+    CCompressedDataStream data_stream;
+
+    _ticket_parse_data_t() :
+        data_stream(SER_NETWORK, DATASTREAM_VERSION)
+    {}
+} ticket_parse_data_t;
 
 // Ticket  Processor ////////////////////////////////////////////////////////////////////////////////////////////////////
 class CPastelTicketProcessor
@@ -157,15 +170,11 @@ public:
     // search for NFT registration tickets, calls functor for each matching ticket
     void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
 
-    static size_t CreateP2FMSScripts(const CDataStream& input_stream, std::vector<CScript>& vOutScripts);
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, 
-        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
+        const CAmount nPricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
     static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, 
-        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
-    static bool CreateP2FMSTransactionWithExtra(const CDataStream& input_data, 
-        const std::vector<CTxOut>& extraOutputs, const CAmount extraAmount, CMutableTransaction& tx_out, 
-        const CAmount pricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
+        const CAmount nPricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
 #endif // ENABLE_WALLET
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, std::string& error_ret);
     static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
@@ -194,13 +203,16 @@ public:
         const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif // FAKE_TICKET
 
+    static bool GetTicketToStream(const uint256& txid, std::string& error,
+        ticket_parse_data_t &data, const bool bUncompressData = true);
+
     // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CCompressedDataStream object.
-    static bool preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream, 
-        TicketID& ticket_id, std::string& error, const bool bLog = true);
+    static bool preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream,
+        TicketID& ticket_id, std::string& error, const bool bLog = true, const bool bUncompressData = true);
 
     // Get mempool tracker for ticket transactions
     static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();
 
-private:
+protected:
     static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, std::unique_ptr<CPastelTicket>&& ticket) noexcept;
 };

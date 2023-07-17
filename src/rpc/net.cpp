@@ -6,11 +6,11 @@
 #include <univalue.h>
 
 #include <rpc/server.h>
-
 #include <clientversion.h>
 #include <main.h>
 #include <net.h>
 #include <netbase.h>
+#include <chain_options.h>
 #include <protocol.h>
 #include <sync.h>
 #include <timedata.h>
@@ -516,7 +516,7 @@ Examples:
     obj.pushKV("timeoffset",    GetTimeOffset());
     obj.pushKV("connections",   static_cast<uint64_t>(vNodes.size()));
     obj.pushKV("networks",      GetNetworksInfo());
-    obj.pushKV("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK()));
+    obj.pushKV("relayfee",      ValueFromAmount(gl_ChainOptions.minRelayTxFee.GetFeePerK()));
     UniValue localAddresses(UniValue::VARR);
     {
         LOCK(cs_mapLocalHost);

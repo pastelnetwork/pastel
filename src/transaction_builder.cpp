@@ -1,11 +1,12 @@
 // Copyright (c) 2018 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include <transaction_builder.h>
 
-#include <main.h>
+#include <consensus/upgrades.h>
+#include <accept_to_mempool.h>
 #include <pubkey.h>
 #include <rpc/protocol.h>
 #include <script/sign.h>

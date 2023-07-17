@@ -1,11 +1,9 @@
+#pragma once
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_CRYPTO_SHA1_H
-#define BITCOIN_CRYPTO_SHA1_H
-
-#include <stdint.h>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cstdint>
 #include <stdlib.h>
 
 /** A hasher class for SHA1. */
@@ -24,5 +22,3 @@ public:
     void Finalize(unsigned char hash[OUTPUT_SIZE]);
     CSHA1& Reset();
 };
-
-#endif // BITCOIN_CRYPTO_SHA1_H

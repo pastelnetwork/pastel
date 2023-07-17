@@ -1,14 +1,17 @@
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #include <hash.h>
 #include <txmempool.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/tickets/username-change.h>
+#include <mnode/p2fms-txbuilder.h>
+
 #include <test_mempool_entryhelper.h>
+#include <test_mnode/mock_p2fms_txbuilder.h>
 #include <test_mnode/test_ticket_mempool.h>
 
 using namespace testing;
@@ -39,42 +42,19 @@ void MockTicketTxMemPoolTracker::Mock_AddTestTxids(const TicketID ticket_id, con
     }
 }
 
-CMutableTransaction CreateTicketTransaction(const TicketID ticket_id, const function<void(CPastelTicket& tkt)>& fnSetTicketData)
-{
-    CMutableTransaction txTicket;
-    auto pTicket = CPastelTicketProcessor::CreateTicket(ticket_id);
-    if (!pTicket)
-        return txTicket;
-    fnSetTicketData(*pTicket);
-    CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    data_stream << to_integral_type<TicketID>(ticket_id);
-    data_stream << *pTicket;
-    vector<CScript> vOutScripts;
-
-    size_t nInputDataSize = CPastelTicketProcessor::CreateP2FMSScripts(data_stream, vOutScripts);
-    txTicket.vout.resize(vOutScripts.size() + 1);
-    for (int i = 0; i < vOutScripts.size(); i++) {
-        txTicket.vout[i].scriptPubKey = vOutScripts[i];
-        txTicket.vout[i].nValue = 10000LL;
-    }
-    txTicket.vout[vOutScripts.size()].nValue = 0; // no change
-    return txTicket;
-}
-
-CMutableTransaction CreateTestTransaction()
-{
-    CMutableTransaction tx;
-    tx.vin.resize(1);
-    tx.vin[0].scriptSig = CScript() << OP_11;
-    tx.vout.resize(1);
-    tx.vout[0].scriptPubKey = CScript() << OP_11 << OP_EQUAL;
-    tx.vout[0].nValue = 100000LL;
-    return tx;
-}
-
-class TestTicketTxMemPoolTracker : public Test
+class TestTicketTxMemPoolTracker : 
+    public MockP2FMS_TxBuilder,
+    public Test
 {
 public:
+    TestTicketTxMemPoolTracker()
+    {}
+
+    static void SetUpTestCase()
+	{
+        SelectParams(ChainNetwork::REGTEST);
+    }
+
     void SetUp() override
     {
         m_MemPoolTracker = make_shared<MockTicketTxMemPoolTracker>();
@@ -88,11 +68,13 @@ public:
 
 protected:
     shared_ptr<MockTicketTxMemPoolTracker> m_MemPoolTracker;
-
 };
 
 TEST_F(TestTicketTxMemPoolTracker, mempool_addremove)
 {
+	EXPECT_CALL(*this, CreateP2FMSScripts())
+		.WillRepeatedly(Invoke(this, &MockP2FMS_TxBuilder::Call_CreateP2FMSScripts));
+
     string error;
 
     auto pool = make_unique<CTxMemPool>(CFeeRate(0));

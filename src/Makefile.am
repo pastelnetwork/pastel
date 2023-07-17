@@ -159,6 +159,7 @@ MNODE_CPP =\
   mnode/mnode-governance.cpp\
   mnode/mnode-messageproc.cpp\
   mnode/ticket-processor.cpp\
+  mnode/p2fms-txbuilder.cpp\
   mnode/ticket-mempool-processor.cpp\
   mnode/ticket-txmempool.cpp\
   mnode/mnode-notificationinterface.cpp\
@@ -217,6 +218,7 @@ MNODE_H = \
   mnode/mnode-governance.h\
   mnode/mnode-messageproc.h\
   mnode/ticket-processor.h\
+  mnode/p2fms-txbuilder.h\
   mnode/ticket-mempool-processor.h\
   mnode/ticket-txmempool.h\
   mnode/mnode-controller.h\
@@ -238,6 +240,7 @@ PASTELID_H =\
 .PHONY: FORCE collate-libsnark check-symbols check-security
 # bitcoin core #
 BITCOIN_CORE_H = \
+  accept_to_mempool.h \
   addrman.h \
   alert.h \
   amount.h \
@@ -254,6 +257,7 @@ BITCOIN_CORE_H = \
   bech32.h \
   bloom.h \
   chain.h \
+  chain_options.h \
   chainparams.h \
   chainparamsbase.h \
   chainparamsseeds.h \
@@ -275,6 +279,7 @@ BITCOIN_CORE_H = \
   core_memusage.h \
   datacompressor.h\
   deprecation.h \
+  ecc_context.h \
   enum_util.h \
   fs.h \
   hash.h \
@@ -389,6 +394,7 @@ libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES) $(EVENT_CFLAGS)
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_server_a_SOURCES = \
   sendalert.cpp \
+  accept_to_mempool.cpp \
   addrman.cpp \
   alert.cpp \
   alertkeys.h \
@@ -396,6 +402,7 @@ libbitcoin_server_a_SOURCES = \
   asyncrpcqueue.cpp \
   bloom.cpp \
   chain.cpp \
+  chain_options.cpp \
   checkpoints.cpp \
   deprecation.cpp \
   httprpc.cpp \
@@ -519,6 +526,7 @@ libbitcoin_common_a_SOURCES = \
   core_read.cpp \
   core_write.cpp \
   datacompressor.cpp\
+  ecc_context.cpp\
   hash.cpp \
   key.cpp \
   key_io.cpp \

@@ -6,10 +6,12 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdlib.h>
 #include <string>
+#include <vector>
 
 #include <serialize.h>
 
 typedef int64_t CAmount;
+typedef std::vector<CAmount> v_amounts;
 
 // block reward
 static constexpr CAmount REWARD = 6'250;
@@ -46,12 +48,16 @@ private:
     CAmount m_nPatoshisPerK; // unit is patoshis-per-1,000-bytes
 
 public:
-    CFeeRate() : m_nPatoshisPerK(0) { }
-    explicit CFeeRate(const CAmount& _nPatoshisPerK): m_nPatoshisPerK(_nPatoshisPerK) { }
-    CFeeRate(const CAmount& nFeePaid, size_t nSize);
+    CFeeRate() :
+        m_nPatoshisPerK(0)
+    {}
+    explicit CFeeRate(const CAmount _nPatoshisPerK) :
+        m_nPatoshisPerK(_nPatoshisPerK)
+    {}
+    CFeeRate(const CAmount nFeePaid, size_t nSize);
     CFeeRate(const CFeeRate& other) { m_nPatoshisPerK = other.m_nPatoshisPerK; }
 
-    CAmount GetFee(const size_t size) const noexcept; // unit returned is patoshis
+    CAmount GetFee(const size_t nSize) const noexcept; // unit returned is patoshis
     CAmount GetFeePerK() const noexcept { return GetFee(1000); } // patoshis-per-1000-bytes
 
     friend bool operator<(const CFeeRate& a, const CFeeRate& b) noexcept { return a.m_nPatoshisPerK < b.m_nPatoshisPerK; }

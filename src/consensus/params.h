@@ -5,6 +5,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <optional>
+#include <functional>
 #include <limits>
 
 #include <uint256.h>
@@ -135,3 +136,5 @@ struct Params
 };
 
 } // namespace Consensus
+
+using funcIsInitialBlockDownload_t = std::function<bool(const Consensus::Params& params)>;
