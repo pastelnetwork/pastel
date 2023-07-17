@@ -8,6 +8,7 @@
 #include <clientversion.h>
 #include <consensus/consensus.h>
 #include <consensus/validation.h>
+#include <accept_to_mempool.h>
 #include <main.h>
 #include <policy/fees.h>
 #include <streams.h>
@@ -191,7 +192,8 @@ void CTxMemPool::removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMem
     for (auto it = mapTx.cbegin(); it != mapTx.cend(); it++)
     {
         const auto& tx = it->GetTx();
-        if (!CheckFinalTx(tx, flags)) {
+        if (!CheckFinalTx(tx, flags))
+        {
             transactionsToRemove.emplace_back(tx);
         }
         else if (it->GetSpendsCoinbase())

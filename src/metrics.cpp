@@ -9,13 +9,14 @@
 #include <sys/ioctl.h>
 #endif
 #include <unistd.h>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <boost/thread/synchronized_value.hpp>
 
 #include <metrics.h>
 #include <chainparams.h>
 #include <checkpoints.h>
+#include <accept_to_mempool.h>
 #include <main.h>
 #include <ui_interface.h>
 #include <util.h>
@@ -223,7 +224,8 @@ int printStats(bool mining)
     auto localsolps = GetLocalSolPS();
 
     const auto& consensusParams = Params().GetConsensus();
-    if (fnIsInitialBlockDownload(consensusParams)) {
+    if (fnIsInitialBlockDownload(consensusParams))
+    {
         int netheight = EstimateNetHeight(height, tipmediantime, Params());
         int downloadPercent = netheight == 0? netheight: height * 100 / netheight;
         cout << "     " << translate("Downloading blocks") << " | " << height << " / ~" << netheight << " (" << downloadPercent << "%)" << endl;

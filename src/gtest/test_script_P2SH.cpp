@@ -1,8 +1,7 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -11,6 +10,7 @@
 #include <core_io.h>
 #include <key.h>
 #include <keystore.h>
+#include <accept_to_mempool.h>
 #include <main.h>
 #include <script/script.h>
 #include <script/script_error.h>

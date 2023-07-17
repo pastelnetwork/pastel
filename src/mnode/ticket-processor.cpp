@@ -17,6 +17,7 @@
 #include <key_io.h>
 #include <init.h>
 #include <utilstrencodings.h>
+#include <accept_to_mempool.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/tickets-all.h>
 #include <mnode/mnode-controller.h>

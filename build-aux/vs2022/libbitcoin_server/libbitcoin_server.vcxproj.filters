@@ -319,6 +319,9 @@
     <ClCompile Include="..\..\..\src\mnode\p2fms-txbuilder.cpp">
       <Filter>Source Files\mnode</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\accept_to_mempool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -680,6 +683,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h">
       <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\accept_to_mempool.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

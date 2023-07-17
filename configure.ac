@@ -190,13 +190,26 @@ AX_CHECK_COMPILE_FLAG([-Werror],[CXXFLAG_WERROR="-Werror"],[CXXFLAG_WERROR=""])
 
 if test "x$enable_debug" = xyes; then
     CPPFLAGS="$CPPFLAGS -DDEBUG_LOCKORDER"
-    if test "x$GCC" = xyes; then
-        CFLAGS="$CFLAGS -ggdb -O0"
-    fi
-
-    if test "x$GXX" = xyes; then
-        CXXFLAGS="$CXXFLAGS -ggdb -O0"
-    fi
+    case $host in
+      *mingw*)
+        if test "x$GCC" = xyes; then
+          CFLAGS="$CFLAGS -g1 -O1"
+        fi
+ 
+        if test "x$GXX" = xyes; then
+          CXXFLAGS="$CXXFLAGS -g1 -O1"
+        fi
+      ;;
+      *)
+        if test "x$GCC" = xyes; then
+          CFLAGS="$CFLAGS -ggdb -O0"
+        fi
+ 
+        if test "x$GXX" = xyes; then
+          CXXFLAGS="$CXXFLAGS -ggdb -O0"
+        fi
+      ;;
+    esac
 fi
 
 ERROR_CXXFLAGS=

@@ -4,7 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <stdint.h>
+#include <cstdint>
 #include <variant>
 
 #include <univalue.h>
@@ -19,6 +19,7 @@
 #include <timedata.h>
 #include <txmempool.h>
 #include <util.h>
+#include <chain_options.h>
 #include <script/scripttype.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
@@ -109,7 +110,7 @@ Examples:
         obj.pushKV("unlocked_until", nWalletUnlockTime);
     obj.pushKV("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK()));
 #endif
-    obj.pushKV("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK()));
+    obj.pushKV("relayfee",      ValueFromAmount(gl_ChainOptions.minRelayTxFee.GetFeePerK()));
     obj.pushKV("errors",        GetWarnings("statusbar"));
     return obj;
 }

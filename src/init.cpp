@@ -27,8 +27,8 @@
 #endif
 #include <librustzcash.h>
 
-
 #include <init.h>
+#include <chain_options.h>
 #include <crypto/common.h>
 #include <addrman.h>
 #include <amount.h>
@@ -39,6 +39,7 @@
 #include <httpserver.h>
 #include <httprpc.h>
 #include <key.h>
+#include <accept_to_mempool.h>
 #include <main.h>
 #include <str_utils.h>
 #include <metrics.h>
@@ -471,7 +472,7 @@ std::string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-maxtipage=<n>", strprintf("Maximum tip age in seconds to consider node in initial block download (default: %u)", DEFAULT_MAX_TIP_AGE));
     }
     strUsage += HelpMessageOpt("-minrelaytxfee=<amt>", strprintf(translate("Fees (in %s/kB) smaller than this are considered zero fee for relaying (default: %s)"),
-        CURRENCY_UNIT, FormatMoney(::minRelayTxFee.GetFeePerK())));
+        CURRENCY_UNIT, FormatMoney(gl_ChainOptions.minRelayTxFee.GetFeePerK())));
     strUsage += HelpMessageOpt("-printtoconsole", translate("Send trace/debug info to console instead of debug.log file"));
     if (showDebug)
     {
@@ -1026,7 +1027,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     {
         CAmount n = 0;
         if (ParseMoney(mapArgs["-minrelaytxfee"], n) && n > 0)
-            ::minRelayTxFee = CFeeRate(n);
+            gl_ChainOptions.minRelayTxFee = CFeeRate(n);
         else
             return InitError(strprintf(translate("Invalid amount for -minrelaytxfee=<amount>: '%s'"), mapArgs["-minrelaytxfee"]));
     }
@@ -1048,10 +1049,10 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         if (nFeePerK > nHighTransactionFeeWarning)
             InitWarning(translate("Warning: -paytxfee is set very high! This is the transaction fee you will pay if you send a transaction."));
         payTxFee = CFeeRate(nFeePerK, 1000);
-        if (payTxFee < ::minRelayTxFee)
+        if (payTxFee < gl_ChainOptions.minRelayTxFee)
         {
             return InitError(strprintf(translate("Invalid amount for -paytxfee=<amount>: '%s' (must be at least %s)"),
-                                       mapArgs["-paytxfee"], ::minRelayTxFee.ToString()));
+                                       mapArgs["-paytxfee"], gl_ChainOptions.minRelayTxFee.ToString()));
         }
     }
     if (mapArgs.count("-maxtxfee"))
@@ -1062,18 +1063,17 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         if (nMaxFee > nHighTransactionMaxFeeWarning)
             InitWarning(translate("Warning: -maxtxfee is set very high! Fees this large could be paid on a single transaction."));
         maxTxFee = nMaxFee;
-        if (CFeeRate(maxTxFee, 1000) < ::minRelayTxFee)
+        if (CFeeRate(maxTxFee, 1000) < gl_ChainOptions.minRelayTxFee)
         {
             return InitError(strprintf(translate("Invalid amount for -maxtxfee=<amount>: '%s' (must be at least the minrelay fee of %s to prevent stuck transactions)"),
-                                       mapArgs["-maxtxfee"], ::minRelayTxFee.ToString()));
+                                       mapArgs["-maxtxfee"], gl_ChainOptions.minRelayTxFee.ToString()));
         }
     }
     nTxConfirmTarget = static_cast<unsigned int>(GetArg("-txconfirmtarget", DEFAULT_TX_CONFIRM_TARGET));
-    expiryDelta = static_cast<unsigned int>(GetArg("-txexpirydelta", DEFAULT_TX_EXPIRY_DELTA));
+    gl_ChainOptions.expiryDelta = static_cast<unsigned int>(GetArg("-txexpirydelta", DEFAULT_TX_EXPIRY_DELTA));
     uint32_t minExpiryDelta = TX_EXPIRING_SOON_THRESHOLD + 1;
-    if (expiryDelta < minExpiryDelta) {
-        return InitError(strprintf(translate("Invalid value for -expiryDelta='%u' (must be least %u)"), expiryDelta, minExpiryDelta));
-    }
+    if (gl_ChainOptions.expiryDelta < minExpiryDelta)
+        return InitError(strprintf(translate("Invalid value for -expiryDelta='%u' (must be least %u)"), gl_ChainOptions.expiryDelta, minExpiryDelta));
     bSpendZeroConfChange = GetBoolArg("-spendzeroconfchange", true);
     fSendFreeTransactions = GetBoolArg("-sendfreetransactions", false);
 

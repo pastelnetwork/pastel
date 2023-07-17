@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <tuple>
@@ -13,33 +13,34 @@
 
 #include <miner.h>
 #ifdef ENABLE_MINING
-#include "pow/tromp/equi_miner.h"
+#include <pow/tromp/equi_miner.h>
 #endif
 
-#include "amount.h"
-#include "chainparams.h"
-#include "consensus/consensus.h"
-#include "consensus/upgrades.h"
-#include "consensus/validation.h"
+#include <amount.h>
+#include <chainparams.h>
+#include <chain_options.h>
+#include <consensus/consensus.h>
+#include <consensus/upgrades.h>
+#include <consensus/validation.h>
 #ifdef ENABLE_MINING
-#include "crypto/equihash.h"
+#include <crypto/equihash.h>
 #endif
-#include "hash.h"
-#include "key_io.h"
-#include "main.h"
-#include "metrics.h"
-#include "net.h"
-#include "pow.h"
-#include "primitives/transaction.h"
-#include "random.h"
-#include "timedata.h"
-#include "ui_interface.h"
-#include "util.h"
-#include "utilmoneystr.h"
+#include <hash.h>
+#include <key_io.h>
+#include <accept_to_mempool.h>
+#include <metrics.h>
+#include <net.h>
+#include <pow.h>
+#include <primitives/transaction.h>
+#include <random.h>
+#include <timedata.h>
+#include <ui_interface.h>
+#include <util.h>
+#include <utilmoneystr.h>
 #ifdef ENABLE_WALLET
-#include "wallet/wallet.h"
+#include <wallet/wallet.h>
 #endif
-#include "mnode/mnode-validation.h"
+#include <mnode/mnode-validation.h>
 
 using namespace std;
 
@@ -277,7 +278,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             double dPriorityDelta = 0;
             CAmount nFeeDelta = 0;
             mempool.ApplyDeltas(hash, dPriorityDelta, nFeeDelta);
-            if (fSortedByFee && (dPriorityDelta <= 0) && (nFeeDelta <= 0) && (feeRate < ::minRelayTxFee) && (nBlockSize + nTxSize >= nBlockMinSize))
+            if (fSortedByFee && (dPriorityDelta <= 0) && (nFeeDelta <= 0) && (feeRate < gl_ChainOptions.minRelayTxFee) && (nBlockSize + nTxSize >= nBlockMinSize))
                 continue;
 
             // Prioritise by fee once past the priority size or we run out of high-priority

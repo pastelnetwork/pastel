@@ -8,10 +8,9 @@
 #include <random>
 #include <thread>
 #include <variant>
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <wallet/wallet.h>
-
 #include <asyncrpcqueue.h>
 #include <checkpoints.h>
 #include <coincontrol.h>
@@ -19,9 +18,11 @@
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <consensus/consensus.h>
+#include <chain_options.h>
 #include <fs.h>
 #include <init.h>
 #include <key_io.h>
+#include <accept_to_mempool.h>
 #include <main.h>
 #include <net.h>
 #include <rpc/protocol.h>
@@ -2918,7 +2919,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         }
                     }
 
-                    if (txout.IsDust(::minRelayTxFee))
+                    if (txout.IsDust(gl_ChainOptions.minRelayTxFee))
                     {
                         if (recipient.fSubtractFeeFromAmount && nFeeRet > 0)
                         {
@@ -2996,16 +2997,16 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                     // We do not move dust-change to fees, because the sender would end up paying more than requested.
                     // This would be against the purpose of the all-inclusive feature.
                     // So instead we raise the change and deduct from the recipient.
-                    if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(::minRelayTxFee))
+                    if (nSubtractFeeFromAmount > 0 && newTxOut.IsDust(gl_ChainOptions.minRelayTxFee))
                     {
-                        CAmount nDust = newTxOut.GetDustThreshold(::minRelayTxFee) - newTxOut.nValue;
+                        CAmount nDust = newTxOut.GetDustThreshold(gl_ChainOptions.minRelayTxFee) - newTxOut.nValue;
                         newTxOut.nValue += nDust; // raise change until no more dust
                         for (unsigned int i = 0; i < vecSend.size(); i++) // subtract from first recipient
                         {
                             if (vecSend[i].fSubtractFeeFromAmount)
                             {
                                 txNew.vout[i].nValue -= nDust;
-                                if (txNew.vout[i].IsDust(::minRelayTxFee))
+                                if (txNew.vout[i].IsDust(gl_ChainOptions.minRelayTxFee))
                                 {
                                     strFailReason = translate("The transaction amount is too small to send after the fee has been deducted");
                                     return false;
@@ -3017,7 +3018,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                     // Never create dust outputs; if we would, just
                     // add the dust to the fee.
-                    if (newTxOut.IsDust(::minRelayTxFee))
+                    if (newTxOut.IsDust(gl_ChainOptions.minRelayTxFee))
                     {
                         nFeeRet += nChange;
                         reservekey.ReturnKey();
@@ -3105,10 +3106,10 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
 
                 // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
                 // because we must be at the maximum allowed fee.
-                if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes))
+                if (nFeeNeeded < gl_ChainOptions.minRelayTxFee.GetFee(nBytes))
                 {
                     strFailReason = strprintf("Transaction too large for fee policy: fee needed = %s; minRelayTxFee for %zu bytes is set to %s",
-                                              FormatMoney(nFeeNeeded), nBytes, FormatMoney(::minRelayTxFee.GetFee(nBytes)));
+                                              FormatMoney(nFeeNeeded), nBytes, FormatMoney(gl_ChainOptions.minRelayTxFee.GetFee(nBytes)));
                     return false;
                 }
 
@@ -3191,8 +3192,8 @@ CAmount CWallet::GetMinimumFee(const size_t nTxBytes, unsigned int nConfirmTarge
     if (nFeeNeededPat == 0)
         nFeeNeededPat = minTxFee.GetFee(nTxBytes);
     // prevent user from paying a non-sense fee (like 1 patoshi): 0 < fee < minRelayFee
-    if (nFeeNeededPat < ::minRelayTxFee.GetFee(nTxBytes))
-        nFeeNeededPat = ::minRelayTxFee.GetFee(nTxBytes);
+    if (nFeeNeededPat < gl_ChainOptions.minRelayTxFee.GetFee(nTxBytes))
+        nFeeNeededPat = gl_ChainOptions.minRelayTxFee.GetFee(nTxBytes);
     // But always obey the maximum
     if (nFeeNeededPat > maxTxFee)
         nFeeNeededPat = maxTxFee;

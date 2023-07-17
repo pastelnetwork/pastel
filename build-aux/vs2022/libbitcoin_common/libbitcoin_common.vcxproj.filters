@@ -109,6 +109,9 @@
     <ClCompile Include="..\..\..\src\ecc_context.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\chain_options.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\amount.h">
@@ -223,6 +226,9 @@
       <Filter>Source Files\script</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\ecc_context.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\chain_options.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

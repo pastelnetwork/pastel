@@ -15,6 +15,7 @@
 #include <core_io.h>
 #include <init.h>
 #include <key_io.h>
+#include <accept_to_mempool.h>
 #include <main.h>
 #include <net.h>
 #include <netbase.h>

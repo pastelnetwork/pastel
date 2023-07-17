@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <inttypes.h>
+#include <cinttypes>
 #include <future>
 
 #include <mnode/p2fms-txbuilder.h>
@@ -10,6 +10,7 @@
 #include <core_io.h>
 #include <deprecation.h>
 #include <script/sign.h>
+#include <accept_to_mempool.h>
 
 using namespace std;
 

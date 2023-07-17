@@ -83,6 +83,9 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
@@ -92,6 +95,7 @@
     <ClCompile Include="..\..\..\src\base58.cpp" />
     <ClCompile Include="..\..\..\src\bech32.cpp" />
     <ClCompile Include="..\..\..\src\chainparams.cpp" />
+    <ClCompile Include="..\..\..\src\chain_options.cpp" />
     <ClCompile Include="..\..\..\src\coins.cpp" />
     <ClCompile Include="..\..\..\src\compressor.cpp" />
     <ClCompile Include="..\..\..\src\consensus\upgrades.cpp" />
@@ -125,6 +129,7 @@
     <ClInclude Include="..\..\..\src\base58.h" />
     <ClInclude Include="..\..\..\src\bech32.h" />
     <ClInclude Include="..\..\..\src\chainparams.h" />
+    <ClInclude Include="..\..\..\src\chain_options.h" />
     <ClInclude Include="..\..\..\src\coins.h" />
     <ClInclude Include="..\..\..\src\compressor.h" />
     <ClInclude Include="..\..\..\src\consensus\consensus.h" />

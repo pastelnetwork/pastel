@@ -7,11 +7,13 @@
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <core_io.h>
-#include <main.h>
+#include <chain_options.h>
+#include <accept_to_mempool.h>
 #include <primitives/transaction.h>
 #include <txmempool.h>
 #include <policy/fees.h>
 #include <util.h>
+#include <main.h>
 
 #include <pastel_gtest_main.h>
 #include <test_mempool_entryhelper.h>
@@ -87,7 +89,7 @@ TEST(Mempool, OverwinterNotActiveYet)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = true;
@@ -113,7 +115,7 @@ TEST(Mempool, SproutV3TxFailsAsExpected)
 {
     SelectParams(ChainNetwork::TESTNET);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = false;
@@ -135,7 +137,7 @@ TEST(Mempool, SproutV3TxWhenOverwinterActive)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = false;
@@ -159,7 +161,7 @@ TEST(Mempool, SproutNegativeVersionTxWhenOverwinterActive)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = false;
@@ -209,7 +211,7 @@ TEST(Mempool, ExpiringSoonTxRejection)
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
 
-    CTxMemPool pool(::minRelayTxFee);
+    CTxMemPool pool(gl_ChainOptions.minRelayTxFee);
     bool missingInputs;
     CMutableTransaction mtx = GetValidTransaction();
     mtx.fOverwintered = true;

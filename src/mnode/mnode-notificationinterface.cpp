@@ -1,9 +1,9 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2022 The Pastel developers
+// Copyright (c) 2018-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <main.h>
+#include <accept_to_mempool.h>
 #include <chainparams.h>
 
 #include <mnode/mnode-notificationinterface.h>

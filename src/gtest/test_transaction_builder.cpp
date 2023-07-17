@@ -5,7 +5,7 @@
 #include <consensus/params.h>
 #include <consensus/validation.h>
 #include <key_io.h>
-#include <main.h>
+#include <accept_to_mempool.h>
 #include <pubkey.h>
 #include <rpc/protocol.h>
 #include <transaction_builder.h>

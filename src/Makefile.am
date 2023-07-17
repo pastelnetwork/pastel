@@ -240,6 +240,7 @@ PASTELID_H =\
 .PHONY: FORCE collate-libsnark check-symbols check-security
 # bitcoin core #
 BITCOIN_CORE_H = \
+  accept_to_mempool.h \
   addrman.h \
   alert.h \
   amount.h \
@@ -256,6 +257,7 @@ BITCOIN_CORE_H = \
   bech32.h \
   bloom.h \
   chain.h \
+  chain_options.h \
   chainparams.h \
   chainparamsbase.h \
   chainparamsseeds.h \
@@ -392,6 +394,7 @@ libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES) $(EVENT_CFLAGS)
 libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_server_a_SOURCES = \
   sendalert.cpp \
+  accept_to_mempool.cpp \
   addrman.cpp \
   alert.cpp \
   alertkeys.h \
@@ -399,6 +402,7 @@ libbitcoin_server_a_SOURCES = \
   asyncrpcqueue.cpp \
   bloom.cpp \
   chain.cpp \
+  chain_options.cpp \
   checkpoints.cpp \
   deprecation.cpp \
   httprpc.cpp \

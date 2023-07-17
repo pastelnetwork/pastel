@@ -1,8 +1,7 @@
 // Copyright (c) 2013-2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <array>
 #include <chrono>
 #include <optional>
@@ -11,13 +10,16 @@
 #include <fstream>
 #include <unordered_set>
 
+#include <tinyformat.h>
+#include <univalue.h>
+
 #include <gtest/gtest.h>
 
 #include <rpc/server.h>
 #include <rpc/client.h>
 #include <fs.h>
 #include <key_io.h>
-#include <main.h>
+#include <accept_to_mempool.h>
 #include <wallet/wallet.h>
 #include <zcash/Address.hpp>
 #include <asyncrpcqueue.h>
@@ -27,8 +29,7 @@
 #include <wallet/asyncrpcoperation_shieldcoinbase.h>
 #include <init.h>
 #include <utiltest.h>
-#include <tinyformat.h>
-#include <univalue.h>
+
 #include <test_rpc.h>
 #include <pastel_gtest_main.h>
 
