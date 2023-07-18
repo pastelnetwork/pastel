@@ -325,6 +325,7 @@ BITCOIN_CORE_H = \
   rpc/register.h \
   rpc/rpc_consts.h \
   rpc/rpc_parser.h \
+  rpc/rpc-utils.h \
   scheduler.h \
   script_check.h \
   script/interpreter.h \
@@ -372,6 +373,7 @@ BITCOIN_CORE_H = \
   wallet/asyncrpcoperation_shieldcoinbase.h \
   wallet/crypter.h \
   wallet/db.h \
+  wallet/missing_txs.h \
   wallet/rpcwallet.h \
   wallet/wallet.h \
   wallet/wallet_ismine.h \
@@ -470,6 +472,7 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/asyncrpcoperation_shieldcoinbase.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
+  wallet/missing_txs.cpp \
   wallet/rpcdump.cpp \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
@@ -553,24 +556,25 @@ libbitcoin_common_a_SOURCES = \
 libbitcoin_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 libbitcoin_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_util_a_SOURCES =\
-  compat/glibc_sanity.cpp\
-  compat/glibcxx_sanity.cpp\
-  compat/strnlen.cpp\
-  support/lockedpool.cpp\
-  support/cleanse.cpp\
-  ascii85.cpp\
-  chainparamsbase.cpp\
-  clientversion.cpp\
-  random.cpp\
-  rpc/protocol.cpp\
-  sync.cpp\
-  trimmean.cpp\
-  uint256.cpp\
-  util.cpp\
-  utilmoneystr.cpp\
-  utilstrencodings.cpp\
-  utiltime.cpp\
-  $(BITCOIN_CORE_H)\
+  compat/glibc_sanity.cpp \
+  compat/glibcxx_sanity.cpp \
+  compat/strnlen.cpp \
+  support/lockedpool.cpp \
+  support/cleanse.cpp \
+  ascii85.cpp \
+  chainparamsbase.cpp \
+  clientversion.cpp \
+  random.cpp \
+  rpc/protocol.cpp \
+  rpc/rpc-utils.cpp \
+  sync.cpp \
+  trimmean.cpp \
+  uint256.cpp \
+  util.cpp \
+  utilmoneystr.cpp \
+  utilstrencodings.cpp \
+  utiltime.cpp \
+  $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 
 if GLIBC_BACK_COMPAT

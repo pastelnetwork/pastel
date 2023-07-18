@@ -5,9 +5,9 @@
 
 #include <rpc/rpc_parser.h>
 #include <rpc/rpc_consts.h>
+#include <rpc/rpc-utils.h>
 #include <rpc/server.h>
 #include <mnode/mnode-controller.h>
-#include <mnode/rpc/mnode-rpc-utils.h>
 #include <mnode/tickets/action-reg.h>
 
 using namespace std;

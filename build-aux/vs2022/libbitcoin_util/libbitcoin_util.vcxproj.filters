@@ -70,6 +70,9 @@
     <ClCompile Include="..\..\..\src\trimmean.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\rpc\rpc-utils.cpp">
+      <Filter>Source Files\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\clientversion.h">
@@ -152,6 +155,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\enum_util.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\rpc\rpc-utils.h">
+      <Filter>Source Files\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

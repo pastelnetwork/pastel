@@ -13,10 +13,10 @@
 #include <pastelid/pastel_key.h>
 #include <rpc/rpc_consts.h>
 #include <rpc/rpc_parser.h>
+#include <rpc/rpc-utils.h>
 #include <rpc/server.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/rpc/masternode.h>
-#include <mnode/rpc/mnode-rpc-utils.h>
 #include <mnode/tickets/pastelid-reg.h>
 using namespace std;
 

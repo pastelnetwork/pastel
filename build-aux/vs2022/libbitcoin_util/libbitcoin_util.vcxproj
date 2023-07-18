@@ -101,6 +101,7 @@
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)rpc_protocol.obj</ObjectFileName>
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)rpc_protocol.obj</ObjectFileName>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\rpc\rpc-utils.cpp" />
     <ClCompile Include="..\..\..\src\support\cleanse.cpp" />
     <ClCompile Include="..\..\..\src\support\lockedpool.cpp" />
     <ClCompile Include="..\..\..\src\sync.cpp" />
@@ -125,6 +126,7 @@
     <ClInclude Include="..\..\..\src\rpc\client.h" />
     <ClInclude Include="..\..\..\src\rpc\protocol.h" />
     <ClInclude Include="..\..\..\src\rpc\register.h" />
+    <ClInclude Include="..\..\..\src\rpc\rpc-utils.h" />
     <ClInclude Include="..\..\..\src\scope_guard.hpp" />
     <ClInclude Include="..\..\..\src\str_utils.h" />
     <ClInclude Include="..\..\..\src\support\allocators\secure.h" />

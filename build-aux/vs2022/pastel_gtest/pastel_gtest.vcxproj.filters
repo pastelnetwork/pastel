@@ -340,6 +340,9 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_p2fms_txbuilder.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\gtest\test_rpc_utils.cpp">
+      <Filter>UnitTest Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h">

@@ -8,6 +8,7 @@
 #include <variant>
 
 #include <univalue.h>
+#include <sodium.h>
 
 #include <amount.h>
 #include <consensus/upgrades.h>
@@ -20,6 +21,7 @@
 #include <net.h>
 #include <netbase.h>
 #include <rpc/server.h>
+#include <rpc/rpc-utils.h>
 #include <timedata.h>
 #include <transaction_builder.h>
 #include <util.h>
@@ -37,8 +39,7 @@
 #include <wallet/asyncrpcoperation_mergetoaddress.h>
 #include <wallet/asyncrpcoperation_sendmany.h>
 #include <wallet/asyncrpcoperation_shieldcoinbase.h>
-
-#include <sodium.h>
+#include <wallet/missing_txs.h>
 
 using namespace std;
 
@@ -4554,7 +4555,6 @@ Examples:
     return ret;
 }
 
-#ifdef ENABLE_WALLET
 bool GetWalletTransaction(const uint256 &txid, CTransaction &tx, uint256& hashBlock)
 {
     if (!pwalletMain->mapWallet.count(txid))
@@ -4564,12 +4564,10 @@ bool GetWalletTransaction(const uint256 &txid, CTransaction &tx, uint256& hashBl
     tx = *dynamic_cast<const CTransaction*>(&wtx);
     return true;
 }
-#endif // ENABLE_WALLET
 
 UniValue gettxfee(const UniValue& params, bool fHelp)
 {
     UniValue resultObj(UniValue::VOBJ);
-#ifdef ENABLE_WALLET
     if (params.empty() || fHelp)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(gettxfee "txid"
@@ -4592,7 +4590,6 @@ Example:
 R"(
 As json rpc:
 )" + HelpExampleRpc("gettxfee", R"("e4ee20e436d33f59cc313647bacff0c5b0df5b7b1c1fa13189ea7bc8b9df15a4")"));
-
 
     string sTxId = params[0].get_str();
     string error;
@@ -4641,8 +4638,45 @@ As json rpc:
     const CAmount nTxFeePat = nDebit - nCredit;
     resultObj.pushKV("txFeePat", nTxFeePat);
     resultObj.pushKV("txFee", ValueFromAmount(nTxFeePat));
-#endif // ENABLE_WALLET
     return resultObj;
+}
+
+UniValue scanForMissingTransactions(const UniValue& params, bool fHelp)
+{
+    UniValue resultObj(UniValue::VARR);
+
+    if (params.empty() || fHelp)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+            R"(scanformissingtxs <starting_height>
+Scan for missing transactions in the wallet starting from the given height.
+
+Arguments:
+1. <starting_height>  (numeric, required)  // starting block height to search for missing txs"
+
+Returns:
+[
+    "missing_transaction1_txid",
+    "missing_transaction2_txid",
+    .......
+]
+
+Example:
+)" + HelpExampleCli("scanformissingtxs", "100000") +
+R"(
+As json rpc:
+)" + HelpExampleRpc("scanformissingtxs", "100000"));
+
+    uint32_t nStartingHeight;
+    int64_t nValue = get_long_number(params[0]);
+    rpc_check_unsigned_param<uint32_t>("<starting_height>", nValue);
+    nStartingHeight = static_cast<uint32_t>(nValue);
+    uint32_t nCurrentHeight = gl_nChainHeight;
+    if (nStartingHeight > nCurrentHeight)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            strprintf("Invalid 'starting_height' parameter. Current chain height is %u, but 'starting_height' is %u",
+                       nCurrentHeight, nStartingHeight));
+
+	return ScanWalletForMissingTransactions(nCurrentHeight);
 }
 
 extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
@@ -4694,6 +4728,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "listunspent",              &listunspent,              false },
     { "wallet",             "lockunspent",              &lockunspent,              true  },
     { "wallet",             "move",                     &movecmd,                  false },
+    { "wallet",             "scanformissingtxs",        &scanForMissingTransactions, false },
     { "wallet",             "sendfrom",                 &sendfrom,                 false },
     { "wallet",             "sendmany",                 &sendmany,                 false },
     { "wallet",             "sendtoaddress",            &sendtoaddress,            false },
