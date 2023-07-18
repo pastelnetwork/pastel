@@ -170,6 +170,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_random.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_reverselock.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_rpc_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc_wallet.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpccmd_parser.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sanity.cpp" />
