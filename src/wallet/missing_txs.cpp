@@ -15,7 +15,7 @@ using namespace std;
 
 using txid_queue_t = queue<uint256>;
 
-txid_queue_t ScanChainSegment(const CBlockIndex* pStartingBlockIndex, const uint32_t nBlocksToScan)
+txid_queue_t ScanChainSegment(const CBlockIndex* pStartingBlockIndex, const bool bFixWalletTxs, const uint32_t nBlocksToScan, bool bTipStartingBlock)
 {
 	const auto &consensusParams = Params().GetConsensus();
 	txid_queue_t missing_txs;
@@ -29,15 +29,23 @@ txid_queue_t ScanChainSegment(const CBlockIndex* pStartingBlockIndex, const uint
 		for (const auto& tx : block.vtx)
 		{
 			const uint256& txid = tx.GetHash();
+			if (bTipStartingBlock && tx.IsCoinBase())
+				continue;
 			if (!pwalletMain->mapWallet.count(txid))
+			{
 				missing_txs.push(txid);
+				if (bFixWalletTxs && !pwalletMain->AddToWalletIfInvolvingMe(tx, &block, false))
+					throw runtime_error(strprintf(
+						"Failed to add transaction %s to wallet", txid.ToString()));
+			}
 		}
 		pBlockIndex = pBlockIndex->pprev;
+		bTipStartingBlock = false;
 	}
 	return missing_txs;
 }
 
-UniValue ScanWalletForMissingTransactions(const uint32_t nStartingHeight)
+UniValue ScanWalletForMissingTransactions(const uint32_t nStartingHeight, const bool bFixWalletTxs)
 {
 	unsigned int nNumThreads = thread::hardware_concurrency();
 	if (nNumThreads == 0)
@@ -45,6 +53,7 @@ UniValue ScanWalletForMissingTransactions(const uint32_t nStartingHeight)
 	const uint32_t nBlockCount = gl_nChainHeight - nStartingHeight + 1;
 	uint32_t nBlocksPerThread = nBlockCount / nNumThreads;	
 
+	bool bTipStartingBlock = true;
 	vector<future<txid_queue_t>> futures;
 	futures.reserve(nNumThreads);
 	// each future will process nBlocksPerThread blocks (one segment)
@@ -52,6 +61,7 @@ UniValue ScanWalletForMissingTransactions(const uint32_t nStartingHeight)
 	LOCK2(cs_main, pwalletMain->cs_wallet);
 	auto pBlockIndex = chainActive.Tip();
 	if (pBlockIndex)
+	{
 		for (size_t i = 0; i < nNumThreads; ++i)
 		{
 			const auto pStartingBlockIndex = pBlockIndex;
@@ -66,8 +76,10 @@ UniValue ScanWalletForMissingTransactions(const uint32_t nStartingHeight)
 			// If this is the last thread, assign any remaining blocks to it
 			if (i == nNumThreads - 1)
 				nBlocksPerThread += nBlockCount % nNumThreads;
-			futures.push_back(async(launch::async, ScanChainSegment, pStartingBlockIndex, nBlocksPerThread));
+			futures.push_back(async(launch::async, ScanChainSegment, pStartingBlockIndex, nBlocksPerThread, bFixWalletTxs, bTipStartingBlock));
+			bTipStartingBlock = false;
 		}
+	}
 
 	// Wait for all futures and collect the results
 	UniValue ret(UniValue::VARR);

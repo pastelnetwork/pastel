@@ -4676,7 +4676,46 @@ As json rpc:
             strprintf("Invalid 'starting_height' parameter. Current chain height is %u, but 'starting_height' is %u",
                        nCurrentHeight, nStartingHeight));
 
-	return ScanWalletForMissingTransactions(nCurrentHeight);
+	return ScanWalletForMissingTransactions(nCurrentHeight, false);
+}
+
+UniValue fixMissingTransactions(const UniValue& params, bool fHelp)
+{
+    UniValue resultObj(UniValue::VARR);
+
+    if (params.empty() || fHelp)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+            R"(fixmissingtxs <starting_height>
+Scan for missing transactions in the wallet starting from the given height.
+Add to wallet all the missing transactions found in the blockchain.
+
+Arguments:
+1. <starting_height>  (numeric, required)  // starting block height to search for missing txs"
+
+Returns:
+[
+    "missing_transaction1_txid",
+    "missing_transaction2_txid",
+    .......
+]
+
+Example:
+)" + HelpExampleCli("fixmissingtxs", "100000") +
+R"(
+As json rpc:
+)" + HelpExampleRpc("fixmissingtxs", "100000"));
+
+    uint32_t nStartingHeight;
+    int64_t nValue = get_long_number(params[0]);
+    rpc_check_unsigned_param<uint32_t>("<starting_height>", nValue);
+    nStartingHeight = static_cast<uint32_t>(nValue);
+    uint32_t nCurrentHeight = gl_nChainHeight;
+    if (nStartingHeight > nCurrentHeight)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            strprintf("Invalid 'starting_height' parameter. Current chain height is %u, but 'starting_height' is %u",
+                       nCurrentHeight, nStartingHeight));
+
+	return ScanWalletForMissingTransactions(nCurrentHeight, true);
 }
 
 extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
@@ -4701,6 +4740,7 @@ static const CRPCCommand commands[] =
     { "wallet",             "dumpprivkey",              &dumpprivkey,              true  },
     { "wallet",             "dumpwallet",               &dumpwallet,               true  },
     { "wallet",             "encryptwallet",            &encryptwallet,            true  },
+    { "wallet",             "fixmissingtxs",            &fixMissingTransactions,   false },
     { "wallet",             "getaccountaddress",        &getaccountaddress,        true  },
     { "wallet",             "getaccount",               &getaccount,               true  },
     { "wallet",             "getaddressesbyaccount",    &getaddressesbyaccount,    true  },
