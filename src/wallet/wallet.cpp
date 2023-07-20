@@ -1370,18 +1370,17 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
         auto saplingNoteDataAndAddressesToAdd = FindMySaplingNotes(tx);
         auto saplingNoteData = saplingNoteDataAndAddressesToAdd.first;
         auto addressesToAdd = saplingNoteDataAndAddressesToAdd.second;
-        for (const auto &addressToAdd : addressesToAdd) {
-            if (!AddSaplingIncomingViewingKey(addressToAdd.second, addressToAdd.first)) {
+        for (const auto &addressToAdd : addressesToAdd)
+        {
+            if (!AddSaplingIncomingViewingKey(addressToAdd.second, addressToAdd.first))
                 return false;
-            }
         }
         if (fExisted || IsMine(tx) || IsFromMe(tx) || saplingNoteData.size() > 0)
         {
             CWalletTx wtx(this,tx);
 
-            if (saplingNoteData.size() > 0) {
+            if (saplingNoteData.size() > 0)
                 wtx.SetSaplingNoteData(saplingNoteData);
-            }
 
             // Get merkle branch if transaction was found in a block
             if (pblock)
@@ -2064,7 +2063,6 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
     const CChainParams& chainParams = Params();
 
     CBlockIndex* pindex = pindexStart;
-
     v_uint256 myTxHashes;
 
     {
@@ -2085,9 +2083,10 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
 
             CBlock block;
             ReadBlockFromDisk(block, pindex, Params().GetConsensus());
-            for (auto& tx : block.vtx)
+            for (const auto& tx : block.vtx)
             {
-                if (AddToWalletIfInvolvingMe(tx, &block, fUpdate)) {
+                if (AddToWalletIfInvolvingMe(tx, &block, fUpdate))
+                {
                     myTxHashes.push_back(tx.GetHash());
                     ret++;
                 }
@@ -2100,15 +2099,15 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
             assert(pcoinsTip->GetSproutAnchorAt(pindex->hashSproutAnchor, sproutTree));
             if (pindex->pprev)
             {
-                if (NetworkUpgradeActive(pindex->pprev->nHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING)) {
+                if (NetworkUpgradeActive(pindex->pprev->nHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_SAPLING))
                     assert(pcoinsTip->GetSaplingAnchorAt(pindex->pprev->hashFinalSaplingRoot, saplingTree));
-                }
             }
             // Increment note witness caches
             ChainTip(pindex, &block, saplingTree, true);
 
             pindex = chainActive.Next(pindex);
-            if (GetTime() >= nNow + 60) {
+            if (GetTime() >= nNow + 60)
+            {
                 nNow = GetTime();
                 LogPrintf("Still rescanning. At block %d. Progress=%f\n", pindex->nHeight, Checkpoints::GuessVerificationProgress(chainParams.Checkpoints(), pindex));
             }

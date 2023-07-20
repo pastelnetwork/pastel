@@ -4,4 +4,4 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <univalue.h>
 
-UniValue ScanWalletForMissingTransactions(const uint32_t nStartingHeight);
+UniValue ScanWalletForMissingTransactions(const uint32_t nStartingHeight, const bool bFixWalletTxs = false);
