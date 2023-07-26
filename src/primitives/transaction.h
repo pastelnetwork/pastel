@@ -567,7 +567,8 @@ public:
             header = GetHeader();
             READWRITE(header);
         }
-        if (fOverwintered) {
+        if (fOverwintered)
+        {
             READWRITE(*const_cast<uint32_t*>(&this->nVersionGroupId));
         }
 
@@ -580,27 +581,32 @@ public:
             fOverwintered &&
             nVersionGroupId == SAPLING_VERSION_GROUP_ID &&
             nVersion == SAPLING_TX_VERSION;
-        if (fOverwintered && !(isOverwinterV3 || isSaplingV4)) {
+        if (fOverwintered && !(isOverwinterV3 || isSaplingV4))
+        {
             throw std::ios_base::failure("Unknown transaction format");
         }
 
         READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
         READWRITE(*const_cast<std::vector<CTxOut>*>(&vout));
         READWRITE(*const_cast<uint32_t*>(&nLockTime));
-        if (isOverwinterV3 || isSaplingV4) {
+        if (isOverwinterV3 || isSaplingV4)
+        {
             READWRITE(*const_cast<uint32_t*>(&nExpiryHeight));
         }
-        if (isSaplingV4) {
+        if (isSaplingV4)
+        {
             READWRITE(*const_cast<CAmount*>(&valueBalance));
             READWRITE(*const_cast<std::vector<SpendDescription>*>(&vShieldedSpend));
             READWRITE(*const_cast<std::vector<OutputDescription>*>(&vShieldedOutput));
         }
-        if (nVersion >= 2) {
+        if (nVersion >= 2)
+        {
             auto os = WithVersion(&s, static_cast<int>(header));
             std::vector<int> v;
             ::SerReadWrite(os, v, ser_action);
         }
-        if (isSaplingV4 && !(vShieldedSpend.empty() && vShieldedOutput.empty())) {
+        if (isSaplingV4 && !(vShieldedSpend.empty() && vShieldedOutput.empty()))
+        {
             READWRITE(*const_cast<binding_sig_t*>(&bindingSig));
         }
         if (bRead)
@@ -610,19 +616,17 @@ public:
     template <typename Stream>
     CTransaction(deserialize_type, Stream& s) : CTransaction(CMutableTransaction(deserialize, s)) {}
 
-    bool IsNull() const {
-        return vin.empty() && vout.empty();
-    }
+    bool IsNull() const { return vin.empty() && vout.empty(); }
 
     const uint256& GetHash() const noexcept { return hash; }
 
-    uint32_t GetHeader() const {
+    uint32_t GetHeader() const noexcept
+    {
         // When serializing v1 and v2, the 4 byte header is nVersion
         uint32_t header = this->nVersion;
         // When serializing Overwintered tx, the 4 byte header is the combination of fOverwintered and nVersion
-        if (fOverwintered) {
+        if (fOverwintered)
             header |= 1 << 31;
-        }
         return header;
     }
 
@@ -637,12 +641,12 @@ public:
      * shielded output values - is positive or negative.
      */
 
-    // Return sum of txouts, (negative valueBalance or zero) and JoinSplit vpub_old.
+    // Return sum of txouts, (negative valueBalance or zero)
     CAmount GetValueOut() const;
     // GetValueIn() is a method on CCoinsViewCache, because
     // inputs must be known to compute value in.
 
-    // Return sum of (positive valueBalance or zero) and JoinSplit vpub_new
+    // Return sum of (positive valueBalance or zero)
     CAmount GetShieldedValueIn() const;
 
     // Compute priority, given priority of inputs and (optionally) tx size
@@ -703,12 +707,12 @@ struct CMutableTransaction
             // When serializing v1 and v2, the 4 byte header is nVersion
             header = this->nVersion;
             // When serializing Overwintered tx, the 4 byte header is the combination of fOverwintered and nVersion
-            if (fOverwintered) {
+            if (fOverwintered)
                 header |= 1 << 31;
-            }
             READWRITE(header);
         }
-        if (fOverwintered) {
+        if (fOverwintered)
+        {
             READWRITE(nVersionGroupId);
         }
 
@@ -720,17 +724,20 @@ struct CMutableTransaction
             fOverwintered &&
             nVersionGroupId == SAPLING_VERSION_GROUP_ID &&
             nVersion == SAPLING_TX_VERSION;
-        if (fOverwintered && !(isOverwinterV3 || isSaplingV4)) {
+        if (fOverwintered && !(isOverwinterV3 || isSaplingV4))
+        {
             throw std::ios_base::failure("Unknown transaction format");
         }
 
         READWRITE(vin);
         READWRITE(vout);
         READWRITE(nLockTime);
-        if (isOverwinterV3 || isSaplingV4) {
+        if (isOverwinterV3 || isSaplingV4)
+        {
             READWRITE(nExpiryHeight);
         }
-        if (isSaplingV4) {
+        if (isSaplingV4)
+        {
             READWRITE(valueBalance);
             READWRITE(vShieldedSpend);
             READWRITE(vShieldedOutput);

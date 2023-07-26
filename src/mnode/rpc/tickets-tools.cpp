@@ -427,11 +427,53 @@ As json rpc:
     return resultArray;
 }
 
+UniValue tickets_tools_decoderawtransaction(const UniValue& params)
+{
+    if (params.size() < 3)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+            R"(tickets tools decoderawtransaction "hex_transaction"
+Decode ticket from raw P2FMS transaction presented by hex string.
+
+Arguments:
+1. "hex_transaction" (string, required) The hex string of the raw transaction
+
+Returns:
+    {...} - ticket json
+  If the transaction cannot be decoded, or doesn't contain a ticket, an error is returned.
+)" + HelpExampleCli("tickets tools decoderawtransaction", "0400008085202f8901943a86b266d1552a70a88...") +
+R"(
+As json rpc
+)" + HelpExampleRpc("tickets", R"("tools", "decoderawtransaction", "0400008085202f8901943a86b266d1552a70a88...")"));
+
+    const string sHexTx = params[2].get_str();
+	CTransaction tx;
+	if (!DecodeHexTx(tx, sHexTx))
+		throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Failed to decode raw transaction");
+
+    string sTicketJSON, error;
+    TicketID ticket_id;
+
+    CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
+    if (!CPastelTicketProcessor::preParseTicket(tx, data_stream, ticket_id, error, true, true))
+		throw JSONRPCError(RPC_DESERIALIZATION_ERROR,
+            strprintf("Failed to parse raw hex transaction data. %s", error));
+    unique_ptr<CPastelTicket> ticket = CPastelTicketProcessor::CreateTicket(ticket_id);
+    if (!ticket)
+        throw JSONRPCError(RPC_DESERIALIZATION_ERROR,
+            			strprintf("Failed to create ticket object for ticket id %hhu", to_integral_type<TicketID>(ticket_id)));
+    // deserialize ticket data
+    data_stream >> *ticket;
+    ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
+    if (data_stream.IsCompressed())
+        ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());
+	return ticket->ToJSON();
+}
+
 UniValue tickets_tools(const UniValue& params)
 {
     RPC_CMD_PARSER2(TOOLS, params, printtradingchain, getregbytrade, getregbytransfer,
         gettotalstoragefee, validateusername, validateethereumaddress, validateownership,
-        searchthumbids);
+        searchthumbids, decoderawtransaction);
 
     if (!TOOLS.IsCmdSupported() || params.size() < 2)
         throw runtime_error(
@@ -449,6 +491,7 @@ Available commands:
   validateethereumaddress ... validate ethereum address for ethereum-address-change ticket
   validateownership       ... validate item ownership by Pastel ID
   searchthumbids          ... search for the NFT registration tickets and thumbnail hash
+  decoderawtransaction    ... decode raw ticket transaction
   
 Examples:
 )"
@@ -487,6 +530,10 @@ Examples:
         case RPC_CMD_TOOLS::searchthumbids:
             result = tickets_tools_searchthumbids(params);
             break;
+        
+        case RPC_CMD_TOOLS::decoderawtransaction:
+			result = tickets_tools_decoderawtransaction(params);
+			break;
 
         default:
             break;

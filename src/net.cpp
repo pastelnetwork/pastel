@@ -607,7 +607,8 @@ bool CNode::IsWhitelistedRange(const CNetAddr &addr) {
     return false;
 }
 
-void CNode::AddWhitelistedRange(const CSubNet &subnet) {
+void CNode::AddWhitelistedRange(const CSubNet &subnet)
+{
     LOCK(cs_vWhitelistedRange);
     vWhitelistedRange.push_back(subnet);
 }

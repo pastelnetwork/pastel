@@ -164,9 +164,10 @@ string CRPCTable::help(const string& strCommand) const
     string category;
     set<rpcfn_type> setDone;
     vector<pair<string, const CRPCCommand*> > vCommands;
+    vCommands.reserve(mapCommands.size());
 
-    for (map<string, const CRPCCommand*>::const_iterator mi = mapCommands.begin(); mi != mapCommands.end(); ++mi)
-        vCommands.push_back(make_pair(mi->second->category + mi->first, mi->second));
+    for (const auto& [sCmdName, pcmd] : mapCommands)
+        vCommands.emplace_back(pcmd->category + sCmdName, pcmd);
     sort(vCommands.begin(), vCommands.end());
 
     for (const auto &[sCmdName, pcmd] : vCommands)
@@ -214,7 +215,7 @@ string CRPCTable::help(const string& strCommand) const
 
 UniValue help(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() > 1)
+    if (fHelp || params.empty())
         throw runtime_error(
 R"(help ( "command" )
 
@@ -299,7 +300,7 @@ bool CRPCTable::appendCommand(const string& name, const CRPCCommand* pcmd)
 
 bool StartRPC()
 {
-    LogPrint("rpc", "Starting RPC\n");
+    LogFnPrint("rpc", "Starting RPC");
     fRPCRunning = true;
     g_rpcSignals.Started();
 

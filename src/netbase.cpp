@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -27,6 +27,7 @@
 #include <random.h>
 #include <util.h>
 #include <str_utils.h>
+#include <vector_types.h>
 #include <utilstrencodings.h>
 #include <svc_thread.h>
 
@@ -48,7 +49,7 @@ static const unsigned char pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0
 // Need ample time for negotiation for very slow proxies such as Tor (milliseconds)
 static const int SOCKS5_RECV_TIMEOUT = 20 * 1000;
 
-enum Network ParseNetwork(std::string net)
+enum Network ParseNetwork(string net)
 {
     lowercase(net);
     if (net == "ipv4")
@@ -60,7 +61,7 @@ enum Network ParseNetwork(std::string net)
     return NET_UNROUTABLE;
 }
 
-std::string GetNetworkName(enum Network net) {
+string GetNetworkName(enum Network net) {
     switch(net)
     {
     case NET_IPV4: return "ipv4";
@@ -210,9 +211,9 @@ bool static LookupIntern(const char *pszName, vector<CNetAddr>& vIP, unsigned in
     return (vIP.size() > 0);
 }
 
-bool LookupHost(const char *pszName, std::vector<CNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
+bool LookupHost(const char *pszName, vector<CNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
 {
-    std::string strHost(pszName);
+    string strHost(pszName);
     if (strHost.empty())
         return false;
     if ((strHost.front() == '[') && (strHost.back() == ']'))
@@ -294,7 +295,7 @@ bool static InterruptibleRecv(char* data, size_t len, int timeout, SOCKET& hSock
                 if (!IsSelectableSocket(hSocket)) {
                     return false;
                 }
-                struct timeval tval = MillisToTimeval(std::min(endTime - curTime, maxWait));
+                struct timeval tval = MillisToTimeval(min(endTime - curTime, maxWait));
                 fd_set fdset;
                 FD_ZERO(&fdset);
                 FD_SET(hSocket, &fdset);
@@ -314,12 +315,12 @@ bool static InterruptibleRecv(char* data, size_t len, int timeout, SOCKET& hSock
 
 struct ProxyCredentials
 {
-    std::string username;
-    std::string password;
+    string username;
+    string password;
 };
 
 /** Connect using SOCKS5 (as described in RFC1928) */
-static bool Socks5(const std::string& strDest, int port, const ProxyCredentials *auth, SOCKET& hSocket)
+static bool Socks5(const string& strDest, int port, const ProxyCredentials *auth, SOCKET& hSocket)
 {
     LogPrintf("SOCKS5 connecting %s\n", strDest);
     if (strDest.size() > 255) {
@@ -327,7 +328,7 @@ static bool Socks5(const std::string& strDest, int port, const ProxyCredentials 
         return error("Hostname too long");
     }
     // Accepted authentication methods
-    std::vector<uint8_t> vSocks5Init;
+    v_uint8 vSocks5Init;
     vSocks5Init.push_back(0x05);
     if (auth) {
         vSocks5Init.push_back(0x02); // # METHODS
@@ -353,7 +354,7 @@ static bool Socks5(const std::string& strDest, int port, const ProxyCredentials 
     }
     if (pchRet1[1] == 0x02 && auth) {
         // Perform username/password authentication (as described in RFC1929)
-        std::vector<uint8_t> vAuth;
+        v_uint8 vAuth;
         vAuth.push_back(0x01);
         if (auth->username.size() > 255 || auth->password.size() > 255)
             return error("Proxy username or password too long");
@@ -384,7 +385,7 @@ static bool Socks5(const std::string& strDest, int port, const ProxyCredentials 
         CloseSocket(hSocket);
         return error("Proxy requested wrong authentication method %02x", pchRet1[1]);
     }
-    std::vector<uint8_t> vSocks5;
+    v_uint8 vSocks5;
     vSocks5.push_back(0x05); // VER protocol version
     vSocks5.push_back(0x01); // CMD CONNECT
     vSocks5.push_back(0x00); // RSV Reserved
@@ -592,7 +593,7 @@ bool IsProxy(const CNetAddr &addr) {
     return false;
 }
 
-static bool ConnectThroughProxy(const proxyType &proxy, const std::string& strDest, int port, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed)
+static bool ConnectThroughProxy(const proxyType &proxy, const string& strDest, int port, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed)
 {
     SOCKET hSocket = INVALID_SOCKET;
     // first connect to proxy server
@@ -683,10 +684,10 @@ void CNetAddr::SetRaw(Network network, const uint8_t *ip_in)
 
 static const unsigned char pchOnionCat[] = {0xFD,0x87,0xD8,0x7E,0xEB,0x43};
 
-bool CNetAddr::SetSpecial(const std::string &strName)
+bool CNetAddr::SetSpecial(const string &strName)
 {
     if (strName.size()>6 && strName.substr(strName.size() - 6, 6) == ".onion") {
-        std::vector<unsigned char> vchAddr = DecodeBase32(strName.substr(0, strName.size() - 6).c_str());
+        v_uint8 vchAddr = DecodeBase32(strName.substr(0, strName.size() - 6).c_str());
         if (vchAddr.size() != 16-sizeof(pchOnionCat))
             return false;
         memcpy(ip, pchOnionCat, sizeof(pchOnionCat));
@@ -715,15 +716,15 @@ CNetAddr::CNetAddr(const struct in6_addr& ipv6Addr)
 CNetAddr::CNetAddr(const char *pszIp, bool fAllowLookup)
 {
     Init();
-    std::vector<CNetAddr> vIP;
+    vector<CNetAddr> vIP;
     if (LookupHost(pszIp, vIP, 1, fAllowLookup))
         *this = vIP[0];
 }
 
-CNetAddr::CNetAddr(const std::string &strIp, bool fAllowLookup)
+CNetAddr::CNetAddr(const string &strIp, bool fAllowLookup)
 {
     Init();
-    std::vector<CNetAddr> vIP;
+    vector<CNetAddr> vIP;
     if (LookupHost(strIp.c_str(), vIP, 1, fAllowLookup))
         *this = vIP[0];
 }
@@ -896,7 +897,7 @@ enum Network CNetAddr::GetNetwork() const
     return NET_IPV6;
 }
 
-std::string CNetAddr::ToStringIP(bool fUseGetnameinfo) const
+string CNetAddr::ToStringIP(bool fUseGetnameinfo) const
 {
     if (IsTor())
         return EncodeBase32(&ip[6], 10) + ".onion";
@@ -908,7 +909,7 @@ std::string CNetAddr::ToStringIP(bool fUseGetnameinfo) const
         if (serv.GetSockAddr((struct sockaddr*)&sockaddr, &socklen)) {
             char name[1025] = "";
             if (!getnameinfo((const struct sockaddr*)&sockaddr, socklen, name, sizeof(name), nullptr, 0, NI_NUMERICHOST))
-                return std::string(name);
+                return string(name);
         }
     }
     if (IsIPv4())
@@ -921,7 +922,7 @@ std::string CNetAddr::ToStringIP(bool fUseGetnameinfo) const
                          GetByte(3) << 8 | GetByte(2), GetByte(1) << 8 | GetByte(0));
 }
 
-std::string CNetAddr::ToString(bool fUseGetnameinfo) const
+string CNetAddr::ToString(bool fUseGetnameinfo) const
 {
     return ToStringIP(fUseGetnameinfo);
 }
@@ -957,9 +958,9 @@ bool CNetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
 
 // get canonical identifier of an address' group
 // no two connections will be attempted to addresses with the same group
-std::vector<unsigned char> CNetAddr::GetGroup() const
+v_uint8 CNetAddr::GetGroup() const
 {
-    std::vector<unsigned char> vchRet;
+    v_uint8 vchRet;
     int nClass = NET_IPV6;
     int nStartByte = 0;
     int nBits = 16;
@@ -1166,7 +1167,7 @@ CService::CService(const char *pszIpPort, int portDefault, bool fAllowLookup)
         *this = ip;
 }
 
-CService::CService(const std::string &strIpPort, bool fAllowLookup)
+CService::CService(const string &strIpPort, bool fAllowLookup)
 {
     Init();
     CService ip;
@@ -1174,7 +1175,7 @@ CService::CService(const std::string &strIpPort, bool fAllowLookup)
         *this = ip;
 }
 
-CService::CService(const std::string &strIpPort, int portDefault, bool fAllowLookup)
+CService::CService(const string &strIpPort, int portDefault, bool fAllowLookup)
 {
     Init();
     CService ip;
@@ -1231,9 +1232,9 @@ bool CService::GetSockAddr(struct sockaddr* paddr, socklen_t *addrlen) const
     return false;
 }
 
-std::vector<unsigned char> CService::GetKey() const
+v_uint8 CService::GetKey() const
 {
-     std::vector<unsigned char> vKey;
+     v_uint8 vKey;
      vKey.resize(18);
      memcpy(&vKey[0], ip, 16);
      vKey[16] = port / 0x100;
@@ -1241,12 +1242,12 @@ std::vector<unsigned char> CService::GetKey() const
      return vKey;
 }
 
-std::string CService::ToStringPort() const
+string CService::ToStringPort() const
 {
     return strprintf("%u", port);
 }
 
-std::string CService::ToStringIPPort(bool fUseGetnameinfo) const
+string CService::ToStringIPPort(bool fUseGetnameinfo) const
 {
     if (IsIPv4() || IsTor()) {
         return ToStringIP(fUseGetnameinfo) + ":" + ToStringPort();
@@ -1255,7 +1256,7 @@ std::string CService::ToStringIPPort(bool fUseGetnameinfo) const
     }
 }
 
-std::string CService::ToString(bool fUseGetnameinfo) const
+string CService::ToString(bool fUseGetnameinfo) const
 {
     return ToStringIPPort(fUseGetnameinfo);
 }
@@ -1271,22 +1272,22 @@ CSubNet::CSubNet():
     memset(netmask, 0, sizeof(netmask));
 }
 
-CSubNet::CSubNet(const std::string &strSubnet, bool fAllowLookup)
+CSubNet::CSubNet(const string &strSubnet, bool fAllowLookup)
 {
     size_t slash = strSubnet.find_last_of('/');
-    std::vector<CNetAddr> vIP;
+    vector<CNetAddr> vIP;
 
     valid = true;
     // Default to /32 (IPv4) or /128 (IPv6), i.e. match single address
     memset(netmask, 255, sizeof(netmask));
 
-    std::string strAddress = strSubnet.substr(0, slash);
+    string strAddress = strSubnet.substr(0, slash);
     if (LookupHost(strAddress.c_str(), vIP, 1, fAllowLookup))
     {
         network = vIP[0];
         if (slash != strSubnet.npos)
         {
-            std::string strNetmask = strSubnet.substr(slash + 1);
+            string strNetmask = strSubnet.substr(slash + 1);
             int32_t n;
             // IPv4 addresses start at offset 12, and first 12 bytes must match, so just offset n
             const int astartofs = network.IsIPv4() ? 12 : 0;
@@ -1340,9 +1341,9 @@ bool CSubNet::Match(const CNetAddr &addr) const
     return true;
 }
 
-std::string CSubNet::ToString() const
+string CSubNet::ToString() const
 {
-    std::string strNetmask;
+    string strNetmask;
     if (network.IsIPv4())
         strNetmask = strprintf("%u.%u.%u.%u", netmask[12], netmask[13], netmask[14], netmask[15]);
     else

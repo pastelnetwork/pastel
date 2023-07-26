@@ -183,7 +183,8 @@ bool CMasterNodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
         const auto mi = mapBlockIndex.find(m_blockHash);
         if (mi->second && static_cast<uint32_t>(mi->second->nHeight) < gl_nChainHeight - 24)
         {
-            LogFnPrintf("Masternode ping is invalid, block hash is too old: masternode=%s  blockHash=%s", GetDesc(), m_blockHash.ToString());
+            LogFnPrintf("Masternode ping is invalid, block hash is too old. Masternode=%s, blockHash=%s, height=%d",
+                GetDesc(), m_blockHash.ToString(), mi->second->nHeight);
             // nDos = 1;
             return false;
         }
