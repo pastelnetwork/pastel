@@ -1311,10 +1311,11 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                 trim(filename);
                 fs::path filePath = GetDataDir() / filename;
                 if (!fs::exists(filePath))
-					return InitError(strprintf(translate("File '%s' with whitelist subnets does not exist"), filename));
+					return InitError(strprintf(translate("File '%s' with whitelist subnets does not exist"), filePath.string()));
                 ifstream file(filePath.string());
 				if (!file.is_open())
-                    return InitError(strprintf(translate("File '%s' with whitelist subnets cannot be opened"), filename));
+                    return InitError(strprintf(translate("File '%s' with whitelist subnets cannot be opened"), filePath.string()));
+                LogFnPrintf("Loading whitelist subnets from file [%s]", filePath.string());
 				string line;
 				while (getline(file, line))
 				{
@@ -1327,6 +1328,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             else
 				vSubnets.emplace(subnetSpec);
         }
+        LogFnPrintf("Processing %zu whitelist subnets", vSubnets.size());
         for (const auto& net : vSubnets)
         {
             CSubNet subnet(net);
