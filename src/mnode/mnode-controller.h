@@ -104,6 +104,7 @@ public:
     void StopMasterNode();
 
     void ShutdownMasterNode();
+    void DumpCacheFiles();
 
     fs::path GetMasternodeConfigFile();
 

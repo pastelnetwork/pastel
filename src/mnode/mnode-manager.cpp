@@ -170,7 +170,7 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
                 {
                     // this mn is in a non-recoverable state and we haven't asked other nodes yet
                     set<CNetAddr> setRequested;
-                    // calulate only once and only when it's needed
+                    // calculate only once and only when it's needed
                     if (vecMasternodeRanks.empty())
                     {
                         int nRandomBlockHeight = GetRandInt(nCachedBlockHeight);
@@ -182,7 +182,8 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
                     for (int i = 0; setRequested.size() < MNB_RECOVERY_QUORUM_TOTAL && i < (int)vecMasternodeRanks.size(); i++)
                     {
                         // avoid banning
-                        if(mWeAskedForMasternodeListEntry.count(it->first) && mWeAskedForMasternodeListEntry[it->first].count(vecMasternodeRanks[i].second.get_addr())) continue;
+                        if (mWeAskedForMasternodeListEntry.count(it->first) && mWeAskedForMasternodeListEntry[it->first].count(vecMasternodeRanks[i].second.get_addr()))
+                            continue;
                         // didn't ask recently, ok to ask now
                         CService addr = vecMasternodeRanks[i].second.get_addr();
                         setRequested.insert(addr);

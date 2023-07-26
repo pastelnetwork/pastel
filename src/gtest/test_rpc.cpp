@@ -1,9 +1,8 @@
-// Copyright (c) 2018-2022 The Pastel developers
+// Copyright (c) 2018-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <regex>
-
 #include <gtest/gtest.h>
 #include <univalue.h>
 
@@ -168,6 +167,11 @@ TEST_F(TestRpc, rpc_rawsign)
     EXPECT_FALSE(find_value(r.get_obj(), "complete").get_bool());
     r = CallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"["+privkey1+","+privkey2+"]");
     EXPECT_TRUE(find_value(r.get_obj(), "complete").get_bool());
+}
+
+TEST_F(TestRpc, help)
+{
+    EXPECT_THROW(CallRPC("help"), runtime_error);
 }
 
 class PTestRpc : public TestWithParam<tuple<CAmount, string>>

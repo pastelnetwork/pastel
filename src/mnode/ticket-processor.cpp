@@ -1595,7 +1595,7 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
  * Reads P2FMS (Pay-to-Fake-Multisig) transaction into output_string.
  * 
  * \param tx_in - transaction
- * \param output_string - output strinf
+ * \param output_string - output string
  * \param error - returns an error message if any
  * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output string
  */

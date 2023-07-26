@@ -151,7 +151,8 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
         // Add spent information if spentindex is enabled
         CSpentIndexValue spentInfo;
         CSpentIndexKey spentKey(txid, i);
-        if (fSpentIndex && GetSpentIndex(spentKey, spentInfo)) {
+        if (fSpentIndex && GetSpentIndex(spentKey, spentInfo))
+        {
             out.pushKV("spentTxId", spentInfo.txid.GetHex());
             out.pushKV("spentIndex", (int)spentInfo.inputIndex);
             out.pushKV("spentHeight", spentInfo.blockHeight);
@@ -160,7 +161,8 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
     }
     entry.pushKV("vout", vout);
 
-    if (tx.fOverwintered && tx.nVersion >= SAPLING_TX_VERSION) {
+    if (tx.fOverwintered && tx.nVersion >= SAPLING_TX_VERSION)
+    {
         entry.pushKV("valueBalance", ValueFromAmount(tx.valueBalance));
         entry.pushKV("valueBalancePat", tx.valueBalance);
         UniValue vspenddesc = TxShieldedSpendsToJSON(tx);
@@ -172,7 +174,8 @@ void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
         }
     }
 
-    if (!hashBlock.IsNull()) {
+    if (!hashBlock.IsNull())
+    {
         entry.pushKV("blockhash", hashBlock.GetHex());
         const auto mi = mapBlockIndex.find(hashBlock);
         if (mi != mapBlockIndex.cend() && mi->second)
@@ -1041,7 +1044,7 @@ As a json rpc call
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     const auto &txid = tx.GetHash();
 
-    auto chainparams = Params();
+    const auto &chainparams = Params();
 
     // DoS mitigation: reject transactions expiring soon
     if (tx.nExpiryHeight > 0)
@@ -1073,14 +1076,11 @@ As a json rpc call
         bool fMissingInputs;
         if (!AcceptToMemoryPool(chainparams, mempool, state, tx, false, &fMissingInputs, !fOverrideFees))
         {
-            if (state.IsInvalid()) {
+            if (state.IsInvalid())
                 throw JSONRPCError(RPC_TRANSACTION_REJECTED, strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason()));
-            } else {
-                if (fMissingInputs) {
-                    throw JSONRPCError(RPC_TRANSACTION_ERROR, "Missing inputs");
-                }
-                throw JSONRPCError(RPC_TRANSACTION_ERROR, state.GetRejectReason());
-            }
+            if (fMissingInputs)
+                throw JSONRPCError(RPC_TRANSACTION_ERROR, "Missing inputs");
+            throw JSONRPCError(RPC_TRANSACTION_ERROR, state.GetRejectReason());
         }
     } else if (fHaveChain) {
         throw JSONRPCError(RPC_TRANSACTION_ALREADY_IN_CHAIN, "transaction already in block chain");

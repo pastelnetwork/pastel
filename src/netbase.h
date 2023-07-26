@@ -1,15 +1,12 @@
 #pragma once
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <stdint.h>
-#include <string>
-#include <vector>
-
 #if defined(HAVE_CONFIG_H)
 #include <config/bitcoin-config.h>
 #endif
+#include <vector_types.h>
 #include <compat.h>
 #include <serialize.h>
 
@@ -81,7 +78,7 @@ class CNetAddr
         unsigned int GetByte(int n) const;
         uint64_t GetHash() const;
         bool GetInAddr(struct in_addr* pipv4Addr) const;
-        std::vector<unsigned char> GetGroup() const;
+        v_uint8 GetGroup() const;
         int GetReachabilityFrom(const CNetAddr *paddrPartner = nullptr) const;
 
         CNetAddr(const struct in6_addr& pipv6Addr);
@@ -149,7 +146,7 @@ class CService : public CNetAddr
         friend bool operator==(const CService& a, const CService& b);
         friend bool operator!=(const CService& a, const CService& b);
         friend bool operator<(const CService& a, const CService& b);
-        std::vector<unsigned char> GetKey() const;
+        v_uint8 GetKey() const;
         std::string ToString(bool fUseGetnameinfo = true) const;
         std::string ToStringPort() const;
         std::string ToStringIPPort(bool fUseGetnameinfo = true) const;

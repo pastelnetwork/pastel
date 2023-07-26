@@ -935,11 +935,13 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // if using block pruning, then disable txindex
     // also disable the wallet (for now, until SPV support is implemented in wallet)
-    if (GetArg("-prune", 0)) {
+    if (GetArg("-prune", 0))
+    {
         if (GetBoolArg("-txindex", false))
             return InitError(translate("Prune mode is incompatible with -txindex."));
 #ifdef ENABLE_WALLET
-        if (!GetBoolArg("-disablewallet", false)) {
+        if (!GetBoolArg("-disablewallet", false))
+        {
             if (SoftSetBoolArg("-disablewallet", true))
                 LogPrintf("%s : parameter interaction: -prune -> setting -disablewallet=1\n", __func__);
             else
@@ -998,10 +1000,10 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         return InitError(translate("Prune cannot be configured with a negative value."));
     }
     nPruneTarget = (uint64_t) nSignedPruneTarget;
-    if (nPruneTarget) {
-        if (nPruneTarget < MIN_DISK_SPACE_FOR_BLOCK_FILES) {
+    if (nPruneTarget)
+    {
+        if (nPruneTarget < MIN_DISK_SPACE_FOR_BLOCK_FILES)
             return InitError(strprintf(translate("Prune configured below the minimum of %d MB.  Please use a higher number."), MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024));
-        }
         LogPrintf("Prune configured to target %uMiB on disk for block and undo files.\n", nPruneTarget / 1024 / 1024);
         fPruneMode = true;
     }
@@ -1289,7 +1291,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                 return InitError(strprintf(translate("Unknown network specified in -onlynet: '%s'"), snet));
             nets.insert(net);
         }
-        for (int n = 0; n < NET_MAX; n++) {
+        for (int n = 0; n < NET_MAX; n++)
+        {
             enum Network net = (enum Network)n;
             if (!nets.count(net))
                 SetLimited(net);
@@ -1298,7 +1301,35 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     if (mapArgs.count("-whitelist"))
     {
-        for (const auto& net : mapMultiArgs["-whitelist"])
+        set<string> vSubnets;
+        for (const auto& subnetSpec : mapMultiArgs["-whitelist"])
+        {
+            // whitelist can be defined via file
+            if (str_starts_with(subnetSpec, "@"))
+            {
+                string filename = subnetSpec.substr(1);
+                trim(filename);
+                fs::path filePath = GetDataDir() / filename;
+                if (!fs::exists(filePath))
+					return InitError(strprintf(translate("File '%s' with whitelist subnets does not exist"), filePath.string()));
+                ifstream file(filePath.string());
+				if (!file.is_open())
+                    return InitError(strprintf(translate("File '%s' with whitelist subnets cannot be opened"), filePath.string()));
+                LogFnPrintf("Loading whitelist subnets from file [%s]", filePath.string());
+				string line;
+				while (getline(file, line))
+				{
+					trim(line);
+					if (line.empty() || line[0] == '#' || line[0] == ';')
+						continue;
+                    vSubnets.emplace(move(line));
+				}
+            }
+            else
+				vSubnets.emplace(subnetSpec);
+        }
+        LogFnPrintf("Processing %zu whitelist subnets", vSubnets.size());
+        for (const auto& net : vSubnets)
         {
             CSubNet subnet(net);
             if (!subnet.IsValid())
@@ -1424,7 +1455,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     {
         fs::create_directories(blocksDir);
         bool linked = false;
-        for (unsigned int i = 1; i < 10000; i++) {
+        for (unsigned int i = 1; i < 10000; i++)
+        {
             fs::path source = GetDataDir() / strprintf("blk%04u.dat", i);
             if (!fs::exists(source)) 
                 break;

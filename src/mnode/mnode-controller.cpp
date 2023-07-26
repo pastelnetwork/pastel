@@ -551,6 +551,29 @@ bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
     return bPushed;
 }
 
+void CMasterNodeController::DumpCacheFiles()
+{
+    try
+    {
+        // STORE DATA CACHES INTO SERIALIZED DAT FILES
+        CFlatDB<CMasternodeMan> flatDB1(MNCACHE_FILENAME, MNCACHE_CACHE_MAGIC_STR);
+        flatDB1.Dump(masternodeManager, false);
+        CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
+        flatDB2.Dump(masternodePayments, false);
+        CFlatDB<CMasternodeRequestTracker> flatDB3(MN_REQUEST_TRACKER_FILENAME, MN_REQUEST_TRACKER_MAGIC_CACHE_STR);
+        flatDB3.Dump(requestTracker, false);
+        CFlatDB<CMasternodeMessageProcessor> flatDB4(MN_MESSAGES_FILENAME, MN_MESSAGES_MAGIC_CACHE_STR);
+        flatDB4.Dump(masternodeMessages, false);
+#ifdef GOVERNANCE_TICKETS
+        CFlatDB<CMasternodeGovernance> flatDB5(MN_GOVERNANCE_FILENAME, MN_GOVERNANCE_MAGIC_CACHE_STR);
+        flatDB5.Dump(masternodeGovernance, false);
+#endif // GOVERNANCE_TICKETS
+    } catch (const std::exception& e)
+    {
+		LogFnPrintf("Failed to dump cache files: %s", e.what());
+    }
+}
+
 void CMasterNodeController::ShutdownMasterNode()
 {
     if (pacNotificationInterface)
@@ -559,20 +582,7 @@ void CMasterNodeController::ShutdownMasterNode()
         delete pacNotificationInterface;
         pacNotificationInterface = nullptr;
     }
-
-    // STORE DATA CACHES INTO SERIALIZED DAT FILES
-    CFlatDB<CMasternodeMan> flatDB1(MNCACHE_FILENAME, MNCACHE_CACHE_MAGIC_STR);
-    flatDB1.Dump(masternodeManager, false);
-    CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
-    flatDB2.Dump(masternodePayments, false);
-    CFlatDB<CMasternodeRequestTracker> flatDB3(MN_REQUEST_TRACKER_FILENAME, MN_REQUEST_TRACKER_MAGIC_CACHE_STR);
-    flatDB3.Dump(requestTracker, false);
-    CFlatDB<CMasternodeMessageProcessor> flatDB4(MN_MESSAGES_FILENAME, MN_MESSAGES_MAGIC_CACHE_STR);
-    flatDB4.Dump(masternodeMessages, false);
-#ifdef GOVERNANCE_TICKETS
-    CFlatDB<CMasternodeGovernance> flatDB5(MN_GOVERNANCE_FILENAME, MN_GOVERNANCE_MAGIC_CACHE_STR);
-    flatDB5.Dump(masternodeGovernance, false);
-#endif // GOVERNANCE_TICKETS
+    DumpCacheFiles();
 }
 
 fs::path CMasterNodeController::GetMasternodeConfigFile()
@@ -774,7 +784,7 @@ void CMasterNodeMaintenanceThread::execute()
         return;
     fOneThread = true;
 
-    unsigned int nTick = 0;
+    size_t nTick = 0;
 
     while (!shouldStop())
     {
@@ -809,8 +819,9 @@ void CMasterNodeMaintenanceThread::execute()
             }
             if (masterNodeCtrl.IsMasterNode() && (nTick % (60 * 5) == 0))
                 masterNodeCtrl.masternodeManager.DoFullVerificationStep();
+
+            if (nTick % 1200 == 0) // every 10 minutes
+                masterNodeCtrl.DumpCacheFiles();
         }
     }
 }
-
-

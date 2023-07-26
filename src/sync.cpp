@@ -95,7 +95,8 @@ static void potential_deadlock_detected(const pair<void*, void*>& mismatch, cons
     firstLocked = false;
     secondLocked = false;
     LogPrintf("Current lock order is:\n");
-    for (const auto &[pLock, lockLocation] : s1) {
+    for (const auto &[pLock, lockLocation] : s1)
+    {
         if (pLock == mismatch.first)
         {
             LogPrintf(" (1)");
