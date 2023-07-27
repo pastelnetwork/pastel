@@ -70,6 +70,8 @@ public:
     int MNStartRequiredExpirationTime;
     int nGovernanceVotingPeriodBlocks;
 
+    unsigned int nMinRequiredEnabledMasternodes, nMinRequiredEnabledMasternodesPercent;
+
     uint32_t nMasternodeMinimumConfirmations, nMasternodePaymentsIncreaseBlock, nMasternodePaymentsIncreasePeriod;
     int nMasternodePaymentsVotersIndexDelta, nMasternodePaymentsFeatureWinnerBlockIndexDelta;
     int nMasterNodeMaximumOutboundConnections;

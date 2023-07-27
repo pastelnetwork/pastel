@@ -126,7 +126,12 @@ void CMasterNodeController::SetParameters()
     
     MinTicketConfirmations = 5; //blocks
     MaxAcceptTicketAge = 24; //1 hour, 1 block per 2.5 minutes
-    
+
+    int minCount = (int)GetArg("-setminenabledmncount", 0);
+    nMinRequiredEnabledMasternodes = (minCount >= 0)? minCount: 0;
+    int minPercent = (int)GetArg("-setminenabledmnpercent", 0);
+    nMinRequiredEnabledMasternodesPercent = (minPercent >= 0 && minPercent <= 100)? minPercent: 0;
+
     const auto& chainparams = Params();
     if (chainparams.IsMainNet())
     {

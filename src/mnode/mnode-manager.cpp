@@ -371,19 +371,24 @@ bool CMasternodeMan::HasEnoughEnabled() const noexcept
     size_t nCurrent = CountCurrent();
     size_t nEnabled = CountEnabled();
 
-    // TODO: Make pastled parameter and API call to set this value
-    size_t nRequired = 22;
-    size_t nPercent = 80;
+    uint32_t nRequired = masterNodeCtrl.nMinRequiredEnabledMasternodes;
+    uint32_t nPercent = masterNodeCtrl.nMinRequiredEnabledMasternodesPercent;
 
-    if (nRequired == -1) // default when not set
+    if (nRequired == 0) // default when not set
     {
+        if (nPercent == 0)
+            return true;
+
         nRequired = nCurrent * nPercent / 100;
     }
 
     if (nEnabled < nRequired)
-        LogFnPrintf("ERROR: Not enough Enabled MNs in local list %d, required %d, total %d", nEnabled, nRequired, nCurrent);
-
-    return nEnabled >= nRequired;
+    {
+        LogFnPrintf("WARNING: Not enough Enabled MNs in local list %d, required %d, total %d", nEnabled, nRequired,
+                    nCurrent);
+        return false;
+    }
+    return true;
 }
 
 
