@@ -210,7 +210,8 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
             }
 
             // Masternodes beyond these Pastel IDs, were in the top 10 at the block when the registration happened
-            if (masterNodeCtrl.masternodeSync.IsSynced()) // ticket needs synced MNs
+            if (masterNodeCtrl.masternodeSync.IsSynced() &&
+                masterNodeCtrl.masternodeManager.HasEnoughEnabled() ) // ticket needs synced AND correct list of MNs
             {
                 vector<CMasternode> topBlockMNs;
                 string error;
@@ -233,7 +234,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
                     LogFnPrintf("Top MNs for height=%u (status=%d): [%s]", nCreatorHeight, to_integral_type(status), GetListOfMasterNodes(topBlockMNs));
                     tv.state = TICKET_VALIDATION_STATE::INVALID;
                     tv.errorMsg = strprintf(
-                        "MN%hi was NOT in the top masternodes list for block %u", 
+                        "MN%hi was NOT in the top masternodes list for block %u",
                         mnIndex, nCreatorHeight);
                     break;
                 }

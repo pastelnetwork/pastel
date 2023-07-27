@@ -202,6 +202,9 @@ public:
     size_t CountEnabled(const int nProtocolVersion = -1) const noexcept;
     uint32_t GetCachedBlockHeight() const noexcept { return nCachedBlockHeight; }
 
+    size_t CountCurrent(const int nProtocolVersion = -1) const noexcept;
+    bool HasEnoughEnabled() const noexcept;
+
     /// Count Masternodes by network type - NET_IPV4, NET_IPV6, NET_TOR
     // int CountByIP(int nNetworkType);
 
@@ -245,6 +248,9 @@ public:
     bool empty() const noexcept { return mapMasternodes.empty(); }
 
     std::string ToString() const;
+    std::string ToJSON() const;
+
+    void ClearCache(bool clearMnList, bool clearSeenLists, bool clearRecoveryLists, bool clearAskedLists);
 
     /// Update masternode list and maps using provided CMasternodeBroadcast
     void UpdateMasternodeList(CMasternodeBroadcast mnb);
@@ -268,5 +274,5 @@ public:
     void UpdatedBlockTip(const CBlockIndex *pindex);
     
     GetTopMasterNodeStatus GetTopMNsForBlock(std::string &error, std::vector<CMasternode> &topMNs, int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
-    GetTopMasterNodeStatus CalculateTopMNsForBlock(std::string &error, std::vector<CMasternode> &topMNs, int nBlockHeight = -1);
+    GetTopMasterNodeStatus CalculateTopMNsForBlock(std::string &error, std::vector<CMasternode> &topMNs, int nBlockHeight = -1, bool bSkipValidCheck = false);
 };

@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <random>
 #include <inttypes.h>
+#include <json/json.hpp>
+#include <fstream>
 
 #include <addrman.h>
 #include <script/standard.h>
@@ -25,6 +27,7 @@
 #include <mnode/mnode-controller.h>
 
 using namespace std;
+using json = nlohmann::json;
 
 const string CMasternodeMan::SERIALIZATION_VERSION_STRING_PREV = "CMasternodeMan-Version-7";
 const string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-8";
@@ -316,6 +319,73 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
         LogFnPrintf("%s", ToString());
     }
 }
+
+void CMasternodeMan::ClearCache(bool clearMnList, bool clearSeenLists, bool clearRecoveryLists, bool clearAskedLists)
+{
+    if (clearMnList)
+    {
+        LOCK(cs);
+        mapMasternodes.clear();
+    }
+    if (clearSeenLists)
+    {
+        LOCK(cs);
+        mapSeenMasternodeBroadcast.clear();
+        mapSeenMasternodePing.clear();
+    }
+    if (clearRecoveryLists)
+    {
+        LOCK(cs);
+        mMnbRecoveryRequests.clear();
+        mMnbRecoveryGoodReplies.clear();
+    }
+    if (clearAskedLists)
+    {
+        LOCK(cs);
+        mAskedUsForMasternodeList.clear();
+        mWeAskedForMasternodeList.clear();
+        mWeAskedForMasternodeListEntry.clear();
+    }
+}
+
+size_t CMasternodeMan::CountCurrent(const int nProtocolVersion) const noexcept
+{
+    LOCK(cs);
+
+    const int nMNProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.GetSupportedProtocolVersion() : nProtocolVersion;
+
+    size_t nCount = 0;
+    for (const auto& [outpoint, mn] : mapMasternodes) {
+        if (mn.nProtocolVersion < nMNProtocolVersion)
+            continue;
+        if (mn.IsNewStartRequired() &&  !mn.IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime))
+            continue;
+        nCount++;
+    }
+
+    return nCount;
+}
+
+bool CMasternodeMan::HasEnoughEnabled() const noexcept
+{
+    size_t nCurrent = CountCurrent();
+    size_t nEnabled = CountEnabled();
+
+    // TODO: Make pastled parameter and API call to set this value
+    size_t nRequired = 22;
+    size_t nPercent = 80;
+
+    if (nRequired == -1) // default when not set
+    {
+        nRequired = nCurrent * nPercent / 100;
+    }
+
+    if (nEnabled < nRequired)
+        LogFnPrintf("ERROR: Not enough Enabled MNs in local list %d, required %d, total %d", nEnabled, nRequired, nCurrent);
+
+    return nEnabled >= nRequired;
+}
+
 
 void CMasternodeMan::Clear()
 {
@@ -1441,6 +1511,83 @@ string CMasternodeMan::ToString() const
     return info.str();
 }
 
+string CMasternodeMan::ToJSON() const {
+
+    json jsonObj;
+
+    jsonObj["CachedBlockHeight"] = nCachedBlockHeight.load();
+    jsonObj["LastWatchdogVoteTime"] = nLastWatchdogVoteTime;
+
+    jsonObj["Masternodes"] = json::array();
+    for (const auto& mn: mapMasternodes)
+    {
+        const CMasterNodePing lastPing = mn.second.getLastPing();
+        json mnJson {
+            { "Outpoint", mn.second.GetDesc() },
+            { "PastelID", mn.second.getMNPastelID() },
+            { "ip", mn.second.get_address() },
+            { "status", mn.second.GetStateString() },
+            { "PoSeBanScore", mn.second.getPoSeBanScore() },
+            { "PoSeBanHeight", mn.second.getPoSeBanHeight() },
+            { "LastPing",
+              {
+                { "Hash", lastPing.GetHash().ToString() },
+                { "Outpoint", lastPing.GetDesc() },
+                { "Signature", lastPing.getEncodedBase64Signature() },
+                { "BlockHashString", lastPing.getBlockHashString() }
+              }
+            },
+        };
+        jsonObj["Masternodes"].push_back(mnJson);
+    }
+    for ( const auto& mnb : mapSeenMasternodeBroadcast)
+    {
+        json mnJson {
+                { "Hash", mnb.first.ToString() },
+                { "Outpoint", mnb.second.second.GetDesc() },
+                { "PastelID", mnb.second.second.getMNPastelID() },
+                { "ip", mnb.second.second.get_address() },
+                { "status", mnb.second.second.GetStateString() },
+                { "PoSeBanScore", mnb.second.second.getPoSeBanScore() },
+                { "PoSeBanHeight", mnb.second.second.getPoSeBanHeight() },
+        };
+        jsonObj["SeenMasternodeBroadcast"].push_back(mnJson);
+    }
+    for ( const auto& mnp : mapSeenMasternodePing)
+    {
+        json mnJson {
+                { "Hash", mnp.first.ToString() },
+                { "Outpoint", mnp.second.GetDesc() },
+                { "Signature", mnp.second.getEncodedBase64Signature() },
+                { "BlockHashString", mnp.second.getBlockHashString() }
+        };
+        jsonObj["SeenMasternodePing"].push_back(mnJson);
+    }
+    for ( const auto& asked : mAskedUsForMasternodeList)
+    {
+        json mnJson {
+                { "IP", asked.first.ToString() },
+                { "time", asked.second },
+        };
+        jsonObj["AskedUsForMasternodeList"].push_back(mnJson);
+    }
+    for ( const auto& asked : mWeAskedForMasternodeList)
+    {
+        json mnJson {
+                { "IP", asked.first.ToString() },
+                { "time", asked.second },
+        };
+        jsonObj["WeAskedForMasternodeList"].push_back(mnJson);
+    }
+
+//    mWeAskedForMasternodeListEntry
+//    mMnbRecoveryRequests
+//    mMnbRecoveryGoodReplies
+//    mapHistoricalTopMNs
+
+    return jsonObj.dump(4);
+}
+
 void CMasternodeMan::UpdateMasternodeList(CMasternodeBroadcast mnb)
 {
     const auto &mnPing = mnb.getLastPing();
@@ -1703,7 +1850,7 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
  * \param nBlockHeight - block height
  * \return - status of the operation
  */
-GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, vector<CMasternode> &topMNs, int nBlockHeight)
+GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, vector<CMasternode> &topMNs, int nBlockHeight, bool bSkipValidCheck)
 {
     topMNs.clear();
     error.clear();
@@ -1720,7 +1867,7 @@ GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, ve
     
     for (auto mn: vMasternodeRanks)
     {
-        if (mn.second.IsValidForPayment())
+        if (bSkipValidCheck || mn.second.IsValidForPayment())
             topMNs.push_back(mn.second);
         if (topMNs.size() == masterNodeCtrl.getMasternodeTopMNsNumber())
             break;
@@ -1741,7 +1888,7 @@ GetTopMasterNodeStatus CMasternodeMan::GetTopMNsForBlock(string &error, vector<C
         return GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY;
     }
     if (bCalculateIfNotSeen)
-        return CalculateTopMNsForBlock(error, topMNs, nBlockHeight);
+        return CalculateTopMNsForBlock(error, topMNs, nBlockHeight, bCalculateIfNotSeen);
     error = strprintf("Top MNs historical ranks for block %d not found", nBlockHeight);
     return GetTopMasterNodeStatus::HISTORY_NOT_FOUND;
 }

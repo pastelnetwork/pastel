@@ -76,7 +76,7 @@ Arguments:
 1. "mode"      (string, optional) Required to use filter, defaults = status) The mode to run list in
 2. "filter"    (string, optional) Filter results. Partial match by outpoint by default in all modes,
                                    additional matches in some modes are also available
-3. "allnode"   (string, optional) Force to show all MNs including expired NEW_START_REQUIRED
+3. "allnodes"  (string, optional) Force to show all MNs including expired NEW_START_REQUIRED
 
 Available modes:
   activeseconds  - Print number of seconds masternode recognized by the network as enabled
@@ -138,7 +138,7 @@ Examples:
         }
     } else {
         const auto mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
-        const bool bShowAllNodes = strExtra == "allnode";
+        const bool bShowAllNodes = strExtra == "allnodes";
         for (const auto& [outpoint, mn] : mapMasternodes)
         {
             if( mn.IsNewStartRequired() && ! mn.IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime) && !bShowAllNodes ) 
@@ -1113,15 +1113,43 @@ R"(Correct usage is:
     return NullUniValue;
 }
 
+UniValue masternode_print_cache(const UniValue& params) {
+    return masterNodeCtrl.masternodeManager.ToJSON();
+}
+
+UniValue masternode_clear_cache(const UniValue& params) {
+
+    RPC_CMD_PARSER2(MN_CLEAR_CACHE, params, all, mns, seen, recovery, asked);
+
+    switch (MN_CLEAR_CACHE.cmd()) {
+        case RPC_CMD_MN_CLEAR_CACHE::all:
+            masterNodeCtrl.masternodeManager.ClearCache(true, true, true, true);
+            break;
+        case RPC_CMD_MN_CLEAR_CACHE::mns:
+            masterNodeCtrl.masternodeManager.ClearCache(true, false, false, false);
+            break;
+        case RPC_CMD_MN_CLEAR_CACHE::seen:
+            masterNodeCtrl.masternodeManager.ClearCache(false, true, false, false);
+            break;
+        case RPC_CMD_MN_CLEAR_CACHE::recovery:
+            masterNodeCtrl.masternodeManager.ClearCache(false, false, true, false);
+            break;
+        case RPC_CMD_MN_CLEAR_CACHE::asked:
+            masterNodeCtrl.masternodeManager.ClearCache(false, false, false, true);
+            break;
+    }
+    return NullUniValue;
+}
+
 UniValue masternode(const UniValue& params, bool fHelp)
 {
 #ifdef ENABLE_WALLET
     RPC_CMD_PARSER(MN, params, init, list, list__conf, count, debug, current, winner, winners,
-        genkey, connect, status, top, message, make__conf, pose__ban__score,
+        genkey, connect, status, top, message, make__conf, pose__ban__score, print__cache, clear__cache,
         start__many, start__alias, start__all, start__missing, start__disabled, outputs);
 #else
     RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
-        genkey, connect, status, top, message, make__conf, pose__ban__score);
+        genkey, connect, status, top, message, make__conf, pose__ban__score, print__cache, clear__cache);
 #endif // ENABLE_WALLET
 
 #ifdef ENABLE_WALLET
@@ -1206,6 +1234,12 @@ R"(
 
         case RPC_CMD_MN::pose__ban__score:
             return masternode_pose_ban_score(params, fHelp);
+
+        case RPC_CMD_MN::print__cache:
+            return masternode_print_cache(params);
+
+        case RPC_CMD_MN::clear__cache:
+            return masternode_clear_cache(params);
 
 #ifdef ENABLE_WALLET
         case RPC_CMD_MN::init:
