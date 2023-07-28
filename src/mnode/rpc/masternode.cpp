@@ -76,7 +76,7 @@ Arguments:
 1. "mode"      (string, optional) Required to use filter, defaults = status) The mode to run list in
 2. "filter"    (string, optional) Filter results. Partial match by outpoint by default in all modes,
                                    additional matches in some modes are also available
-3. "allnode"   (string, optional) Force to show all MNs including expired NEW_START_REQUIRED
+3. "allnodes"  (string, optional) Force to show all MNs including expired NEW_START_REQUIRED
 
 Available modes:
   activeseconds  - Print number of seconds masternode recognized by the network as enabled
@@ -123,7 +123,10 @@ Examples:
 
     KeyIO keyIO(Params());
     UniValue obj(UniValue::VOBJ);
-    const auto mode = MNLIST.cmd();
+    auto mode = MNLIST.cmd();
+    if (mode == RPC_CMD_MNLIST::unknown)
+        mode = RPC_CMD_MNLIST::status;
+
     if (MNLIST.IsCmd(RPC_CMD_MNLIST::rank)) 
     {
         CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
@@ -138,7 +141,7 @@ Examples:
         }
     } else {
         const auto mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
-        const bool bShowAllNodes = strExtra == "allnode";
+        const bool bShowAllNodes = strExtra == "allnodes";
         for (const auto& [outpoint, mn] : mapMasternodes)
         {
             if( mn.IsNewStartRequired() && ! mn.IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime) && !bShowAllNodes ) 
@@ -322,6 +325,9 @@ UniValue masternode_count(const UniValue& params)
     if (strMode == "enabled")
         return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountEnabled());
 
+    if (strMode == "current")
+        return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountCurrent());
+
     uint32_t nCount = 0;
     masternode_info_t mnInfo;
     masterNodeCtrl.masternodeManager.GetNextMasternodeInQueueForPayment(true, nCount, mnInfo);
@@ -330,8 +336,11 @@ UniValue masternode_count(const UniValue& params)
         return static_cast<uint64_t>(nCount);
 
     if (strMode == "all")
-        return strprintf("Total: %zu (Enabled: %zu / Qualify: %d)",
-            masterNodeCtrl.masternodeManager.size(), masterNodeCtrl.masternodeManager.CountEnabled(), nCount);
+        return strprintf("Total: %zu. From them: Current: %zu; Enabled: %zu; Qualify: %d",
+                         masterNodeCtrl.masternodeManager.size(),
+                         masterNodeCtrl.masternodeManager.CountCurrent(),
+                         masterNodeCtrl.masternodeManager.CountEnabled(),
+                         nCount);
 
     return NullUniValue;
 }
@@ -1113,15 +1122,83 @@ R"(Correct usage is:
     return NullUniValue;
 }
 
+UniValue masternode_print_cache(const UniValue& params) {
+    return masterNodeCtrl.masternodeManager.ToJSON();
+}
+
+UniValue masternode_clear_cache(const UniValue& params) {
+
+    RPC_CMD_PARSER2(MN_CLEAR_CACHE, params, all, mns, seen, recovery, asked);
+
+    switch (MN_CLEAR_CACHE.cmd()) {
+        case RPC_CMD_MN_CLEAR_CACHE::all:
+            masterNodeCtrl.masternodeManager.ClearCache(true, true, true, true);
+            break;
+        case RPC_CMD_MN_CLEAR_CACHE::mns:
+            masterNodeCtrl.masternodeManager.ClearCache(true, false, false, false);
+            break;
+        case RPC_CMD_MN_CLEAR_CACHE::seen:
+            masterNodeCtrl.masternodeManager.ClearCache(false, true, false, false);
+            break;
+        case RPC_CMD_MN_CLEAR_CACHE::recovery:
+            masterNodeCtrl.masternodeManager.ClearCache(false, false, true, false);
+            break;
+        case RPC_CMD_MN_CLEAR_CACHE::asked:
+            masterNodeCtrl.masternodeManager.ClearCache(false, false, false, true);
+            break;
+    }
+    return NullUniValue;
+}
+
+UniValue masternode_set_min_mn_count(const UniValue& params)
+{
+    if (params.size() < 2)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is: masternode set-min-mn-count <count>");
+
+    int count = get_number(params[1]);
+    if (count < 0)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Count must be positive number: %d", count));
+
+    uint32_t totalCount = masterNodeCtrl.masternodeManager.CountMasternodes();
+    if (count > totalCount)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Count should be less or equal to total number of MNs: %zu", totalCount));
+
+    UniValue obj(UniValue::VOBJ);
+    obj.pushKV("OldMinMnCount", (int)masterNodeCtrl.nMinRequiredEnabledMasternodes);
+    masterNodeCtrl.nMinRequiredEnabledMasternodes = count;
+    obj.pushKV("NewMinMnCount", (int)masterNodeCtrl.nMinRequiredEnabledMasternodes);
+
+    return obj;
+}
+
+UniValue masternode_set_min_mn_percent(const UniValue& params)
+{
+    if (params.size() < 2)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is: masternode set-min-mn-percent <percent>");
+
+    int percent = get_number(params[1]);
+    if (percent <0 || percent > 100)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Percent should be in range 0-100");
+
+    UniValue obj(UniValue::VOBJ);
+    obj.pushKV("OldMinMnPercent", (int)masterNodeCtrl.nMinRequiredEnabledMasternodesPercent);
+    masterNodeCtrl.nMinRequiredEnabledMasternodesPercent = percent;
+    obj.pushKV("NewMinMnPercent", (int)masterNodeCtrl.nMinRequiredEnabledMasternodesPercent);
+
+    return obj;
+}
+
 UniValue masternode(const UniValue& params, bool fHelp)
 {
 #ifdef ENABLE_WALLET
     RPC_CMD_PARSER(MN, params, init, list, list__conf, count, debug, current, winner, winners,
         genkey, connect, status, top, message, make__conf, pose__ban__score,
+        print__cache, clear__cache, min__enabled__mn__count, min__enabled__mn__percent,
         start__many, start__alias, start__all, start__missing, start__disabled, outputs);
 #else
     RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
-        genkey, connect, status, top, message, make__conf, pose__ban__score);
+        genkey, connect, status, top, message, make__conf, pose__ban__score,
+        print__cache, clear__cache, min__enabled__mn__count, min__enabled__mn__percent);
 #endif // ENABLE_WALLET
 
 #ifdef ENABLE_WALLET
@@ -1139,7 +1216,7 @@ Arguments:
 1. "command"        (string or set of strings, required) The command to execute
 
 Available commands:
-  count        - Print number of all known masternodes (optional: 'ps', 'enabled', 'all', 'qualify')
+  count        - Print number of all known masternodes (optional: 'ps', 'enabled', 'all', 'current', 'qualify')
   current      - Print info on current masternode winner to be paid the next block (calculated locally)
   genkey       - Generate new masternodeprivkey
 )"
@@ -1163,6 +1240,9 @@ R"(
                  (this maybe not accurate - MN existed before might not be in the current list)
   message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n"
   pose-ban-score - PoSe (Proof-of-Service) ban score management
+  min-enabled-mn-count - Set minimum required ENABLED masternode count in the LOCAL list to validate Tickets
+  min-enabled-mn-percent - Set minimum required ENABLED masternode percent in the LOCAL list to validate Tickets (0-100).
+                           Used only if min count is not set by either 'min-enabled-mn-count' or '-setminenabledmncount' command line option (default: 0)
 )"
 );
 
@@ -1206,6 +1286,18 @@ R"(
 
         case RPC_CMD_MN::pose__ban__score:
             return masternode_pose_ban_score(params, fHelp);
+
+        case RPC_CMD_MN::print__cache:
+            return masternode_print_cache(params);
+
+        case RPC_CMD_MN::clear__cache:
+            return masternode_clear_cache(params);
+
+        case RPC_CMD_MN::min__enabled__mn__count:
+            return masternode_set_min_mn_count(params);
+
+        case RPC_CMD_MN::min__enabled__mn__percent:
+            return masternode_set_min_mn_percent(params);
 
 #ifdef ENABLE_WALLET
         case RPC_CMD_MN::init:
