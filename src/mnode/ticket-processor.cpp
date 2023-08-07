@@ -639,8 +639,14 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
         if (data.nTicketHeight == numeric_limits<uint32_t>::max())
         {
             // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
-            if (mapBlockIndex.count(data.hashBlock) != 0)
-                data.nTicketHeight = mapBlockIndex[data.hashBlock]->nHeight;
+            const auto mi = mapBlockIndex.find(data.hashBlock);
+            if (mi != mapBlockIndex.cend() && mi->second) {
+                const auto pindex = mi->second;
+                if (chainActive.Contains(pindex))
+                {
+                    data.nTicketHeight = pindex->nHeight;
+                }
+            }
         }
 
         // create Pastel ticket by id
