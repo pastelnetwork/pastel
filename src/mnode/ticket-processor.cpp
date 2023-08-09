@@ -639,8 +639,14 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
         if (data.nTicketHeight == numeric_limits<uint32_t>::max())
         {
             // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
-            if (mapBlockIndex.count(data.hashBlock) != 0)
-                data.nTicketHeight = mapBlockIndex[data.hashBlock]->nHeight;
+            const auto mi = mapBlockIndex.find(data.hashBlock);
+            if (mi != mapBlockIndex.cend() && mi->second) {
+                const auto pindex = mi->second;
+                if (chainActive.Contains(pindex))
+                {
+                    data.nTicketHeight = pindex->nHeight;
+                }
+            }
         }
 
         // create Pastel ticket by id
@@ -1890,4 +1896,35 @@ shared_ptr<ITxMemPoolTracker> CPastelTicketProcessor::GetTxMemPoolTracker()
     if (!TicketTxMemPoolTracker)
         TicketTxMemPoolTracker = make_shared<CTicketTxMemPoolTracker>();
     return TicketTxMemPoolTracker;
+}
+
+bool CPastelTicketProcessor::FindTicketTransaction(const std::string& existing_ticket_txid, uint32_t existing_ticket_block_height,
+                                                   const std::string& new_ticket_txid, uint32_t new_ticket_block_height,
+                                                   bool bPreReg, std::string &message) {
+    bool bFound= true;
+    const uint256 txid = uint256S(existing_ticket_txid);
+    const auto pTicket = CPastelTicketProcessor::GetTicket(txid);
+    if (pTicket) {
+        if (pTicket->GetBlock() == numeric_limits<uint32_t>::max()) {
+            CTransaction tx;
+            if (mempool.lookup(txid, tx)) {
+                message = strprintf("%sfound in mempool. ", message);
+            } else {
+                bFound = false;
+                message = strprintf("%sfound in stale block. ", message);
+            }
+        } else {
+            message = strprintf("%salready exists in blockchain. ", message);
+        }
+    } else {
+        bFound = false;
+        message = strprintf("%sfound in Ticket DB, but not in blockchain. ", message);
+    }
+    message = strprintf("%s [%sfound ticket block=%u, txid=%s]", message,
+                        bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", new_ticket_block_height, new_ticket_txid),
+                        existing_ticket_block_height, existing_ticket_txid);
+    if (!bFound) {
+        LogFnPrintf("WARNING: %s", message);
+    }
+    return bFound;
 }

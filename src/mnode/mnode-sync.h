@@ -51,6 +51,9 @@ private:
     // ... or failed
     int64_t nTimeLastFailure;
 
+    int64_t nTimeLastProcess;
+
+
     void Fail();
     void ClearFulfilledRequests();
 
@@ -65,6 +68,7 @@ public:
     }
 
     bool IsFailed() const noexcept { return syncState == MasternodeSyncState::Failed; }
+    bool IsInitial() const noexcept { return syncState == MasternodeSyncState::Initial; }
     bool IsBlockchainSynced() const noexcept { return syncState > MasternodeSyncState::Waiting; }
     bool IsMasternodeListSynced() const noexcept { return syncState > MasternodeSyncState::List; }
     bool IsWinnersListSynced() const noexcept { return syncState > MasternodeSyncState::Winners; }
