@@ -454,7 +454,7 @@ string COfferTicket::ToJSON(const bool bDecodeProperties) const noexcept
     const json jsonObj
     {
         { "txid", m_txid },
-        { "height", m_nBlock },
+        { "height", static_cast<int32_t>(m_nBlock) },
         { "tx_info", get_txinfo_json() },
         { "ticket", 
             {

@@ -18,6 +18,8 @@ void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
 }
 #endif /* DEBUG_LOCKCONTENTION */
 
+#define ASSERT_ONLY_MAYBE_DEADLOCK 1
+
 #ifdef DEBUG_LOCKORDER
 //
 // Early deadlock detection.
@@ -113,7 +115,11 @@ static void potential_deadlock_detected(const pair<void*, void*>& mismatch, cons
         }
         LogPrintf(" %s\n", lockLocation.ToString());
     }
+#ifdef ASSERT_ONLY_MAYBE_DEADLOCK
     assert(onlyMaybeDeadlock);
+#else
+    cout << "POTENTIAL DEADLOCK DETECTED" << endl;
+#endif
 }
 
 static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)

@@ -34,6 +34,7 @@ void CMasternodeSync::Reset()
     nTimeAssetSyncStarted = GetTime();
     nTimeLastBumped = GetTime();
     nTimeLastFailure = 0;
+    nTimeLastProcess = 0;
 }
 
 void CMasternodeSync::BumpAssetLastTime(const std::string &strMethodName, const std::string &strFuncName)
@@ -194,8 +195,7 @@ void CMasternodeSync::ProcessTick()
         return;
 
     // reset the sync process if the last call to this function was more than 60 minutes ago (client was in sleep mode)
-    static int64_t nTimeLastProcess = GetTime();
-    if (GetTime() - nTimeLastProcess > 60*60)
+    if (nTimeLastProcess + (60*60) < GetTime())
     {
         LogFnPrintf("WARNING: no actions for too long, restarting sync...");
         Reset();
@@ -214,6 +214,15 @@ void CMasternodeSync::ProcessTick()
             Reset();
             SwitchToNextAsset();
         }
+        return;
+    }
+
+    // reset sync status if it stuck in Initial state for too long - 15 minutes
+    if (syncState == MasternodeSyncState::Initial && IsBlockchainSynced() && nTimeAssetSyncStarted + (15*60) > GetTime())
+    {
+        LogFnPrintf("WARNING: stuck in Initial for too long, restarting sync...");
+        Reset();
+        SwitchToNextAsset();
         return;
     }
 

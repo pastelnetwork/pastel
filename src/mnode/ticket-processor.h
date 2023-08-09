@@ -170,6 +170,10 @@ public:
     // search for NFT registration tickets, calls functor for each matching ticket
     void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
 
+    static bool FindTicketTransaction(const std::string& existing_ticket_txid, uint32_t existing_ticket_block_height,
+                                      const std::string& new_ticket_txid, uint32_t new_ticket_block_height,
+                                      bool bPreReg, std::string &message);
+
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, 
         const CAmount nPricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);

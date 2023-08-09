@@ -20,10 +20,10 @@ using namespace std;
 // CChangeEthereumAddressTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 string CChangeEthereumAddressTicket::ToJSON(const bool bDecodeProperties) const noexcept
 {
-    const json jsonObj = 
+    const json jsonObj =
     {
         { "txid", m_txid },
-        { "height", m_nBlock },
+        { "height", static_cast<int32_t>(m_nBlock) },
         { "tx_info", get_txinfo_json() },
         { "ticket",
             {

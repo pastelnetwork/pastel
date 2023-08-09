@@ -100,12 +100,14 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
                 !existingTicket.IsBlock(m_nBlock) ||
                 !existingTicket.IsTxId(m_txid))
             {
-                tv.errorMsg = strprintf(
-                    "The Activation ticket for the Collection Registration ticket with txid [%s] already exists [%sfound ticket block=%u, txid=%s]",
-                    m_regTicketTxId,
-                    bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
-                    existingTicket.m_nBlock, existingTicket.m_txid);
-                break;
+                std::string message = strprintf( "The Activation ticket for the Collection Registration ticket with txid [%s] ", m_regTicketTxId);
+                bool bFound = CPastelTicketProcessor::FindTicketTransaction(existingTicket.m_txid, existingTicket.m_nBlock,
+                                                                            m_txid, m_nBlock,
+                                                                            bPreReg, message);
+                if (bFound) {
+                    tv.errorMsg = message;
+                    break;
+                }
             }
         }
 
@@ -223,7 +225,7 @@ string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noex
     const json jsonObj
     {
         { "txid", m_txid },
-        { "height", m_nBlock },
+        { "height", static_cast<int32_t>(m_nBlock) },
         { "tx_info", get_txinfo_json() },
         { "ticket", 
             {
