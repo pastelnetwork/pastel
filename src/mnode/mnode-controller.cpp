@@ -672,28 +672,36 @@ double CMasterNodeController::GetChainDeflatorFactor(uint32_t chainHeight) const
     const uint32_t nChainHeight = (chainHeight == numeric_limits<uint32_t>::max()) ? gl_nChainHeight.load() : chainHeight;
 
     const uint32_t nCacheKey = (nChainHeight / m_nChainTrailingAverageDifficultyRange) * m_nChainTrailingAverageDifficultyRange;
-    
+
+    double deflatorFactor = 0;
+
     // Access shared data with shared lock (read lock)
     {
         shared_lock lock(m_deflatorFactorCacheMutex);
         const auto it = m_deflatorFactorCacheMap.find(nCacheKey);
-        if (it != m_deflatorFactorCacheMap.cend())
-            return it->second;
+        if (it != m_deflatorFactorCacheMap.cend()) {
+            deflatorFactor = it->second;
+        }
     }
 
     // If not in cache, calculate and store in cache
     // Access shared data with unique lock (write lock)
-    {
+    if (deflatorFactor == 0) {
         unique_lock lock(m_deflatorFactorCacheMutex);
         // Double-check whether another thread has already calculated the value after we released the shared lock
         const auto it = m_deflatorFactorCacheMap.find(nCacheKey);
-        if (it != m_deflatorFactorCacheMap.cend())
-            return it->second;
-
-        double deflatorFactor = CalculateChainDeflatorFactor(nCacheKey);
-        m_deflatorFactorCacheMap[nCacheKey] = deflatorFactor;
-        return deflatorFactor;
+        if (it != m_deflatorFactorCacheMap.cend()) {
+            deflatorFactor = it->second;
+        } else {
+            deflatorFactor = CalculateChainDeflatorFactor(nCacheKey);
+            m_deflatorFactorCacheMap[nCacheKey] = deflatorFactor;
+        }
     }
+
+    if (!Params().IsMainNet() && deflatorFactor > 0.11)
+        deflatorFactor = 0.11;
+
+    return deflatorFactor;
 }
 
 /**
