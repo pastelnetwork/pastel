@@ -636,17 +636,19 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
     string sTxId = data.tx.GetHash().GetHex();
     try
     {
-        if (data.nTicketHeight == numeric_limits<uint32_t>::max())
-        {
-            // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
-            const auto mi = mapBlockIndex.find(data.hashBlock);
-            if (mi != mapBlockIndex.cend() && mi->second) {
-                const auto pindex = mi->second;
-                if (chainActive.Contains(pindex))
-                {
-                    data.nTicketHeight = pindex->nHeight;
+        if (!data.hashBlock.IsNull()) { // this will filter out tickets from mempool (not in block yet) NOTE: transactions in mempool DOES have non-zero block height!
+            if (data.nTicketHeight == numeric_limits<uint32_t>::max()) {
+                // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
+                const auto mi = mapBlockIndex.find(data.hashBlock);
+                if (mi != mapBlockIndex.cend() && mi->second) {
+                    const auto pindex = mi->second;
+                    if (chainActive.Contains(pindex)) {
+                        data.nTicketHeight = pindex->nHeight;
+                    }
                 }
             }
+        } else {
+            data.nTicketHeight = numeric_limits<uint32_t>::max();
         }
 
         // create Pastel ticket by id
@@ -749,6 +751,22 @@ bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket) const
     }
     return bRet;
 }
+
+/**
+ * Delete ticket from TicketDB by primary key.
+ *
+ * \param ticket - ticket object to return
+ * \return true if ticket was found and successfully deleted from DB
+ */
+bool CPastelTicketProcessor::EraseTicketFromDB(const CPastelTicket& ticket) const
+{
+    const auto sKey = ticket.KeyOne();
+    const auto itDB = dbs.find(ticket.ID());
+    if (itDB == dbs.cend())
+        return false;
+    return itDB->second->Erase(sKey);
+}
+
 
 /**
  * Find ticket in TicketDB by secondary key.
@@ -1898,11 +1916,11 @@ shared_ptr<ITxMemPoolTracker> CPastelTicketProcessor::GetTxMemPoolTracker()
     return TicketTxMemPoolTracker;
 }
 
-bool CPastelTicketProcessor::FindTicketTransaction(const std::string& existing_ticket_txid, uint32_t existing_ticket_block_height,
-                                                   const std::string& new_ticket_txid, uint32_t new_ticket_block_height,
-                                                   bool bPreReg, std::string &message) {
+bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicket& ticket,
+                                                              const std::string& new_txid, uint32_t new_height,
+                                                              bool bPreReg, std::string &message) {
     bool bFound= true;
-    const uint256 txid = uint256S(existing_ticket_txid);
+    const uint256 txid = uint256S(ticket.GetTxId());
     const auto pTicket = CPastelTicketProcessor::GetTicket(txid);
     if (pTicket) {
         if (pTicket->GetBlock() == numeric_limits<uint32_t>::max()) {
@@ -1911,18 +1929,22 @@ bool CPastelTicketProcessor::FindTicketTransaction(const std::string& existing_t
                 message = strprintf("%sfound in mempool. ", message);
             } else {
                 bFound = false;
-                message = strprintf("%sfound in stale block. ", message);
+                bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
+                message = strprintf("%sfound in stale block. %s removed from TicketDB", message,
+                                    ok ? "Successfully" : "Failed to be");
             }
         } else {
             message = strprintf("%salready exists in blockchain. ", message);
         }
     } else {
         bFound = false;
-        message = strprintf("%sfound in Ticket DB, but not in blockchain. ", message);
+        bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
+        message = strprintf("%sfound in Ticket DB, but not in blockchain. %s removed from TicketDB", message,
+                            ok ? "Successfully" : "Failed to be");
     }
     message = strprintf("%s [%sfound ticket block=%u, txid=%s]", message,
-                        bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", new_ticket_block_height, new_ticket_txid),
-                        existing_ticket_block_height, existing_ticket_txid);
+                        bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", new_height, new_txid),
+                        ticket.GetBlock(), ticket.GetTxId());
     if (!bFound) {
         LogFnPrintf("WARNING: %s", message);
     }
