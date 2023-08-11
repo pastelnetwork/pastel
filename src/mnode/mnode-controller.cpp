@@ -698,7 +698,7 @@ double CMasterNodeController::GetChainDeflatorFactor(uint32_t chainHeight) const
         }
     }
 
-    if (!Params().IsMainNet() && deflatorFactor > 0.11)
+    if (Params().IsTestNet() && deflatorFactor > 0.11)
         deflatorFactor = 0.11;
 
     return deflatorFactor;

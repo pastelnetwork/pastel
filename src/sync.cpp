@@ -18,7 +18,7 @@ void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
 }
 #endif /* DEBUG_LOCKCONTENTION */
 
-#define ASSERT_ONLY_MAYBE_DEADLOCK 1
+//#define ASSERT_ONLY_MAYBE_DEADLOCK 1
 
 #ifdef DEBUG_LOCKORDER
 //
