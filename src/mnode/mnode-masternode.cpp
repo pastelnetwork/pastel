@@ -22,6 +22,7 @@
 #include <mnode/mnode-validation.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/tickets/pastelid-reg.h>
+#include <netmsg/nodemanager.h>
 
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
@@ -29,7 +30,7 @@
 
 using namespace std;
 
-static constexpr std::array<MNStateInfo, to_integral_type<MASTERNODE_STATE>(MASTERNODE_STATE::COUNT)> MN_STATE_INFO =
+static constexpr array<MNStateInfo, to_integral_type<MASTERNODE_STATE>(MASTERNODE_STATE::COUNT)> MN_STATE_INFO =
 {{
     { MASTERNODE_STATE::PRE_ENABLED,            "PRE_ENABLED" },
     { MASTERNODE_STATE::ENABLED,                "ENABLED" },
@@ -76,7 +77,7 @@ CMasterNodePing::CMasterNodePing(const COutPoint& outpoint)
     m_bDefined = true;
 }
 
-std::string CMasterNodePing::getMessage() const noexcept
+string CMasterNodePing::getMessage() const noexcept
 {
     return m_vin.ToString() + m_blockHash.ToString() + to_string(m_sigTime);
 }
@@ -254,7 +255,7 @@ void CMasterNodePing::Relay() const
     }
 
     CInv inv(MSG_MASTERNODE_PING, GetHash());
-    CNodeHelper::RelayInv(inv);
+    gl_NodeManager.RelayInv(inv);
 }
 
 
@@ -489,9 +490,9 @@ bool CMasternode::CheckAndUpdateMNID(string &error)
  * 
  * \param fForce
  */
-void CMasternode::Check(const bool fForce)
+void CMasternode::Check(const bool fForce, bool bLockMain)
 {
-    LOCK(cs);
+    LOCK(cs_mn);
 
     if (ShutdownRequested())
         return;
@@ -504,11 +505,10 @@ void CMasternode::Check(const bool fForce)
     if (IsOutpointSpent())
         return;
 
-    uint32_t nCurrentHeight = 0;
     if (!fUnitTest)
     {
-        TRY_LOCK(cs_main, lockMain);
-        if(!lockMain)
+        TRY_LOCK_COND(bLockMain, cs_main, lockMain);
+        if (bLockMain && !lockMain)
             return;
 
         CollateralStatus err = CheckCollateral(m_vin.prevout);
@@ -518,12 +518,9 @@ void CMasternode::Check(const bool fForce)
             SetState(MASTERNODE_STATE::OUTPOINT_SPENT, __METHOD_NAME__);
             return;
         }
-
-        const int nHeight = chainActive.Height();
-        if (nHeight > 0)
-            nCurrentHeight = static_cast<uint32_t>(nHeight);
     }
 
+    const uint32_t nCurrentHeight = gl_nChainHeight;
     // PoSe (Proof of Service) ban score feature
     if (IsPoSeBanned())
     {
@@ -704,7 +701,7 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
 
 void CMasternode::UpdateWatchdogVoteTime(const uint64_t nVoteTime)
 {
-    LOCK(cs);
+    LOCK(cs_mn);
     nTimeLastWatchdogVote = (nVoteTime == 0) ? GetAdjustedTime() : nVoteTime;
 }
 
@@ -1264,7 +1261,7 @@ void CMasternodeBroadcast::Relay() const
     }
 
     CInv inv(MSG_MASTERNODE_ANNOUNCE, GetHash());
-    CNodeHelper::RelayInv(inv);
+    gl_NodeManager.RelayInv(inv);
 }
 
 // check if pinged after mnb
@@ -1278,6 +1275,6 @@ bool CMasternodeBroadcast::IsPingedAfter(const CMasternodeBroadcast& mnb) const 
 void CMasternodeVerification::Relay() const
 {
     CInv inv(MSG_MASTERNODE_VERIFY, GetHash());
-    CNodeHelper::RelayInv(inv);
+    gl_NodeManager.RelayInv(inv);
 }
 

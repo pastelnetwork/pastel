@@ -291,7 +291,7 @@ bool CMasternodeGovernance::ProcessBlock(int nBlockHeight)
     return true;
 }
 
-void CMasternodeGovernance::ProcessMessage(CNode* pfrom, string& strCommand, CDataStream& vRecv)
+void CMasternodeGovernance::ProcessMessage(node_t& pfrom, string& strCommand, CDataStream& vRecv)
 {
     //Governance Payments Request Sync
     if (strCommand == NetMsgType::GOVERNANCESYNC)

@@ -1,11 +1,12 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <inttypes.h>
+#include <cinttypes>
 
 #include <util.h>
 #include <main.h>
+#include <netmsg/nodemanager.h>
 
 #include <mnode/mnode-sync.h>
 #include <mnode/mnode-manager.h>
@@ -123,7 +124,8 @@ void CMasternodeSync::SwitchToNextAsset()
             // TRY_LOCK(cs_vNodes, lockRecv);
             // if(lockRecv) { ... }
 
-            CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode) {
+            gl_NodeManager.ForEachNode(CNodeManager::AllNodes, [](const node_t& pnode)
+            {
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "full-sync");
             });
             LogFnPrintf("Sync has finished");
@@ -136,7 +138,7 @@ void CMasternodeSync::SwitchToNextAsset()
     BumpAssetLastTime(__METHOD_NAME__);
 }
 
-void CMasternodeSync::ProcessMessage(CNode* pfrom, string& strCommand, CDataStream& vRecv)
+void CMasternodeSync::ProcessMessage(node_t &pfrom, string& strCommand, CDataStream& vRecv)
 {
     //Sync status count
     if (strCommand == NetMsgType::SYNCSTATUSCOUNT)
@@ -156,11 +158,7 @@ void CMasternodeSync::ProcessMessage(CNode* pfrom, string& strCommand, CDataStre
 
 void CMasternodeSync::ClearFulfilledRequests()
 {
-    // TODO: Find out whether we can just use LOCK instead of:
-    TRY_LOCK(cs_vNodes, lockRecv);
-    if(!lockRecv) return;
-
-    CNodeHelper::ForEachNode(CNodeHelper::AllNodes, [](CNode* pnode)
+    gl_NodeManager.ForEachNode(CNodeManager::AllNodes, [](const node_t& pnode)
     {
         masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "masternode-list-sync");
         masterNodeCtrl.requestTracker.RemoveFulfilledRequest(pnode->addr, "masternode-payment-sync");
@@ -169,7 +167,7 @@ void CMasternodeSync::ClearFulfilledRequests()
     });
 }
 
-bool CMasternodeSync::CheckSyncTimeout(int nTick, vector<CNode*> &vNodesCopy)
+bool CMasternodeSync::CheckSyncTimeout(int nTick, node_vector_t &vNodesCopy)
 {
     // check for timeout first
     if (GetTime() - nTimeLastBumped > MasternodeSyncTimeoutSeconds)
@@ -242,9 +240,8 @@ void CMasternodeSync::ProcessTick()
     uiInterface.NotifyAdditionalDataSyncProgressChanged(nSyncProgress);
 <--TEMP*/
 
-    auto vNodesCopy = CNodeHelper::CopyNodeVector();
-
-    for (auto pnode : vNodesCopy)
+    auto vNodesCopy = gl_NodeManager.CopyNodes();
+    for (auto &pnode : vNodesCopy)
     {
         // Don't try to sync any data from outbound "masternode" connections -
         // they are temporary and should be considered unreliable for a sync process.
@@ -273,7 +270,6 @@ void CMasternodeSync::ProcessTick()
                 syncState = MasternodeSyncState::Finished;
             }
             nRequestedMasternodeAttempt++;
-            CNodeHelper::ReleaseNodeVector(vNodesCopy);
             return;
         }
 
@@ -311,10 +307,7 @@ void CMasternodeSync::ProcessTick()
                 LogFnPrint("masternode", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 if (!CheckSyncTimeout(nTick, vNodesCopy))
-                {
-                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
                     return; //this will cause each peer to get one request each six seconds for the various assets we need
-                }
 
                 // only request once from each peer
                 if (masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "masternode-list-sync"))
@@ -322,10 +315,7 @@ void CMasternodeSync::ProcessTick()
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "masternode-list-sync");
 
                 nRequestedMasternodeAttempt++;
-
                 masterNodeCtrl.masternodeManager.DsegUpdate(pnode);
-
-                CNodeHelper::ReleaseNodeVector(vNodesCopy);
                 return; // this will cause each peer to get one request each six seconds for the various assets we need
             }
 
@@ -336,10 +326,8 @@ void CMasternodeSync::ProcessTick()
                 // check for timeout first
                 // This might take a lot longer than MasternodeSyncTimeoutSeconds due to new blocks,
                 // but that should be OK and it should timeout eventually.
-                if (!CheckSyncTimeout(nTick, vNodesCopy)) {
-                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
+                if (!CheckSyncTimeout(nTick, vNodesCopy))
                     return; //this will cause each peer to get one request each six seconds for the various assets we need
-                }
 
                 // check for data
                 // if mnpayments already has enough blocks and votes, switch to the next asset
@@ -348,7 +336,6 @@ void CMasternodeSync::ProcessTick()
                 {
                     LogFnPrintf("nTick %d syncState %d -- found enough data", nTick, (int)syncState);
                     SwitchToNextAsset();
-                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
                     return;
                 }
 
@@ -364,7 +351,6 @@ void CMasternodeSync::ProcessTick()
                 // ask node for missing pieces only (old nodes will not be asked)
                 masterNodeCtrl.masternodePayments.RequestLowDataPaymentBlocks(pnode);
 
-                CNodeHelper::ReleaseNodeVector(vNodesCopy);
                 return; //this will cause each peer to get one request each six seconds for the various assets we need
             }
 
@@ -374,10 +360,7 @@ void CMasternodeSync::ProcessTick()
                 LogFnPrint("governance", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 if (!CheckSyncTimeout(nTick, vNodesCopy))
-                {
-                    CNodeHelper::ReleaseNodeVector(vNodesCopy);
                     return; //this will cause each peer to get one request each six seconds for the various assets we need
-                }
 
                 // only request once from each peer
                 if (masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "governance-payment-sync"))
@@ -387,8 +370,6 @@ void CMasternodeSync::ProcessTick()
 
                 // ask node for all governance info it has
                 pnode->PushMessage(NetMsgType::GOVERNANCESYNC, static_cast<uint32_t>(masterNodeCtrl.masternodeGovernance.Size()));
-
-                CNodeHelper::ReleaseNodeVector(vNodesCopy);
                 return; //this will cause each peer to get one request each six seconds for the various assets we need
             }
 #else
@@ -398,9 +379,6 @@ void CMasternodeSync::ProcessTick()
 #endif // GOVERNANCE_TICKETS
         }
     }
-
-    // looped through all nodes, release them
-    CNodeHelper::ReleaseNodeVector(vNodesCopy);
 }
 
 void CMasternodeSync::AcceptedBlockHeader(const CBlockIndex *pindexNew)

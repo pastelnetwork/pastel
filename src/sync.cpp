@@ -1,20 +1,22 @@
 // Copyright (c) 2011-2012 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cstdio>
+#include <unordered_map>
 
-#include "sync.h"
-#include "util.h"
-#include "utilstrencodings.h"
-
-#include <stdio.h>
+#include <sync.h>
+#include <util.h>
+#include <enum_util.h>
+#include <utilstrencodings.h>
 
 using namespace std;
 
 #ifdef DEBUG_LOCKCONTENTION
-void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
+void PrintLockContention(const char* szLockName, const char* szFile, const size_t nLine)
 {
-    LogPrintf("LOCKCONTENTION: %s\n", pszName);
-    LogPrintf("Locker: %s:%d\n", pszFile, nLine);
+    LogPrintf("LOCKCONTENTION: %s\n", szLockName);
+    LogPrintf("Locker: %s:%zu\n", szFile, nLine);
 }
 #endif /* DEBUG_LOCKCONTENTION */
 
@@ -22,47 +24,105 @@ void PrintLockContention(const char* pszName, const char* pszFile, int nLine)
 
 #ifdef DEBUG_LOCKORDER
 //
-// Early deadlock detection.
+// Early deadlock detection for mutexes and shared/exclusive locks.
+// 
 // Problem being solved:
+// 1. For simple mutexes:
 //    Thread 1 locks A, then B, then C
 //    Thread 2 locks D, then C, then A
 //     --> may result in deadlock between the two threads, depending on when they run.
+// 
+// 2: For shared/exclusive locks:
+//    Thread 1 acquires a shared lock on A, then an exclusive lock on B.
+//    Thread 2 acquires an exclusive lock on B and then a shared lock on A.
+//    --> Thread 2 will block because of Thread 1's shared lock on A, while Thread 1 will block due to Thread 2's exclusive lock on B.
+//
+//    Thread 1 acquires a shared lock on A.
+//    Thread 2 attempts to acquire an exclusive lock on A but blocks because of the shared lock held by Thread 1.
+//    If Thread 1 then attempts to upgrade its shared lock to an exclusive lock, it will block as well, resulting in a deadlock.
+// 
 // Solution implemented here:
-// Keep track of pairs of locks: (A before B), (A before C), etc.
-// Complain if any thread tries to lock in a different order.
+// Keep track of pairs of locks: (A before B), (A before C), etc., and their types (MUTEX, SHARED, EXCLUSIVE).
+// Complain if any thread tries to lock in a different order or in a manner that could lead to a deadlock.
 //
 
-struct CLockLocation {
-    CLockLocation(const char* pszName, const char* pszFile, int nLine, bool fTryIn)
+string LockTypeToString(LockType lockType) noexcept
+{
+    string typeStr;
+    switch (lockType)
     {
-        mutexName = pszName;
-        sourceFile = pszFile;
-        sourceLine = nLine;
-        fTry = fTryIn;
+        case LockType::MUTEX: 
+            typeStr = "MUTEX";
+            break;
+
+        case LockType::SHARED:
+            typeStr = "SHARED_LOCK";
+			break;
+
+        case LockType::EXCLUSIVE:
+			typeStr = "EXCLUSIVE_LOCK";
+			break;
+    }
+    return typeStr;
+}
+
+struct CLockLocation
+{
+    CLockLocation(const char* pszLockName, const char* pszFile, const size_t nLine, const bool fTryIn, LockType lockType = LockType::MUTEX) :
+        m_sMutexName(pszLockName),
+        m_sSourceFile(pszFile),
+        m_nSourceLine(nLine),
+        fTry(fTryIn),
+        m_LockType(lockType)
+    {}
+
+    string ToString() const noexcept
+    {
+        string typeStr = LockTypeToString(m_LockType);
+        return m_sMutexName + " (" + typeStr + ") " + m_sSourceFile + ":" + to_string(m_nSourceLine) + (fTry ? " (TRY)" : "");
     }
 
-    string ToString() const
-    {
-        return mutexName + "  " + sourceFile + ":" + itostr(sourceLine) + (fTry ? " (TRY)" : "");
-    }
-
-    string MutexName() const { return mutexName; }
+    string MutexName() const noexcept { return m_sMutexName; }
+    LockType GetLockType() const noexcept { return m_LockType; }
 
     bool fTry;
+
 private:
-    string mutexName;
-    string sourceFile;
-    int sourceLine;
+    string m_sMutexName;
+    string m_sSourceFile;
+    size_t m_nSourceLine;
+    LockType m_LockType;
 };
 
-typedef vector<pair<void*, CLockLocation> > LockStack;
+using lockid_t = pair<void*, LockType>;
+using lockstack_t = vector<pair<lockid_t, CLockLocation>>;
 
+struct LockIdTypeHasher
+{
+    size_t operator()(const pair<void*, LockType>& p) const
+    {
+        size_t h1 = hash<void*>{} (p.first);
+        size_t h2 = hash<int>{} (to_integral_type(p.second));
+        return h1 ^ h2;
+    }
+};
+
+struct LockIdPairTypeHasher
+{
+    LockIdTypeHasher single_hasher;
+    size_t operator()(const pair<pair<void*, LockType>, pair<void*, LockType>>& pp) const
+    {
+        size_t h1 = single_hasher(pp.first);
+        size_t h2 = single_hasher(pp.second);
+        return h1 ^ (h2 << 1);  // Shift h2 so it doesn't collide with h1
+    }
+};
 static mutex dd_mutex;
-static map<pair<void*, void*>, LockStack> lockorders;
-static thread_local unique_ptr<LockStack> lockstack;
+static unordered_map<pair<lockid_t, lockid_t>, lockstack_t, LockIdPairTypeHasher> gl_LockOrders;
+static thread_local unique_ptr<lockstack_t> gl_LockStack;
 
-
-static void potential_deadlock_detected(const pair<void*, void*>& mismatch, const LockStack& s1, const LockStack& s2)
+static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch,
+                                        const lockstack_t& s1, const lockstack_t& s2)
 {
     // We attempt to not assert on probably-not deadlocks by assuming that
     // a try lock will immediately have otherwise bailed if it had
@@ -74,92 +134,151 @@ static void potential_deadlock_detected(const pair<void*, void*>& mismatch, cons
     bool secondLocked = false;
     bool onlyMaybeDeadlock = false;
 
-    LogPrintf("POTENTIAL DEADLOCK DETECTED\n");
-    LogPrintf("Previous lock order was:\n");
-    for (const auto &[pLock, lockLocation] : s2)
+    const auto& p1 = mismatch.first;
+    const auto& p2 = mismatch.second;
+
+    // Check if it's a reader-writer or writer-reader deadlock
+    const bool isSharedExclusiveDeadlock = p1.second == LockType::SHARED && p2.second == LockType::EXCLUSIVE;
+    const bool isExclusiveSharedDeadlock = p1.second == LockType::EXCLUSIVE && p2.second == LockType::SHARED;
+    const bool isExclusiveExclusiveDeadlock = p1.second == LockType::EXCLUSIVE && p2.second == LockType::EXCLUSIVE;
+    const bool isRWDeadlock = isSharedExclusiveDeadlock || isExclusiveSharedDeadlock || isExclusiveExclusiveDeadlock;
+
+    LogPrintf("POTENTIAL %s DEADLOCK DETECTED:\n", isRWDeadlock ? "RW" : "");
+    string sMark;
+    if (isRWDeadlock)
     {
-        if (pLock == mismatch.first)
+        if (isSharedExclusiveDeadlock)
+            LogPrintf("Shared lock followed by Exclusive lock is not allowed!\n");
+        else if (isExclusiveSharedDeadlock)
+            LogPrintf("Exclusive lock followed by Shared lock can lead to deadlocks!");
+        else if (isExclusiveExclusiveDeadlock)
+            LogPrintf("Two Exclusive locks can lead to deadlocks!");
+        LogPrintf("Previous lock order was:\n");
+        for (const auto& [lockID, lockLocation] : s2)
         {
-            LogPrintf(" (1)");
-            if (!firstLocked && secondLocked && lockLocation.fTry)
-                onlyMaybeDeadlock = true;
-            firstLocked = true;
+            sMark.clear();
+            if (lockID == p1)
+                sMark = " (1)";
+            else if (lockID == p2)
+                sMark = " (2)";
+            LogPrintf("%s %s\n", sMark, lockLocation.ToString());
         }
-        if (pLock == mismatch.second)
+        LogPrintf("Current lock order is:\n");
+        for (const auto& [lockID, lockLocation] : s1)
         {
-            LogPrintf(" (2)");
-            if (!secondLocked && firstLocked && lockLocation.fTry)
-                onlyMaybeDeadlock = true;
-            secondLocked = true;
+            sMark.clear();
+            if (lockID == p1)
+                sMark = " (1)";
+            else if (lockID == p2)
+                sMark = " (2)";
+            LogPrintf("%s %s\n", sMark, lockLocation.ToString());
         }
-        LogPrintf(" %s\n", lockLocation.ToString());
     }
-    firstLocked = false;
-    secondLocked = false;
-    LogPrintf("Current lock order is:\n");
-    for (const auto &[pLock, lockLocation] : s1)
+    else
     {
-        if (pLock == mismatch.first)
+        LogPrintf("Previous lock order was:\n");
+        for (const auto& [lockID, lockLocation] : s2)
         {
-            LogPrintf(" (1)");
-            if (!firstLocked && secondLocked && lockLocation.fTry)
-                onlyMaybeDeadlock = true;
-            firstLocked = true;
+            sMark.clear();
+            if (lockID == p1)
+            {
+                sMark = " (1)";
+                if (!firstLocked && secondLocked && lockLocation.fTry)
+                    onlyMaybeDeadlock = true;
+                firstLocked = true;
+            }
+            if (lockID == p2)
+            {
+                sMark = " (2)";
+                if (!secondLocked && firstLocked && lockLocation.fTry)
+                    onlyMaybeDeadlock = true;
+                secondLocked = true;
+            }
+            LogPrintf("%s %s\n", sMark, lockLocation.ToString());
         }
-        if (pLock == mismatch.second)
+
+        firstLocked = false;
+        secondLocked = false;
+
+        LogPrintf("Current lock order is:\n");
+        for (const auto& [lockID, lockLocation] : s1)
         {
-            LogPrintf(" (2)");
-            if (!secondLocked && firstLocked && lockLocation.fTry)
-                onlyMaybeDeadlock = true;
-            secondLocked = true;
+            sMark.clear();
+            if (lockID == p1)
+            {
+                sMark = " (1)";
+                if (!firstLocked && secondLocked && lockLocation.fTry)
+                    onlyMaybeDeadlock = true;
+                firstLocked = true;
+            }
+            if (lockID == p2)
+            {
+                sMark = " (2)";
+                if (!secondLocked && firstLocked && lockLocation.fTry)
+                    onlyMaybeDeadlock = true;
+                secondLocked = true;
+            }
+            LogPrintf("%s %s\n", sMark, lockLocation.ToString());
         }
-        LogPrintf(" %s\n", lockLocation.ToString());
     }
-#ifdef ASSERT_ONLY_MAYBE_DEADLOCK
     assert(onlyMaybeDeadlock);
 #else
     cout << "POTENTIAL DEADLOCK DETECTED" << endl;
 #endif
 }
 
-static void push_lock(void* c, const CLockLocation& locklocation, bool fTry)
+static void push_lock(void* c, CLockLocation&& lockLocation, const bool fTry)
 {
-    if (!lockstack)
-        lockstack = make_unique<LockStack>();
+    if (!gl_LockStack)
+    {
+        gl_LockStack = make_unique<lockstack_t>();
+        gl_LockStack->reserve(8);
+    }
 
-    dd_mutex.lock();
+    lockid_t currentLock = { c, lockLocation.GetLockType()};
+    unique_lock<mutex> lock(dd_mutex);
 
-    lockstack->push_back(make_pair(c, locklocation));
+    // register the lock in a thread-local stack
+    gl_LockStack->emplace_back(currentLock, lockLocation);
 
-    if (!fTry) {
-        for (const auto &[pLock, lockLocation] : (*lockstack))
+    if (!fTry)
+    {
+        for (const auto& [prevLock, lockLocation] : *gl_LockStack)
         {
-            if (pLock == c)
+            if (prevLock == currentLock)
                 break;
 
-            pair<void*, void*> p1 = make_pair(pLock, c);
-            if (lockorders.count(p1))
+            auto p1 = make_pair(prevLock, currentLock);
+            if (gl_LockOrders.find(p1) != gl_LockOrders.cend())
                 continue;
-            lockorders[p1] = (*lockstack);
+            gl_LockOrders[p1] = (*gl_LockStack);
 
-            pair<void*, void*> p2 = make_pair(c, pLock);
-            if (lockorders.count(p2))
-                potential_deadlock_detected(p1, lockorders[p2], lockorders[p1]);
+            auto p2 = make_pair(currentLock, prevLock);
+            if (gl_LockOrders.find(p2) != gl_LockOrders.cend())
+                potential_deadlock_detected(p1, gl_LockOrders[p2], gl_LockOrders[p1]);
         }
     }
-    dd_mutex.unlock();
 }
 
 static void pop_lock()
 {
-    dd_mutex.lock();
-    lockstack->pop_back();
-    dd_mutex.unlock();
+    unique_lock<mutex> lock(dd_mutex);
+    gl_LockStack->pop_back();
 }
 
-void EnterCritical(const char* pszName, const char* pszFile, int nLine, void* cs, bool fTry)
+void EnterCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry)
 {
-    push_lock(cs, CLockLocation(pszName, pszFile, nLine, fTry), fTry);
+    push_lock(cs, CLockLocation(szLockName, szFile, nLine, fTry, LockType::MUTEX), fTry);
+}
+
+void EnterSharedCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry)
+{
+    push_lock(cs, CLockLocation(szLockName, szFile, nLine, fTry, LockType::SHARED), fTry);
+}
+
+void EnterExclusiveCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry)
+{
+    push_lock(cs, CLockLocation(szLockName, szFile, nLine, fTry, LockType::EXCLUSIVE), fTry);
 }
 
 void LeaveCritical()
@@ -170,18 +289,50 @@ void LeaveCritical()
 string LocksHeld()
 {
     string result;
-    for (const auto &[pLock, lockLocation] : *lockstack)
+    for (const auto &[lockID, lockLocation] : *gl_LockStack)
         result += lockLocation.ToString() + string("\n");
     return result;
 }
 
-void AssertLockHeldInternal(const char* pszName, const char* pszFile, int nLine, void* cs)
+bool IsLockHeld(void* cs, LockType lockType)
 {
-    for (const auto& [pLock, lockLocation] : *lockstack)
-        if (pLock == cs)
-            return;
-    fprintf(stderr, "Assertion failed: lock %s not held in %s:%i; locks held:\n%s", pszName, pszFile, nLine, LocksHeld().c_str());
+    if (!gl_LockStack)
+        return false;
+
+    for (const auto& [lockID, lockLocation] : *gl_LockStack)
+    {
+        if (lockID.first == cs && lockID.second == lockType)
+            return true;
+    }
+    return false;
+}
+
+void AssertLockHeldInternal(const char* szLockName, const char* szFile, const size_t nLine, void* cs, LockType lockType)
+{
+    if (IsLockHeld(cs, lockType))
+        return;
+
+    LogPrintf("ERROR ! Assertion failed: lock %s of type %s not held in %s:%zu; locks held:\n%s",
+        szLockName, LockTypeToString(lockType).c_str(), szFile, nLine, LocksHeld().c_str());
     abort();
 }
 
+void AssertLockNotHeldInternal(const char* szLockName, const char* szFile, const size_t nLine, void* cs, LockType lockType)
+{
+    if (!IsLockHeld(cs, lockType))
+        return;
+
+    LogPrintf("ERROR ! Assertion failed: lock %s of type %s held in %s:%zu; expected it not to be held; locks held:\n%s",
+        szLockName, LockTypeToString(lockType).c_str(), szFile, nLine, LocksHeld().c_str());
+    abort();
+}
+
+#else
+void EnterCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry) {}
+void EnterSharedCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry) {}
+void EnterExclusiveCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry) {}
+void LeaveCritical() {}
+string LocksHeld() { return ""; }
+void AssertLockHeldInternal(const char* szLockName, const char* szFile, const size_t nLine, void* cs, LockType lockType) {}
+void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, const size_t nLine, void* cs, LockType type) {}
 #endif /* DEBUG_LOCKORDER */

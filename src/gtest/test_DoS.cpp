@@ -51,22 +51,22 @@ TEST_F(TestDoS, DoS_banning)
 {
     CNode::ClearBanned();
     CAddress addr1(ip(0xa0b0c001));
-    CNode dummyNode1(INVALID_SOCKET, addr1, "", true);
-    dummyNode1.nVersion = 1;
-    Misbehaving(dummyNode1.GetId(), 100); // Should get banned
-    SendMessages(Params(), &dummyNode1, false);
+    node_t dummyNode1 = make_shared<CNode>(INVALID_SOCKET, addr1, "", true);
+    dummyNode1->nVersion = 1;
+    Misbehaving(dummyNode1->GetId(), 100); // Should get banned
+    SendMessages(Params(), dummyNode1, false);
     EXPECT_TRUE( CNode::IsBanned(addr1) );
     EXPECT_TRUE( !CNode::IsBanned(ip(0xa0b0c001|0x0000ff00)) ); // Different IP, not banned
 
     CAddress addr2(ip(0xa0b0c002));
-    CNode dummyNode2(INVALID_SOCKET, addr2, "", true);
-    dummyNode2.nVersion = 1;
-    Misbehaving(dummyNode2.GetId(), 50);
-    SendMessages(Params(), & dummyNode2, false);
+    node_t dummyNode2 = make_shared<CNode>(INVALID_SOCKET, addr2, "", true);
+    dummyNode2->nVersion = 1;
+    Misbehaving(dummyNode2->GetId(), 50);
+    SendMessages(Params(), dummyNode2, false);
     EXPECT_TRUE( !CNode::IsBanned(addr2) ); // 2 not banned yet...
     EXPECT_TRUE( CNode::IsBanned(addr1) );  // ... but 1 still should be
-    Misbehaving(dummyNode2.GetId(), 50);
-    SendMessages(Params(), &dummyNode2, false);
+    Misbehaving(dummyNode2->GetId(), 50);
+    SendMessages(Params(), dummyNode2, false);
     EXPECT_TRUE( CNode::IsBanned(addr2) );
 }
 
@@ -75,16 +75,16 @@ TEST_F(TestDoS, DoS_banscore)
     CNode::ClearBanned();
     mapArgs["-banscore"] = "111"; // because 11 is my favorite number
     CAddress addr1(ip(0xa0b0c001));
-    CNode dummyNode1(INVALID_SOCKET, addr1, "", true);
-    dummyNode1.nVersion = 1;
-    Misbehaving(dummyNode1.GetId(), 100);
-    SendMessages(Params(), &dummyNode1, false);
+    node_t dummyNode1 = make_shared<CNode>(INVALID_SOCKET, addr1, "", true);
+    dummyNode1->nVersion = 1;
+    Misbehaving(dummyNode1->GetId(), 100);
+    SendMessages(Params(), dummyNode1, false);
     EXPECT_TRUE(!CNode::IsBanned(addr1));
-    Misbehaving(dummyNode1.GetId(), 10);
-    SendMessages(Params(), &dummyNode1, false);
+    Misbehaving(dummyNode1->GetId(), 10);
+    SendMessages(Params(), dummyNode1, false);
     EXPECT_TRUE(!CNode::IsBanned(addr1));
-    Misbehaving(dummyNode1.GetId(), 1);
-    SendMessages(Params(), &dummyNode1, false);
+    Misbehaving(dummyNode1->GetId(), 1);
+    SendMessages(Params(), dummyNode1, false);
     EXPECT_TRUE(CNode::IsBanned(addr1));
     mapArgs.erase("-banscore");
 }
@@ -96,11 +96,11 @@ TEST_F(TestDoS, DoS_bantime)
     SetMockTime(nStartTime); // Overrides future calls to GetTime()
 
     CAddress addr(ip(0xa0b0c001));
-    CNode dummyNode(INVALID_SOCKET, addr, "", true);
-    dummyNode.nVersion = 1;
+    node_t dummyNode = make_shared<CNode>(INVALID_SOCKET, addr, "", true);
+    dummyNode->nVersion = 1;
 
-    Misbehaving(dummyNode.GetId(), 100);
-    SendMessages(Params(), &dummyNode, false);
+    Misbehaving(dummyNode->GetId(), 100);
+    SendMessages(Params(), dummyNode, false);
     EXPECT_TRUE(CNode::IsBanned(addr));
 
     SetMockTime(nStartTime+60*60);

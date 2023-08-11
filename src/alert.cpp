@@ -121,7 +121,7 @@ bool CAlert::AppliesToMe() const noexcept
     return AppliesTo(PROTOCOL_VERSION, FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, v_strings()));
 }
 
-bool CAlert::RelayTo(CNode* pnode) const
+bool CAlert::RelayTo(node_t &pnode) const
 {
     if (!IsInEffect())
         return false;

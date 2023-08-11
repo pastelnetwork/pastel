@@ -63,7 +63,7 @@ bool COrphanTxManager::AddOrphanTx(const CTransaction& tx, const NodeId peer)
 }
 
 // erase all orphan txs for the given node
-void COrphanTxManager::EraseOrphansFor(const NodeId peer)
+void COrphanTxManager::EraseOrphansFor(const NodeId nodeid)
 {
     size_t nErased = 0;
 
@@ -72,14 +72,14 @@ void COrphanTxManager::EraseOrphansFor(const NodeId peer)
     while (iter != m_mapOrphanTransactions.end())
     {
         auto maybeErase = iter++; // increment to avoid iterator becoming invalid
-        if (maybeErase->second.fromPeer == peer)
+        if (maybeErase->second.fromPeer == nodeid)
         {
             EraseOrphanTx(maybeErase->second.tx.GetHash());
             ++nErased;
         }
     }
     if (nErased > 0) 
-        LogPrint("mempool", "Erased %zu orphan tx from peer %d\n", nErased, peer);
+        LogPrint("mempool", "Erased %zu orphan tx from peer %d\n", nErased, nodeid);
 }
 
 /**

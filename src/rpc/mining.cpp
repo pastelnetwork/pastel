@@ -3,8 +3,7 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
-#include <stdint.h>
+#include <cstdint>
 
 #include <univalue.h>
 
@@ -28,6 +27,7 @@
 #include <txmempool.h>
 #include <util.h>
 #include <validationinterface.h>
+#include <netmsg/nodemanager.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif
@@ -332,7 +332,7 @@ Using json rpc
     }
 
     mapArgs["-gen"] = (fGenerate ? "1" : "0");
-    mapArgs ["-genproclimit"] = itostr(nGenProcLimit);
+    mapArgs ["-genproclimit"] = to_string(nGenProcLimit);
 #ifdef ENABLE_WALLET
     GenerateBitcoins(fGenerate, pwalletMain, nGenProcLimit, chainparams);
 #else
@@ -518,7 +518,8 @@ Examples:
     LOCK(cs_main);
 
     // Wallet or miner address is required because we support coinbasetxn
-    if (GetArg("-mineraddress", "").empty()) {
+    if (GetArg("-mineraddress", "").empty())
+    {
 #ifdef ENABLE_WALLET
         if (!pwalletMain)
             throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Wallet disabled and -mineraddress not set");
@@ -581,7 +582,7 @@ Examples:
     if (strMode != "template")
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
 
-    if (!chainparams.IsRegTest() && vNodes.empty())
+    if (!chainparams.IsRegTest() && (gl_NodeManager.GetNodeCount() == 0))
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Pastel is not connected!");
 
     if (fnIsInitialBlockDownload(chainparams.GetConsensus()))
@@ -746,7 +747,7 @@ Examples:
         result.pushKV("coinbaseaux", aux);
         result.pushKV("coinbasevalue", (int64_t)pblock->vtx[0].vout[0].nValue);
     }
-    result.pushKV("longpollid", chainActive.Tip()->GetBlockHash().GetHex() + i64tostr(nTransactionsUpdatedLast));
+    result.pushKV("longpollid", chainActive.Tip()->GetBlockHash().GetHex() + to_string(nTransactionsUpdatedLast));
     result.pushKV("target", hashTarget.GetHex());
     result.pushKV("mintime", (int64_t)pindexPrev->GetMedianTimePast()+1);
     result.pushKV("mutable", aMutable);

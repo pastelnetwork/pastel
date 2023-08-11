@@ -22,12 +22,13 @@ struct CBlockReject
 struct QueuedBlock
 {
     uint256 hash;
-    CBlockIndex *pindex;  //! Optional.
+    const CBlockIndex *pindex;  //! Optional.
     int64_t nTime;  //! Time of "getdata" request in microseconds.
     bool fValidatedHeaders;  //! Whether this block has validated headers at the time of request.
     int64_t nTimeDisconnect; //! The timeout in microseconds for this block request (for disconnecting a slow peer)
 };
 
+// hash -> (nodeid, queud-block-list-iterator)
 typedef std::unordered_map<uint256, std::pair<NodeId, std::list<QueuedBlock>::iterator>> T_mapBlocksInFlight;
 
 /**
@@ -42,15 +43,15 @@ struct CNodeState
     //! The peer's address
     CService address;
     //! Whether we have a fully established connection.
-    bool fCurrentlyConnected = false;
+    std::atomic_bool fCurrentlyConnected = false;
     //! Accumulated misbehaviour score for this peer.
-    int nMisbehavior = 0;
+    std::atomic_int32_t nMisbehavior = 0;
     //! Whether this peer should be disconnected and banned (unless whitelisted).
-    bool fShouldBan = false;
+    std::atomic_bool fShouldBan = false;
     //! String name of this peer (debugging/logging purposes).
     std::string name;
     //! List of asynchronously-determined block rejections to notify this peer about.
-    std::vector<CBlockReject> rejects;
+    std::vector<CBlockReject> vRejects;
     //! The best known block we know this peer has announced.
     CBlockIndex *pindexBestKnownBlock = nullptr;
     //! The hash of the last unknown block this peer has announced.
@@ -58,15 +59,17 @@ struct CNodeState
     //! The last full block we both have.
     CBlockIndex *pindexLastCommonBlock = nullptr;
     //! Whether we've started headers synchronization with this peer.
-    bool fSyncStarted = false;
+    std::atomic_bool fSyncStarted = false;
+
+    CWaitableCriticalSection cs_NodeBlocksInFlight;
+    std::list<QueuedBlock> vBlocksInFlight;
+    std::atomic_uint32_t nBlocksInFlight = 0;
+    uint32_t nBlocksInFlightValidHeaders = 0;
     //! Since when we're stalling block download progress (in microseconds), or 0.
     int64_t nStallingSince = 0;
-    std::list<QueuedBlock> vBlocksInFlight;
-    uint32_t nBlocksInFlight = 0;
-    uint32_t nBlocksInFlightValidHeaders = 0;
     bool fHasLessChainWork = false;
     //! Whether we consider this a preferred download peer.
-    bool fPreferredDownload = false;
+    std::atomic_bool fPreferredDownload = false;
 
     CNodeState(const NodeId id) noexcept
     {
@@ -74,8 +77,15 @@ struct CNodeState
         hashLastUnknownBlock.SetNull();
     }
 
-    void BlocksInFlightCleanup(const NodeId nodeid, T_mapBlocksInFlight &mapBlocksInFlight);
+    void BlocksInFlightCleanup(const bool bLock, T_mapBlocksInFlight &mapBlocksInFlight);
+    void MarkBlockAsInFlight(const uint256& hash, const Consensus::Params& consensusParams,
+        T_mapBlocksInFlight &mapBlocksInFlight, std::atomic_uint32_t& nQueuedValidatedHeaders,
+        const CBlockIndex *pindex = nullptr);
 };
+
+using node_state_t = std::shared_ptr<CNodeState>;
+
+int64_t GetBlockTimeout(const int64_t nTime, const uint32_t nValidatedQueuedBefore, const Consensus::Params& consensusParams);
 
 class CChainWorkTracker
 {

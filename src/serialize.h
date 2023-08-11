@@ -15,6 +15,7 @@
 #include <limits>
 #include <list>
 #include <map>
+#include <atomic>
 #include <unordered_map>
 #include <memory>
 #include <set>
@@ -192,7 +193,6 @@ inline float ser_uint32_to_float(uint32_t y)
     return tmp.x;
 }
 
-
 /////////////////////////////////////////////////////////////////
 //
 // Templates for serializing to anything that looks like a stream,
@@ -252,6 +252,8 @@ template<typename Stream> inline void Unserialize(Stream& s, double& a  ) { a = 
 template<typename Stream> inline void Serialize(Stream& s, bool a)    { char f=a; ser_writedata8(s, f); }
 template<typename Stream> inline void Unserialize(Stream& s, bool& a) { char f=ser_readdata8(s); a=f; }
 
+template<typename Stream> inline void Serialize(Stream& s, std::atomic_bool a)    { char f = a.load(); ser_writedata8(s, f); }
+template<typename Stream> inline void Unserialize(Stream& s, std::atomic_bool& a) { char f = ser_readdata8(s); a.store(bool(f)); }
 
 /**
  * Compact Size

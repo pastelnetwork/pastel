@@ -40,6 +40,7 @@
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif
+#include <netmsg/nodemanager.h>
 #include <mnode/mnode-validation.h>
 
 using namespace std;
@@ -535,17 +536,15 @@ void static BitcoinMiner()
     miningTimer.start();
 
     try {
-        while (true) {
-            if (chainparams.MiningRequiresPeers()) {
+        while (true)
+        {
+            if (chainparams.MiningRequiresPeers())
+            {
                 // Busy-wait for the network to come online so we don't waste time mining
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 miningTimer.stop();
                 do {
-                    bool fvNodesEmpty;
-                    {
-                        LOCK(cs_vNodes);
-                        fvNodesEmpty = vNodes.empty();
-                    }
+                    bool fvNodesEmpty = gl_NodeManager.GetNodeCount() == 0;
                     // if (!fvNodesEmpty && !fnIsInitialBlockDownload())
                         break;
                     MilliSleep(1000);
@@ -719,7 +718,8 @@ void static BitcoinMiner()
                 // Check for stop or if block needs to be rebuilt
                 func_thread_interrupt_point();
                 // Regtest mode doesn't require peers
-                if (vNodes.empty() && chainparams.MiningRequiresPeers())
+                size_t nNodeCount = gl_NodeManager.GetNodeCount();
+                if ((nNodeCount == 0) && chainparams.MiningRequiresPeers())
                     break;
                 if ((UintToArith256(pblock->nNonce) & 0xffff) == 0xffff)
                     break;

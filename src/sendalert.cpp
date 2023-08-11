@@ -1,5 +1,5 @@
 // Copyright (c) 2016-2018 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // 
 // Original code from: https://gist.github.com/laanwj/0e689cfa37b52bcbbb44
 
@@ -52,6 +52,7 @@ the bad alert.
 #include <chainparams.h>
 
 #include <alertkeys.h>
+#include <netmsg/nodemanager.h>
 
 using namespace std;
 
@@ -162,7 +163,7 @@ void ThreadSendAlert()
     // Confirm
     if (!mapArgs.count("-sendalert"))
         return;
-    while (vNodes.size() < 1 && !ShutdownRequested())
+    while ((gl_NodeManager.GetNodeCount() == 0) && !ShutdownRequested())
         MilliSleep(500);
     if (ShutdownRequested())
         return;
@@ -171,8 +172,8 @@ void ThreadSendAlert()
     printf("ThreadSendAlert() : Sending alert\n");
     int nSent = 0;
     {
-        LOCK(cs_vNodes);
-        for (auto pnode : vNodes)
+        node_vector_t vNodesCopy = gl_NodeManager.CopyNodes();
+        for (auto &pnode : vNodesCopy)
         {
             if (alert2.RelayTo(pnode))
             {

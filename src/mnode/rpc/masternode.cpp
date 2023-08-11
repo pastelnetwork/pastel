@@ -15,6 +15,8 @@
 #include <rpc/rpc_parser.h>
 #include <rpc/rpc-utils.h>
 #include <rpc/server.h>
+#include <netmsg/nodemanager.h>
+
 #include <mnode/mnode-controller.h>
 #include <mnode/rpc/masternode.h>
 #include <mnode/tickets/pastelid-reg.h>
@@ -304,7 +306,7 @@ UniValue masternode_connect(const UniValue& params, const bool fHelp)
     if (!Lookup(strAddress.c_str(), addr, 0, false))
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Incorrect masternode address %s", strAddress));
 
-    CNode* pnode = ConnectNode(CAddress(addr, NODE_NETWORK), nullptr);
+    node_t pnode = gl_NodeManager.ConnectNode(CAddress(addr, NODE_NETWORK), nullptr);
 
     if (!pnode)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to masternode %s", strAddress));
@@ -1118,6 +1120,9 @@ R"(Correct usage is:
             }
             return obj;
         } break;
+
+        default:
+            break;
     }
     return NullUniValue;
 }
@@ -1315,6 +1320,9 @@ R"(
         case RPC_CMD_MN::outputs:
             return masternode_outputs(params);
 #endif // ENABLE_WALLET
+
+        default:
+			break;
     }
 
     return NullUniValue;

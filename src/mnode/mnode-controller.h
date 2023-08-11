@@ -4,11 +4,10 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
-#include <shared_mutex>
 
 #include <coins.h>
-#include <nodehelper.h>
 #include <svc_thread.h>
+#include <sync.h>
 #include <mnode/mnode-config.h>
 #include <mnode/mnode-manager.h>
 #include <mnode/mnode-sync.h>
@@ -112,9 +111,9 @@ public:
 
     bool IsSynced() const noexcept {return masternodeSync.IsSynced();}
 
-    bool ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
+    bool ProcessMessage(node_t& pfrom, std::string& strCommand, CDataStream& vRecv);
     bool AlreadyHave(const CInv& inv);
-    bool ProcessGetData(CNode* pfrom, const CInv& inv);
+    bool ProcessGetData(node_t& pfrom, const CInv& inv);
 
     CAmount GetDefaultMNFee(const MN_FEE mnFee) const noexcept;
     CAmount GetNetworkMedianMNFee(const MN_FEE mnFee) const noexcept;
@@ -160,14 +159,13 @@ protected:
 
     // cache for the network blockchain deflator factor for the difficulty range
     mutable std::unordered_map<uint32_t, double> m_deflatorFactorCacheMap;
-    mutable std::shared_mutex m_deflatorFactorCacheMutex;
+    mutable CSharedMutex m_deflatorFactorCacheMutex;
 
     void SetParameters();
     void InvalidateParameters();
     double getNetworkDifficulty(const CBlockIndex* blockindex, const bool bNetworkDifficulty) const;
     CACNotificationInterface* pacNotificationInterface;
 };
-
 
 class CMnbRequestConnectionsThread : public CStoppableServiceThread
 {

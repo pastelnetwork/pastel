@@ -2375,7 +2375,7 @@ v_uint256 CWallet::ResendWalletTransactionsBefore(int64_t nTime)
 {
     v_uint256 result;
 
-    LOCK(cs_wallet);
+    LOCK2(cs_main, cs_wallet);
     // Sort them in chronological order
     multimap<unsigned int, CWalletTx*> mapSorted;
     for (auto &[hash, wtx] : mapWallet)

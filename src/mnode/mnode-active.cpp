@@ -1,11 +1,12 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2019-2022 The Pastel Core developers
+// Copyright (c) 2019-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <util.h>
 #include <protocol.h>
 #include <port_config.h>
+#include <netmsg/nodemanager.h>
 
 #include <mnode/mnode-active.h>
 #include <mnode/mnode-masternode.h>
@@ -46,6 +47,7 @@ void CActiveMasternode::ManageState()
 
     if (mnType == MasternodeType::Remote)
     {
+        LOCK(cs_main);
         ManageStateRemote();
     }
 
@@ -141,7 +143,8 @@ void CActiveMasternode::ManageStateInitial()
     {
         bool empty = true;
         // If we have some peers, let's try to find our local address from one of them
-        CNodeHelper::ForEachNodeContinueIf(CNodeHelper::AllNodes, [&fFoundLocal, &empty, this](CNode* pnode) {
+        gl_NodeManager.ForEachNodeContinueIf(CNodeManager::AllNodes, [&fFoundLocal, &empty, this](const node_t& pnode)
+        {
             empty = false;
             if (pnode->addr.IsIPv4())
                 fFoundLocal = GetLocal(service, &pnode->addr) && CMasternode::IsValidNetAddr(service);
@@ -185,7 +188,7 @@ void CActiveMasternode::ManageStateInitial()
     {
         LogFnPrintf("Checking inbound connection to '%s'", service.ToString());
 
-        if (!ConnectNode(CAddress(service, NODE_NETWORK), nullptr, true))
+        if (!gl_NodeManager.ConnectNode(CAddress(service, NODE_NETWORK), nullptr, true))
         {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = "Could not connect to " + service.ToString();

@@ -1,18 +1,18 @@
 #pragma once
 // Copyright (c) 2012 Pieter Wuille
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "netbase.h"
-#include "protocol.h"
-#include "random.h"
-#include "sync.h"
-#include "timedata.h"
-#include "util.h"
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cstdint>
 #include <map>
 #include <set>
-#include <stdint.h>
 #include <vector>
+
+#include <netbase.h>
+#include <protocol.h>
+#include <random.h>
+#include <sync.h>
+#include <timedata.h>
+#include <util.h>
 
 /**
  * Extended statistics about a CAddress
@@ -583,6 +583,5 @@ public:
             Check();
         }
     }
-
 };
 

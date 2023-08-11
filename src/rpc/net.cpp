@@ -17,6 +17,7 @@
 #include <util.h>
 #include <version.h>
 #include <deprecation.h>
+#include <netmsg/nodemanager.h>
 
 using namespace std;
 
@@ -37,9 +38,7 @@ Examples:
 + HelpExampleRpc("getconnectioncount", "")
 );
 
-    LOCK2(cs_main, cs_vNodes);
-
-    return (int)vNodes.size();
+    return static_cast<uint64_t>(gl_NodeManager.GetNodeCount());
 }
 
 UniValue ping(const UniValue& params, bool fHelp)
@@ -59,26 +58,23 @@ Examples:
 );
 
     // Request that each node send a ping during next message processing pass
-    LOCK2(cs_main, cs_vNodes);
-
-    for (auto pNode : vNodes)
-        pNode->fPingQueued = true;
-
+    gl_NodeManager.ForEachNode(CNodeManager::AllNodes, [](const node_t& pnode)
+    {
+        pnode->fPingQueued = true;
+    });
     return NullUniValue;
 }
 
 static void CopyNodeStats(std::vector<CNodeStats>& vstats)
 {
     vstats.clear();
-
-    LOCK(cs_vNodes);
-    vstats.reserve(vNodes.size());
-    for(auto pnode : vNodes)
+    vstats.reserve(gl_NodeManager.GetNodeCount());
+    gl_NodeManager.ForEachNode(CNodeManager::AllNodes, [&](const node_t& pnode)
     {
         CNodeStats stats;
-        pnode->copyStats(stats);
-        vstats.push_back(stats);
-    }
+		pnode->copyStats(stats);
+		vstats.emplace_back(move(stats));
+	});
 }
 
 UniValue getpeerinfo(const UniValue& params, bool fHelp)
@@ -247,11 +243,11 @@ Examples:
 + HelpExampleRpc("disconnectnode", "\"192.168.0.6:9933\"")
 );
 
-    CNode* pNode = FindNode(params[0].get_str());
-    if (!pNode)
+    node_t pnode = gl_NodeManager.FindNode(params[0].get_str());
+    if (!pnode)
         throw JSONRPCError(RPC_CLIENT_NODE_NOT_CONNECTED, "Node not found in connected nodes");
 
-    pNode->fDisconnect = true;
+    pnode->fDisconnect = true;
 
     return NullUniValue;
 }
@@ -331,12 +327,12 @@ Examples:
         return ret;
     }
 
-    list<pair<string, vector<CService> > > laddedAddreses(0);
+    list<pair<string, vector<CService>>> laddedAddresses(0);
     for (const auto& strAddNode : laddedNodes)
     {
         vector<CService> vservNode(0);
-        if(Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0))
-            laddedAddreses.push_back(make_pair(strAddNode, vservNode));
+        if (Lookup(strAddNode.c_str(), vservNode, Params().GetDefaultPort(), fNameLookup, 0))
+            laddedAddresses.push_back(make_pair(strAddNode, vservNode));
         else
         {
             UniValue obj(UniValue::VOBJ);
@@ -347,20 +343,20 @@ Examples:
         }
     }
 
-    LOCK(cs_vNodes);
-    for (list<pair<string, vector<CService> > >::iterator it = laddedAddreses.begin(); it != laddedAddreses.end(); it++)
+    node_vector_t vNodesCopy = gl_NodeManager.CopyNodes();
+    for (const auto &[strAddedNode, vServices] : laddedAddresses)
     {
         UniValue obj(UniValue::VOBJ);
-        obj.pushKV("addednode", it->first);
+        obj.pushKV("addednode", strAddedNode);
 
         UniValue addresses(UniValue::VARR);
         bool fConnected = false;
-        for (const auto& addrNode : it->second)
+        for (const auto& addrNode : vServices)
         {
             bool fFound = false;
             UniValue node(UniValue::VOBJ);
             node.pushKV("address", addrNode.ToString());
-            for (auto pnode : vNodes)
+            for (const auto &pnode : vNodesCopy)
             {
                 if (pnode->addr == addrNode)
                 {
@@ -372,11 +368,11 @@ Examples:
             }
             if (!fFound)
                 node.pushKV("connected", "false");
-            addresses.push_back(node);
+            addresses.push_back(move(node));
         }
         obj.pushKV("connected", fConnected);
         obj.pushKV("addresses", addresses);
-        ret.push_back(obj);
+        ret.push_back(move(obj));
     }
 
     return ret;
@@ -511,23 +507,24 @@ Examples:
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("version",       CLIENT_VERSION);
     obj.pushKV("subversion",    strSubVersion);
-    obj.pushKV("protocolversion",PROTOCOL_VERSION);
+    obj.pushKV("protocolversion", PROTOCOL_VERSION);
     obj.pushKV("localservices",       strprintf("%016x", nLocalServices));
     obj.pushKV("timeoffset",    GetTimeOffset());
-    obj.pushKV("connections",   static_cast<uint64_t>(vNodes.size()));
+    obj.pushKV("connections",   static_cast<uint64_t>(gl_NodeManager.GetNodeCount()));
     obj.pushKV("networks",      GetNetworksInfo());
     obj.pushKV("relayfee",      ValueFromAmount(gl_ChainOptions.minRelayTxFee.GetFeePerK()));
     UniValue localAddresses(UniValue::VARR);
     {
-        LOCK(cs_mapLocalHost);
-        for (const auto &[address, svcinfo] : mapLocalHost)
+        vector<local_address_info_t> localAddressesInfo;
+        GetLocalAddresses(localAddressesInfo);
+        for (const auto& [sAddress, nPort, nScore] : localAddressesInfo)
         {
-            UniValue rec(UniValue::VOBJ);
-            rec.pushKV("address", address.ToString());
-            rec.pushKV("port", svcinfo.nPort);
-            rec.pushKV("score", svcinfo.nScore);
-            localAddresses.push_back(rec);
-        }
+			UniValue rec(UniValue::VOBJ);
+			rec.pushKV("address", sAddress);
+			rec.pushKV("port", nPort);
+			rec.pushKV("score", nScore);
+			localAddresses.push_back(move(rec));
+		}
     }
     obj.pushKV("localaddresses", localAddresses);
     obj.pushKV("warnings",       GetWarnings("statusbar"));
@@ -590,7 +587,7 @@ Examples:
         isSubnet ? CNode::Ban(subNet, banTime, absolute) : CNode::Ban(netAddr, banTime, absolute);
 
         //disconnect possible nodes
-        while(CNode *bannedNode = (isSubnet ? FindNode(subNet) : FindNode(netAddr)))
+        while(node_t bannedNode = (isSubnet ? gl_NodeManager.FindNode(subNet) : gl_NodeManager.FindNode(netAddr)))
             bannedNode->fDisconnect = true;
     }
     else if(strCommand == "remove")

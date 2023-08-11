@@ -255,7 +255,6 @@ BITCOIN_CORE_H = \
   asyncrpcqueue.h \
   base58.h \
   bech32.h \
-  bloom.h \
   chain.h \
   chain_options.h \
   chainparams.h \
@@ -300,11 +299,15 @@ BITCOIN_CORE_H = \
   metrics.h \
   miner.h \
   mruset.h \
-  netmsg/block-cache.h\
-  netmsg/nodestate.h\
+  netmsg/bloom.h \
+  netmsg/block-cache.h \
+  netmsg/netconsts.h \
+  netmsg/netmessage.h \
+  netmsg/node.h \
+  netmsg/nodestate.h \
+  netmsg/nodemanager.h \
   net.h \
   net_manager.h \
-  nodehelper.h \
   netbase.h \
   noui.h \
   numeric_range.h\
@@ -402,7 +405,6 @@ libbitcoin_server_a_SOURCES = \
   alertkeys.h \
   asyncrpcoperation.cpp \
   asyncrpcqueue.cpp \
-  bloom.cpp \
   chain.cpp \
   chain_options.cpp \
   checkpoints.cpp \
@@ -415,8 +417,12 @@ libbitcoin_server_a_SOURCES = \
   merkleblock.cpp \
   metrics.cpp \
   miner.cpp \
-  netmsg/block-cache.cpp\
-  netmsg/nodestate.cpp\
+  netmsg/bloom.cpp \
+  netmsg/block-cache.cpp \
+  netmsg/netmessage.cpp \
+  netmsg/node.cpp \
+  netmsg/nodestate.cpp \
+  netmsg/nodemanager.cpp \
   net.cpp \
   net_manager.cpp \
   noui.cpp \

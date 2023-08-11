@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <vector>
 
 #include <main.h>
@@ -11,6 +10,7 @@
 #include <ui_interface.h>
 #include <key_io.h>
 #include <trimmean.h>
+#include <netmsg/nodemanager.h>
 
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-sync.h>
@@ -19,9 +19,6 @@
 #include <mnode/mnode-db.h>
 
 using namespace std;
-
-constexpr const CNodeHelper::CFullyConnectedOnly CNodeHelper::FullyConnectedOnly;
-constexpr const CNodeHelper::CAllNodes CNodeHelper::AllNodes;
 
 // 7 days, 1 block per 2.5 minutes -> 4032
 constexpr uint32_t MAX_IN_PROCESS_COLLECTION_TICKET_AGE = 7 * 24 * static_cast<uint32_t>(60 / 2.5);
@@ -406,7 +403,7 @@ void CMasterNodeController::StopMasterNode()
 }
 
 
-bool CMasterNodeController::ProcessMessage(CNode* pfrom, string& strCommand, CDataStream& vRecv)
+bool CMasterNodeController::ProcessMessage(node_t& pfrom, string& strCommand, CDataStream& vRecv)
 {
     masternodeManager.ProcessMessage(pfrom, strCommand, vRecv);
     masternodePayments.ProcessMessage(pfrom, strCommand, vRecv);
@@ -461,7 +458,7 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
     return true;
 }
 
-bool CMasterNodeController::ProcessGetData(CNode* pfrom, const CInv& inv)
+bool CMasterNodeController::ProcessGetData(node_t& pfrom, const CInv& inv)
 {
     bool bPushed = false;
 
@@ -759,14 +756,12 @@ void CMnbRequestConnectionsThread::execute()
         CSemaphoreGrant grant(*(masterNodeCtrl.semMasternodeOutbound));
 
         auto p = masterNodeCtrl.masternodeManager.PopScheduledMnbRequestConnection();
-        if(p.first == CService() || p.second.empty())
+        if (p.first == CService() || p.second.empty())
             continue;
 
-        ConnectNode(CAddress(p.first, NODE_NETWORK), nullptr, true);
+        gl_NodeManager.ConnectNode(CAddress(p.first, NODE_NETWORK), nullptr, true);
 
-        LOCK(cs_vNodes);
-
-        CNode *pnode = FindNode(p.first);
+        node_t pnode = gl_NodeManager.FindNode(p.first);
         if (!pnode || pnode->fDisconnect)
             continue;
 
@@ -812,8 +807,11 @@ void CMasterNodeMaintenanceThread::execute()
         {
             nTick++;
 
-            // make sure to check all masternodes first
-            masterNodeCtrl.masternodeManager.Check();
+            {
+                LOCK(cs_main);
+                // make sure to check all masternodes first
+                masterNodeCtrl.masternodeManager.Check(USE_LOCK);
+            }
 
             // check if we should activate or ping every few minutes,
             // slightly postpone first run to give net thread a chance to connect to some peers

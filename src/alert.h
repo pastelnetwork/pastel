@@ -4,18 +4,16 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <map>
 #include <set>
-#include <cstdint>
-#include <string>
-#include <uint256.h>
+#include <unordered_map>
 
 #include <serialize.h>
 #include <sync.h>
 #include <vector_types.h>
+#include <uint256.h>
+#include <netmsg/node.h>
 
 class CAlert;
-class CNode;
 
 extern std::unordered_map<uint256, CAlert> mapAlerts;
 extern CCriticalSection cs_mapAlerts;
@@ -104,7 +102,7 @@ public:
     bool Cancels(const CAlert& alert) const noexcept;
     bool AppliesTo(int nVersion, const std::string& strSubVerIn) const noexcept;
     bool AppliesToMe() const noexcept;
-    bool RelayTo(CNode* pnode) const;
+    bool RelayTo(node_t &pnode) const;
     bool CheckSignature(const v_uint8 & alertKey) const;
     bool ProcessAlert(const v_uint8 & alertKey, bool fThread = true); // fThread means run -alertnotify in a free-running thread
     static void Notify(const std::string& strMessage, bool fThread);

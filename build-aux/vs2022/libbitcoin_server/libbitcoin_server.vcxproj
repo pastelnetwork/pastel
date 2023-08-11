@@ -92,7 +92,6 @@
     <ClCompile Include="..\..\..\src\alert.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcoperation.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcqueue.cpp" />
-    <ClCompile Include="..\..\..\src\bloom.cpp" />
     <ClCompile Include="..\..\..\src\chain.cpp" />
     <ClCompile Include="..\..\..\src\checkpoints.cpp" />
     <ClCompile Include="..\..\..\src\dbwrapper.cpp" />
@@ -159,6 +158,10 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\username-change.cpp" />
     <ClCompile Include="..\..\..\src\net.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\block-cache.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\bloom.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\netmessage.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\node.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\nodemanager.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\nodestate.cpp" />
     <ClCompile Include="..\..\..\src\net_manager.cpp" />
     <ClCompile Include="..\..\..\src\noui.cpp" />
@@ -195,7 +198,6 @@
     <ClInclude Include="..\..\..\src\alert.h" />
     <ClInclude Include="..\..\..\src\asyncrpcoperation.h" />
     <ClInclude Include="..\..\..\src\asyncrpcqueue.h" />
-    <ClInclude Include="..\..\..\src\bloom.h" />
     <ClInclude Include="..\..\..\src\chain.h" />
     <ClInclude Include="..\..\..\src\checkpoints.h" />
     <ClInclude Include="..\..\..\src\checkqueue.h" />
@@ -278,9 +280,14 @@
     <ClInclude Include="..\..\..\src\mruset.h" />
     <ClInclude Include="..\..\..\src\net.h" />
     <ClInclude Include="..\..\..\src\netmsg\block-cache.h" />
+    <ClInclude Include="..\..\..\src\netmsg\bloom.h" />
+    <ClInclude Include="..\..\..\src\netmsg\mruset.h" />
+    <ClInclude Include="..\..\..\src\netmsg\netconsts.h" />
+    <ClInclude Include="..\..\..\src\netmsg\netmessage.h" />
+    <ClInclude Include="..\..\..\src\netmsg\node.h" />
+    <ClInclude Include="..\..\..\src\netmsg\nodemanager.h" />
     <ClInclude Include="..\..\..\src\netmsg\nodestate.h" />
     <ClInclude Include="..\..\..\src\net_manager.h" />
-    <ClInclude Include="..\..\..\src\nodehelper.h" />
     <ClInclude Include="..\..\..\src\noui.h" />
     <ClInclude Include="..\..\..\src\orphan-tx.h" />
     <ClInclude Include="..\..\..\src\pastelid\common.h" />
@@ -311,6 +318,9 @@
     <ClInclude Include="..\..\..\src\vector_types.h" />
     <ClInclude Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.hpp" />
     <ClInclude Include="..\..\vs\port\uint128.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

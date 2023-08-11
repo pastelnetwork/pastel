@@ -7,6 +7,7 @@
 #include <deprecation.h>
 #include <script/sign.h>
 #include <init.h>
+#include <netmsg/nodemanager.h>
 
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-msgsigner.h>
@@ -103,7 +104,7 @@ void CMasternodeMessage::Relay()
     LogFnPrintf("Relaying {item} %s", GetHash().ToString());
 
     CInv inv(MSG_MASTERNODE_MESSAGE, GetHash());
-    CNodeHelper::RelayInv(inv);
+    gl_NodeManager.RelayInv(inv);
 }
 
 string CMasternodeMessage::ToString() const
@@ -155,7 +156,7 @@ void CMasternodeMessageProcessor::BroadcastNewFee(const MN_FEE mnFeeType, const 
     }
 }
 
-void CMasternodeMessageProcessor::ProcessMessage(CNode* pFrom, string& strCommand, CDataStream& vRecv)
+void CMasternodeMessageProcessor::ProcessMessage(node_t& pFrom, string& strCommand, CDataStream& vRecv)
 {
     if (strCommand == NetMsgType::MASTERNODEMESSAGE)
     {
