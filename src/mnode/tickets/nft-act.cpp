@@ -98,9 +98,9 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
                 !existingTicket.IsTxId(m_txid))
             {
                 std::string message = strprintf( "The Activation ticket for the Registration ticket with txid [%s] ", m_regTicketTxId);
-                bool bFound = CPastelTicketProcessor::FindTicketTransaction(existingTicket.m_txid, existingTicket.m_nBlock,
-                                                                            m_txid, m_nBlock,
-                                                                            bPreReg, message);
+                bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
+                                                                                       m_txid, m_nBlock,
+                                                                                       bPreReg, message);
                 if (bFound) {
                     tv.errorMsg = message;
                     break;
