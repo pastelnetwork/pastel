@@ -53,7 +53,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         assert_shows_help(self.nodes[0].storagefee)
 
         # for test this will be always 1 (height is even less that baseline)
-        chain_deflator_factor = 1.0
+        chain_deflator_factor = 0.11 # 1.0
         fee_adjustment_multiplier = chain_deflator_factor * GLOBAL_FEE_ADJUSTMENT_MULTIPLIER
 
         for fee_type in MnFeeType:
