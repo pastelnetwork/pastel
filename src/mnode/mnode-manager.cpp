@@ -9,6 +9,9 @@
 #include <vector>
 #include <algorithm>
 #include <random>
+#include <fstream>
+
+#include <json/json.hpp>
 
 #include <json/json.hpp>
 
@@ -390,6 +393,7 @@ bool CMasternodeMan::HasEnoughEnabled() const noexcept
     }
     return true;
 }
+
 
 void CMasternodeMan::Clear()
 {
@@ -1518,7 +1522,8 @@ string CMasternodeMan::ToString() const
     return info.str();
 }
 
-string CMasternodeMan::ToJSON() const {
+string CMasternodeMan::ToJSON() const
+{
 
     json jsonObj;
 

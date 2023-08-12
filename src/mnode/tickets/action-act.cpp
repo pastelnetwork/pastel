@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
+#include <tinyformat.h>
 
 #include <init.h>
 #include <key_io.h>
@@ -14,8 +15,6 @@
 #include <mnode/tickets/ticket-utils.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#include "tinyformat.h"
-
 #endif // ENABLE_WALLET
 
 using json = nlohmann::json;
@@ -131,7 +130,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
                 !existingTicket.IsBlock(m_nBlock) ||
                 !existingTicket.IsTxId(m_txid))
             {
-                std::string message = strprintf( "The Activation ticket for the Registration ticket with txid [%s] ", m_regTicketTxId);
+                string message = strprintf( "The Activation ticket for the Registration ticket with txid [%s] ", m_regTicketTxId);
                 bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
                                                                                        m_txid, m_nBlock,
                                                                                        bPreReg, message);

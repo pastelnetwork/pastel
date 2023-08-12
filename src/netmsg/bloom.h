@@ -3,8 +3,7 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <vector>
-
+#include <vector_types.h>
 #include <serialize.h>
 
 class COutPoint;
@@ -120,9 +119,9 @@ public:
     // constructed before the randomizer is properly initialized.
     CRollingBloomFilter(unsigned int nElements, double nFPRate);
 
-    void insert(const std::vector<unsigned char>& vKey);
+    void insert(const v_uint8& vKey);
     void insert(const uint256& hash);
-    bool contains(const std::vector<unsigned char>& vKey) const;
+    bool contains(const v_uint8& vKey) const;
     bool contains(const uint256& hash) const;
 
     void reset();

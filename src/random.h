@@ -13,8 +13,9 @@
  * Functions to gather random data via the libsodium CSPRNG
  */
 void GetRandBytes(unsigned char* buf, size_t num);
-uint64_t GetRand(uint64_t nMax);
-int GetRandInt(int nMax);
+uint64_t GetRand(const uint64_t nMax);
+int GetRandInt(const int nMax);
+uint32_t GetRandUInt(const uint32_t nMax);
 uint256 GetRandHash();
 
 // generate random string and return base85 encoded.

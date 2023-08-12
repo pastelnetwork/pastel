@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #ifdef WIN32
@@ -38,14 +38,14 @@ void GetRandBytes(unsigned char* buf, size_t num)
     randombytes_buf(buf, num);
 }
 
-uint64_t GetRand(uint64_t nMax)
+uint64_t GetRand(const uint64_t nMax)
 {
     if (nMax == 0)
         return 0;
 
     // The range of the random source must be a multiple of the modulus
     // to give every possible output value an equal possibility
-    uint64_t nRange = (std::numeric_limits<uint64_t>::max() / nMax) * nMax;
+    uint64_t nRange = (numeric_limits<uint64_t>::max() / nMax) * nMax;
     uint64_t nRand = 0;
     do {
         GetRandBytes((unsigned char*)&nRand, sizeof(nRand));
@@ -53,9 +53,14 @@ uint64_t GetRand(uint64_t nMax)
     return (nRand % nMax);
 }
 
-int GetRandInt(int nMax)
+int GetRandInt(const int nMax)
 {
     return static_cast<int>(GetRand(nMax));
+}
+
+uint32_t GetRandUInt(const uint32_t nMax)
+{
+	return static_cast<uint32_t>(GetRand(nMax));
 }
 
 uint256 GetRandHash()

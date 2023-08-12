@@ -100,7 +100,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
                 !existingTicket.IsBlock(m_nBlock) ||
                 !existingTicket.IsTxId(m_txid))
             {
-                std::string message = strprintf( "The Activation ticket for the Collection Registration ticket with txid [%s] ", m_regTicketTxId);
+                string message = strprintf( "The Activation ticket for the Collection Registration ticket with txid [%s] ", m_regTicketTxId);
                 bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
                                                                                        m_txid, m_nBlock,
                                                                                        bPreReg, message);

@@ -20,7 +20,7 @@ void PrintLockContention(const char* szLockName, const char* szFile, const size_
 }
 #endif /* DEBUG_LOCKCONTENTION */
 
-//#define ASSERT_ONLY_MAYBE_DEADLOCK 1
+#define ASSERT_ONLY_MAYBE_DEADLOCK 1
 
 #ifdef DEBUG_LOCKORDER
 //
@@ -221,6 +221,8 @@ static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch
             LogPrintf("%s %s\n", sMark, lockLocation.ToString());
         }
     }
+
+#ifdef ASSERT_ONLY_MAYBE_DEADLOCK
     assert(onlyMaybeDeadlock);
 #else
     cout << "POTENTIAL DEADLOCK DETECTED" << endl;

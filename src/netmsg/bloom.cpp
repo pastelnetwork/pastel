@@ -49,13 +49,13 @@ CBloomFilter::CBloomFilter(unsigned int nElements, double nFPRate, unsigned int 
 {
 }
 
-inline unsigned int CBloomFilter::Hash(unsigned int nHashNum, const std::vector<unsigned char>& vDataToHash) const
+inline unsigned int CBloomFilter::Hash(unsigned int nHashNum, const v_uint8& vDataToHash) const
 {
     // 0xFBA4C795 chosen as it guarantees a reasonable bit difference between nHashNum values.
     return MurmurHash3(nHashNum * 0xFBA4C795 + nTweak, vDataToHash) % (vData.size() * 8);
 }
 
-void CBloomFilter::insert(const vector<unsigned char>& vKey)
+void CBloomFilter::insert(const v_uint8& vKey)
 {
     if (isFull)
         return;
@@ -72,17 +72,17 @@ void CBloomFilter::insert(const COutPoint& outpoint)
 {
     CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << outpoint;
-    vector<unsigned char> data(stream.begin(), stream.end());
+    v_uint8 data(stream.begin(), stream.end());
     insert(data);
 }
 
 void CBloomFilter::insert(const uint256& hash)
 {
-    vector<unsigned char> data(hash.begin(), hash.end());
+    v_uint8 data(hash.begin(), hash.end());
     insert(data);
 }
 
-bool CBloomFilter::contains(const vector<unsigned char>& vKey) const
+bool CBloomFilter::contains(const v_uint8& vKey) const
 {
     if (isFull)
         return true;
@@ -102,13 +102,13 @@ bool CBloomFilter::contains(const COutPoint& outpoint) const
 {
     CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << outpoint;
-    vector<unsigned char> data(stream.begin(), stream.end());
+    v_uint8 data(stream.begin(), stream.end());
     return contains(data);
 }
 
 bool CBloomFilter::contains(const uint256& hash) const
 {
-    vector<unsigned char> data(hash.begin(), hash.end());
+    v_uint8 data(hash.begin(), hash.end());
     return contains(data);
 }
 
@@ -150,8 +150,8 @@ bool CBloomFilter::IsRelevantAndUpdate(const CTransaction& tx)
         // If this matches, also add the specific output that was matched.
         // This means clients don't have to update the filter themselves when a new relevant tx 
         // is discovered in order to find spending transactions, which avoids round-tripping and race conditions.
-        CScript::const_iterator pc = txout.scriptPubKey.begin();
-        vector<unsigned char> data;
+        auto pc = txout.scriptPubKey.begin();
+        v_uint8 data;
         while (pc < txout.scriptPubKey.end())
         {
             opcodetype opcode;
@@ -165,7 +165,7 @@ bool CBloomFilter::IsRelevantAndUpdate(const CTransaction& tx)
                 else if ((nFlags & BLOOM_UPDATE_MASK) == BLOOM_UPDATE_P2PUBKEY_ONLY)
                 {
                     txnouttype type;
-                    vector<vector<unsigned char> > vSolutions;
+                    vector<v_uint8> vSolutions;
                     if (Solver(txout.scriptPubKey, type, vSolutions) &&
                             (type == TX_PUBKEY || type == TX_MULTISIG))
                         insert(COutPoint(hash, i));
@@ -185,8 +185,8 @@ bool CBloomFilter::IsRelevantAndUpdate(const CTransaction& tx)
             return true;
 
         // Match if the filter contains any arbitrary script data element in any scriptSig in tx
-        CScript::const_iterator pc = txin.scriptSig.begin();
-        vector<unsigned char> data;
+        auto pc = txin.scriptSig.begin();
+        v_uint8 data;
         while (pc < txin.scriptSig.end())
         {
             opcodetype opcode;
@@ -226,43 +226,40 @@ CRollingBloomFilter::CRollingBloomFilter(unsigned int nElements, double fpRate) 
     reset();
 }
 
-void CRollingBloomFilter::insert(const std::vector<unsigned char>& vKey)
+void CRollingBloomFilter::insert(const v_uint8& vKey)
 {
-    if (nInsertions == 0) {
+    if (nInsertions == 0)
         b1.clear();
-    } else if (nInsertions == nBloomSize / 2) {
+    else if (nInsertions == nBloomSize / 2)
         b2.clear();
-    }
     b1.insert(vKey);
     b2.insert(vKey);
-    if (++nInsertions == nBloomSize) {
+    if (++nInsertions == nBloomSize)
         nInsertions = 0;
-    }
 }
 
 void CRollingBloomFilter::insert(const uint256& hash)
 {
-    vector<unsigned char> data(hash.begin(), hash.end());
+    v_uint8 data(hash.begin(), hash.end());
     insert(data);
 }
 
-bool CRollingBloomFilter::contains(const std::vector<unsigned char>& vKey) const
+bool CRollingBloomFilter::contains(const v_uint8& vKey) const
 {
-    if (nInsertions < nBloomSize / 2) {
+    if (nInsertions < nBloomSize / 2)
         return b2.contains(vKey);
-    }
     return b1.contains(vKey);
 }
 
 bool CRollingBloomFilter::contains(const uint256& hash) const
 {
-    vector<unsigned char> data(hash.begin(), hash.end());
+    v_uint8 data(hash.begin(), hash.end());
     return contains(data);
 }
 
 void CRollingBloomFilter::reset()
 {
-    unsigned int nNewTweak = GetRand(std::numeric_limits<unsigned int>::max());
+    uint32_t nNewTweak = GetRandUInt(numeric_limits<uint32_t>::max());
     b1.reset(nNewTweak);
     b2.reset(nNewTweak);
     nInsertions = 0;
