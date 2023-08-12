@@ -1,8 +1,8 @@
 // Copyright (c) 2015-2017 The Bitcoin Core developers
 // Copyright (c) 2017 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or httpa://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
 #include <deque>
 #include <set>
@@ -14,6 +14,7 @@
 #include <net.h>
 #include <util.h>
 #include <crypto/hmac_sha256.h>
+#include <netmsg/nodemanager.h>
 
 #include <boost/signals2/signal.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -474,8 +475,9 @@ TorController::TorController(struct event_base* baseIn, const string& target):
         LogPrintf("tor: Initiating connection to Tor control port %s failed\n", target);
     }
     // Read service private key if cached
-    pair<bool,string> pkf = ReadBinaryFile(GetPrivateKeyFile());
-    if (pkf.first) {
+    auto pkf = ReadBinaryFile(GetPrivateKeyFile());
+    if (pkf.first)
+    {
         LogPrint("tor", "tor: Reading cached private key from %s\n", GetPrivateKeyFile());
         private_key = pkf.second;
     }
@@ -483,13 +485,13 @@ TorController::TorController(struct event_base* baseIn, const string& target):
 
 TorController::~TorController()
 {
-    if (reconnect_ev) {
+    if (reconnect_ev)
+    {
         event_free(reconnect_ev);
         reconnect_ev = 0;
     }
-    if (service.IsValid()) {
+    if (service.IsValid())
         RemoveLocal(service);
-    }
 }
 
 void TorController::add_onion_cb(TorControlConnection& conn, const TorControlReply& reply)
@@ -520,7 +522,7 @@ void TorController::add_onion_cb(TorControlConnection& conn, const TorControlRep
         } else {
             LogPrintf("tor: Error writing service private key to %s\n", GetPrivateKeyFile());
         }
-        AddLocal(service, LOCAL_MANUAL);
+        AddLocal(service, LocalAddressType::MANUAL);
         // ... onion requested - keep connection open
     } else if (reply.code == 510) { // 510 Unrecognized command
         LogPrintf("tor: Add onion failed with unrecognized command (You probably need to upgrade Tor)\n");

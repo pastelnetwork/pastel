@@ -61,7 +61,7 @@ private:
 
 
     // critical section to protect the inner data structures
-    mutable CCriticalSection cs;
+    mutable CCriticalSection cs_mnMgr;
 
     // Keep track of current block height
     std::atomic_uint32_t nCachedBlockHeight;
@@ -133,7 +133,7 @@ public:
         }
         try
         {
-            LOCK(cs);
+            LOCK(cs_mnMgr);
             if (bProtectedMode)
             {
                 READWRITE_PROTECTED(mapMasternodes);
@@ -180,13 +180,12 @@ public:
     bool Add(CMasternode &mn);
 
     /// Ask (source) node for mnb
-    void AskForMN(CNode *pnode, const COutPoint& outpoint);
-    void AskForMnb(CNode *pnode, const uint256 &hash);
+    void AskForMN(const node_t& pnode, const COutPoint& outpoint);
 
     bool PoSeBan(const COutPoint &outpoint);
 
     /// Check all Masternodes
-    void Check();
+    void Check(const bool bLockMgr = true);
 
     /// Check all Masternodes and remove inactive
     void CheckAndRemove(bool bCheckAndRemove=false);
@@ -208,7 +207,7 @@ public:
     /// Count Masternodes by network type - NET_IPV4, NET_IPV6, NET_TOR
     // int CountByIP(int nNetworkType);
 
-    void DsegUpdate(CNode* pnode);
+    void DsegUpdate(node_t& pnode);
 
     /// Versions of Find that are safe to use from outside the class
     bool Get(const COutPoint& outpoint, CMasternode& masternodeRet);
@@ -234,14 +233,14 @@ public:
     void ProcessMasternodeConnections();
     std::pair<CService, std::set<uint256> > PopScheduledMnbRequestConnection();
 
-    void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
+    void ProcessMessage(node_t& pfrom, std::string& strCommand, CDataStream& vRecv);
 
     void DoFullVerificationStep();
     void CheckSameAddr();
     bool SendVerifyRequest(const CAddress& addr, const std::vector<CMasternode*>& vSortedByAddr);
-    void SendVerifyReply(CNode* pnode, CMasternodeVerification& mnv);
-    void ProcessVerifyReply(CNode* pnode, CMasternodeVerification& mnv);
-    void ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerification& mnv);
+    void SendVerifyReply(const node_t& pnode, CMasternodeVerification& mnv);
+    void ProcessVerifyReply(const node_t& pnode, CMasternodeVerification& mnv, const bool bLockMgr = true);
+    void ProcessVerifyBroadcast(const node_t& pnode, const CMasternodeVerification& mnv, const bool bLockMgr = true);
 
     /// Return the number of (unique) Masternodes
     size_t size() const noexcept { return mapMasternodes.size(); }
@@ -255,7 +254,7 @@ public:
     /// Update masternode list and maps using provided CMasternodeBroadcast
     void UpdateMasternodeList(CMasternodeBroadcast mnb);
     /// Perform complete check and only then update list and maps
-    bool CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBroadcast mnb, int& nDos);
+    bool CheckMnbAndUpdateMasternodeList(const node_t& pfrom, CMasternodeBroadcast mnb, int& nDos);
     bool IsMnbRecoveryRequested(const uint256& hash) { return mMnbRecoveryRequests.count(hash); }
 
     void UpdateLastPaid(const CBlockIndex* pindex);

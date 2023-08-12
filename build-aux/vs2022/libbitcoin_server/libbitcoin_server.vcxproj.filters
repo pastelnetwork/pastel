@@ -49,9 +49,6 @@
     <ClCompile Include="..\..\..\src\asyncrpcqueue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\bloom.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\chain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -322,6 +319,18 @@
     <ClCompile Include="..\..\..\src\accept_to_mempool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\nodemanager.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\node.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\bloom.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\netmessage.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -334,9 +343,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\asyncrpcqueue.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\bloom.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\chain.h">
@@ -424,9 +430,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\prevector.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\nodehelper.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mruset.h">
@@ -687,5 +690,26 @@
     <ClInclude Include="..\..\..\src\accept_to_mempool.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\nodemanager.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\node.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\bloom.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\netmessage.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\mruset.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\netconsts.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

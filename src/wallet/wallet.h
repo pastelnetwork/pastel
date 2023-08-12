@@ -148,7 +148,7 @@ static void WriteOrderPos(const int64_t& nOrderPos, mu_strings& mapValue)
 {
     if (nOrderPos == -1)
         return;
-    mapValue["n"] = i64tostr(nOrderPos);
+    mapValue["n"] = std::to_string(nOrderPos);
 }
 
 struct COutputEntry

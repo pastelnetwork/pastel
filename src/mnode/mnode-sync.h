@@ -1,14 +1,15 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 
 #include <univalue.h>
 
-#include "chain.h"
-#include "net.h"
+#include <chain.h>
+#include <net.h>
+#include <netmsg/node.h>
 
 //
 // CMasternodeSync : Sync masternode assets in stages
@@ -58,7 +59,7 @@ private:
     void ClearFulfilledRequests();
 
     void SetSyncParameters();
-    bool CheckSyncTimeout(int nTick, std::vector<CNode*> &vNodesCopy);
+    bool CheckSyncTimeout(int nTick, node_vector_t &vNodesCopy);
 
 public:
     CMasternodeSync()
@@ -85,7 +86,7 @@ public:
     void Reset();
     void SwitchToNextAsset();
 
-    void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
+    void ProcessMessage(node_t &pfrom, std::string& strCommand, CDataStream& vRecv);
     void ProcessTick();
 
     void AcceptedBlockHeader(const CBlockIndex *pindexNew);

@@ -835,7 +835,7 @@ Examples:
     obj.pushKV("difficulty",            (double)GetNetworkDifficulty());
     obj.pushKV("verificationprogress",  Checkpoints::GuessVerificationProgress(Params().Checkpoints(), chainActive.Tip()));
     obj.pushKV("chainwork",             chainActive.Tip()->nChainWork.GetHex());
-    obj.pushKV("pruned",                fPruneMode);
+    obj.pushKV("pruned",                fPruneMode.load());
 
     SproutMerkleTree tree;
     pcoinsTip->GetSproutAnchorAt(pcoinsTip->GetBestAnchor(SPROUT), tree);

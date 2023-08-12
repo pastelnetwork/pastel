@@ -3,13 +3,17 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <str_utils.h>
-
 #include <netmsg/nodestate.h>
+#include <main.h>
 
 using namespace std;
 
-void CNodeState::BlocksInFlightCleanup(const NodeId nodeid, T_mapBlocksInFlight &mapBlocksInFlight)
+// requires cs_main for access to mapBlocksInFlight
+void CNodeState::BlocksInFlightCleanup(const bool bLock, T_mapBlocksInFlight &mapBlocksInFlight)
 {
+    AssertLockHeld(cs_main);
+    SIMPLE_LOCK_COND(bLock, cs_NodeBlocksInFlight);
+
     string s;
     const size_t nBlockCount = vBlocksInFlight.size();
     const bool bLogNetCategory = LogAcceptCategory("net");
@@ -31,11 +35,33 @@ void CNodeState::BlocksInFlightCleanup(const NodeId nodeid, T_mapBlocksInFlight 
         mapBlocksInFlight.erase(entry.hash);
     }
     if (bLogNetCategory && nBlockCount)
-        LogFnPrint("net", "Peer %d had %zu blocks in-flight [%s]", nodeid, nBlockCount, s.c_str());
+        LogFnPrint("net", "Peer %d had %zu blocks in-flight [%s]", id, nBlockCount, s.c_str());
     nBlocksInFlight = 0;
     nBlocksInFlightValidHeaders = 0;
     pindexBestKnownBlock = nullptr;
     hashLastUnknownBlock.SetNull();
+}
+
+// Returns time at which to timeout block request (nTime in microseconds)
+int64_t GetBlockTimeout(const int64_t nTime, const uint32_t nValidatedQueuedBefore, const Consensus::Params &consensusParams)
+{
+    return nTime + 500'000 * consensusParams.nPowTargetSpacing * (4 + nValidatedQueuedBefore);
+}
+
+void CNodeState::MarkBlockAsInFlight(const uint256& hash, const Consensus::Params& consensusParams,
+    T_mapBlocksInFlight& mapBlocksInFlight, atomic_uint32_t& nQueuedValidatedHeaders,
+    const CBlockIndex* pindex)
+{
+    // Make sure it's not listed somewhere already.
+    MarkBlockAsReceived(hash);
+
+    int64_t nNow = GetTimeMicros();
+    QueuedBlock newentry = {hash, pindex, nNow, pindex != nullptr, GetBlockTimeout(nNow, nQueuedValidatedHeaders, consensusParams)};
+    nQueuedValidatedHeaders += newentry.fValidatedHeaders;
+    auto it = vBlocksInFlight.insert(vBlocksInFlight.end(), newentry);
+    nBlocksInFlight++;
+    nBlocksInFlightValidHeaders += newentry.fValidatedHeaders;
+    mapBlocksInFlight[hash] = make_pair(id, it);
 }
 
 bool CChainWorkTracker::update(const CNodeState& state) noexcept

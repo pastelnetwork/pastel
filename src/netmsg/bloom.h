@@ -1,13 +1,10 @@
+#pragma once
 // Copyright (c) 2012-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_BLOOM_H
-#define BITCOIN_BLOOM_H
-
-#include "serialize.h"
-
-#include <vector>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <vector_types.h>
+#include <serialize.h>
 
 class COutPoint;
 class CTransaction;
@@ -122,9 +119,9 @@ public:
     // constructed before the randomizer is properly initialized.
     CRollingBloomFilter(unsigned int nElements, double nFPRate);
 
-    void insert(const std::vector<unsigned char>& vKey);
+    void insert(const v_uint8& vKey);
     void insert(const uint256& hash);
-    bool contains(const std::vector<unsigned char>& vKey) const;
+    bool contains(const v_uint8& vKey) const;
     bool contains(const uint256& hash) const;
 
     void reset();
@@ -134,6 +131,3 @@ private:
     unsigned int nInsertions;
     CBloomFilter b1, b2;
 };
-
-
-#endif // BITCOIN_BLOOM_H

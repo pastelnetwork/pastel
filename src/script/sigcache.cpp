@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_set>
@@ -8,6 +8,7 @@
 
 #include <script/sigcache.h>
 #include <memusage.h>
+#include <sync.h>
 #include <pubkey.h>
 #include <random.h>
 #include <uint256.h>
@@ -24,7 +25,8 @@ namespace {
 class CSignatureCacheHasher
 {
 public:
-    size_t operator()(const uint256& key) const {
+    size_t operator()(const uint256& key) const noexcept
+    {
         return key.GetCheapHash();
     }
 };
@@ -41,7 +43,7 @@ private:
     uint256 nonce;
     typedef std::unordered_set<uint256, CSignatureCacheHasher> map_type;
     map_type setValid;
-    shared_mutex cs_sigcache;
+    CSharedMutex m_rwSigCache;
 
 public:
     CSignatureCache()
@@ -49,22 +51,20 @@ public:
         GetRandBytes(nonce.begin(), 32);
     }
 
-    void
-    ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey)
+    void ComputeEntry(uint256& entry, const uint256 &hash, const std::vector<unsigned char>& vchSig, const CPubKey& pubkey)
     {
         CSHA256().Write(nonce.begin(), 32).Write(hash.begin(), 32).Write(&pubkey[0], pubkey.size()).Write(&vchSig[0], vchSig.size()).Finalize(entry.begin());
     }
 
-    bool
-    Get(const uint256& entry)
+    bool Get(const uint256& entry)
     {
-        shared_lock<shared_mutex> lock(cs_sigcache);
+        SHARED_LOCK(m_rwSigCache);
         return setValid.count(entry);
     }
 
     void Erase(const uint256& entry)
     {
-        unique_lock<shared_mutex> lock(cs_sigcache);
+        EXCLUSIVE_LOCK(m_rwSigCache);
         setValid.erase(entry);
     }
 
@@ -73,14 +73,13 @@ public:
         size_t nMaxCacheSize = GetArg("-maxsigcachesize", DEFAULT_MAX_SIG_CACHE_SIZE) * ((size_t) 1 << 20);
         if (nMaxCacheSize <= 0) return;
 
-        unique_lock<shared_mutex> lock(cs_sigcache);
+        EXCLUSIVE_LOCK(m_rwSigCache);
         while (memusage::DynamicUsage(setValid) > nMaxCacheSize)
         {
-            map_type::size_type s = GetRand(setValid.bucket_count());
-            map_type::local_iterator it = setValid.begin(s);
-            if (it != setValid.end(s)) {
+            auto s = GetRand(setValid.bucket_count());
+            auto it = setValid.begin(s);
+            if (it != setValid.end(s))
                 setValid.erase(*it);
-            }
         }
 
         setValid.insert(entry);
@@ -96,18 +95,17 @@ bool CachingTransactionSignatureChecker::VerifySignature(const std::vector<unsig
     uint256 entry;
     signatureCache.ComputeEntry(entry, sighash, vchSig, pubkey);
 
-    if (signatureCache.Get(entry)) {
-        if (!m_bStore) {
+    if (signatureCache.Get(entry))
+    {
+        if (!m_bStore)
             signatureCache.Erase(entry);
-        }
         return true;
     }
 
     if (!TransactionSignatureChecker::VerifySignature(vchSig, pubkey, sighash))
         return false;
 
-    if (m_bStore) {
+    if (m_bStore)
         signatureCache.Set(entry);
-    }
     return true;
 }

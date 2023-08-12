@@ -9,13 +9,13 @@
 #error This header can only be compiled as C++.
 #endif
 
-#include "netbase.h"
-#include "serialize.h"
-#include "uint256.h"
-#include "version.h"
-
-#include <stdint.h>
+#include <cstdint>
 #include <string>
+
+#include <netbase.h>
+#include <serialize.h>
+#include <uint256.h>
+#include <version.h>
 
 constexpr size_t MESSAGE_START_SIZE = 4;
 

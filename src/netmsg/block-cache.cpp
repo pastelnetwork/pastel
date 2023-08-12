@@ -1,12 +1,12 @@
 // Copyright (c) 2022-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <netmsg/block-cache.h>
 #include <consensus/validation.h>
 #include <scope_guard.hpp>
 #include <main.h>
 #include <reverselock.h>
+#include <netmsg/block-cache.h>
+#include <netmsg/nodemanager.h>
 
 using namespace std;
 
@@ -115,7 +115,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
     string sHash; // block hash
     time_t nNow = time(nullptr);
     // prepare list of blocks to revalidate, sorted by height
-    vector<tuple<uint256, CNode*, BLOCK_CACHE_ITEM*>> vToRevalidate;
+    vector<tuple<uint256, node_t, BLOCK_CACHE_ITEM*>> vToRevalidate;
     vToRevalidate.reserve(m_BlockCacheMap.size());
     for (auto& [hash, item] : m_BlockCacheMap)
     {
@@ -128,7 +128,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
             continue;
 
         // get the node from which the cached block was downloaded
-        CNode* pfrom = FindNode(item.nodeId);
+        const node_t pfrom = gl_NodeManager.FindNode(item.nodeId);
         if (!pfrom)
         {
             LogFnPrintf("could not find node by peer id=%d for block %s", item.nodeId, hash.ToString());
@@ -211,10 +211,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
             pfrom->PushMessage("reject", strCommand, state.GetRejectCode(),
                                state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), hash);
             if (nDoS > 0)
-            {
-                LOCK(cs_main);
                 Misbehaving(pfrom->GetId(), nDoS);
-            }
             // add block hash to rejected array to be removed later from the cached map
             vRejected.push_back(hash);
         }

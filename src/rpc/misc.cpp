@@ -3,7 +3,6 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <cstdint>
 #include <variant>
 
@@ -25,6 +24,7 @@
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
 #endif
+#include <netmsg/nodemanager.h>
 
 #include <zcash/Address.hpp>
 
@@ -97,14 +97,15 @@ Examples:
 #endif
     obj.pushKV("blocks",        static_cast<uint64_t>(gl_nChainHeight.load()));
     obj.pushKV("timeoffset",    GetTimeOffset());
-    obj.pushKV("connections",   static_cast<uint64_t>(vNodes.size()));
+    obj.pushKV("connections",   static_cast<uint64_t>(gl_NodeManager.GetNodeCount()));
     obj.pushKV("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string()));
     obj.pushKV("difficulty",    GetDifficulty());
     obj.pushKV("testnet",       Params().TestnetToBeDeprecatedFieldRPC());
 #ifdef ENABLE_WALLET
-    if (pwalletMain) {
+    if (pwalletMain)
+    {
         obj.pushKV("keypoololdest", pwalletMain->GetOldestKeyPoolTime());
-        obj.pushKV("keypoolsize",   (int)pwalletMain->GetKeyPoolSize());
+        obj.pushKV("keypoolsize",   static_cast<uint64_t>(pwalletMain->GetKeyPoolSize()));
     }
     if (pwalletMain && pwalletMain->IsCrypted())
         obj.pushKV("unlocked_until", nWalletUnlockTime);
@@ -487,15 +488,12 @@ Examples:
     // atomically with the time change to prevent peers from being
     // disconnected because we think we haven't communicated with them
     // in a long time.
-    LOCK2(cs_main, cs_vNodes);
+    LOCK(cs_main);
 
     RPCTypeCheck(params, {UniValue::VNUM});
     SetMockTime(params[0].get_int64());
 
-    uint64_t t = GetTime();
-    for (auto pnode : vNodes)
-        pnode->nLastSend = pnode->nLastRecv = t;
-
+    gl_NodeManager.UpdateNodesSendRecvTime(GetTime());
     return NullUniValue;
 }
 

@@ -15,6 +15,8 @@
 #include <rpc/rpc_parser.h>
 #include <rpc/rpc-utils.h>
 #include <rpc/server.h>
+#include <netmsg/nodemanager.h>
+
 #include <mnode/mnode-controller.h>
 #include <mnode/rpc/masternode.h>
 #include <mnode/tickets/pastelid-reg.h>
@@ -304,7 +306,7 @@ UniValue masternode_connect(const UniValue& params, const bool fHelp)
     if (!Lookup(strAddress.c_str(), addr, 0, false))
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Incorrect masternode address %s", strAddress));
 
-    CNode* pnode = ConnectNode(CAddress(addr, NODE_NETWORK), nullptr);
+    node_t pnode = gl_NodeManager.ConnectNode(CAddress(addr, NODE_NETWORK), nullptr);
 
     if (!pnode)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to masternode %s", strAddress));
@@ -1118,15 +1120,20 @@ R"(Correct usage is:
             }
             return obj;
         } break;
+
+        default:
+            break;
     }
     return NullUniValue;
 }
 
-UniValue masternode_print_cache(const UniValue& params) {
+UniValue masternode_print_cache(const UniValue& params)
+{
     return masterNodeCtrl.masternodeManager.ToJSON();
 }
 
-UniValue masternode_clear_cache(const UniValue& params) {
+UniValue masternode_clear_cache(const UniValue& params)
+{
 
     RPC_CMD_PARSER2(MN_CLEAR_CACHE, params, all, mns, seen, recovery, asked);
 
@@ -1146,6 +1153,8 @@ UniValue masternode_clear_cache(const UniValue& params) {
         case RPC_CMD_MN_CLEAR_CACHE::asked:
             masterNodeCtrl.masternodeManager.ClearCache(false, false, false, true);
             break;
+        default:
+            break;
     }
     return NullUniValue;
 }
@@ -1155,18 +1164,18 @@ UniValue masternode_set_min_mn_count(const UniValue& params)
     if (params.size() < 2)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is: masternode set-min-mn-count <count>");
 
-    int count = get_number(params[1]);
-    if (count < 0)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Count must be positive number: %d", count));
+    int64_t nLongValue = get_long_number(params[1]);
+    rpc_check_unsigned_param<uint32_t>("<count>", nLongValue);
+    uint32_t nCount = (uint32_t)nLongValue;
 
-    uint32_t totalCount = masterNodeCtrl.masternodeManager.CountMasternodes();
-    if (count > totalCount)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Count should be less or equal to total number of MNs: %zu", totalCount));
+    uint32_t nTotalCount = masterNodeCtrl.masternodeManager.CountMasternodes();
+    if (nCount > nTotalCount)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Count should be less or equal to total number of MNs: %zu", nTotalCount));
 
     UniValue obj(UniValue::VOBJ);
-    obj.pushKV("OldMinMnCount", (int)masterNodeCtrl.nMinRequiredEnabledMasternodes);
-    masterNodeCtrl.nMinRequiredEnabledMasternodes = count;
-    obj.pushKV("NewMinMnCount", (int)masterNodeCtrl.nMinRequiredEnabledMasternodes);
+    obj.pushKV("OldMinMnCount", static_cast<uint64_t>(masterNodeCtrl.nMinRequiredEnabledMasternodes));
+    masterNodeCtrl.nMinRequiredEnabledMasternodes = nCount;
+    obj.pushKV("NewMinMnCount", static_cast<uint64_t>(masterNodeCtrl.nMinRequiredEnabledMasternodes));
 
     return obj;
 }
@@ -1315,6 +1324,9 @@ R"(
         case RPC_CMD_MN::outputs:
             return masternode_outputs(params);
 #endif // ENABLE_WALLET
+
+        default:
+			break;
     }
 
     return NullUniValue;

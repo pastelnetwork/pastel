@@ -68,6 +68,8 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <script_check.h>
 #include <orphan-tx.h>
+#include <netmsg/netconsts.h>
+#include <netmsg/nodemanager.h>
 
 //MasterNode
 CMasterNodeController masterNodeCtrl;
@@ -93,9 +95,9 @@ static AMQPNotificationInterface* pAMQPNotificationInterface = nullptr;
 // Win32 LevelDB doesn't use file descriptors, and the ones used for
 // accessing block files don't count towards the fd_set size limit
 // anyway.
-#define MIN_CORE_FILEDESCRIPTORS 0
+constexpr size_t MIN_CORE_FILEDESCRIPTORS = 0;
 #else
-#define MIN_CORE_FILEDESCRIPTORS 150
+constexpr size_t MIN_CORE_FILEDESCRIPTORS = 150;
 #endif
 
 /** Used to pass flags to the Bind() function */
@@ -135,7 +137,7 @@ CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 // immediately and the parent exits from main().
 //
 
-std::atomic<bool> fRequestShutdown(false);
+atomic<bool> fRequestShutdown(false);
 
 void StartShutdown()
 {
@@ -153,7 +155,7 @@ public:
     bool GetCoins(const uint256 &txid, CCoins &coins) const {
         try {
             return CCoinsViewBacked::GetCoins(txid, coins);
-        } catch(const std::runtime_error& e) {
+        } catch(const runtime_error& e) {
             uiInterface.ThreadSafeMessageBox(translate("Error reading from database, shutting down."), "", CClientUIInterface::MSG_ERROR);
             LogPrintf("Error reading from database: %s\n", e.what());
             // Starting the shutdown sequence and returning false to the caller would be
@@ -290,13 +292,13 @@ void HandleSIGHUP(int)
     fReopenDebugLog = true;
 }
 
-bool static InitError(const std::string &str)
+bool static InitError(const string &str)
 {
     uiInterface.ThreadSafeMessageBox(str, "", CClientUIInterface::MSG_ERROR);
     return false;
 }
 
-bool static InitWarning(const std::string &str)
+bool static InitWarning(const string &str)
 {
     uiInterface.ThreadSafeMessageBox(str, "", CClientUIInterface::MSG_WARNING);
     return true;
@@ -305,7 +307,7 @@ bool static InitWarning(const std::string &str)
 bool static Bind(const CService &addr, unsigned int flags) {
     if (!(flags & BF_EXPLICIT) && IsLimited(addr))
         return false;
-    std::string strError;
+    string strError;
     if (!BindListenPort(addr, strError, (flags & BF_WHITELIST) != 0)) {
         if (flags & BF_REPORT_ERROR)
             return InitError(strError);
@@ -329,7 +331,7 @@ void OnRPCPreCommand(const CRPCCommand& cmd)
         throw JSONRPCError(RPC_FORBIDDEN_BY_SAFE_MODE, string("Safe mode: ") + strWarning);
 }
 
-std::string HelpMessage(HelpMessageMode mode)
+string HelpMessage(HelpMessageMode mode)
 {
     const bool showDebug = GetBoolArg("-help-debug", false);
 
@@ -544,7 +546,7 @@ std::string HelpMessage(HelpMessageMode mode)
 
 static void BlockNotifyCallback(const uint256& hashNewTip)
 {
-    std::string strCmd = GetArg("-blocknotify", "");
+    string strCmd = GetArg("-blocknotify", "");
 
     replaceAll(strCmd, "%s", hashNewTip.GetHex());
     thread t(runCommand, strCmd); // thread runs free
@@ -607,7 +609,7 @@ void CleanupBlockRevFiles()
     }
 }
 
-void ThreadImport(std::vector<fs::path> vImportFiles)
+void ThreadImport(vector<fs::path> vImportFiles)
 {
     RenameThread("psl-loadblk");
     const auto& chainparams = Params();
@@ -842,7 +844,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     signal(SIGPIPE, SIG_IGN);
 #endif
 
-    std::set_new_handler(new_handler_terminate);
+    set_new_handler(new_handler_terminate);
 
     // ********************************************************* Step 2: parameter interactions
     const CChainParams& chainparams = Params();
@@ -928,10 +930,10 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     }
 
     // Make sure enough file descriptors are available
-    int nBind = std::max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
-    nMaxConnections = static_cast<int>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
-    nMaxConnections = std::max(std::min(nMaxConnections, (int)(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS)), 0);
-    int nFD = RaiseFileDescriptorLimit(nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
+    int nBind = max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
+    nMaxConnections = static_cast<size_t>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
+    nMaxConnections = min(nMaxConnections, static_cast<size_t>(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS));
+    const size_t nFD = RaiseFileDescriptorLimit(nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
     if (nFD < MIN_CORE_FILEDESCRIPTORS)
         return InitError(translate("Not enough file descriptors available."));
     if (nFD - MIN_CORE_FILEDESCRIPTORS < nMaxConnections)
@@ -986,7 +988,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // Checkmempool and checkblockindex default to true in regtest mode
     const int nCheckPool = static_cast<int>(GetArg("-checkmempool", chainparams.DefaultConsistencyChecks()) ? 1 : 0);
-    int ratio = std::min<int>(std::max<int>(nCheckPool, 0), 1000000);
+    int ratio = min<int>(max<int>(nCheckPool, 0), 1000000);
     if (ratio != 0) {
         mempool.setSanityCheck(1.0 / ratio);
     }
@@ -1083,7 +1085,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     bSpendZeroConfChange = GetBoolArg("-spendzeroconfchange", true);
     fSendFreeTransactions = GetBoolArg("-sendfreetransactions", false);
 
-    std::string strWalletFile = GetArg("-wallet", "wallet.dat");
+    string strWalletFile = GetArg("-wallet", "wallet.dat");
 #endif // ENABLE_WALLET
 
     fIsBareMultisigStd = GetBoolArg("-permitbaremultisig", true);
@@ -1157,7 +1159,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (!InitSanityCheck())
         return InitError(translate("Initialization sanity check failed. Pastel is shutting down."));
 
-    std::string strDataDir = GetDataDir().string();
+    string strDataDir = GetDataDir().string();
 #ifdef ENABLE_WALLET
     auto walletFilePath = fs::path(strWalletFile);
     // Wallet file must be a plain filename without a directory
@@ -1207,7 +1209,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 #endif
     if (!categories.empty())
         LogPrintf("Using debug log categories: %s\n", str_join(categories, ", "));
-    std::ostringstream strErrors;
+    ostringstream strErrors;
 
     gl_ScriptCheckManager.create_workers(threadGroup);
 
@@ -1253,8 +1255,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         LogPrintf("Using wallet %s\n", strWalletFile);
         uiInterface.InitMessage(translate("Verifying wallet..."));
 
-        std::string warningString;
-        std::string errorString;
+        string warningString;
+        string errorString;
 
         if (!CWallet::Verify(strWalletFile, warningString, errorString))
             return false;
@@ -1277,17 +1279,18 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         auto sComment = SanitizeString(cmt, SAFE_CHARS_UA_COMMENT);
         if (cmt != sComment)
             return InitError(strprintf("User Agent comment (%s) contains unsafe characters.", cmt));
-        uacomments.emplace_back(std::move(sComment));
+        uacomments.emplace_back(move(sComment));
     }
     strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
-    if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) {
+    if (strSubVersion.size() > MAX_SUBVERSION_LENGTH)
+    {
         return InitError(strprintf("Total length of network version string %i exceeds maximum of %i characters. Reduce the number and/or size of uacomments.",
             strSubVersion.size(), MAX_SUBVERSION_LENGTH));
     }
 
     if (mapArgs.count("-onlynet"))
     {
-        std::set<enum Network> nets;
+        set<enum Network> nets;
         for (const auto& snet : mapMultiArgs["-onlynet"])
         {
             enum Network net = ParseNetwork(snet);
@@ -1345,7 +1348,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     bool proxyRandomize = GetBoolArg("-proxyrandomize", true);
     // -proxy sets a proxy for all outgoing network traffic
     // -noproxy (or -proxy=0) as well as the empty string can be used to not set a proxy, this is the default
-    std::string proxyArg = GetArg("-proxy", "");
+    string proxyArg = GetArg("-proxy", "");
     SetLimited(NET_TOR);
     if (proxyArg != "" && proxyArg != "0") {
         proxyType addrProxy = proxyType(CService(proxyArg, 9050), proxyRandomize);
@@ -1362,7 +1365,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     // -onion can be used to set only a proxy for .onion, or override normal proxy for .onion addresses
     // -noonion (or -onion=0) disables connecting to .onion entirely
     // An empty string is used to not override the onion proxy (in which case it defaults to -proxy set above, or none)
-    std::string onionArg = GetArg("-onion", "");
+    string onionArg = GetArg("-onion", "");
     if (onionArg != "") {
         if (onionArg == "0") { // Handle -noonion/-onion=0
             SetLimited(NET_TOR); // set onions as unreachable
@@ -1419,7 +1422,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             CService addrLocal(strAddr, GetListenPort(), fNameLookup);
             if (!addrLocal.IsValid())
                 return InitError(strprintf(translate("Cannot resolve -externalip address: '%s'"), strAddr));
-            AddLocal(CService(strAddr, GetListenPort(), fNameLookup), LOCAL_MANUAL);
+            AddLocal(CService(strAddr, GetListenPort(), fNameLookup), LocalAddressType::MANUAL);
         }
     }
 
@@ -1484,13 +1487,13 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // cache size calculations
     int64_t nTotalCache = (GetArg("-dbcache", nDefaultDbCache) << 20);
-    nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
-    nTotalCache = std::min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greated than nMaxDbcache
+    nTotalCache = max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
+    nTotalCache = min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greated than nMaxDbcache
     int64_t nBlockTreeDBCache = nTotalCache / 8;
     if (nBlockTreeDBCache > (1 << 21) && !GetBoolArg("-txindex", false))
         nBlockTreeDBCache = (1 << 21); // block tree db cache shouldn't be larger than 2 MiB
     nTotalCache -= nBlockTreeDBCache;
-    int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
+    int64_t nCoinDBCache = min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
     nTotalCache -= nCoinDBCache;
     nCoinCacheUsage = nTotalCache; // the rest goes to in-memory cache
     LogPrintf("Cache configuration:\n");
@@ -1506,7 +1509,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     bool fLoaded = false;
     while (!fLoaded) {
         bool fReset = fReindex;
-        std::string strLoadError;
+        string strLoadError;
 
         uiInterface.InitMessage(translate("Loading block index..."));
 
@@ -1584,7 +1587,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                     strLoadError = translate("Corrupted block database detected");
                     break;
                 }
-            } catch (const std::exception& e) {
+            } catch (const exception& e) {
                 if (fDebug)
                     LogPrintf("%s\n", e.what());
                 strLoadError = translate("Error opening block database");
@@ -1647,7 +1650,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     } else {
 
         // needed to restore wallet transaction meta data after -zapwallettxes
-        std::vector<CWalletTx> vWtx;
+        vector<CWalletTx> vWtx;
 
         if (GetBoolArg("-zapwallettxes", false)) {
             uiInterface.InitMessage(translate("Zapping all transactions from wallet..."));
@@ -1804,7 +1807,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 	{
             // Address has alreday been validated
             const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
-            CKeyID keyID = std::get<CKeyID>(addr);
+            CKeyID keyID = get<CKeyID>(addr);
             minerAddressInLocalWallet = pwalletMain->HaveKey(keyID);
         }
         if (GetBoolArg("-minetolocalwallet", true) && !minerAddressInLocalWallet) {
@@ -1838,7 +1841,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (!ActivateBestChain(state, chainparams))
         strErrors << "Failed to connect best block";
 
-    std::vector<fs::path> vImportFiles;
+    vector<fs::path> vImportFiles;
     if (mapArgs.count("-loadblock"))
     {
         for (const auto& strFile : mapMultiArgs["-loadblock"])
@@ -1889,7 +1892,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     const auto& consensusParams = chainparams.GetConsensus();
     const int64_t nPowTargetSpacing = consensusParams.nPowTargetSpacing;
     CScheduler::Function f = bind(&PartitionCheck, consensusParams, fnIsInitialBlockDownload,
-                                   std::ref(cs_main), std::cref(pindexBestHeader), nPowTargetSpacing);
+                                   ref(cs_main), cref(pindexBestHeader), nPowTargetSpacing);
     scheduler.scheduleEvery(f, nPowTargetSpacing);
 
 #ifdef ENABLE_MINING

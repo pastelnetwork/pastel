@@ -1,8 +1,9 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2009-2013 The Bitcoin Core developers7
+// Copyright (c) 2018-2023 The Pastel Core developers7
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <support/allocators/zeroafterfree.h>
 
@@ -12,7 +13,7 @@
 #include <limits>
 #include <map>
 #include <set>
-#include <stdint.h>
+#include <cstdint>
 #include <stdio.h>
 #include <string.h>
 #include <utility>
@@ -100,6 +101,44 @@ public:
         Init(nType, nVersion);
     }
 
+    CBaseDataStream(CBaseDataStream&& p) noexcept :
+        vch(move(p.vch))
+    {
+        Init(p.m_nType, p.m_nVersion);
+        nReadPos = p.nReadPos;
+        p.nReadPos = 0;
+    }
+
+    CBaseDataStream& operator=(CBaseDataStream&& p) noexcept
+    {
+        if (this != &p)
+        {
+            vch = move(p.vch);
+            Init(p.m_nType, p.m_nVersion);
+            nReadPos = p.nReadPos;
+            p.nReadPos = 0;
+        }
+        return (*this);
+    }
+
+    CBaseDataStream(const CBaseDataStream& p) :
+        vch(p.vch)
+    {
+		Init(p.m_nType, p.m_nVersion);
+		nReadPos = p.nReadPos;
+	}
+
+    CBaseDataStream& operator=(const CBaseDataStream& p)
+    {
+        if (this != &p)
+        {
+			vch = p.vch;
+			Init(p.m_nType, p.m_nVersion);
+			nReadPos = p.nReadPos;
+		}
+		return (*this);
+	}
+
     CBaseDataStream(const_iterator pbegin, const_iterator pend, const int nType, const int nVersion) : 
         vch(pbegin, pend)
     {
@@ -169,7 +208,6 @@ public:
     {
         return (std::string(cbegin(), cend()));
     }
-
 
     //
     // Vector subset

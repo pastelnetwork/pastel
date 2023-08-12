@@ -224,7 +224,7 @@ public:
     {
         const bool bRead = (ser_action == SERIALIZE_ACTION::Read);
 
-        LOCK(cs);
+        LOCK(cs_mn);
         READWRITE(m_vin);
         READWRITE(m_addr);
         READWRITE(pubKeyCollateralAddress);
@@ -299,7 +299,7 @@ public:
 
     static CollateralStatus CheckCollateral(const COutPoint& outpoint);
     static CollateralStatus CheckCollateral(const COutPoint& outpoint, int& nHeightRet);
-    void Check(const bool fForce = false);
+    void Check(const bool fForce = false, bool bLockMain = false);
 
     bool IsBroadcastedWithin(const int nSeconds) const noexcept { return GetAdjustedTime() - sigTime < nSeconds; }
     bool IsLastPingDefined() const noexcept { return m_lastPing.IsDefined(); }
@@ -361,7 +361,7 @@ public:
 
 protected:
     // critical section to protect the inner data structures
-    mutable CCriticalSection cs;
+    mutable CCriticalSection cs_mn;
 
     uint16_t m_nVersion = 0; // stored masternode serialization version
 
@@ -426,7 +426,7 @@ public:
     {
         const bool bRead = (ser_action == SERIALIZE_ACTION::Read);
 
-        LOCK(cs);
+        LOCK(cs_mn);
         READWRITE(m_vin);
         READWRITE(m_addr);
         READWRITE(pubKeyCollateralAddress);

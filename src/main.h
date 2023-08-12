@@ -15,6 +15,7 @@
 #include <vector>
 #include <deque>
 #include <set>
+#include <atomic>
 #include <unordered_map>
 #include <utility>
 
@@ -36,6 +37,7 @@
 #include <txmempool.h>
 #include <uint256.h>
 #include <script_check.h>
+#include <netmsg/netconsts.h>
 
 class CBlockIndex;
 class CBlockTreeDB;
@@ -106,17 +108,17 @@ struct BlockHasher
 };
 
 // START insightexplorer
-extern bool fInsightExplorer;
+extern std::atomic_bool fInsightExplorer;
 
 // The following flags enable specific indices (DB tables), but are not exposed as
 // separate command-line options; instead they are enabled by experimental feature "-insightexplorer"
 // and are always equal to the overall controlling flag, fInsightExplorer.
 
 // Maintain a full address index, used to query for the balance, txids and unspent outputs for addresses
-extern bool fAddressIndex;
+extern std::atomic_bool fAddressIndex;
 
 // Maintain a full spent index, used to query the spending txid and input index for an outpoint
-extern bool fSpentIndex;
+extern std::atomic_bool fSpentIndex;
 
 extern std::string STR_MSG_MAGIC;
 extern CScript COINBASE_FLAGS;
@@ -129,13 +131,13 @@ extern uint64_t nLastBlockSize;
 extern const std::string strMessageMagic;
 extern CWaitableCriticalSection csBestBlock;
 extern CConditionVariable cvBlockChange;
-extern bool fExperimentalMode;
-extern bool fImporting;
-extern bool fReindex;
-extern bool fTxIndex;
-extern bool fIsBareMultisigStd;
-extern bool fCheckBlockIndex;
-extern bool fCheckpointsEnabled;
+extern std::atomic_bool fExperimentalMode;
+extern std::atomic_bool fImporting;
+extern std::atomic_bool fReindex;
+extern std::atomic_bool fTxIndex;
+extern std::atomic_bool fIsBareMultisigStd;
+extern std::atomic_bool fCheckBlockIndex;
+extern std::atomic_bool fCheckpointsEnabled;
 
 extern size_t nCoinCacheUsage;
 extern bool fAlerts;
@@ -149,9 +151,9 @@ static constexpr uint64_t nMinDiskSpace = 52428800;
 
 /** Pruning-related variables and constants */
 /** True if any block files have ever been pruned. */
-extern bool fHavePruned;
+extern std::atomic_bool fHavePruned;
 /** True if we're running in -prune mode. */
-extern bool fPruneMode;
+extern std::atomic_bool fPruneMode;
 /** Number of MiB of block files that we're trying to stay below. */
 extern uint64_t nPruneTarget;
 /** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of chainActive.Tip() will not be pruned. */
@@ -191,7 +193,7 @@ void UnregisterNodeSignals(CNodeSignals& nodeSignals);
 bool ProcessNewBlock(
     CValidationState &state, 
     const CChainParams& chainparams, 
-    const CNode* pfrom, 
+    const node_t &pfrom, 
     const CBlock* pblock, 
     const bool fForceProcessing, 
     CDiskBlockPos *dbp = nullptr);
@@ -212,14 +214,14 @@ bool LoadBlockIndex();
 /** Unload database information */
 void UnloadBlockIndex();
 /** Process protocol messages received from a given node */
-bool ProcessMessages(const CChainParams& chainparams, CNode* pfrom);
+bool ProcessMessages(const CChainParams& chainparams, node_t& pfrom);
 /**
  * Send queued protocol messages to be sent to a give node.
  *
  * @param[in]   pto             The node which we are sending messages to.
  * @param[in]   fSendTrickle    When true send the trickled data, otherwise trickle the data until true.
  */
-bool SendMessages(const CChainParams& chainparams, CNode* pto, bool fSendTrickle);
+bool SendMessages(const CChainParams& chainparams, node_t& pto, bool fSendTrickle);
 
 /** Try to detect Partition (network isolation) attacks against us */
 void PartitionCheck(
@@ -263,13 +265,15 @@ void UnlinkPrunedFiles(std::set<int>& setFilesToPrune);
 /** Create a new block index entry for a given block hash */
 CBlockIndex * InsertBlockIndex(uint256 hash);
 /** Get statistics from node state */
-bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats);
+bool GetNodeStateStats(const NodeId nodeid, CNodeStateStats &stats);
 /** Increase a node's misbehavior score. */
 void Misbehaving(NodeId nodeid, int howmuch);
 /** Flush all state, indexes and buffers to disk. */
 void FlushStateToDisk();
 /** Prune block files and flush state to disk. */
 void PruneAndFlush();
+
+bool MarkBlockAsReceived(const uint256& hash);
 
 struct CNodeStateStats {
     int nMisbehavior;

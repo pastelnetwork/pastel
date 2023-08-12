@@ -1,11 +1,11 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#include <cstdint>
 #include <functional>
-#include <stdint.h>
 
 #include <uint256.h>
 
@@ -13,8 +13,9 @@
  * Functions to gather random data via the libsodium CSPRNG
  */
 void GetRandBytes(unsigned char* buf, size_t num);
-uint64_t GetRand(uint64_t nMax);
-int GetRandInt(int nMax);
+uint64_t GetRand(const uint64_t nMax);
+int GetRandInt(const int nMax);
+uint32_t GetRandUInt(const uint32_t nMax);
 uint256 GetRandHash();
 
 // generate random string and return base85 encoded.
@@ -75,4 +76,3 @@ static inline uint32_t insecure_rand(void)
     insecure_rand_Rw = 18000 * (insecure_rand_Rw & 65535) + (insecure_rand_Rw >> 16);
     return (insecure_rand_Rw << 16) + insecure_rand_Rz;
 }
-

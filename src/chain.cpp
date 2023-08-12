@@ -44,21 +44,24 @@ void CChain::SetTip(CBlockIndex *pindex)
     gl_nChainHeight = static_cast<uint32_t>(vChain.size()) - 1;
 }
 
-CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {
+CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const
+{
     int nStep = 1;
     v_uint256 vHave;
     vHave.reserve(32);
 
     if (!pindex)
         pindex = Tip();
-    while (pindex) {
+    while (pindex)
+    {
         vHave.push_back(pindex->GetBlockHash());
         // Stop when we have added the genesis block.
         if (pindex->nHeight == 0)
             break;
         // Exponentially larger steps back, plus the genesis block.
         int nHeight = max(pindex->nHeight - nStep, 0);
-        if (Contains(pindex)) {
+        if (Contains(pindex))
+        {
             // Use O(1) CChain index if possible.
             pindex = (*this)[nHeight];
         } else {
@@ -72,7 +75,8 @@ CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const {
     return CBlockLocator(vHave);
 }
 
-const CBlockIndex *CChain::FindFork(const CBlockIndex *pindex) const {
+const CBlockIndex *CChain::FindFork(const CBlockIndex *pindex) const
+{
     if (pindex->nHeight > Height())
         pindex = pindex->GetAncestor(Height());
     while (pindex && !Contains(pindex))
@@ -81,10 +85,11 @@ const CBlockIndex *CChain::FindFork(const CBlockIndex *pindex) const {
 }
 
 /** Turn the lowest '1' bit in the binary representation of a number into a '0'. */
-int static inline InvertLowestOne(int n) { return n & (n - 1); }
+int static inline InvertLowestOne(int n) noexcept { return n & (n - 1); }
 
 /** Compute what height to jump back to with the CBlockIndex::pskip pointer. */
-int static inline GetSkipHeight(int height) {
+int static inline GetSkipHeight(int height) noexcept
+{
     if (height < 2)
         return 0;
 

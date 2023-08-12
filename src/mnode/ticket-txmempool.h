@@ -1,12 +1,13 @@
 #pragma once
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <shared_mutex>
 #include <unordered_map>
 #include <unordered_set>
 
-#include "txmempool_entry.h"
+#include <txmempool_entry.h>
+#include <sync.h>
 #include <mnode/tickets/ticket.h>
 #include <mnode/tickets/ticket-types.h>
 
@@ -34,7 +35,7 @@ protected:
     using mempool_txidmap_t = std::unordered_map<uint256, TicketID>;
     using mempool_ticketidmap_t = std::unordered_multimap<TicketID, uint256>;
     // read-write lock to protect access to maps
-    mutable std::shared_mutex m_rwlock;
+    mutable CSharedMutex m_rwMemPoolLock;
     // map of ticket transactions accepted into the local mempool: ticket id -> txid
     mempool_ticketidmap_t m_mapTicket;
     // map of txid -> ticketm_mapTicket id

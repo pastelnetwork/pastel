@@ -106,7 +106,7 @@ public:
 
 public:
     void BroadcastNewFee(const MN_FEE mnFeeType, const CAmount newFee);
-    void ProcessMessage(CNode *pFrom, std::string &strCommand, CDataStream &vRecv);
+    void ProcessMessage(node_t &pFrom, std::string &strCommand, CDataStream &vRecv);
     void CheckAndRemove();
     void Clear();
     size_t Size() const noexcept { return mapSeenMessages.size(); }

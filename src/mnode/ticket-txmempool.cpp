@@ -21,7 +21,7 @@ void CTicketTxMemPoolTracker::processTransaction(const CTxMemPoolEntry& entry, [
     if (!CPastelTicketProcessor::preParseTicket(tx, data_stream, ticket_id, error))
         return;
     {
-        unique_lock lock(m_rwlock);
+        EXCLUSIVE_LOCK(m_rwMemPoolLock);
         m_mapTicket.emplace(ticket_id, tx.GetHash());
         m_mapTxid.emplace(tx.GetHash(), ticket_id);
     }
@@ -34,7 +34,7 @@ void CTicketTxMemPoolTracker::processTransaction(const CTxMemPoolEntry& entry, [
  */
 void CTicketTxMemPoolTracker::removeTx(const uint256& txid)
 {
-    unique_lock lock(m_rwlock);
+    EXCLUSIVE_LOCK(m_rwMemPoolLock);
     auto itTx = m_mapTxid.find(txid);
     if (itTx != m_mapTxid.end())
     {
@@ -63,7 +63,7 @@ void CTicketTxMemPoolTracker::getTicketTransactions(const TicketID ticket_id, v_
     vTxid.reserve(5);
 
     {
-        shared_lock rlock(m_rwlock);
+        SHARED_LOCK(m_rwMemPoolLock);
         const auto it = m_mapTicket.equal_range(ticket_id);
         for (auto itr = it.first; itr != it.second; ++itr)
             vTxid.emplace_back(itr->second);
@@ -78,6 +78,6 @@ void CTicketTxMemPoolTracker::getTicketTransactions(const TicketID ticket_id, v_
   */
 size_t CTicketTxMemPoolTracker::count(const TicketID ticket_id) const noexcept
 {
-    shared_lock rlock(m_rwlock);
+    SHARED_LOCK(m_rwMemPoolLock);
     return m_mapTicket.count(ticket_id);
 }

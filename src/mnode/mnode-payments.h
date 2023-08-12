@@ -144,7 +144,7 @@ public:
     bool Sign();
     bool CheckSignature(const CPubKey& pubKeyMasternode, int nValidationHeight, int &nDos);
 
-    bool IsValid(CNode* pnode, int nValidationHeight, std::string& strError);
+    bool IsValid(const node_t& pnode, int nValidationHeight, std::string& strError);
     void Relay();
 
     bool IsVerified() const noexcept { return !vchSig.empty(); }
@@ -235,12 +235,12 @@ public:
     bool HasVerifiedPaymentVote(const uint256 &hashIn) const noexcept;
     bool ProcessBlock(int nBlockHeight);
     void CheckPreviousBlockVotes(const int nPrevBlockHeight);
-    bool PushPaymentVotes(const CBlockIndex* pindex, CNode* pNodeFrom) const;
+    bool PushPaymentVotes(const CBlockIndex* pindex, node_t& pNodeFrom) const;
     bool SearchForPaymentBlock(int &nBlockLastPaid, int64_t &nTimeLastPaid,
         const CBlockIndex* pindex, const size_t nMaxBlocksToScanBack, const CScript &mnpayee);
 
-    void Sync(CNode* node);
-    void RequestLowDataPaymentBlocks(CNode* pnode);
+    void Sync(node_t &node);
+    void RequestLowDataPaymentBlocks(const node_t& pnode);
     void CheckAndRemove();
 
     bool GetBlockPayee(int nBlockHeight, CScript& payee);
@@ -249,7 +249,7 @@ public:
 
     bool CanVote(COutPoint outMasternode, int nBlockHeight);
 
-    void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
+    void ProcessMessage(node_t &pfrom, std::string& strCommand, CDataStream& vRecv);
     std::string GetRequiredPaymentsString(int nBlockHeight);
     void FillMasterNodePayment(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet);
     std::string ToString() const;

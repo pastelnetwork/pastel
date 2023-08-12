@@ -636,15 +636,17 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
     string sTxId = data.tx.GetHash().GetHex();
     try
     {
-        if (!data.hashBlock.IsNull()) { // this will filter out tickets from mempool (not in block yet) NOTE: transactions in mempool DOES have non-zero block height!
-            if (data.nTicketHeight == numeric_limits<uint32_t>::max()) {
+        if (!data.hashBlock.IsNull()) // this will filter out tickets from mempool (not in block yet) NOTE: transactions in mempool DOES have non-zero block height!
+        {
+            if (data.nTicketHeight == numeric_limits<uint32_t>::max())
+            {
                 // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
                 const auto mi = mapBlockIndex.find(data.hashBlock);
-                if (mi != mapBlockIndex.cend() && mi->second) {
+                if (mi != mapBlockIndex.cend() && mi->second)
+                {
                     const auto pindex = mi->second;
-                    if (chainActive.Contains(pindex)) {
+                    if (chainActive.Contains(pindex))
                         data.nTicketHeight = pindex->nHeight;
-                    }
                 }
             }
         } else {
@@ -1922,20 +1924,22 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
     bool bFound= true;
     const uint256 txid = uint256S(ticket.GetTxId());
     const auto pTicket = CPastelTicketProcessor::GetTicket(txid);
-    if (pTicket) {
-        if (pTicket->GetBlock() == numeric_limits<uint32_t>::max()) {
+    if (pTicket)
+    {
+        if (pTicket->GetBlock() == numeric_limits<uint32_t>::max())
+        {
             CTransaction tx;
-            if (mempool.lookup(txid, tx)) {
+            if (mempool.lookup(txid, tx))
                 message = strprintf("%sfound in mempool. ", message);
-            } else {
+            else
+            {
                 bFound = false;
                 bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
                 message = strprintf("%sfound in stale block. %s removed from TicketDB", message,
                                     ok ? "Successfully" : "Failed to be");
             }
-        } else {
+        } else
             message = strprintf("%salready exists in blockchain. ", message);
-        }
     } else {
         bFound = false;
         bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);

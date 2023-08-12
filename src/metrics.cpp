@@ -23,6 +23,7 @@
 #include <utiltime.h>
 #include <utilmoneystr.h>
 #include <utilstrencodings.h>
+#include <netmsg/nodemanager.h>
 
 using namespace std;
 
@@ -210,15 +211,13 @@ int printStats(bool mining)
     // Number of lines that are always displayed
     int lines = 4;
 
-    int height;
+    uint32_t nHeight = gl_nChainHeight;
     int64_t tipmediantime;
-    size_t connections;
+    size_t nNodeCount = gl_NodeManager.GetNodeCount();
     int64_t netsolps;
     {
-        LOCK2(cs_main, cs_vNodes);
-        height = chainActive.Height();
+        LOCK(cs_main);
         tipmediantime = chainActive.Tip()->GetMedianTimePast();
-        connections = vNodes.size();
         netsolps = GetNetworkHashPS(120, -1);
     }
     auto localsolps = GetLocalSolPS();
@@ -226,13 +225,13 @@ int printStats(bool mining)
     const auto& consensusParams = Params().GetConsensus();
     if (fnIsInitialBlockDownload(consensusParams))
     {
-        int netheight = EstimateNetHeight(height, tipmediantime, Params());
-        int downloadPercent = netheight == 0? netheight: height * 100 / netheight;
-        cout << "     " << translate("Downloading blocks") << " | " << height << " / ~" << netheight << " (" << downloadPercent << "%)" << endl;
+        int netheight = EstimateNetHeight(nHeight, tipmediantime, Params());
+        int downloadPercent = netheight == 0? netheight: nHeight * 100 / netheight;
+        cout << "     " << translate("Downloading blocks") << " | " << nHeight << " / ~" << netheight << " (" << downloadPercent << "%)" << endl;
     } else
-        cout << "           " << translate("Block height") << " | " << height << endl;
+        cout << "           " << translate("Block height") << " | " << nHeight << endl;
     
-    cout << "            " << translate("Connections") << " | " << connections << endl;
+    cout << "            " << translate("Connections") << " | " << nNodeCount << endl;
     cout << "  " << translate("Network solution rate") << " | " << netsolps << " Sol/s" << endl;
     if (mining && miningTimer.running())
     {
@@ -250,25 +249,22 @@ int printMiningStatus(bool mining)
     // Number of lines that are always displayed
     int lines = 1;
 
-    if (mining) {
-        auto nThreads = miningTimer.threadCount();
+    if (mining)
+    {
+        const auto nThreads = miningTimer.threadCount();
         const auto& consensusParams = Params().GetConsensus();
-        if (nThreads > 0) {
+        if (nThreads > 0)
             cout << strprintf(translate("You are mining with the %s solver on %d threads."),
                                    GetArg("-equihashsolver", "default"), nThreads) << endl;
-        } else {
-            bool fvNodesEmpty;
-            {
-                LOCK(cs_vNodes);
-                fvNodesEmpty = vNodes.empty();
-            }
-            if (fvNodesEmpty) {
+        else
+        {
+            bool fvNodesEmpty = gl_NodeManager.GetNodeCount() == 0;
+            if (fvNodesEmpty)
                 cout << translate("Mining is paused while waiting for connections.") << endl;
-            } else if (fnIsInitialBlockDownload(consensusParams)) {
+            else if (fnIsInitialBlockDownload(consensusParams))
                 cout << translate("Mining is paused while downloading blocks.") << endl;
-            } else {
+            else
                 cout << translate("Mining is paused (a JoinSplit may be in progress).") << endl;
-            }
         }
         lines++;
     } else {

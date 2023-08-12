@@ -752,12 +752,14 @@ bool TruncateFile(FILE *file, unsigned int length) {
  * this function tries to raise the file descriptor limit to the requested number.
  * It returns the actual file descriptor limit (which may be more or less than nMinFD)
  */
-int RaiseFileDescriptorLimit(int nMinFD) {
+size_t RaiseFileDescriptorLimit(const size_t nMinFD)
+{
 #if defined(WIN32)
     return 2048;
 #else
     struct rlimit limitFD;
-    if (getrlimit(RLIMIT_NOFILE, &limitFD) != -1) {
+    if (getrlimit(RLIMIT_NOFILE, &limitFD) != -1)
+    {
         if (limitFD.rlim_cur < (rlim_t)nMinFD) {
             limitFD.rlim_cur = nMinFD;
             if (limitFD.rlim_cur > limitFD.rlim_max)

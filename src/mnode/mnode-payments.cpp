@@ -7,6 +7,7 @@
 #include <core_io.h>
 #include <key_io.h>
 #include <vector_types.h>
+#include <netmsg/nodemanager.h>
          
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-payments.h>
@@ -92,7 +93,7 @@ bool CMasternodePayments::CanVote(COutPoint outMasternode, int nBlockHeight)
     return true;
 }
 
-void CMasternodePayments::ProcessMessage(CNode* pfrom, string& strCommand, CDataStream& vRecv)
+void CMasternodePayments::ProcessMessage(node_t &pfrom, string& strCommand, CDataStream& vRecv)
 {
     KeyIO keyIO(Params());
     if (strCommand == NetMsgType::MASTERNODEPAYMENTSYNC) { //Masternode Payments Request Sync
@@ -506,7 +507,7 @@ void CMasternodePayments::CheckAndRemove()
     LogFnPrintf("%s", ToString());
 }
 
-bool CMasternodePaymentVote::IsValid(CNode* pnode, int nValidationHeight, string& strError)
+bool CMasternodePaymentVote::IsValid(const node_t& pnode, int nValidationHeight, string& strError)
 {
     masternode_info_t mnInfo;
 
@@ -636,7 +637,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     return false;
 }
 
-bool CMasternodePayments::PushPaymentVotes(const CBlockIndex* pindex, CNode* pNodeFrom) const
+bool CMasternodePayments::PushPaymentVotes(const CBlockIndex* pindex, node_t& pNodeFrom) const
 {
     LOCK(cs_mapMasternodeBlockPayees);
 
@@ -780,7 +781,7 @@ void CMasternodePaymentVote::Relay()
     }
 
     CInv inv(MSG_MASTERNODE_PAYMENT_VOTE, GetHash());
-    CNodeHelper::RelayInv(inv);
+    gl_NodeManager.RelayInv(inv);
 }
 
 bool CMasternodePaymentVote::CheckSignature(const CPubKey& pubKeyMasternode, int nValidationHeight, int &nDos)
@@ -820,7 +821,7 @@ string CMasternodePaymentVote::ToString() const
 }
 
 // Send only votes for future blocks, node should request every other missing payment block individually
-void CMasternodePayments::Sync(CNode* pnode)
+void CMasternodePayments::Sync(node_t& pnode)
 {
     LOCK(cs_mapMasternodeBlockPayees);
 
@@ -850,91 +851,104 @@ void CMasternodePayments::Sync(CNode* pnode)
     pnode->PushMessage(NetMsgType::SYNCSTATUSCOUNT, to_integral_type(CMasternodeSync::MasternodeSyncState::List), nInvCount);
 }
 
-void CMasternodePayments::RequestLowDataPaymentBlocks(CNode* pnode)
+void CMasternodePayments::RequestLowDataPaymentBlocks(const node_t& pnode)
 {
-    if(!masterNodeCtrl.masternodeSync.IsMasternodeListSynced()) return;
+    if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+        return;
 
-    LOCK2(cs_main, cs_mapMasternodeBlockPayees);
-
-    vector<CInv> vToFetch;
     const int nLimit = GetStorageLimit();
+    using fetch_vector_t = vector<CInv>;
+    vector<fetch_vector_t> vFetchBatches;
 
-    const CBlockIndex *pindex = chainActive.Tip();
-    while (nCachedBlockHeight - pindex->nHeight < nLimit)
+    // send inv messages in batches of MAX_INV_SZ
+    const auto fnNodeGetPaymentBlocks = [&]()
     {
-        if (!mapMasternodeBlockPayees.count(pindex->nHeight))
+        for (const auto& vToFetch : vFetchBatches)
         {
-            // We have no idea about this block height, let's ask
-            vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, pindex->GetBlockHash()));
-            // We should not violate GETDATA rules
-            if(vToFetch.size() == MAX_INV_SZ)
-            {
-                LogFnPrintf("asking peer %d for %zu blocks", pnode->id, MAX_INV_SZ);
-                pnode->PushMessage("getdata", vToFetch);
-                // Start filling new batch
-                vToFetch.clear();
-            }
+            if (vToFetch.empty())
+                continue;
+            LogPrintf("asking peer %d for %zu payment blocks\n", pnode->id, vToFetch.size());
+            pnode->PushMessage("getdata", vToFetch);
         }
-        if (!pindex->pprev)
-            break;
-        pindex = pindex->pprev;
+        vFetchBatches.clear();
+    };
+
+    {
+        LOCK2(cs_main, cs_mapMasternodeBlockPayees);
+
+        fetch_vector_t vToFetch;
+        const CBlockIndex* pindex = chainActive.Tip();
+        while (nCachedBlockHeight - pindex->nHeight < nLimit)
+        {
+            if (!mapMasternodeBlockPayees.count(pindex->nHeight))
+            {
+                // We have no idea about this block height, let's ask
+                vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, pindex->GetBlockHash()));
+                if (vToFetch.size() == MAX_INV_SZ)
+                    vFetchBatches.emplace_back(move(vToFetch));
+            }
+            if (!pindex->pprev)
+                break;
+            pindex = pindex->pprev;
+        }
     }
 
-    auto it = mapMasternodeBlockPayees.cbegin();
-    while(it != mapMasternodeBlockPayees.cend())
+    // send inv messages in batches of MAX_INV_SZ
+    fnNodeGetPaymentBlocks();
+
     {
-        size_t nTotalVotes = 0;
-        bool fFound = false;
-        for (const auto& payee : it->second.vecPayees)
+        LOCK2(cs_main, cs_mapMasternodeBlockPayees);
+
+        fetch_vector_t vToFetch;
+        auto it = mapMasternodeBlockPayees.cbegin();
+        while (it != mapMasternodeBlockPayees.cend())
         {
-            if(payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED)
+            size_t nTotalVotes = 0;
+            bool fFound = false;
+            for (const auto& payee : it->second.vecPayees)
             {
-                fFound = true;
-                break;
+                if (payee.GetVoteCount() >= MNPAYMENTS_SIGNATURES_REQUIRED)
+                {
+                    fFound = true;
+                    break;
+                }
+                nTotalVotes += payee.GetVoteCount();
             }
-            nTotalVotes += payee.GetVoteCount();
-        }
-        // A clear winner (MNPAYMENTS_SIGNATURES_REQUIRED+ votes) was found
-        // or no clear winner was found but there are at least avg number of votes
-        if(fFound || nTotalVotes >= (MNPAYMENTS_SIGNATURES_TOTAL + MNPAYMENTS_SIGNATURES_REQUIRED)/2)
-        {
-            // so just move to the next block
-            ++it;
-            continue;
-        }
-        // DEBUG
-        #if 0
-            // Let's see why this failed
-            for (const auto& payee : it->second.vecPayees) {
+            // A clear winner (MNPAYMENTS_SIGNATURES_REQUIRED+ votes) was found
+            // or no clear winner was found but there are at least avg number of votes
+            if (fFound || nTotalVotes >= (MNPAYMENTS_SIGNATURES_TOTAL + MNPAYMENTS_SIGNATURES_REQUIRED) / 2)
+            {
+                // so just move to the next block
+                ++it;
+                continue;
+            }
+            // DEBUG
+#if 0
+    // Let's see why this failed
+            for (const auto& payee : it->second.vecPayees)
+            {
                 CTxDestination dest;
                 ExtractDestination(payee.GetPayee(), dest);
                 string address = EncodeDestination(dest);
                 printf("payee %s votes %d\n", address, payee.GetVoteCount());
             }
             printf("block %d votes total %d\n", it->first, nTotalVotes);
-        #endif
-        // END DEBUG
-        // Low data block found, let's try to sync it
-        uint256 hash;
-        if (GetBlockHash(hash, it->first))
-            vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, hash));
+#endif
+            // END DEBUG
+            // Low data block found, let's try to sync it
+            uint256 hash;
+            if (GetBlockHash(hash, it->first))
+                vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, hash));
 
-        // We should not violate GETDATA rules
-        if (vToFetch.size() == MAX_INV_SZ)
-        {
-            LogFnPrintf("asking peer %d for %zu payment blocks", pnode->id, MAX_INV_SZ);
-            pnode->PushMessage("getdata", vToFetch);
-            // Start filling new batch
-            vToFetch.clear();
+            // We should not violate GETDATA rules
+            if (vToFetch.size() == MAX_INV_SZ)
+                vFetchBatches.emplace_back(move(vToFetch));
+            ++it;
         }
-        ++it;
     }
-    // Ask for the rest of it
-    if(!vToFetch.empty())
-    {
-        LogFnPrintf("asking peer %d for %zu payment blocks", pnode->id, vToFetch.size());
-        pnode->PushMessage("getdata", vToFetch);
-    }
+
+    // send inv messages in batches of MAX_INV_SZ
+    fnNodeGetPaymentBlocks();
 }
 
 string CMasternodePayments::ToString() const

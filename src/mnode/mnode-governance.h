@@ -240,8 +240,8 @@ public:
 
     bool IsTransactionValid(const CTransaction& txNew, int nHeight);
     bool ProcessBlock(int nBlockHeight);
-    void ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
-    void Sync(CNode* pnode);
+    void ProcessMessage(node_t& pfrom, std::string& strCommand, CDataStream& vRecv);
+    void Sync(node_t& pnode);
     size_t Size() const noexcept { return mapTickets.size(); }
 
     void CheckAndRemove();
