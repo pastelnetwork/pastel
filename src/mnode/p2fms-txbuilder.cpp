@@ -159,7 +159,7 @@ bool CP2FMS_TX_Builder::BuildTransaction(CMutableTransaction& tx_out)
 
     auto nActiveChainHeight = gl_nChainHeight + 1;
     if (!m_chainParams.IsRegTest())
-        nActiveChainHeight = max(nActiveChainHeight, APPROX_RELEASE_HEIGHT);
+        nActiveChainHeight = min(nActiveChainHeight, APPROX_RELEASE_HEIGHT);
     m_consensusBranchId = CurrentEpochBranchId(nActiveChainHeight, m_chainParams.GetConsensus());
 
     // Create empty transaction
