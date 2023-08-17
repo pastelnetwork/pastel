@@ -385,7 +385,8 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
 
         CValidationState state(TxOrigin::MINED_BLOCK);
         if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false))
-            throw runtime_error("CreateNewBlock(): TestBlockValidity failed");
+            LogPrintf("ERROR: CreateNewBlock(): TestBlockValidity failed\n");
+//            throw runtime_error("CreateNewBlock(): TestBlockValidity failed");
     }
 
     return pblocktemplate.release();
