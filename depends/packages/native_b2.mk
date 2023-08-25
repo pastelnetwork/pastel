@@ -5,7 +5,12 @@ $(package)_download_path=$(boost_download_path)
 $(package)_file_name=$(boost_file_name)
 $(package)_sha256_hash=$(boost_sha256_hash)
 $(package)_build_subdir=tools/build/src/engine
+ifneq ($(build_os),darwin)
+ifeq ($(host_os),darwin)
 $(package)_darwin_dependencies=native_clang
+endif
+endif
+
 
 define $(package)_fetch_cmds
 $(call fetch_file,$(package),$($(package)_download_path),$($(package)_download_file),$($(package)_file_name),$($(package)_sha256_hash))
