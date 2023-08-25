@@ -4,7 +4,11 @@ $(package)_download_path=https://github.com/tpoechtrager/cctools-port/archive
 $(package)_file_name=$($(package)_version).tar.gz
 $(package)_sha256_hash=e51995a843533a3dac155dd0c71362dd471597a2d23f13dff194c6285362f875
 $(package)_build_subdir=cctools
+ifneq ($(build_os),darwin)
+ifeq ($(host_os),darwin)
 $(package)_dependencies=native_clang
+endif
+endif
 $(package)_patches=ignore-otool.diff
 
 $(package)_libtapi_version=3efb201881e7a76a21e0554906cf306432539cef

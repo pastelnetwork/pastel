@@ -1895,7 +1895,7 @@ GetTopMasterNodeStatus CMasternodeMan::GetTopMNsForBlock(string &error, vector<C
 
     error.clear();
     const auto it = mapHistoricalTopMNs.find(nBlockHeight);
-    if (it != mapHistoricalTopMNs.cend())
+    if (it != mapHistoricalTopMNs.cend() && !it->second.empty())
     {
         topMNs = it->second;
         return GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY;
