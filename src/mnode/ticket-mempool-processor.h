@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -11,7 +11,7 @@ class CPastelTicketMemPoolProcessor
 public:
     CPastelTicketMemPoolProcessor(const TicketID ticket_id);
 
-    virtual void Initialize(const CTxMemPool &pool, std::shared_ptr<ITxMemPoolTracker> pMemPoolTracker = nullptr);
+    virtual void Initialize(const CTxMemPool &pool, tx_mempool_tracker_t pMemPoolTracker = nullptr);
 
     /**
      * Find Pastel ticket by primary key.

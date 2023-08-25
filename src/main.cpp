@@ -228,7 +228,7 @@ namespace {
 namespace {
 
 /** Map maintaining per-node state. Requires cs_main. */
-unordered_map<NodeId, shared_ptr<CNodeState>> gl_mapNodeState;
+unordered_map<NodeId, node_state_t> gl_mapNodeState;
 CSharedMutex gl_cs_mapNodeState;
 
 node_state_t State(const NodeId nodeid)
@@ -269,7 +269,7 @@ void FinalizeNode(const NodeId nodeid)
 
     {
         LOCK(cs_main);
-        pNodeState->BlocksInFlightCleanup(true, mapBlocksInFlight);
+        pNodeState->BlocksInFlightCleanup(USE_LOCK, mapBlocksInFlight);
     }
     if (gl_pOrphanTxManager)
         gl_pOrphanTxManager->EraseOrphansFor(nodeid);
@@ -613,7 +613,7 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
                     CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
                     if (file.IsNull())
                     {
-                        bRet = errorFn("OpenBlockFile failed");
+                        bRet = errorFn(__METHOD_NAME__, "OpenBlockFile failed");
                         break;
                     }
 
@@ -627,14 +627,14 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
                         file >> txOut;
                         bReadFromTxIndex = true;
                     } catch (const exception& e) {
-                        errorFn("Deserialize or I/O error - %s", e.what());
+                        errorFn(__METHOD_NAME__, "Deserialize or I/O error - %s", e.what());
                     }
                     if (!bReadFromTxIndex)
                         break;
                     hashBlock = header.GetHash();
                     if (txOut.GetHash() != txid)
                     {
-                        bRet = errorFn("txid mismatch");
+                        bRet = errorFn(__METHOD_NAME__, "txid mismatch");
                         break;
                     }
                     // block height is not defined in this case
@@ -1260,13 +1260,13 @@ bool DisconnectBlock(
     CBlockUndo blockUndo;
     CDiskBlockPos pos = pindex->GetUndoPos();
     if (pos.IsNull())
-        return errorFn("no undo data available");
+        return errorFn(__METHOD_NAME__, "no undo data available");
     // retrieve the undo data for the block: a record of the information needed to reverse the effects of a block
     if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash()))
-        return errorFn("failure reading undo data");
+        return errorFn(__METHOD_NAME__, "failure reading undo data");
 
     if (blockUndo.vtxundo.size() + 1 != block.vtx.size())
-        return errorFn("height=%d, block and undo data inconsistent", pindex->nHeight);
+        return errorFn(__METHOD_NAME__, "height=%d, block and undo data inconsistent", pindex->nHeight);
 
     // undo transactions in reverse order
     if (!block.vtx.empty())
@@ -1290,7 +1290,7 @@ bool DisconnectBlock(
                 if (outsBlock.nVersion < 0)
                     outs->nVersion = outsBlock.nVersion;
                 if (*outs != outsBlock)
-                    fClean = fClean && errorFn("height=%s, added transaction mismatch? database corrupted", pindex->nHeight);
+                    fClean = fClean && errorFn(__METHOD_NAME__, "height=%s, added transaction mismatch? database corrupted", pindex->nHeight);
 
                 // remove outputs
                 outs->Clear();
@@ -1304,7 +1304,7 @@ bool DisconnectBlock(
             // restore inputs, not coinbases
             const CTxUndo& txundo = blockUndo.vtxundo[i - 1];
             if (txundo.vprevout.size() != tx.vin.size())
-                return errorFn("height=%d, transaction and undo data inconsistent", pindex->nHeight);
+                return errorFn(__METHOD_NAME__, "height=%d, transaction and undo data inconsistent", pindex->nHeight);
             for (unsigned int j = static_cast<unsigned int>(tx.vin.size()); j-- > 0;)
             {
                 const COutPoint& out = tx.vin[j].prevout;
@@ -1761,13 +1761,13 @@ static bool FlushStateToDisk(
             vFiles.reserve(setDirtyFileInfo.size());
             for (set<int>::iterator it = setDirtyFileInfo.begin(); it != setDirtyFileInfo.end(); ) {
                 vFiles.push_back(make_pair(*it, &vinfoBlockFile[*it]));
-                setDirtyFileInfo.erase(it++);
+                it = setDirtyFileInfo.erase(it);
             }
             vector<const CBlockIndex*> vBlocks;
             vBlocks.reserve(setDirtyBlockIndex.size());
             for (set<CBlockIndex*>::iterator it = setDirtyBlockIndex.begin(); it != setDirtyBlockIndex.end(); ) {
                 vBlocks.push_back(*it);
-                setDirtyBlockIndex.erase(it++);
+                it = setDirtyBlockIndex.erase(it);
             }
             if (!pblocktree->WriteBatchSync(vFiles, nLastBlockFile, vBlocks)) {
                 return AbortNode(state, "Files to write to block index database");
@@ -3352,10 +3352,10 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         CBlock block;
         // check level 0: read from disk
         if (!ReadBlockFromDisk(block, pindex, consensusParams))
-            return errorFn("*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 1: verify block validity
         if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams, verifier))
-            return errorFn("*** found bad block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            return errorFn(__METHOD_NAME__, "*** found bad block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex)
         {
@@ -3364,7 +3364,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             if (!pos.IsNull())
             {
                 if (!UndoReadFromDisk(undo, pos, pindex->pprev->GetBlockHash()))
-                    return errorFn("*** found bad undo data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                    return errorFn(__METHOD_NAME__, "*** found bad undo data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             }
         }
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
@@ -3372,7 +3372,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         {
             bool fClean = true;
             if (!DisconnectBlock(block, state, chainparams, pindex, coins, &fClean))
-                return errorFn("*** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn(__METHOD_NAME__, "*** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             pindexState = pindex->pprev;
             if (!fClean)
             {
@@ -3385,7 +3385,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             return true;
     }
     if (pindexFailure)
-        return errorFn("*** coin database inconsistencies found (last %i blocks, %i good transactions before that)",
+        return errorFn(__METHOD_NAME__, "*** coin database inconsistencies found (last %i blocks, %i good transactions before that)",
             chainActive.Height() - pindexFailure->nHeight + 1, nGoodTransactions);
 
     // check level 4: try reconnecting blocks
@@ -3399,9 +3399,9 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             pindex = chainActive.Next(pindex);
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex, consensusParams))
-                return errorFn("*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
             if (!ConnectBlock(block, state, chainparams, pindex, coins))
-                return errorFn("*** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn(__METHOD_NAME__, "*** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         }
     }
 
@@ -5500,7 +5500,7 @@ void NodeDetectStalledDownload(node_t& pto, node_state_t &pNodeState, const Cons
         // should only happen during initial block download.
         LogPrintf("Peer=%d is stalling block download (%u blocks in-flight), disconnecting\n", nodeId, pNodeState->nBlocksInFlight);
         pto->fDisconnect = true;
-        pNodeState->BlocksInFlightCleanup(false, mapBlocksInFlight);
+        pNodeState->BlocksInFlightCleanup(SKIP_LOCK, mapBlocksInFlight);
     }
     // In case there is a block that has been in flight from this peer for (2 + 0.5 * N) times the block interval
     // (with N the number of validated blocks that were in flight at the time it was requested), disconnect due to

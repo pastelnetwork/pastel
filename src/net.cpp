@@ -9,6 +9,9 @@
 #endif
 
 #include <cinttypes>
+#include <algorithm>
+#include <functional>
+#include <random>
 #ifdef WIN32
 #include <string.h>
 #include <winsock2.h>
@@ -22,6 +25,7 @@
 
 #include <scope_guard.hpp>
 
+#include <vector_types.h>
 #include <main.h>
 #include <net.h>
 #include <net_manager.h>
@@ -1042,17 +1046,27 @@ bool hasActiveNetworkInterface()
 
 bool pingHost(const string& sHostName)
 {
+#ifdef WIN32
+    string sPingCommand = strprintf("ping -n 1 %s > nul 2>&1", sHostName);
+#else
     string sPingCommand = strprintf("ping -c 1 %s >/dev/null 2>&1", sHostName);
+#endif
     return system(sPingCommand.c_str()) == 0;
 }
 
 bool hasInternetConnectivity(function<bool()> shouldStop)
 {
     const v_strings vHosts = { "google.com", "microsoft.com", "amazon.com", "8.8.8.8", "1.1.1.1" };
+    v_sizet vIndexes(vHosts.size());
+    iota(vIndexes.begin(), vIndexes.end(), 0);
+    random_device rd;
+    mt19937 rng(rd());
+    shuffle(vIndexes.begin(), vIndexes.end(), rng);
 
-    for (const auto& sHost : vHosts)
+    for (const auto& nHostIndex: vIndexes)
     {
-        if (pingHost(sHost ))
+        const string& sHost = vHosts[nHostIndex];
+        if (pingHost(sHost))
             return true;
         if (shouldStop())
             break;

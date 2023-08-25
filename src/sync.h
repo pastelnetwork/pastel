@@ -142,6 +142,7 @@ void EnterCritical(const char* szLockName, const char* szFile, const size_t nLin
 void EnterSharedCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry = false);
 void EnterExclusiveCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry = false);
 void LeaveCritical();
+void CleanupLockOrders(const void* lock);
 std::string LocksHeld();
 void AssertLockHeldInternal(const char* pszName, const char* pszFile, const size_t nLine, void* cs, LockType type);
 void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, const size_t nLine, void* cs, LockType type);
@@ -220,7 +221,10 @@ public:
     ~CMutexLock() UNLOCK_FUNCTION()
     {
         if (lock.owns_lock())
+        {
             LeaveCritical();
+            CleanupLockOrders((void*)(lock.mutex()));
+        }
     }
 
     operator bool()
@@ -322,7 +326,10 @@ public:
     ~CSharedMutexLock() UNLOCK_FUNCTION()
     {
         if (lock.owns_lock())
+        {
             LeaveCritical();
+            CleanupLockOrders((void*)(lock.mutex()));
+        }
     }
 
     operator bool()
@@ -426,7 +433,10 @@ public:
     ~CSharedMutexExclusiveLock() UNLOCK_FUNCTION()
     {
         if (lock.owns_lock())
+        {
             LeaveCritical();
+            CleanupLockOrders((void*)(lock.mutex()));
+        }
     }
 
     operator bool()

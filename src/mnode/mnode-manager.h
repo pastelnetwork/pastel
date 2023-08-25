@@ -33,11 +33,11 @@ enum class GetTopMasterNodeStatus: int
 class CMasternodeMan
 {
 public:
-    typedef std::pair<arith_uint256, CMasternode*> score_pair_t;
+    typedef std::pair<arith_uint256, masternode_t> score_pair_t;
     typedef std::vector<score_pair_t> score_pair_vec_t;
-    // map pair <rank> -> <Masternode>
-    typedef std::pair<int, CMasternode> rank_pair_t;
-    // vector of mn-rank pairs: <rank> -> <CMasternode>
+    // map pair <rank> -> <masternode_t>
+    typedef std::pair<int, masternode_t> rank_pair_t;
+    // vector of mn-rank pairs: <rank> -> <masternode_t>
     typedef std::vector<rank_pair_t> rank_pair_vec_t;
 
 private:
@@ -53,7 +53,7 @@ private:
     static constexpr int MAX_POSE_RANK              = 10;
     static constexpr int MAX_POSE_BLOCKS            = 10;
 
-    static constexpr int MNB_RECOVERY_QUORUM_TOTAL      = 10;
+    static constexpr size_t MNB_RECOVERY_QUORUM_TOTAL      = 10;
     static constexpr int MNB_RECOVERY_QUORUM_REQUIRED   = 6;
     static constexpr int MNB_RECOVERY_MAX_ASK_ENTRIES   = 10;
     static constexpr int MNB_RECOVERY_WAIT_SECONDS      = 60;
@@ -67,7 +67,7 @@ private:
     std::atomic_uint32_t nCachedBlockHeight;
 
     // map to hold all MNs
-    std::map<COutPoint, CMasternode> mapMasternodes;
+    std::map<COutPoint, masternode_t> mapMasternodes;
     // who's asked for the Masternode list and the last time
     std::map<CNetAddr, int64_t> mAskedUsForMasternodeList;
     // who we asked for the Masternode list and the last time
@@ -77,18 +77,18 @@ private:
     // who we asked for the masternode verification
     std::map<CNetAddr, CMasternodeVerification> mWeAskedForVerification;
 
-    // these maps are used for masternode recovery from MASTERNODE_NEW_START_REQUIRED state
+    // these maps are used for masternode recovery from MASTERNODE_STATE::NEW_START_REQUIRED
     std::map<uint256, std::pair< int64_t, std::set<CNetAddr> > > mMnbRecoveryRequests;
     std::map<uint256, std::vector<CMasternodeBroadcast> > mMnbRecoveryGoodReplies;
     std::list< std::pair<CService, uint256> > listScheduledMnbRequestConnections;
     
-    std::unordered_map<uint32_t, std::vector<CMasternode>> mapHistoricalTopMNs;
+    std::unordered_map<uint32_t, masternode_vector_t> mapHistoricalTopMNs;
     
     int64_t nLastWatchdogVoteTime;
 
     friend class CMasternodeSync;
     /// Find an entry
-    CMasternode* Find(const COutPoint& outpoint);
+    masternode_t Find(const COutPoint& outpoint);
 
     bool GetMasternodeScores(std::string &error, const uint256& blockHash, score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol = 0);
 
@@ -177,7 +177,7 @@ public:
     CMasternodeMan();
 
     /// Add an entry
-    bool Add(CMasternode &mn);
+    bool Add(masternode_t &mn);
 
     /// Ask (source) node for mnb
     void AskForMN(const node_t& pnode, const COutPoint& outpoint);
@@ -210,7 +210,7 @@ public:
     void DsegUpdate(node_t& pnode);
 
     /// Versions of Find that are safe to use from outside the class
-    bool Get(const COutPoint& outpoint, CMasternode& masternodeRet);
+    masternode_t Get(const COutPoint& outpoint);
     bool Has(const COutPoint& outpoint);
 
     bool GetMasternodeInfo(const COutPoint& outpoint, masternode_info_t& mnInfoRet) const noexcept;
@@ -237,7 +237,7 @@ public:
 
     void DoFullVerificationStep();
     void CheckSameAddr();
-    bool SendVerifyRequest(const CAddress& addr, const std::vector<CMasternode*>& vSortedByAddr);
+    bool SendVerifyRequest(const CAddress& addr, const masternode_vector_t& vSortedByAddr);
     void SendVerifyReply(const node_t& pnode, CMasternodeVerification& mnv);
     void ProcessVerifyReply(const node_t& pnode, CMasternodeVerification& mnv, const bool bLockMgr = true);
     void ProcessVerifyBroadcast(const node_t& pnode, const CMasternodeVerification& mnv, const bool bLockMgr = true);
@@ -252,9 +252,9 @@ public:
     void ClearCache(bool clearMnList, bool clearSeenLists, bool clearRecoveryLists, bool clearAskedLists);
 
     /// Update masternode list and maps using provided CMasternodeBroadcast
-    void UpdateMasternodeList(CMasternodeBroadcast mnb);
+    void UpdateMasternodeList(CMasternodeBroadcast &mnb);
     /// Perform complete check and only then update list and maps
-    bool CheckMnbAndUpdateMasternodeList(const node_t& pfrom, CMasternodeBroadcast mnb, int& nDos);
+    bool CheckMnbAndUpdateMasternodeList(const node_t& pfrom, CMasternodeBroadcast &mnb, int& nDos);
     bool IsMnbRecoveryRequested(const uint256& hash) { return mMnbRecoveryRequests.count(hash); }
 
     void UpdateLastPaid(const CBlockIndex* pindex);
@@ -272,6 +272,6 @@ public:
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
     
-    GetTopMasterNodeStatus GetTopMNsForBlock(std::string &error, std::vector<CMasternode> &topMNs, int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
-    GetTopMasterNodeStatus CalculateTopMNsForBlock(std::string &error, std::vector<CMasternode> &topMNs, int nBlockHeight = -1, bool bSkipValidCheck = false);
+    GetTopMasterNodeStatus GetTopMNsForBlock(std::string &error, masternode_vector_t &topMNs, int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
+    GetTopMasterNodeStatus CalculateTopMNsForBlock(std::string &error, masternode_vector_t &topMNs, int nBlockHeight = -1, bool bSkipValidCheck = false);
 };

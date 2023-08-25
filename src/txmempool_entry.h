@@ -105,3 +105,5 @@ public:
 
     virtual ~ITxMemPoolTracker() noexcept {}
 };
+
+using tx_mempool_tracker_t = std::shared_ptr<ITxMemPoolTracker>;

@@ -725,6 +725,8 @@ bool TryCreateDirectory(const fs::path& p)
 
 void FileCommit(FILE *fileout)
 {
+    if (!fileout)
+        return;
     fflush(fileout); // harmless if redundantly called
 #ifdef WIN32
     HANDLE hFile = (HANDLE)_get_osfhandle(_fileno(fileout));
@@ -739,6 +741,11 @@ void FileCommit(FILE *fileout)
     #endif
 #endif
 }
+
+void LogFlush()
+{
+    FileCommit(fileout);
+}   
 
 bool TruncateFile(FILE *file, unsigned int length) {
 #if defined(WIN32)

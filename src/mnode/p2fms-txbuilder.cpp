@@ -157,10 +157,14 @@ bool CP2FMS_TX_Builder::BuildTransaction(CMutableTransaction& tx_out)
     // total amount to spend in patoshis
     CAmount nAllSpentAmountInPat = nPriceInPat + m_nExtraAmountInPat;
 
-    auto nActiveChainHeight = gl_nChainHeight + 1;
-    if (!m_chainParams.IsRegTest())
-        nActiveChainHeight = min(nActiveChainHeight, APPROX_RELEASE_HEIGHT);
-    m_consensusBranchId = CurrentEpochBranchId(nActiveChainHeight, m_chainParams.GetConsensus());
+    uint32_t nActiveChainHeight = gl_nChainHeight + 1;
+    // Use the approximate release height if it is greater so offline nodes 
+    // have a better estimation of the current height and will be more likely to
+    // determine the correct consensus branch ID.  Regtest & Testnet modes ignore release height.
+    uint32_t nChainHeightToGetBranchId = nActiveChainHeight;
+    if (m_chainParams.IsMainNet())
+        nChainHeightToGetBranchId = max(nChainHeightToGetBranchId, APPROX_RELEASE_HEIGHT);
+    m_consensusBranchId = CurrentEpochBranchId(nChainHeightToGetBranchId, m_chainParams.GetConsensus());
 
     // Create empty transaction
     tx_out = CreateNewContextualCMutableTransaction(m_chainParams.GetConsensus(), nActiveChainHeight);

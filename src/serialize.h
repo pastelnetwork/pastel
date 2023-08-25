@@ -587,6 +587,9 @@ template<typename Stream, typename T, typename A> void Unserialize(Stream& is, s
 template<typename Stream, typename T> void Serialize(Stream& os, const std::shared_ptr<const T>& p);
 template<typename Stream, typename T> void Unserialize(Stream& os, std::shared_ptr<const T>& p);
 
+template<typename Stream, typename T> void Serialize(Stream& os, const std::shared_ptr<T>& p);
+template<typename Stream, typename T> void Unserialize(Stream& os, std::shared_ptr<T>& p);
+
 /**
  * unique_ptr
  */
@@ -704,6 +707,13 @@ void Serialize_impl(Stream& os, const std::vector<T, A>& v, const unsigned char&
         os.write((char*)&v[0], v.size() * sizeof(T));
 }
 
+template<typename Stream, typename T, typename A>
+void Serialize_impl(Stream& os, const std::vector<T, A>& v, const std::shared_ptr<T>&)
+{
+    WriteCompactSize(os, v.size());
+    for (typename std::vector<T, A>::const_iterator vi = v.begin(); vi != v.end(); ++vi)
+        ::Serialize(os, (*vi));
+}
 template<typename Stream, typename T, typename A, typename V>
 void Serialize_impl(Stream& os, const std::vector<T, A>& v, const V&)
 {
@@ -1188,8 +1198,8 @@ void Unserialize(Stream& is, std::unique_ptr<const T>& p)
 /**
  * shared_ptr
  */
-template<typename Stream, typename T> void
-Serialize(Stream& os, const std::shared_ptr<const T>& p)
+template<typename Stream, typename T>
+void Serialize(Stream& os, const std::shared_ptr<const T>& p)
 {
     Serialize(os, *p);
 }
@@ -1198,6 +1208,18 @@ template<typename Stream, typename T>
 void Unserialize(Stream& is, std::shared_ptr<const T>& p)
 {
     p = std::make_shared<const T>(deserialize, is);
+}
+
+template<typename Stream, typename T>
+void Serialize(Stream& os, const std::shared_ptr<T>& p)
+{
+    Serialize(os, *p);
+}
+
+template<typename Stream, typename T>
+void Unserialize(Stream& is, std::shared_ptr<T>& p)
+{
+    p = std::make_shared<T>(deserialize, is);
 }
 
 /**

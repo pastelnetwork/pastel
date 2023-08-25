@@ -139,7 +139,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
         if (!bPreReg && (collectionRegTicket->GetBlock() > GetBlock()))
         {
             tv.errorMsg = strprintf(
-                "The collection '%s' registration ticket [txid=%s] referred by this %s ticket [txid=%s] has invalid height (%u > %u)",
+                "The collection '%s' registration ticket [txid=%s] referred by this %s ticket [txid=%s] has invalid height (%u -> %u)",
                 pCollRegTicket->getName(), m_sCollectionActTxid, ::GetTicketDescription(ID()),
                 GetTxId(), collectionRegTicket->GetBlock(), GetBlock());
             break;

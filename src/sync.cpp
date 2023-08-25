@@ -4,6 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdio>
 #include <unordered_map>
+#include <vector>
 
 #include <sync.h>
 #include <util.h>
@@ -83,7 +84,9 @@ struct CLockLocation
     }
 
     string MutexName() const noexcept { return m_sMutexName; }
+    bool isSameMutexName(const char *szMutexName) const noexcept { return szMutexName && m_sMutexName.compare(szMutexName) == 0; }
     LockType GetLockType() const noexcept { return m_LockType; }
+    bool isLockType(const LockType lockType) const noexcept { return m_LockType == lockType; }
 
     bool fTry;
 
@@ -117,6 +120,7 @@ struct LockIdPairTypeHasher
         return h1 ^ (h2 << 1);  // Shift h2 so it doesn't collide with h1
     }
 };
+
 static mutex dd_mutex;
 static unordered_map<pair<lockid_t, lockid_t>, lockstack_t, LockIdPairTypeHasher> gl_LockOrders;
 static thread_local unique_ptr<lockstack_t> gl_LockStack;
@@ -138,9 +142,11 @@ static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch
     const auto& p2 = mismatch.second;
 
     // Check if it's a reader-writer or writer-reader deadlock
-    const bool isSharedExclusiveDeadlock = p1.second == LockType::SHARED && p2.second == LockType::EXCLUSIVE;
-    const bool isExclusiveSharedDeadlock = p1.second == LockType::EXCLUSIVE && p2.second == LockType::SHARED;
-    const bool isExclusiveExclusiveDeadlock = p1.second == LockType::EXCLUSIVE && p2.second == LockType::EXCLUSIVE;
+    const auto& lockType1 = p1.second;
+    const auto& lockType2 = p2.second;
+    const bool isSharedExclusiveDeadlock = lockType1 == LockType::SHARED && lockType2 == LockType::EXCLUSIVE;
+    const bool isExclusiveSharedDeadlock = lockType1 == LockType::EXCLUSIVE && lockType2 == LockType::SHARED;
+    const bool isExclusiveExclusiveDeadlock = lockType1 == LockType::EXCLUSIVE && lockType2 == LockType::EXCLUSIVE;
     const bool isRWDeadlock = isSharedExclusiveDeadlock || isExclusiveSharedDeadlock || isExclusiveExclusiveDeadlock;
 
     LogPrintf("POTENTIAL %s DEADLOCK DETECTED:\n", isRWDeadlock ? "RW" : "");
@@ -153,7 +159,7 @@ static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch
             LogPrintf("Exclusive lock followed by Shared lock can lead to deadlocks!");
         else if (isExclusiveExclusiveDeadlock)
             LogPrintf("Two Exclusive locks can lead to deadlocks!");
-        LogPrintf("Previous lock order was:\n");
+        LogPrintf("Previous lock order [%zu] was:\n", s2.size());
         for (const auto& [lockID, lockLocation] : s2)
         {
             sMark.clear();
@@ -163,7 +169,7 @@ static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch
                 sMark = " (2)";
             LogPrintf("%s %s\n", sMark, lockLocation.ToString());
         }
-        LogPrintf("Current lock order is:\n");
+        LogPrintf("Current lock order [%zu] is:\n", s1.size());
         for (const auto& [lockID, lockLocation] : s1)
         {
             sMark.clear();
@@ -176,7 +182,7 @@ static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch
     }
     else
     {
-        LogPrintf("Previous lock order was:\n");
+        LogPrintf("Previous lock order [%zu] was:\n", s2.size());
         for (const auto& [lockID, lockLocation] : s2)
         {
             sMark.clear();
@@ -200,7 +206,7 @@ static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch
         firstLocked = false;
         secondLocked = false;
 
-        LogPrintf("Current lock order is:\n");
+        LogPrintf("Current lock order [%zu] is:\n", s1.size());
         for (const auto& [lockID, lockLocation] : s1)
         {
             sMark.clear();
@@ -223,6 +229,7 @@ static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch
     }
 
 #ifdef ASSERT_ONLY_MAYBE_DEADLOCK
+    LogFlush();
     assert(onlyMaybeDeadlock);
 #else
     cout << "POTENTIAL DEADLOCK DETECTED" << endl;
@@ -266,6 +273,19 @@ static void pop_lock()
 {
     unique_lock<mutex> lock(dd_mutex);
     gl_LockStack->pop_back();
+}
+
+void CleanupLockOrders(const void* lock)
+{
+    unique_lock<mutex> lck(dd_mutex);
+    for (auto it = gl_LockOrders.begin(); it != gl_LockOrders.end();)
+    {
+        const auto& key = it->first;
+        if (key.first.first == lock || key.second.first == lock)
+            it = gl_LockOrders.erase(it);
+        else
+            ++it;
+    }
 }
 
 void EnterCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry)
@@ -335,6 +355,7 @@ void EnterSharedCritical(const char* szLockName, const char* szFile, const size_
 void EnterExclusiveCritical(const char* szLockName, const char* szFile, const size_t nLine, void* cs, const bool fTry) {}
 void LeaveCritical() {}
 string LocksHeld() { return ""; }
+void CleanupLockOrders(const void* lock) {}
 void AssertLockHeldInternal(const char* szLockName, const char* szFile, const size_t nLine, void* cs, LockType lockType) {}
 void AssertLockNotHeldInternal(const char* pszName, const char* pszFile, const size_t nLine, void* cs, LockType type) {}
 #endif /* DEBUG_LOCKORDER */

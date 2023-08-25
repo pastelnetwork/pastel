@@ -60,12 +60,12 @@ void CMasternodeRequestTracker::CheckAndRemove()
         while(it_entry != it->second.end())
         {
             if (now > it_entry->second)
-                it->second.erase(it_entry++);
+                it_entry = it->second.erase(it_entry);
             else
                 ++it_entry;
         }
         if (it->second.empty())
-            mapFulfilledRequests.erase(it++);
+            it = mapFulfilledRequests.erase(it);
         else
             ++it;
     }

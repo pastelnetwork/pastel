@@ -19,17 +19,20 @@
 class CMasternode;
 class CMasternodeBroadcast;
 
+using masternode_t = std::shared_ptr<CMasternode>;
+using masternode_vector_t = std::vector<masternode_t>;
+
 // master node states
 enum class MASTERNODE_STATE : int
 {
     PRE_ENABLED = 0,
-    ENABLED,
-    EXPIRED,
-    OUTPOINT_SPENT,
-    UPDATE_REQUIRED,
-    WATCHDOG_EXPIRED,
-    NEW_START_REQUIRED,
-    POSE_BAN,
+    ENABLED,                // Masternode is enabled
+    EXPIRED,                // Masternode expired
+    OUTPOINT_SPENT,         // Collateral outpoint spent
+    UPDATE_REQUIRED,        // Masternode update required (protocol is not supported anymore)
+    WATCHDOG_EXPIRED,       // Masternode watchdog expired
+    NEW_START_REQUIRED,     // Masternode is not in the list of active masternodes
+    POSE_BAN,			    // Masternode is banned for PoSe violation
 
     COUNT
 };
@@ -92,13 +95,15 @@ public:
     // get ping message
     std::string getMessage() const noexcept;
 
+    int64_t getAgeInSecs() const noexcept;
     bool IsExpired() const noexcept;
     bool IsDefined() const noexcept { return m_bDefined; }
 
     bool Sign(const CKey& keyMasternode, const CPubKey& pubKeyMasternode);
     bool CheckSignature(CPubKey& pubKeyMasternode, int &nDos) const;
     bool SimpleCheck(int& nDos) const noexcept;
-    bool CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, int& nDos) const;
+    bool CheckAndUpdateEx(masternode_t &pmn, bool fFromNewBroadcast, int& nDos) const;
+    bool CheckAndUpdate(CMasternode &mn, bool bNeedSimpleCheck, bool fFromNewBroadcast, int& nDos) const;
     void Relay() const;
 
     const CTxIn& getVin() const noexcept { return m_vin; }
@@ -107,7 +112,8 @@ public:
     // Check that MN was pinged within nSeconds
     bool IsPingedWithin(const int nSeconds, const int64_t nTimeToCheckAt) const noexcept
     {
-        return abs(nTimeToCheckAt - m_sigTime) < nSeconds;
+        return nTimeToCheckAt >= m_sigTime ?
+            nTimeToCheckAt - m_sigTime < nSeconds : false;
     }
     bool IsPingedAfter(const int64_t nSigTime) const noexcept
     {
@@ -117,7 +123,7 @@ public:
 protected:
     CTxIn m_vin;
     uint256 m_blockHash;
-    int64_t m_sigTime{0}; // "mnp" message times
+    int64_t m_sigTime{0}; // "mnp" message signing time - in local time of the masternode
     v_uint8 m_vchSig;
     bool m_bDefined = false;
 
@@ -155,7 +161,7 @@ public:
     const std::string get_address() const noexcept { return m_addr.ToString(); }
 
     // set new MasterNode's state
-    void SetState(const MASTERNODE_STATE newState, const char *szMethodName = nullptr);
+    void SetState(const MASTERNODE_STATE newState, const char *szMethodName = nullptr, const char *szReason = nullptr);
     
     bool IsEnabled() const noexcept { return m_ActiveState == MASTERNODE_STATE::ENABLED; }
     bool IsPreEnabled() const noexcept { return m_ActiveState == MASTERNODE_STATE::PRE_ENABLED; }
@@ -217,6 +223,13 @@ public:
         const int nProtocolVersionIn);
     CMasternode& operator=(CMasternode const& from);
 
+    template <typename Stream>
+    CMasternode(deserialize_type, Stream& s) :
+        CMasternode()
+    {
+        Unserialize(s);
+    }
+
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream>
@@ -241,7 +254,7 @@ public:
         {
             if (!is_enum_valid<MASTERNODE_STATE>(nActiveState, MASTERNODE_STATE::PRE_ENABLED, MASTERNODE_STATE::POSE_BAN))
                 throw std::runtime_error(strprintf("Not supported MasterNode's state [%d]", nActiveState));
-            SetState(static_cast<MASTERNODE_STATE>(nActiveState));
+            SetState(static_cast<MASTERNODE_STATE>(nActiveState), "ReadFromStream");
         }
         READWRITE(m_collateralMinConfBlockHash);
         READWRITE(m_nBlockLastPaid);
@@ -303,9 +316,9 @@ public:
 
     bool IsBroadcastedWithin(const int nSeconds) const noexcept { return GetAdjustedTime() - sigTime < nSeconds; }
     bool IsLastPingDefined() const noexcept { return m_lastPing.IsDefined(); }
-    bool CheckAndUpdateLastPing(int& nDos) { return m_lastPing.CheckAndUpdate(this, true, nDos); }
+    bool CheckAndUpdateLastPing(int& nDos) { return m_lastPing.CheckAndUpdate(*this, true, true, nDos); }
     bool CheckLastPing(int& nDos) const { return m_lastPing.SimpleCheck(nDos); }
-    bool IsPingedWithin(const int nSeconds, int64_t nTimeToCheckAt = -1) const noexcept;
+    bool IsPingedWithin(const int nSeconds, int64_t nTimeToCheckAt = -1, std::string *psReason = nullptr) const noexcept;
 
     CAmount GetMNFee(const MN_FEE mnFee) const noexcept;
     void SetMNFee(const MN_FEE mnFee, const CAmount nNewFee) noexcept;
@@ -395,7 +408,7 @@ inline bool operator!=(const CMasternode& a, const CMasternode& b)
     return !(a.get_vin() == b.get_vin());
 }
 
-std::string GetListOfMasterNodes(const std::vector<CMasternode>& mnList);
+std::string GetListOfMasterNodes(const masternode_vector_t& mnList);
 
 //
 // The Masternode Broadcast Class : Contains a different serialize method for sending masternodes through the network
@@ -482,7 +495,7 @@ public:
     }
 
     bool SimpleCheck(int& nDos);
-    bool Update(CMasternode* pmn, int& nDos);
+    bool Update(masternode_t &pmn, int& nDos);
     bool CheckOutpoint(int& nDos);
 
     bool Sign(const CKey& keyCollateralAddress);

@@ -2,16 +2,14 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <assert.h>
+#include <unordered_map>
 
 #include <coins.h>
-
 #include <memusage.h>
 #include <random.h>
 #include <version.h>
 #include <policy/fees.h>
-
-#include <assert.h>
-#include <unordered_map>
 
 using namespace std;
 
@@ -420,23 +418,26 @@ void CCoinsViewCache::SetBestBlock(const uint256 &hashBlockIn) {
 
 void BatchWriteNullifiers(CNullifiersMap &mapNullifiers, CNullifiersMap &cacheNullifiers)
 {
-    for (CNullifiersMap::iterator child_it = mapNullifiers.begin(); child_it != mapNullifiers.end();) {
-        if (child_it->second.flags & CNullifiersCacheEntry::DIRTY) { // Ignore non-dirty entries (optimization).
-            CNullifiersMap::iterator parent_it = cacheNullifiers.find(child_it->first);
+    for (auto child_it = mapNullifiers.begin(); child_it != mapNullifiers.end();)
+    {
+        if (child_it->second.flags & CNullifiersCacheEntry::DIRTY)
+        { // Ignore non-dirty entries (optimization).
+            auto parent_it = cacheNullifiers.find(child_it->first);
 
-            if (parent_it == cacheNullifiers.end()) {
-                CNullifiersCacheEntry& entry = cacheNullifiers[child_it->first];
+            if (parent_it == cacheNullifiers.end())
+            {
+                auto& entry = cacheNullifiers[child_it->first];
                 entry.entered = child_it->second.entered;
                 entry.flags = CNullifiersCacheEntry::DIRTY;
             } else {
-                if (parent_it->second.entered != child_it->second.entered) {
+                if (parent_it->second.entered != child_it->second.entered)
+                {
                     parent_it->second.entered = child_it->second.entered;
                     parent_it->second.flags |= CNullifiersCacheEntry::DIRTY;
                 }
             }
         }
-        CNullifiersMap::iterator itOld = child_it++;
-        mapNullifiers.erase(itOld);
+        child_it = mapNullifiers.erase(child_it);
     }
 }
 
@@ -468,8 +469,7 @@ void BatchWriteAnchors(
             }
         }
 
-        MapIterator itOld = child_it++;
-        mapAnchors.erase(itOld);
+        child_it = mapAnchors.erase(child_it);
     }
 }
 
@@ -480,19 +480,22 @@ bool CCoinsViewCache::BatchWrite(CCoinsMap &mapCoins,
                                  CAnchorsSproutMap &mapSproutAnchors,
                                  CAnchorsSaplingMap &mapSaplingAnchors,
                                  CNullifiersMap &mapSproutNullifiers,
-                                 CNullifiersMap &mapSaplingNullifiers) {
+                                 CNullifiersMap &mapSaplingNullifiers)
+{
     assert(!hasModifier);
-    for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) {
+    for (auto it = mapCoins.begin(); it != mapCoins.end();)
+    {
         if (it->second.flags & CCoinsCacheEntry::DIRTY) { // Ignore non-dirty entries (optimization).
-            CCoinsMap::iterator itUs = cacheCoins.find(it->first);
-            if (itUs == cacheCoins.end()) {
+            auto itUs = cacheCoins.find(it->first);
+            if (itUs == cacheCoins.end())
+            {
                 if (!it->second.coins.IsPruned()) {
                     // The parent cache does not have an entry, while the child
                     // cache does have (a non-pruned) one. Move the data up, and
                     // mark it as fresh (if the grandparent did have it, we
                     // would have pulled it in at first GetCoins).
                     assert(it->second.flags & CCoinsCacheEntry::FRESH);
-                    CCoinsCacheEntry& entry = cacheCoins[it->first];
+                    auto& entry = cacheCoins[it->first];
                     entry.coins.swap(it->second.coins);
                     cachedCoinsUsage += entry.coins.DynamicMemoryUsage();
                     entry.flags = CCoinsCacheEntry::DIRTY | CCoinsCacheEntry::FRESH;
@@ -513,8 +516,7 @@ bool CCoinsViewCache::BatchWrite(CCoinsMap &mapCoins,
                 }
             }
         }
-        CCoinsMap::iterator itOld = it++;
-        mapCoins.erase(itOld);
+        it = mapCoins.erase(it);
     }
 
     ::BatchWriteAnchors<CAnchorsSproutMap, CAnchorsSproutMap::iterator, CAnchorsSproutCacheEntry>(mapSproutAnchors, cacheSproutAnchors, cachedCoinsUsage);

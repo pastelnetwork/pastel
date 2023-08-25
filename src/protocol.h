@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -171,7 +171,7 @@ namespace NetMsgType
     constexpr auto MNANNOUNCE               = "mnb";    // MasterNode Announce
     constexpr auto MNPING                   = "mnp";    // MasterNode Ping
     constexpr auto MNVERIFY                 = "mnv";    // MasterNode Verify
-    constexpr auto DSEG                     = "dseg";   // MasterNode Sync request
+    constexpr auto DSEG                     = "dseg";   // MasterNode Sync request (Masternode list or specific entry)
     constexpr auto SYNCSTATUSCOUNT          = "ssc";    // MasterNode Sync status
 
     // const char *TXLOCKREQUEST="ix";

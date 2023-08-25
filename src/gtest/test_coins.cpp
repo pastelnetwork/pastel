@@ -135,35 +135,39 @@ public:
 
     void BatchWriteNullifiers(CNullifiersMap& mapNullifiers, map<uint256, bool>& cacheNullifiers)
     {
-        for (CNullifiersMap::iterator it = mapNullifiers.begin(); it != mapNullifiers.end(); ) {
-            if (it->second.flags & CNullifiersCacheEntry::DIRTY) {
+        for (auto it = mapNullifiers.begin(); it != mapNullifiers.end(); )
+        {
+            if (it->second.flags & CNullifiersCacheEntry::DIRTY)
+            {
                 // Same optimization used in CCoinsViewDB is to only write dirty entries.
-                if (it->second.entered) {
+                if (it->second.entered)
                     cacheNullifiers[it->first] = true;
-                } else {
+                else
                     cacheNullifiers.erase(it->first);
-                }
             }
-            mapNullifiers.erase(it++);
+            it = mapNullifiers.erase(it);
         }
     }
 
     template<typename Tree, typename Map, typename MapEntry>
     void BatchWriteAnchors(Map& mapAnchors, map<uint256, Tree>& cacheAnchors)
     {
-        for (auto it = mapAnchors.begin(); it != mapAnchors.end(); ) {
-            if (it->second.flags & MapEntry::DIRTY) {
+        for (auto it = mapAnchors.begin(); it != mapAnchors.end(); )
+        {
+            if (it->second.flags & MapEntry::DIRTY)
+            {
                 // Same optimization used in CCoinsViewDB is to only write dirty entries.
-                if (it->second.entered) {
-                    if (it->first != Tree::empty_root()) {
+                if (it->second.entered)
+                {
+                    if (it->first != Tree::empty_root())
+                    {
                         auto ret = cacheAnchors.insert(make_pair(it->first, Tree())).first;
                         ret->second = it->second.tree;
                     }
-                } else {
+                } else
                     cacheAnchors.erase(it->first);
-                }
             }
-            mapAnchors.erase(it++);
+            it = mapAnchors.erase(it);
         }
     }
 
@@ -176,16 +180,17 @@ public:
                     CNullifiersMap& mapSproutNullifiers,
                     CNullifiersMap& mapSaplingNullifiers)
     {
-        for (CCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ) {
-            if (it->second.flags & CCoinsCacheEntry::DIRTY) {
+        for (auto it = mapCoins.begin(); it != mapCoins.end(); )
+        {
+            if (it->second.flags & CCoinsCacheEntry::DIRTY)
+            {
                 // Same optimization used in CCoinsViewDB is to only write dirty entries.
                 map_[it->first] = it->second.coins;
-                if (it->second.coins.IsPruned() && insecure_rand() % 3 == 0) {
+                if (it->second.coins.IsPruned() && insecure_rand() % 3 == 0)
                     // Randomly delete empty entries on write.
                     map_.erase(it->first);
-                }
             }
-            mapCoins.erase(it++);
+            it = mapCoins.erase(it);
         }
 
         BatchWriteAnchors<SproutMerkleTree, CAnchorsSproutMap, CAnchorsSproutCacheEntry>(mapSproutAnchors, mapSproutAnchors_);

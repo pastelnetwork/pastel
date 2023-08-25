@@ -9,8 +9,8 @@ using namespace std;
 
 CNetManagerThread gl_NetMgr;
 
-constexpr chrono::seconds ACTIVE_CHECK_PERIOD_SECS = 5s;
-constexpr chrono::seconds INACTIVE_CHECK_PERIOD_SECS = 1s;
+constexpr chrono::seconds ACTIVE_CHECK_PERIOD_SECS = 10s;
+constexpr chrono::seconds INACTIVE_CHECK_PERIOD_SECS = 2s;
 constexpr  int64_t INACTIVITY_CHECK_GRACE_PERIOD_SECS = 30;
 
 CNetManagerThread::CNetManagerThread() : 

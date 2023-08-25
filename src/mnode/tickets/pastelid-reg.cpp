@@ -49,13 +49,13 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&&
     {
         if (mnRegData->bUseActiveMN)
         {
-            CMasternode mn;
-            if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, mn))
+            masternode_t pmn = masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint);
+            if (!pmn)
                 throw runtime_error("This is not a active masternode. Only active MN can register its Pastel ID");
 
             // get collateral address if not passed via parameter
             KeyIO keyIO(Params());
-            const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+            const CTxDestination dest = pmn->pubKeyCollateralAddress.GetID();
             ticket.m_sFundingAddress = keyIO.EncodeDestination(dest);
             ticket.m_outpoint = masterNodeCtrl.activeMasternode.outpoint;
         }
@@ -175,15 +175,15 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
                 //during transaction validation before ticket made in to the block_ticket.ticketBlock will == 0
                 if (_ticket.IsBlock(0) || gl_nChainHeight - _ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations)
                 {
-                    CMasternode mnInfo;
-                    if (!masterNodeCtrl.masternodeManager.Get(m_outpoint, mnInfo))
+                    masternode_t pmn = masterNodeCtrl.masternodeManager.Get(m_outpoint);
+                    if (!pmn)
                     {
                         tv.errorMsg = strprintf(
                             "Unknown Masternode - [%s]. Pastel ID - [%s]", 
                             m_outpoint.ToStringShort(), m_sPastelID);
                         break;
                     }
-                    if (!mnInfo.IsEnabled() && !mnInfo.IsPreEnabled())
+                    if (!pmn->IsEnabled() && !pmn->IsPreEnabled())
                     {
                         tv.errorMsg = strprintf(
                             "Not an active Masternode - [%s]. Pastel ID - [%s]", 
@@ -193,7 +193,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
 
                     // 3. Validate MN signature using public key of MN identified by outpoint
                     string errRet;
-                    if (!CMessageSigner::VerifyMessage(mnInfo.pubKeyMasternode, m_mn_signature, ss.str(), errRet))
+                    if (!CMessageSigner::VerifyMessage(pmn->pubKeyMasternode, m_mn_signature, ss.str(), errRet))
                     {
                         tv.errorMsg = strprintf(
                             "Ticket's MN signature is invalid. Error - %s. Outpoint - [%s]; Pastel ID - [%s]",

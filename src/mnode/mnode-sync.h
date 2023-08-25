@@ -7,6 +7,7 @@
 
 #include <univalue.h>
 
+#include <enum_util.h>
 #include <chain.h>
 #include <net.h>
 #include <netmsg/node.h>
@@ -24,7 +25,7 @@ public:
         Remote  = 1
     };
 
-    enum class MasternodeSyncState
+    enum class MasternodeSyncState : int
     {
         Failed          = -1,
         Initial         = 0,    // sync just started, was reset recently or still in IDB
@@ -76,7 +77,7 @@ public:
     bool IsGovernanceSynced() const noexcept { return syncState > MasternodeSyncState::Governance; }
     bool IsSynced() const noexcept { return syncState == MasternodeSyncState::Finished; }
 
-    int GetAssetID() const noexcept { return (int)syncState; }
+    int GetAssetID() const noexcept { return to_integral_type(syncState); }
     int GetAttempt() const noexcept { return nRequestedMasternodeAttempt; }
     void BumpAssetLastTime(const std::string &strMethodName, const std::string &strFuncName = "");
     int64_t GetAssetStartTime() const noexcept { return nTimeAssetSyncStarted; }

@@ -1038,7 +1038,7 @@ void CFlushWalletDBThread::execute()
                         bitdb.CloseDb(m_sWalletFile);
                         bitdb.CheckpointLSN(m_sWalletFile);
 
-                        bitdb.mapFileUseCount.erase(mi++);
+                        mi = bitdb.mapFileUseCount.erase(mi);
                         LogPrint("db", "Flushed wallet.dat %dms\n", GetTimeMillis() - nStart);
                     }
                 }

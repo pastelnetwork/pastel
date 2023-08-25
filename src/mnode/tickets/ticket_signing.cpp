@@ -213,7 +213,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
             if (masterNodeCtrl.masternodeSync.IsSynced() &&
                 masterNodeCtrl.masternodeManager.HasEnoughEnabled() ) // ticket needs synced AND correct list of MNs
             {
-                vector<CMasternode> topBlockMNs;
+                masternode_vector_t topBlockMNs;
                 string error;
                 const auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nCreatorHeight, true);
                 if (status != GetTopMasterNodeStatus::SUCCEEDED && status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
@@ -224,9 +224,9 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
 						nCreatorHeight, error);
 					break;
 				}
-                const auto foundIt = find_if(topBlockMNs.cbegin(), topBlockMNs.cend(), [&](CMasternode const& mn)
+                const auto foundIt = find_if(topBlockMNs.cbegin(), topBlockMNs.cend(), [&](const masternode_t & pmn)
                     {
-                        return mn.getOutPoint() == outpoint;
+                        return pmn && (pmn->getOutPoint() == outpoint);
                     });
 
                 if (foundIt == topBlockMNs.cend()) //not found
