@@ -709,7 +709,4 @@
       <Filter>Source Files\netmsg</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="cpp.hint" />
-  </ItemGroup>
 </Project>

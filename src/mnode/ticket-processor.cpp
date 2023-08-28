@@ -28,7 +28,7 @@
 using json = nlohmann::json;
 using namespace std;
 
-static shared_ptr<ITxMemPoolTracker> TicketTxMemPoolTracker;
+static tx_mempool_tracker_t TicketTxMemPoolTracker;
 
 void CPastelTicketProcessor::InitTicketDB()
 {
@@ -595,11 +595,11 @@ string CPastelTicketProcessor::GetTicketJSON(const uint256& txid, const bool bDe
     return "";
 }
 
-bool CPastelTicketProcessor::GetTicketToStream(const uint256& txid, string &error, ticket_parse_data_t &data, const bool bUncompressData)
+bool CPastelTicketProcessor::SerializeTicketToStream(const uint256& txid, string &error, ticket_parse_data_t &data, const bool bUncompressData)
 {
     // get ticket transaction by txid, also may return ticket height
     if (!GetTransaction(txid, data.tx, Params().GetConsensus(), data.hashBlock, true, &data.nTicketHeight))
-    {
+    {   
         error = "No information available about transaction";
         return false;
     }
@@ -629,7 +629,7 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
 {
     string error;
     ticket_parse_data_t data;
-    if (!GetTicketToStream(txid, error, data, true))
+    if (!SerializeTicketToStream(txid, error, data, true))
 		throw runtime_error(error);
 
     unique_ptr<CPastelTicket> ticket;
@@ -1911,7 +1911,7 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
 }
 #endif // FAKE_TICKET
 
-shared_ptr<ITxMemPoolTracker> CPastelTicketProcessor::GetTxMemPoolTracker()
+tx_mempool_tracker_t CPastelTicketProcessor::GetTxMemPoolTracker()
 {
     if (!TicketTxMemPoolTracker)
         TicketTxMemPoolTracker = make_shared<CTicketTxMemPoolTracker>();

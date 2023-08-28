@@ -22,31 +22,34 @@
 #include <mnode/tickets/pastelid-reg.h>
 using namespace std;
 
-UniValue formatMnsInfo(const vector<CMasternode>& topBlockMNs)
+UniValue formatMnsInfo(const masternode_vector_t& topBlockMNs)
 {
     UniValue mnArray(UniValue::VARR);
 
     int i = 0;
     KeyIO keyIO(Params());
-    for (const auto& mn : topBlockMNs)
+    for (const auto& pmn : topBlockMNs)
     {
+        if (!pmn)
+            continue;
+
         UniValue objItem(UniValue::VOBJ);
         objItem.pushKV("rank", strprintf("%d", ++i));
 
-        objItem.pushKV("IP:port", mn.get_address());
-        objItem.pushKV("protocol", (int64_t)mn.nProtocolVersion);
-        objItem.pushKV("outpoint", mn.GetDesc());
+        objItem.pushKV("IP:port", pmn->get_address());
+        objItem.pushKV("protocol", (int64_t)(pmn->nProtocolVersion));
+        objItem.pushKV("outpoint", pmn->GetDesc());
 
-        const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+        const CTxDestination dest = pmn->pubKeyCollateralAddress.GetID();
         string address = keyIO.EncodeDestination(dest);
         objItem.pushKV("payee", move(address));
-        objItem.pushKV("lastseen", mn.nTimeLastPing);
-        objItem.pushKV("activeseconds", mn.nTimeLastPing - mn.sigTime);
+        objItem.pushKV("lastseen", pmn->nTimeLastPing);
+        objItem.pushKV("activeseconds", pmn->nTimeLastPing - pmn->sigTime);
 
-        objItem.pushKV("extAddress", mn.strExtraLayerAddress);
-        objItem.pushKV("extP2P", mn.strExtraLayerP2P);
-        objItem.pushKV("extKey", mn.getMNPastelID());
-        objItem.pushKV("extCfg", mn.strExtraLayerCfg);
+        objItem.pushKV("extAddress", pmn->strExtraLayerAddress);
+        objItem.pushKV("extP2P", pmn->strExtraLayerP2P);
+        objItem.pushKV("extKey", pmn->getMNPastelID());
+        objItem.pushKV("extCfg", pmn->strExtraLayerCfg);
 
         mnArray.push_back(move(objItem));
     }
@@ -132,26 +135,28 @@ Examples:
     if (MNLIST.IsCmd(RPC_CMD_MNLIST::rank)) 
     {
         CMasternodeMan::rank_pair_vec_t vMasternodeRanks;
-        string error;
+        string error, strOutpoint;
         const auto status = masterNodeCtrl.masternodeManager.GetMasternodeRanks(error, vMasternodeRanks);
-        for (const auto& mnpair : vMasternodeRanks)
+        for (const auto& [rank, pmn] : vMasternodeRanks)
         {
-            string strOutpoint = mnpair.second.GetDesc();
+            if (!pmn)
+                continue;
+            strOutpoint = pmn->GetDesc();
             if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                 continue;
-            obj.pushKV(strOutpoint, mnpair.first);
+            obj.pushKV(strOutpoint, rank);
         }
     } else {
         const auto mapMasternodes = masterNodeCtrl.masternodeManager.GetFullMasternodeMap();
         const bool bShowAllNodes = strExtra == "allnodes";
-        for (const auto& [outpoint, mn] : mapMasternodes)
+        for (const auto& [outpoint, pmn] : mapMasternodes)
         {
-            if( mn.IsNewStartRequired() && ! mn.IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime) && !bShowAllNodes ) 
-            {
+            if (!pmn)
                 continue;
-            }
+            if (pmn->IsNewStartRequired() && ! pmn->IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime) && !bShowAllNodes ) 
+                continue;
             string strOutpoint = outpoint.ToStringShort();
-            const CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+            const CTxDestination dest = pmn->pubKeyCollateralAddress.GetID();
             string address = keyIO.EncodeDestination(dest);
 
             switch (mode)
@@ -160,12 +165,12 @@ Examples:
                 {
                     if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, (int64_t)(mn.getLastPing().getSigTime() - mn.sigTime));
+                    obj.pushKV(strOutpoint, (int64_t)(pmn->getLastPing().getSigTime() - pmn->sigTime));
                 } break;
                 
                 case RPC_CMD_MNLIST::addr:
                 {
-                    string strAddress = mn.get_address();
+                    string strAddress = pmn->get_address();
                     if (!strFilter.empty() && strAddress.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue; //-V1051
@@ -174,17 +179,17 @@ Examples:
 
                 case RPC_CMD_MNLIST::full:
                 {
-                    const auto &sigTime = mn.getLastPing().getSigTime();
+                    const auto &sigTime = pmn->getLastPing().getSigTime();
                     ostringstream streamFull;
                     streamFull 
-                        << setw(18) << mn.GetStatus() << " " 
-                        << mn.nProtocolVersion << " " 
+                        << setw(18) << pmn->GetStatus() << " " 
+                        << pmn->nProtocolVersion << " " 
                         << address << " " 
                         << sigTime << " " 
-                        << setw(8) << sigTime - mn.sigTime << " " 
-                        << setw(10) << mn.GetLastPaidTime() << " " 
-                        << setw(6) << mn.GetLastPaidBlock() << " " 
-                        << mn.get_address();
+                        << setw(8) << sigTime - pmn->sigTime << " " 
+                        << setw(10) << pmn->GetLastPaidTime() << " " 
+                        << setw(6) << pmn->GetLastPaidBlock() << " " 
+                        << pmn->get_address();
                     string strFull = streamFull.str();
                     if (!strFilter.empty() && strFull.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
@@ -194,15 +199,15 @@ Examples:
 
                 case RPC_CMD_MNLIST::info: 
                 {
-                    const auto &sigTime = mn.getLastPing().getSigTime();
+                    const auto &sigTime = pmn->getLastPing().getSigTime();
                     ostringstream streamInfo;
                     streamInfo 
-                        << setw(18) << mn.GetStatus() << " " 
-                        << mn.nProtocolVersion << " " 
+                        << setw(18) << pmn->GetStatus() << " " 
+                        << pmn->nProtocolVersion << " " 
                         << address << " " 
                         << sigTime << " " 
-                        << setw(8) << sigTime - mn.sigTime << " " 
-                        << mn.get_address();
+                        << setw(8) << sigTime - pmn->sigTime << " " 
+                        << pmn->get_address();
                     string strInfo = streamInfo.str();
                     if (!strFilter.empty() && strInfo.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
@@ -214,21 +219,21 @@ Examples:
                 {
                     if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, mn.GetLastPaidBlock());
+                    obj.pushKV(strOutpoint, pmn->GetLastPaidBlock());
                 } break;
 
                 case RPC_CMD_MNLIST::lastpaidtime:
                 {
                     if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, mn.GetLastPaidTime());
+                    obj.pushKV(strOutpoint, pmn->GetLastPaidTime());
                 } break;
 
                 case RPC_CMD_MNLIST::lastseen:
                 {
                     if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, mn.getLastPing().getSigTime());
+                    obj.pushKV(strOutpoint, pmn->getLastPing().getSigTime());
                 } break;
 
                 case RPC_CMD_MNLIST::payee:
@@ -241,22 +246,22 @@ Examples:
 
                 case RPC_CMD_MNLIST::protocol: 
                 {
-                    if (!strFilter.empty() && strFilter != strprintf("%d", mn.nProtocolVersion) &&
+                    if (!strFilter.empty() && strFilter != strprintf("%d", pmn->nProtocolVersion) &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, (int64_t)mn.nProtocolVersion);
+                    obj.pushKV(strOutpoint, (int64_t)pmn->nProtocolVersion);
                 } break;
 
                 case RPC_CMD_MNLIST::pubkey: 
                 {
                     if (!strFilter.empty() && strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, HexStr(mn.pubKeyMasternode));
+                    obj.pushKV(strOutpoint, HexStr(pmn->pubKeyMasternode));
                 } break;
 
                 case RPC_CMD_MNLIST::status: 
                 {
-                    string strStatus = mn.GetStatus();
+                    string strStatus = pmn->GetStatus();
                     if (!strFilter.empty() && strStatus.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue; //-V1051
@@ -266,10 +271,10 @@ Examples:
                 case RPC_CMD_MNLIST::extra: 
                 {
                     UniValue objItem(UniValue::VOBJ);
-                    objItem.pushKV("extAddress", mn.strExtraLayerAddress);
-                    objItem.pushKV("extP2P", mn.strExtraLayerP2P);
-                    objItem.pushKV("extKey", mn.getMNPastelID());
-                    objItem.pushKV("extCfg", mn.strExtraLayerCfg);
+                    objItem.pushKV("extAddress", pmn->strExtraLayerAddress);
+                    objItem.pushKV("extP2P", pmn->strExtraLayerP2P);
+                    objItem.pushKV("extKey", pmn->getMNPastelID());
+                    objItem.pushKV("extCfg", pmn->strExtraLayerCfg);
 
                     obj.pushKV(strOutpoint, move(objItem));
                 } break;
@@ -486,12 +491,11 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
     {
 
         const COutPoint outpoint = mne.getOutPoint();
-        CMasternode mn;
-        const bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
+        masternode_t pmn = masterNodeCtrl.masternodeManager.Get(outpoint);
 
-        if (bStartMissing && fFound)
+        if (bStartMissing && pmn)
             continue;
-        if (bStartDisabled && fFound && mn.IsEnabled())
+        if (bStartDisabled && pmn && pmn->IsEnabled())
             continue;
 
         UniValue statusObj(UniValue::VOBJ);
@@ -706,10 +710,9 @@ UniValue masternode_list_conf(const UniValue& params)
     for (const auto& [alias, mne] : masterNodeCtrl.masternodeConfig.getEntries())
     {
         COutPoint outpoint = mne.getOutPoint();
-        CMasternode mn;
-        const bool fFound = masterNodeCtrl.masternodeManager.Get(outpoint, mn);
+        auto pmn = masterNodeCtrl.masternodeManager.Get(outpoint);
 
-        string strStatus = fFound ? mn.GetStatus() : "MISSING";
+        string strStatus = pmn ? pmn->GetStatus() : "MISSING";
 
         UniValue mnObj(UniValue::VOBJ);
         mnObj.pushKV(RPC_KEY_ALIAS, mne.getAlias());
@@ -719,7 +722,8 @@ UniValue masternode_list_conf(const UniValue& params)
         mnObj.pushKV("outputIndex", mne.getOutputIndex());
         mnObj.pushKV("extAddress", mne.getExtIp());
         mnObj.pushKV("extP2P", mne.getExtP2P());
-        mnObj.pushKV("extKey", mn.getMNPastelID());
+        if (pmn)
+            mnObj.pushKV("extKey", pmn->getMNPastelID());
         mnObj.pushKV("extCfg", mne.getExtCfg());
         mnObj.pushKV(RPC_KEY_STATUS, strStatus);
         resultObj.pushKV("masternode", move(mnObj));
@@ -884,16 +888,16 @@ UniValue masternode_status(const UniValue& params, KeyIO &keyIO)
     mnObj.pushKV("outpoint", activeMN.outpoint.ToStringShort());
     mnObj.pushKV("service", activeMN.service.ToString());
 
-    CMasternode mn;
-    if (masterNodeCtrl.masternodeManager.Get(activeMN.outpoint, mn))
+    masternode_t pmn = masterNodeCtrl.masternodeManager.Get(activeMN.outpoint);
+    if (pmn)
     {
-        CTxDestination dest = mn.pubKeyCollateralAddress.GetID();
+        CTxDestination dest = pmn->pubKeyCollateralAddress.GetID();
         string address = keyIO.EncodeDestination(dest);
         mnObj.pushKV("payee", move(address));
-        mnObj.pushKV("extAddress", mn.strExtraLayerAddress);
-        mnObj.pushKV("extP2P", mn.strExtraLayerP2P);
-        mnObj.pushKV("extKey", mn.getMNPastelID());
-        mnObj.pushKV("extCfg", mn.strExtraLayerCfg);
+        mnObj.pushKV("extAddress", pmn->strExtraLayerAddress);
+        mnObj.pushKV("extP2P", pmn->strExtraLayerP2P);
+        mnObj.pushKV("extKey", pmn->getMNPastelID());
+        mnObj.pushKV("extCfg", pmn->strExtraLayerCfg);
     }
     string sAlias = masterNodeCtrl.masternodeConfig.getAlias(activeMN.outpoint);
     if (!sAlias.empty())
@@ -936,7 +940,7 @@ UniValue masternode_top(const UniValue& params)
         bCalculateIfNotSeen = params[2].get_str() == "1";
 
     string error;
-    vector<CMasternode> topBlockMNs;
+    masternode_vector_t topBlockMNs;
     auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nHeight, bCalculateIfNotSeen);
     if (status != GetTopMasterNodeStatus::SUCCEEDED && status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
         LogFnPrintf("%s", error);
@@ -1000,9 +1004,9 @@ As json rpc:
             strprintf("Invalid 'txid' parameter. %s", error.c_str()));
 
     COutPoint outpoint(collateral_txid, nTxIndex);
-    CMasternode mn;
+    masternode_t pmn = masterNodeCtrl.masternodeManager.Get(outpoint);
     // this creates a copy of CMasterNode in mn
-    if (!masterNodeCtrl.masternodeManager.Get(outpoint, mn))
+    if (!pmn)
         throw JSONRPCError(RPC_INTERNAL_ERROR, 
             strprintf("MasterNode not found by collateral txid-index: %s", outpoint.ToStringShort()));
     UniValue retVal(UniValue::VOBJ);
@@ -1020,7 +1024,8 @@ As json rpc:
             {
                 masterNodeCtrl.masternodeManager.IncrementMasterNodePoSeBanScore(outpoint);
                 // retrieve changed copy of MN
-                if (!masterNodeCtrl.masternodeManager.Get(outpoint, mn))
+                pmn = masterNodeCtrl.masternodeManager.Get(outpoint);
+                if (!pmn)
                     throw JSONRPCError(RPC_INTERNAL_ERROR, 
                         strprintf("MasterNode not found by collateral txid-index: %s", outpoint.ToStringShort()));
             } break;
@@ -1029,11 +1034,11 @@ As json rpc:
             case RPC_CMD_SCORE::unknown:
                 break;
         }
-        retVal.pushKV("pose-ban-score", mn.getPoSeBanScore());
-        const bool isBannedByScore = mn.IsPoSeBannedByScore();
-        retVal.pushKV("pose-banned", isBannedByScore || mn.IsPoSeBanned());
+        retVal.pushKV("pose-ban-score", pmn->getPoSeBanScore());
+        const bool isBannedByScore = pmn->IsPoSeBannedByScore();
+        retVal.pushKV("pose-banned", isBannedByScore || pmn->IsPoSeBanned());
         if (isBannedByScore)
-            retVal.pushKV("pose-ban-height", mn.getPoSeBanHeight());
+            retVal.pushKV("pose-ban-height", pmn->getPoSeBanHeight());
     }
     catch (const exception& ex)
     {

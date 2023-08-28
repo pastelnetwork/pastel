@@ -633,8 +633,12 @@ CAmount CMasterNodeController::GetNetworkMedianMNFee(const MN_FEE mnFee) const n
         {
             v_amounts vFee(mapMasternodes.size());
             size_t cnt = 0;
-            for (const auto& [op, mn] : mapMasternodes)
-                vFee[cnt++] = mn.GetMNFee(mnFee);
+            for (const auto& [op, pmn] : mapMasternodes)
+            {
+                if (!pmn)
+                    continue;
+                vFee[cnt++] = pmn->GetMNFee(mnFee);
+            }
             // Use trimmean to calculate the value with fixed 25% percentage
             nFee = static_cast<CAmount>(ceil(TRIMMEAN(vFee, 0.25)));
         }

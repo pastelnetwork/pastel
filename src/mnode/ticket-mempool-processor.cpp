@@ -18,7 +18,7 @@ CPastelTicketMemPoolProcessor::CPastelTicketMemPoolProcessor(const TicketID tick
  * \param pool - transaction memory pool (you can pass default global mempool)
  * \param pMemPoolTracker - memory pool tracker, if not passed - default one is used from CPastelTicketProcessor class
  */
-void CPastelTicketMemPoolProcessor::Initialize(const CTxMemPool& pool, std::shared_ptr<ITxMemPoolTracker> pMemPoolTracker)
+void CPastelTicketMemPoolProcessor::Initialize(const CTxMemPool& pool, tx_mempool_tracker_t pMemPoolTracker)
 {
     auto pTracker = dynamic_pointer_cast<CTicketTxMemPoolTracker>(pMemPoolTracker ? pMemPoolTracker : CPastelTicketProcessor::GetTxMemPoolTracker());
     if (!pTracker)

@@ -242,21 +242,21 @@ bool CMasternodePayments::GetBlockPayee(int nBlockHeight, CScript& payee)
 
 // Is this masternode scheduled to get paid soon?
 // -- Only look ahead up to 8 blocks to allow for propagation of the latest 2 blocks of votes
-bool CMasternodePayments::IsScheduled(const CMasternode& mn, const int nNotBlockHeight)
+bool CMasternodePayments::IsScheduled(const masternode_t& pmn, const int nNotBlockHeight) const
 {
     LOCK(cs_mapMasternodeBlockPayees);
 
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
         return false;
 
-    CScript mnpayee = GetScriptForDestination(mn.pubKeyCollateralAddress.GetID());
+    CScript mnpayee = GetScriptForDestination(pmn->pubKeyCollateralAddress.GetID());
 
     CScript payee;
     for (int h = nCachedBlockHeight; h <= nCachedBlockHeight + 8; h++)
     {
         if (h == nNotBlockHeight)
             continue;
-        if (mapMasternodeBlockPayees.count(h) && mapMasternodeBlockPayees[h].GetBestPayee(payee) && (mnpayee == payee))
+        if (mapMasternodeBlockPayees.count(h) && mapMasternodeBlockPayees.at(h).GetBestPayee(payee) && (mnpayee == payee))
             return true;
     }
 
@@ -499,7 +499,7 @@ void CMasternodePayments::CheckAndRemove()
         if (nCachedBlockHeight - vote.nBlockHeight > nLimit)
         {
             LogFnPrint("mnpayments", "Removing old Masternode payment: nBlockHeight=%d", vote.nBlockHeight);
-            mapMasternodePaymentVotes.erase(it++);
+            it = mapMasternodePaymentVotes.erase(it);
             mapMasternodeBlockPayees.erase(vote.nBlockHeight);
         } else
             ++it;
@@ -723,8 +723,11 @@ void CMasternodePayments::CheckPreviousBlockVotes(const int nPrevBlockHeight)
 
     for (size_t i = 0; i < MNPAYMENTS_SIGNATURES_TOTAL && i < mns.size(); ++i)
     {
-        auto mn = mns[i];
-        const auto& outpoint = mn.second.getOutPoint();
+        auto &[rank, pmn] = mns[i];
+        if (!pmn)
+            continue;
+
+        const auto& outpoint = pmn->getOutPoint();
         CScript payee;
         bool found = false;
 
@@ -752,7 +755,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(const int nPrevBlockHeight)
 
         if (!found)
         {
-            debugStr += strprintf("\n\t%s - no vote received", mn.second.GetDesc());
+            debugStr += strprintf("\n\t%s - no vote received", pmn->GetDesc());
             mapMasternodesDidNotVote[outpoint]++;
             continue;
         }
@@ -762,7 +765,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(const int nPrevBlockHeight)
         ExtractDestination(payee, dest);
         string address = keyIO.EncodeDestination(dest);
 
-        debugStr += strprintf("\n\t%s - voted for %s", mn.second.GetDesc(), address);
+        debugStr += strprintf("\n\t%s - voted for %s", pmn->GetDesc(), address);
     }
     debugStr += "\nMasternodes which missed a vote in the past:";
     for (const auto &[outpoint, count]: mapMasternodesDidNotVote)

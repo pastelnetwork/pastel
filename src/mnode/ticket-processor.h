@@ -208,7 +208,7 @@ public:
         const std::vector<std::pair<std::string, CAmount>>& extraPayments, const std::string& strVerb, bool bSend);
 #endif // FAKE_TICKET
 
-    static bool GetTicketToStream(const uint256& txid, std::string& error,
+    static bool SerializeTicketToStream(const uint256& txid, std::string& error,
         ticket_parse_data_t &data, const bool bUncompressData = true);
 
     // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CCompressedDataStream object.
@@ -216,7 +216,7 @@ public:
         TicketID& ticket_id, std::string& error, const bool bLog = true, const bool bUncompressData = true);
 
     // Get mempool tracker for ticket transactions
-    static std::shared_ptr<ITxMemPoolTracker> GetTxMemPoolTracker();
+    static tx_mempool_tracker_t GetTxMemPoolTracker();
 
 protected:
     static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, std::unique_ptr<CPastelTicket>&& ticket) noexcept;

@@ -150,9 +150,11 @@ bool error(const char* fmt, const Args&... args)
 }
 
 template<typename... Args>
-bool errorFn(const char* fmt, const Args&... args)
+bool errorFn(const char *szMethodName, const char* fmt, const Args&... args)
 {
-    LogPrintStr(tfm::format("[%s] ", __METHOD_NAME__) + "ERROR: " + tfm::format(fmt, args...) + "\n");
+    if (!szMethodName || !*szMethodName)
+        szMethodName = __METHOD_NAME__;
+    LogPrintStr(tfm::format("[%s] ", szMethodName) + "ERROR: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
 
@@ -164,11 +166,14 @@ bool warning_msg(const char* fmt, const Args&... args)
 }
 
 template <typename... Args>
-bool warning_msgFn(const char* fmt, const Args&... args)
+bool warning_msgFn(const char *szMethodName, const char* fmt, const Args&... args)
 {
-    LogPrintStr(tfm::format("[%s] ", __METHOD_NAME__) + "WARNING: " + tfm::format(fmt, args...) + "\n");
+    if (!szMethodName || !*szMethodName)
+        szMethodName = __METHOD_NAME__;
+    LogPrintStr(tfm::format("[%s] ", szMethodName) + "WARNING: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
+
 
 const fs::path& ZC_GetParamsDir();
 
@@ -178,6 +183,7 @@ std::string GetErrorString(const int err);
 void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void ParseParameters(int argc, const char*const argv[]);
 void FileCommit(FILE *fileout);
+void LogFlush();
 bool TruncateFile(FILE *file, unsigned int length);
 size_t RaiseFileDescriptorLimit(const size_t nMinFD);
 void AllocateFileRange(FILE *file, unsigned int offset, unsigned int length);

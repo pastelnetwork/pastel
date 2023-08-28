@@ -150,9 +150,11 @@ void CMasternodeMessageProcessor::BroadcastNewFee(const MN_FEE mnFeeType, const 
         sMessage = to_string(to_integral_type(mnFeeType)) + " " + to_string(newFee);
     }
     
-    for (const auto& [op, mn] : mapMasternodes)
+    for (const auto& [op, pmn] : mapMasternodes)
     {
-        masterNodeCtrl.masternodeMessages.SendMessage(mn.pubKeyMasternode, msgType, sMessage);
+        if (!pmn)
+            continue;
+        masterNodeCtrl.masternodeMessages.SendMessage(pmn->pubKeyMasternode, msgType, sMessage);
     }
 }
 
@@ -276,8 +278,8 @@ void CMasternodeMessageProcessor::ProcessMessage(node_t& pFrom, string& strComma
             }
             if (bSetFee && mnFeeType != MN_FEE::COUNT)
             {
-                CMasternode masternode;
-                if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode))
+                masternode_t pmn = masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint);
+                if (!pmn)
                     throw runtime_error("Unknown Masternode");
 
                 // Update masternode fee

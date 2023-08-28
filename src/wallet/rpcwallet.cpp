@@ -3777,7 +3777,7 @@ Examples:
         nTotalOut += nAmount;
     }
 
-    int nextBlockHeight = chainActive.Height() + 1;
+    int nextBlockHeight = gl_nChainHeight + 1;
     CMutableTransaction mtx;
     mtx.fOverwintered = true;
     mtx.nVersionGroupId = SAPLING_VERSION_GROUP_ID;

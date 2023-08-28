@@ -425,12 +425,14 @@ void CDBEnv::Flush(bool fShutdown)
         return;
     {
         LOCK(cs_db);
-        map<string, int>::iterator mi = mapFileUseCount.begin();
-        while (mi != mapFileUseCount.end()) {
-            string strFile = (*mi).first;
-            int nRefCount = (*mi).second;
+        auto mi = mapFileUseCount.begin();
+        while (mi != mapFileUseCount.end())
+        {
+            const auto &strFile = mi->first;
+            const auto nRefCount = mi->second;
             LogPrint("db", "CDBEnv::Flush: Flushing %s (refcount = %d)...\n", strFile, nRefCount);
-            if (nRefCount == 0) {
+            if (nRefCount == 0)
+            {
                 // Move log data to the dat file
                 CloseDb(strFile);
                 LogPrint("db", "CDBEnv::Flush: %s checkpoint\n", strFile);
@@ -439,7 +441,7 @@ void CDBEnv::Flush(bool fShutdown)
                 if (!fMockDb)
                     dbenv->lsn_reset(strFile.c_str(), 0);
                 LogPrint("db", "CDBEnv::Flush: %s closed\n", strFile);
-                mapFileUseCount.erase(mi++);
+                mi = mapFileUseCount.erase(mi);
             } else
                 mi++;
         }

@@ -1,12 +1,12 @@
 // Copyright (c) 2016 The Zcash developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "uint256.h"
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <atomic>
 #include <mutex>
 #include <string>
+
+#include <uint256.h>
 
 struct AtomicCounter
 {

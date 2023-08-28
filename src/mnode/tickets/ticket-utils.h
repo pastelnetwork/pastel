@@ -99,7 +99,7 @@ ticket_validation_t common_ticket_validation(
         if (!bPreReg && (referredItemTicket->GetBlock() > ticket.GetBlock()))
         {
             tv.errorMsg = strprintf(
-                "The %s ticket with this txid [%s] referred by this %s ticket [txid=%s] has invalid height %u > %u",
+                "The %s ticket with this txid [%s] referred by this %s ticket [txid=%s] has invalid height (%u -> %u)",
                 sReferredItemTicketDescription, strReferredItemTxId, sThisTicketDescription, ticket.GetTxId(), 
                 referredItemTicket->GetBlock(), ticket.GetBlock());
             break;

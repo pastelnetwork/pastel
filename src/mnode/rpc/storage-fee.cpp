@@ -61,7 +61,7 @@ static constexpr std::array<MNFeeInfo, to_integral_type<MN_FEE>(MN_FEE::COUNT)> 
  * \param bThrowExceptionIfFailed - throw exception if masternode is not active
  * \return true if masternode is active and got MN instance, false otherwise
  */
-bool check_active_master_node(CMasternode& masternode, const bool bThrowExceptionIfFailed = true)
+bool check_active_master_node(masternode_t& pmn, const bool bThrowExceptionIfFailed = true)
 {
     if (!masterNodeCtrl.IsActiveMasterNode())
     {
@@ -70,7 +70,8 @@ bool check_active_master_node(CMasternode& masternode, const bool bThrowExceptio
         return false;
     }
 
-    if (!masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint, masternode))
+    pmn = masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint);
+    if (!pmn)
     {
         if (bThrowExceptionIfFailed)
             throw JSONRPCError(RPC_INTERNAL_ERROR, ERRMSG_MASTER_NODE_NOT_FOUND);
@@ -101,8 +102,8 @@ bool IsOldStorageFeeGetFeeName(const string &sMethodName, bool &bIsLocal)
 
 UniValue storagefee_setfee(const UniValue& params)
 {
-    CMasternode masternode;
-    check_active_master_node(masternode, true);
+    masternode_t pmn;
+    check_active_master_node(pmn, true);
 
     constexpr auto strInvalidFeeType = "Invalid fee type. Valid types are: storage, ticket, sense-compute, sense-processing";
 
@@ -175,12 +176,12 @@ UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
         if (params.size() >= 2)
 			bIsLocalFee = get_bool_value(params[1]);
     }
-    CMasternode masternode;
-    const bool bIsActiveMN = check_active_master_node(masternode, bIsLocalFee);
+    masternode_t pmn;
+    const bool bIsActiveMN = check_active_master_node(pmn, bIsLocalFee);
 
     const char *szOptionName = bIsLocalFee ? mnFeeInfo.szLocalOptionName : mnFeeInfo.szOptionName;
     const CAmount nFee = static_cast<CAmount>(
-		(bIsLocalFee ? masternode.GetMNFee(mnFee) : masterNodeCtrl.GetNetworkMedianMNFee(mnFee)) * nFeeAdjustmentMultiplier);
+		(bIsLocalFee && pmn ? pmn->GetMNFee(mnFee) : masterNodeCtrl.GetNetworkMedianMNFee(mnFee)) * nFeeAdjustmentMultiplier);
     if (!szOptionName)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "This fee is not supported by this RPC call.");
     string sOptionName(szOptionName);
@@ -201,8 +202,8 @@ UniValue storagefee_getfees(const UniValue& params)
     const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
     const double nFeeAdjustmentMultiplier = nGlobalFeeAdjustmentMultiplier * fChainDeflatorFactor;
 
-    CMasternode masternode;
-    const bool bIsActiveMN = check_active_master_node(masternode, false);
+    masternode_t pmn;
+    const bool bIsActiveMN = check_active_master_node(pmn, false);
 
     string sOptionName;
     for (uint32_t mnFeeId = 0; mnFeeId < to_integral_type(MN_FEE::COUNT); ++mnFeeId)
@@ -217,10 +218,13 @@ UniValue storagefee_getfees(const UniValue& params)
         retObj.pushKV(sOptionName + "Pat", nFee * COIN);
 
         // local fee
-        sOptionName = mnFeeInfo.szLocalOptionName;
-        nFee = static_cast<CAmount>(masternode.GetMNFee(mnFee) * nFeeAdjustmentMultiplier);
-        retObj.pushKV(sOptionName, nFee);
-        retObj.pushKV(sOptionName + "Pat", nFee * COIN);
+        if (pmn)
+        {
+            sOptionName = mnFeeInfo.szLocalOptionName;
+            nFee = static_cast<CAmount>(pmn->GetMNFee(mnFee) * nFeeAdjustmentMultiplier);
+            retObj.pushKV(sOptionName, nFee);
+            retObj.pushKV(sOptionName + "Pat", nFee * COIN);
+        }
     }
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);

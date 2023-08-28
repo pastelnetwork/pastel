@@ -511,15 +511,14 @@ Examples:
     UniValue inputs = params[0].get_array();
     UniValue sendTo = params[1].get_obj();
 
-    uint32_t nextBlockHeight = 0;
-    {
-        LOCK(cs_main);
-        nextBlockHeight = chainActive.Height() + 1;
-    }
-    CMutableTransaction rawTx = CreateNewContextualCMutableTransaction(
-        Params().GetConsensus(), nextBlockHeight);
+    const auto& chainparams = Params();
+    const auto &consensusParams = chainparams.GetConsensus();
 
-    if (params.size() > 2 && !params[2].isNull()) {
+    uint32_t nextBlockHeight = gl_nChainHeight + 1;
+    CMutableTransaction rawTx = CreateNewContextualCMutableTransaction(consensusParams, nextBlockHeight);
+
+    if (params.size() > 2 && !params[2].isNull())
+    {
         int64_t nLockTime = params[2].get_int64();
         if (nLockTime < 0 || nLockTime > numeric_limits<uint32_t>::max())
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, locktime out of range");
@@ -528,14 +527,14 @@ Examples:
     
     if (params.size() > 3 && !params[3].isNull())
     {
-        if (NetworkUpgradeActive(nextBlockHeight, Params().GetConsensus(), Consensus::UpgradeIndex::UPGRADE_OVERWINTER))
+        if (NetworkUpgradeActive(nextBlockHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_OVERWINTER))
         {
             const int64_t nExpiryHeight = params[3].get_int64();
-            if (nExpiryHeight < 0 || nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD) {
+            if (nExpiryHeight < 0 || nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid parameter, expiryheight must be nonnegative and less than %d.", TX_EXPIRY_HEIGHT_THRESHOLD));
-            }
             // DoS mitigation: reject transactions expiring soon
-            if (nExpiryHeight != 0 && nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD > nExpiryHeight) {
+            if (nExpiryHeight != 0 && nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD > nExpiryHeight)
+            {
                 throw JSONRPCError(RPC_INVALID_PARAMETER,
                     strprintf("Invalid parameter, expiryheight should be at least %d to avoid transaction expiring soon",
                     nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD));
@@ -572,18 +571,17 @@ Examples:
         rawTx.vin.push_back(in);
     }
 
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     set<CTxDestination> destinations;
     vector<string> addrList = sendTo.getKeys();
-    for (const string& name_ : addrList) {
+    for (const string& name_ : addrList)
+    {
         CTxDestination destination = keyIO.DecodeDestination(name_);
-        if (!IsValidDestination(destination)) {
+        if (!IsValidDestination(destination))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, string("Invalid Pastel address: ") + name_);
-        }
 
-        if (!destinations.insert(destination).second) {
+        if (!destinations.insert(destination).second)
             throw JSONRPCError(RPC_INVALID_PARAMETER, string("Invalid parameter, duplicated address: ") + name_);
-        }
 
         CScript scriptPubKey = GetScriptForDestination(destination);
         CAmount nAmount = AmountFromValue(sendTo[name_]);
@@ -952,18 +950,18 @@ Examples:
     const bool fHashSingle = ((nHashType & ~to_integral_type(SIGHASH::ANYONECANPAY)) == to_integral_type(SIGHASH::SINGLE));
     // Use the approximate release height if it is greater so offline nodes 
     // have a better estimation of the current height and will be more likely to
-    // determine the correct consensus branch ID.  Regtest mode ignores release height.
-    unsigned int chainHeight = chainActive.Height() + 1;
-    if (!Params().IsRegTest())
-        chainHeight = max(chainHeight, APPROX_RELEASE_HEIGHT);
+    // determine the correct consensus branch ID.  Regtest & Testnet modes ignore release height.
+    uint32_t nChainHeightToGetBranchId = gl_nChainHeight + 1;
+    if (Params().IsMainNet())
+        nChainHeightToGetBranchId = max(nChainHeightToGetBranchId, APPROX_RELEASE_HEIGHT);
     // Grab the current consensus branch ID
-    auto consensusBranchId = CurrentEpochBranchId(chainHeight, Params().GetConsensus());
+    auto consensusBranchId = CurrentEpochBranchId(nChainHeightToGetBranchId, Params().GetConsensus());
 
-    if (params.size() > 4 && !params[4].isNull()) {
+    if (params.size() > 4 && !params[4].isNull())
+    {
         consensusBranchId = ParseHexToUInt32(params[4].get_str());
-        if (!IsConsensusBranchId(consensusBranchId)) {
+        if (!IsConsensusBranchId(consensusBranchId))
             throw runtime_error(params[4].get_str() + " is not a valid consensus branch id");
-        }
     } 
     
     // Script verification errors

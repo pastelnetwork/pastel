@@ -40,7 +40,7 @@ void CMasternodeSync::Reset()
 
 void CMasternodeSync::BumpAssetLastTime(const std::string &strMethodName, const std::string &strFuncName)
 {
-    if(IsSynced() || IsFailed())
+    if (IsSynced() || IsFailed())
         return;
     nTimeLastBumped = GetTime();
     LogFnPrint("mnsync", "[%s] %s", strMethodName, strFuncName);
