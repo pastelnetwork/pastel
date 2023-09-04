@@ -450,17 +450,18 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
  /**
  * Called for contextual validation of ticket transactions in the blocks (new or not).
  *                   
- *                   generate --+
- *  BitcoinMiner                |
- *      |                       |
- *      +-- ProcessBlockFound --+  TestBlockValidity --+
- *                              |                      |
+ *  CPU BitcoinMiner -> TestBlockValidity --------------------------------+
+ *      |                                                                 |
+ *      +-- ProcessBlockFound --+                                         |
+ *                              |                                         |
  *    ProcessMessages (block) --+--> ProcessNewBlock --+--> AcceptBlock --+-> ContextualCheckBlock --+--> ContextualCheckTransaction -> ValidateIfTicketTransaction
  *                              |                                                                    |
  *     LoadExternalBlockFile ---+   SendTicket -> StoreP2FMSTransaction --+-> AcceptToMemoryPool ----+
- *                                                                        | 
- *                                                 ProcessMessages (tx) --+
- * 
+ *                              |                                         |
+ *               submitblock ---+                  ProcessMessages (tx) --+
+ *                              |
+ *                   generate --+
+ *
  * ContextualCheckBlock calls for all transactions in a block ContextualCheckTransaction.
  * AcceptToMemoryPool calls both CheckTransaction and ContextualCheckTransaction to validation transaction.
  * TestBlockValidity called from miner only.
@@ -1938,8 +1939,14 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
                 message = strprintf("%sfound in stale block. %s removed from TicketDB", message,
                                     ok ? "Successfully" : "Failed to be");
             }
-        } else
-            message = strprintf("%salready exists in blockchain. ", message);
+        } else {
+            message = strprintf("%salready exists in blockchain.", message);
+            CTransaction new_tx;
+            if (mempool.lookup(uint256S(new_txid), new_tx)) {
+                message = strprintf("%s Removing new [%s] from mempool.", message, new_txid);
+                mempool.remove(new_tx, false);
+            }
+        }
     } else {
         bFound = false;
         bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
