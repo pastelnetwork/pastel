@@ -1436,7 +1436,7 @@ bool isValuePassFuzzyFilter(const json &jProp, const string &sPropFilterValue) n
                 sPropValue = to_string(jProp);
                 if (sPropValue != sPropFilterValue)
                     break;
-            } catch ([[maybe_unused]] const std::bad_alloc& ex)
+            } catch ([[maybe_unused]] const bad_alloc& ex)
             {
                 break;
             }
@@ -1920,8 +1920,9 @@ tx_mempool_tracker_t CPastelTicketProcessor::GetTxMemPoolTracker()
 }
 
 bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicket& ticket,
-                                                              const std::string& new_txid, uint32_t new_height,
-                                                              bool bPreReg, std::string &message) {
+                                                              const string& new_txid, uint32_t new_height,
+                                                              bool bPreReg, string &message)
+{
     bool bFound= true;
     const uint256 txid = uint256S(ticket.GetTxId());
     const auto pTicket = CPastelTicketProcessor::GetTicket(txid);
@@ -1931,29 +1932,29 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
         {
             CTransaction tx;
             if (mempool.lookup(txid, tx))
-                message = strprintf("%sfound in mempool. ", message);
+                message += " found in mempool.";
             else
             {
                 bFound = false;
                 bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-                message = strprintf("%sfound in stale block. %s removed from TicketDB", message,
+                message += strprintf(" found in stale block. %s removed from TicketDB", 
                                     ok ? "Successfully" : "Failed to be");
             }
         } else {
-            message = strprintf("%salready exists in blockchain.", message);
+            message += " already exists in blockchain.";
             CTransaction new_tx;
             if (mempool.lookup(uint256S(new_txid), new_tx)) {
-                message = strprintf("%s Removing new [%s] from mempool.", message, new_txid);
+                message += strprintf(" Removing new[% s] from mempool.", new_txid);
                 mempool.remove(new_tx, false);
             }
         }
     } else {
         bFound = false;
         bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-        message = strprintf("%sfound in Ticket DB, but not in blockchain. %s removed from TicketDB", message,
+        message += strprintf(" found in Ticket DB, but not in blockchain. %s removed from TicketDB",
                             ok ? "Successfully" : "Failed to be");
     }
-    message = strprintf("%s [%sfound ticket block=%u, txid=%s]", message,
+    message += strprintf(" [%sfound ticket block=%u, txid=%s]",
                         bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", new_height, new_txid),
                         ticket.GetBlock(), ticket.GetTxId());
     if (!bFound) {
