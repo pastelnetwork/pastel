@@ -600,7 +600,7 @@ bool CPastelTicketProcessor::SerializeTicketToStream(const uint256& txid, string
 {
     // get ticket transaction by txid, also may return ticket height
     if (!GetTransaction(txid, data.tx, Params().GetConsensus(), data.hashBlock, true, &data.nTicketHeight))
-    {   
+    {
         error = "No information available about transaction";
         return false;
     }

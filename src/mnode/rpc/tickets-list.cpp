@@ -11,6 +11,8 @@
 
 using namespace std;
 
+constexpr uint32_t TESTNET_CUTOFF_MINHEIGHT = 265'000;
+
 UniValue tickets_list(const UniValue& params)
 {
     RPC_CMD_PARSER2(LIST, params, id, nft, collection, collection__act, act, 
@@ -111,11 +113,22 @@ As json rpc
     if (params.size() > 3 && !bSpecialParsingLogic)
         minheight = get_number(params[3]);
 
-    // limit minheight for testnet for NFT & Action tickets
+    // limit minheight for testnet for NFT, Action, Collection & Offer/Accept/Transfer tickets
     if (Params().IsTestNet() && !minheight && 
-        is_enum_any_of(LIST.cmd(), RPC_CMD_LIST::nft, RPC_CMD_LIST::act,
-            RPC_CMD_LIST::action, RPC_CMD_LIST::action__act))
-        minheight = 265'000;
+        is_enum_any_of(LIST.cmd(), 
+            RPC_CMD_LIST::nft,
+            RPC_CMD_LIST::act,
+            RPC_CMD_LIST::action,
+            RPC_CMD_LIST::action__act,
+            RPC_CMD_LIST::collection,
+            RPC_CMD_LIST::collection__act,
+            RPC_CMD_LIST::offer,
+            RPC_CMD_LIST::sell,
+            RPC_CMD_LIST::accept,
+            RPC_CMD_LIST::buy,
+            RPC_CMD_LIST::transfer,
+            RPC_CMD_LIST::trade))
+        minheight = TESTNET_CUTOFF_MINHEIGHT;
 
     UniValue obj(UniValue::VARR);
     switch (LIST.cmd())

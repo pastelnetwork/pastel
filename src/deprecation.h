@@ -8,7 +8,7 @@
 // Deprecation policy:
 // * Shut down WEEKS_UNTIL_DEPRECATION weeks' worth of blocks after the estimated release block height.
 // * A warning is shown during the 2 weeks' worth of blocks prior to shut down.
-static constexpr uint32_t APPROX_RELEASE_HEIGHT = 500'000;
+static constexpr uint32_t APPROX_RELEASE_HEIGHT = 600'000;
 static constexpr int WEEKS_UNTIL_DEPRECATION = 2 * 52; // 2 years
 static constexpr uint32_t DEPRECATION_HEIGHT = APPROX_RELEASE_HEIGHT + (WEEKS_UNTIL_DEPRECATION * 7 * 24 * 24);
 

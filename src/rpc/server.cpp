@@ -3,6 +3,7 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <sstream>
 
 #include <univalue.h>
 
@@ -160,23 +161,24 @@ v_uint8 ParseHexO(const UniValue& o, string strKey)
 
 string CRPCTable::help(const string& strCommand) const
 {
-    string strRet;
-    string category;
+    ostringstream strRet;
+    string sCategory, strHelp;
     set<rpcfn_type> setDone;
     vector<pair<string, const CRPCCommand*> > vCommands;
     vCommands.reserve(mapCommands.size());
 
+    // Build a sorted list of commands (category-command_name)
     for (const auto& [sCmdName, pcmd] : mapCommands)
-        vCommands.emplace_back(pcmd->category + sCmdName, pcmd);
+        vCommands.emplace_back(pcmd->category + "-" + sCmdName, pcmd);
     sort(vCommands.begin(), vCommands.end());
 
-    for (const auto &[sCmdName, pcmd] : vCommands)
+    for (const auto &[_, pcmd] : vCommands)
     {
         const auto &strMethod = pcmd->name;
         // We already filter duplicates, but these deprecated screw up the sort order
         if (strMethod.find("label") != string::npos)
             continue;
-        if ((strCommand != "" || pcmd->category == "hidden") && strMethod != strCommand)
+        if ((!strCommand.empty() || pcmd->category == "hidden") && strMethod != strCommand)
             continue;
         try
         {
@@ -188,34 +190,36 @@ string CRPCTable::help(const string& strCommand) const
         catch (const exception& e)
         {
             // Help text is returned in an exception
-            string strHelp = string(e.what());
-            if (strCommand == "")
+            strHelp = string(e.what());
+            if (strCommand.empty())
             {
-                if (strHelp.find('\n') != string::npos)
-                    strHelp = strHelp.substr(0, strHelp.find('\n'));
+                const size_t nNewlinePos = strHelp.find('\n');
+                if (nNewlinePos != string::npos)
+                    strHelp = strHelp.substr(0, nNewlinePos);
 
-                if (category != pcmd->category)
+                if (!str_icmp(sCategory, pcmd->category))
                 {
-                    if (!category.empty())
-                        strRet += "\n";
-                    category = pcmd->category;
-                    string firstLetter = category.substr(0,1);
-                    uppercase(firstLetter);
-                    strRet += "== " + firstLetter + category.substr(1) + " ==\n";
+                    if (!sCategory.empty())
+                        strRet << "\n";
+                    sCategory = lowerstring_first_capital(pcmd->category);
+                    strRet << "== " << sCategory << " ==\n";
                 }
             }
-            strRet += strHelp + "\n";
+            strRet << strHelp << "\n";
         }
     }
-    if (strRet == "")
-        strRet = strprintf("help: unknown command: %s\n", strCommand);
-    strRet = strRet.substr(0,strRet.size()-1);
-    return strRet;
+    if (strRet.str().empty())
+        strRet << "help: unknown command: " << strCommand << "\n";
+
+    string sHelp = strRet.str();
+    if (!sHelp.empty())
+        sHelp.pop_back();
+    return sHelp;
 }
 
 UniValue help(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.empty())
+    if (fHelp)
         throw runtime_error(
 R"(help ( "command" )
 
@@ -226,8 +230,7 @@ Arguments:
 
 Result:
 "text"     (string) The help text
-)"
-);
+)");
 
     string strCommand;
     if (params.size() > 0)

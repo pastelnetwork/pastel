@@ -4568,8 +4568,8 @@ bool GetWalletTransaction(const uint256 &txid, CTransaction &tx, uint256& hashBl
 UniValue gettxfee(const UniValue& params, bool fHelp)
 {
     UniValue resultObj(UniValue::VOBJ);
-    if (params.empty() || fHelp)
-        throw JSONRPCError(RPC_INVALID_PARAMETER,
+    if (fHelp || params.empty())
+        throw runtime_error(
 R"(gettxfee "txid"
 Get transaction fee by txid.
 
@@ -4645,9 +4645,9 @@ UniValue scanForMissingTransactions(const UniValue& params, bool fHelp)
 {
     UniValue resultObj(UniValue::VARR);
 
-    if (params.empty() || fHelp)
-        throw JSONRPCError(RPC_INVALID_PARAMETER,
-            R"(scanformissingtxs <starting_height>
+    if (fHelp || params.empty())
+        throw runtime_error(
+R"(scanformissingtxs <starting_height>
 Scan for missing transactions in the wallet starting from the given height.
 
 Arguments:
@@ -4683,9 +4683,9 @@ UniValue fixMissingTransactions(const UniValue& params, bool fHelp)
 {
     UniValue resultObj(UniValue::VARR);
 
-    if (params.empty() || fHelp)
-        throw JSONRPCError(RPC_INVALID_PARAMETER,
-            R"(fixmissingtxs <starting_height>
+    if (fHelp || params.empty())
+        throw runtime_error(
+R"(fixmissingtxs <starting_height>
 Scan for missing transactions in the wallet starting from the given height.
 Add to wallet all the missing transactions found in the blockchain.
 
