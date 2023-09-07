@@ -130,7 +130,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
                 !existingTicket.IsBlock(m_nBlock) ||
                 !existingTicket.IsTxId(m_txid))
             {
-                string message = strprintf( "The Activation ticket for the Registration ticket with txid [%s] ", m_regTicketTxId);
+                string message = strprintf( "The Activation ticket for the Registration ticket with txid [%s]", m_regTicketTxId);
                 bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
                                                                                        m_txid, m_nBlock,
                                                                                        bPreReg, message);

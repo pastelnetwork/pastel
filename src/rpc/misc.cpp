@@ -139,7 +139,7 @@ public:
         CScript subscript;
         obj.pushKV("isscript", true);
         if (pwalletMain && pwalletMain->GetCScript(scriptID, subscript)) {
-            std::vector<CTxDestination> addresses;
+            vector<CTxDestination> addresses;
             txnouttype whichType;
             int nRequired;
             ExtractDestinations(subscript, whichType, addresses, nRequired);
@@ -201,7 +201,7 @@ Examples:
     ret.pushKV("isvalid", isValid);
     if (isValid)
     {
-        std::string currentAddress = keyIO.EncodeDestination(dest);
+        string currentAddress = keyIO.EncodeDestination(dest);
         ret.pushKV("address", currentAddress);
 
         CScript scriptPubKey = GetScriptForDestination(dest);
@@ -211,7 +211,7 @@ Examples:
         isminetype mine = pwalletMain ? GetIsMine(*pwalletMain, dest) : isminetype::NO;
         ret.pushKV("ismine", IsMineSpendable(mine) ? true : false);
         ret.pushKV("iswatchonly", IsMineWatchOnly(mine) ? true: false);
-        UniValue detail = std::visit(DescribeAddressVisitor(), dest);
+        UniValue detail = visit(DescribeAddressVisitor(), dest);
         ret.pushKVs(detail);
         if (pwalletMain && pwalletMain->mapAddressBook.count(dest))
             ret.pushKV("account", pwalletMain->mapAddressBook[dest].name);
@@ -286,7 +286,7 @@ Examples:
     if (isValid)
     {
         ret.pushKV("address", strAddress);
-        UniValue detail = std::visit(DescribePaymentAddressVisitor(), address);
+        UniValue detail = visit(DescribePaymentAddressVisitor(), address);
         ret.pushKVs(detail);
     }
     return ret;
@@ -313,22 +313,22 @@ CScript _createmultisig_redeemScript(const UniValue& params)
 
     KeyIO keyIO(Params());
 
-    std::vector<CPubKey> pubkeys;
+    vector<CPubKey> pubkeys;
     pubkeys.resize(keys.size());
     for (unsigned int i = 0; i < keys.size(); i++)
     {
-        const std::string& ks = keys[i].get_str();
+        const string& ks = keys[i].get_str();
 #ifdef ENABLE_WALLET
         // Case 1: Bitcoin address and we have full public key:
         CTxDestination dest = keyIO.DecodeDestination(ks);
         if (pwalletMain && IsValidDestination(dest)) {
-            const CKeyID *keyID = std::get_if<CKeyID>(&dest);
+            const CKeyID *keyID = get_if<CKeyID>(&dest);
             if (!keyID) {
-                throw std::runtime_error(strprintf("%s does not refer to a key", ks));
+                throw runtime_error(strprintf("%s does not refer to a key", ks));
             }
             CPubKey vchPubKey;
             if (!pwalletMain->GetPubKey(*keyID, vchPubKey)) {
-                throw std::runtime_error(strprintf("no full public key for address %s", ks));
+                throw runtime_error(strprintf("no full public key for address %s", ks));
             }
             if (!vchPubKey.IsFullyValid())
                 throw runtime_error(" Invalid public key: "+ks);
@@ -441,7 +441,7 @@ As json rpc
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
     }
 
-    const CKeyID *keyID = std::get_if<CKeyID>(&destination);
+    const CKeyID *keyID = get_if<CKeyID>(&destination);
     if (!keyID) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
     }
@@ -545,7 +545,7 @@ Examples:
 
 // insightexplorer
 static bool getAddressFromIndex(
-    ScriptType type, const uint160 &hash, std::string &address)
+    ScriptType type, const uint160 &hash, string &address)
 {
     KeyIO keyIO(Params());
     if (type == ScriptType::P2SH) {
@@ -566,14 +566,14 @@ static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, ScriptTy
         return false;
     if (IsKeyDestination(dest))
     {
-        auto x = std::get_if<CKeyID>(&dest);
+        auto x = get_if<CKeyID>(&dest);
         memcpy(&hashBytes, x->begin(), 20);
         type = ScriptType::P2PKH;
         return true;
     }
     if (IsScriptDestination(dest))
     {
-        auto x = std::get_if<CScriptID>(&dest);
+        auto x = get_if<CScriptID>(&dest);
         memcpy(&hashBytes, x->begin(), 20);
         type = ScriptType::P2SH;
         return true;
@@ -584,7 +584,7 @@ static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, ScriptTy
 // insightexplorer
 static bool getAddressesFromParams(
     const UniValue& params,
-    std::vector<std::pair<uint160, ScriptType>> &addresses)
+    vector<pair<uint160, ScriptType>> &addresses)
 {
     v_strings param_addresses;
     if (params[0].isStr()) {
@@ -609,16 +609,16 @@ static bool getAddressesFromParams(
         ScriptType type = ScriptType::UNKNOWN;
         if (!getIndexKey(address, hashBytes, type))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address" + params[0].get_str());
-        addresses.push_back(std::make_pair(std::move(hashBytes), std::move(type)));
+        addresses.push_back(make_pair(move(hashBytes), move(type)));
     }
     return true;
 }
 
 UniValue getaddressmempool(const UniValue& params, bool fHelp)
 {
-    const std::string enableArg = "insightexplorer";
+    const string enableArg = "insightexplorer";
     const bool fEnableGetAddressMempool = fExperimentalMode && fInsightExplorer;
-    std::string disabledMsg = "";
+    string disabledMsg = "";
     if (!fEnableGetAddressMempool) {
         disabledMsg = experimentalDisabledHelpMsg("getaddressmempool", enableArg);
     }
@@ -661,28 +661,28 @@ Examples:)"
             "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
     }
 
-    std::vector<std::pair<uint160, ScriptType>> addresses;
+    vector<pair<uint160, ScriptType>> addresses;
 
     if (!getAddressesFromParams(params, addresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>> indexes;
+    vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>> indexes;
     mempool.getAddressIndex(addresses, indexes);
-    std::sort(indexes.begin(), indexes.end(),
-        [](const std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>& a,
-           const std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>& b) -> bool {
+    sort(indexes.begin(), indexes.end(),
+        [](const pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>& a,
+           const pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>& b) -> bool {
                return a.second.time < b.second.time;
            });
 
     UniValue result(UniValue::VARR);
 
     for (const auto& it : indexes) {
-        std::string address;
+        string address;
         if (!getAddressFromIndex(it.first.type, it.first.addressBytes, address)) {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
         }
         UniValue delta(UniValue::VOBJ);
-        delta.pushKV("address", std::move(address));
+        delta.pushKV("address", move(address));
         delta.pushKV("txid", it.first.txhash.GetHex());
         delta.pushKV("index", (int)it.first.index);
         delta.pushKV("patoshis", it.second.amount);
@@ -691,7 +691,7 @@ Examples:)"
             delta.pushKV("prevtxid", it.second.prevhash.GetHex());
             delta.pushKV("prevout", (int)it.second.prevout);
         }
-        result.push_back(std::move(delta));
+        result.push_back(move(delta));
     }
     return result;
 }

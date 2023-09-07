@@ -131,7 +131,7 @@ TEST_F(TestRpcWallet1, rpc_wallet)
     CPubKey demoPubkey = pwalletMain->GenerateNewKey();
     CTxDestination demoAddress(CTxDestination(demoPubkey.GetID()));
     UniValue retValue;
-    string strAccount = "";
+    string strAccount;
     string strPurpose = "receive";
     EXPECT_NO_THROW({ /*Initialize Wallet with an account */
         CWalletDB walletdb(pwalletMain->strWalletFile);
