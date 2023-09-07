@@ -171,7 +171,8 @@ TEST_F(TestRpc, rpc_rawsign)
 
 TEST_F(TestRpc, help)
 {
-    EXPECT_THROW(CallRPC("help"), runtime_error);
+    UniValue r = CallRPC("help");
+    EXPECT_TRUE(r.isStr() && !r.getValStr().empty());
 }
 
 class PTestRpc : public TestWithParam<tuple<CAmount, string>>
