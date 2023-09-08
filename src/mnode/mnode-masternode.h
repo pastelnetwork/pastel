@@ -112,8 +112,7 @@ public:
     // Check that MN was pinged within nSeconds
     bool IsPingedWithin(const int nSeconds, const int64_t nTimeToCheckAt) const noexcept
     {
-        return nTimeToCheckAt >= m_sigTime ?
-            nTimeToCheckAt - m_sigTime < nSeconds : false;
+        return abs(nTimeToCheckAt - m_sigTime) < nSeconds;
     }
     bool IsPingedAfter(const int64_t nSigTime) const noexcept
     {
