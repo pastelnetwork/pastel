@@ -909,7 +909,8 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
         if (!masterNodeCtrl.masternodeSync.IsBlockchainSynced())
             return;
 
-        LogFnPrint("masternode", "MNANNOUNCE -- Masternode announce (%s), masternode=%s", strCommand, mnb.GetDesc());
+        LogFnPrint("masternode", "MNANNOUNCE -- Masternode announce (%s), masternode=%s, peer=%d",
+            strCommand, mnb.GetDesc(), pfrom->id);
 
         int nDos = 0;
         if (CheckMnbAndUpdateMasternodeList(pfrom, mnb, nDos))
@@ -931,7 +932,8 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
         if (!masterNodeCtrl.masternodeSync.IsBlockchainSynced())
             return;
 
-        LogFnPrint("masternode", "MNPING -- Masternode ping (%s), masternode=%s", strCommand, mnp.GetDesc());
+        LogFnPrint("masternode", "MNPING -- Masternode ping (%s), masternode=%s (%" PRId64 " secs old), peer=%d",
+            strCommand, mnp.GetDesc(), mnp.getAgeInSecs(), pfrom->id);
 
         // Need LOCK2 here to ensure consistent locking order because the CheckAndUpdate call below locks cs_main
         LOCK2(cs_main, cs_mnMgr);
@@ -973,7 +975,8 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
         CTxIn vin;
         vRecv >> vin;
 
-        LogFnPrint("masternode", "DSEG -- Masternode list (%s), masternode=%s", strCommand, vin.prevout.ToStringShort());
+        LogFnPrint("masternode", "DSEG -- Masternode list (%s), masternode=%s, peer=%d",
+            strCommand, vin.prevout.ToStringShort(), pfrom->id);
 
         LOCK(cs_mnMgr);
 
