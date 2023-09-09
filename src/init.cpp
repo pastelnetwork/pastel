@@ -8,8 +8,9 @@
 #include "config/bitcoin-config.h"
 #endif
 
-#include <stdint.h>
-#include <stdio.h>
+#include <cstdint>
+#include <cstdio>
+
 #include <unistd.h>
 #ifndef WIN32
 #include <signal.h>
@@ -17,6 +18,7 @@
 
 #include <libsnark/common/profiling.hpp>
 #include <openssl/opensslv.h>
+#include <boost/interprocess/sync/file_lock.hpp>
 
 #if ENABLE_ZMQ
 #include <zmq/zmqnotificationinterface.h>
@@ -63,9 +65,6 @@
 #endif
 #include <mnode/mnode-controller.h>
 #include <port_config.h>
-
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/interprocess/sync/file_lock.hpp>
 #include <script_check.h>
 #include <orphan-tx.h>
 #include <netmsg/netconsts.h>
@@ -868,7 +867,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     }
 
     // Set this early so that parameter interactions go to console
-    fPrintToConsole = GetBoolArg("-printtoconsole", false);
+    string error;
+    if (!SetPrintToConsoleMode(error))
+        return InitError(error);
     fLogTimestamps = GetBoolArg("-logtimestamps", true);
     fLogIPs = GetBoolArg("-logips", false);
 
@@ -1221,7 +1222,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     if (!chainparams.IsRegTest() &&
             GetBoolArg("-showmetrics", isatty(STDOUT_FILENO)) &&
-            !fPrintToConsole && !GetBoolArg("-daemon", false)) {
+            !IsPrintToConsole() && !GetBoolArg("-daemon", false)) {
         // Start the persistent metrics interface
         ConnectMetricsScreen();
         threadGroup.add_func_thread("metrics", ThreadShowMetricsScreen);

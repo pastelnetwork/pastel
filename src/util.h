@@ -45,7 +45,6 @@ public:
 extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
 extern bool fDebug;
-extern bool fPrintToConsole;
 extern bool fPrintToDebugLog;
 extern bool fServer;
 extern std::string strMiscWarning;
@@ -323,6 +322,9 @@ public:
         return ((static_cast<int64_t>(nRw) << 16) + nRz) % nMax;
     }
 };
+
+bool SetPrintToConsoleMode(std::string &error);
+bool IsPrintToConsole() noexcept;
 
 template <typename _T>
 inline void safe_delete_obj(_T*& obj)

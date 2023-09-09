@@ -90,7 +90,13 @@ using namespace std;
 m_strings mapArgs;
 map<string, v_strings> mapMultiArgs;
 bool fDebug = false;
-bool fPrintToConsole = false;
+/**
+ * Print to console modes:
+ * 0 - do not print anything to console
+ * 1 - print only to console
+ * 2 - print to console and debug.log
+ */
+atomic_uint32_t gl_nPrintToConsoleMode = 0;
 bool fPrintToDebugLog = true;
 bool fDaemon = false;
 bool fServer = false;
@@ -140,6 +146,58 @@ static list<string> *vMsgsBeforeOpenLog;
     // The log was successful, terminate now.
     terminate();
 };
+
+/**
+ * Set print-to-console mode gl_nPrintToConsoleMode.
+ * Supported modes:
+ *   0 - do not print anything to console
+ *   1 - print only to console
+ *   2 - print to console and debug.log
+ * 
+ * \param error - error message if the function fails
+ * \return true if the function succeeds, false otherwise
+ */
+bool SetPrintToConsoleMode(string &error)
+{
+     string sPrintToConsoleMode = GetArg("-printtoconsole", "0");
+     string sConversionErrorMsg;
+     bool bConversionError = false;
+     try
+     {
+         const int nPrintToConsoleMode = stoi(sPrintToConsoleMode);
+
+         // Check if the mode is valid
+         if (nPrintToConsoleMode < 0 || nPrintToConsoleMode > 2)
+		 {
+			 error = translate(strprintf("-printtoconsole option value [%s] is invalid. Supported values are: 0, 1, or 2.",
+                 				 sPrintToConsoleMode).c_str());
+			 return false;
+		 }
+         // Set the mode
+		 gl_nPrintToConsoleMode = nPrintToConsoleMode;
+
+     } catch (const invalid_argument &e1)
+	 {
+         sConversionErrorMsg = SAFE_SZ(e1.what());
+         bConversionError = true;
+     } catch (const out_of_range& e2)
+     {
+         sConversionErrorMsg = SAFE_SZ(e2.what());
+         bConversionError = true;
+     }
+     if (bConversionError)
+     {
+         error = translate(strprintf("-printtoconsole option value [%s] is invalid - %s. Supported values are: 0, 1, or 2.",
+             sPrintToConsoleMode, sConversionErrorMsg).c_str());
+         return false;
+     }
+     return true;
+}
+
+bool IsPrintToConsole() noexcept
+{
+    return gl_nPrintToConsoleMode > 0;
+}
 
 static size_t FileWriteStr(const string &str, FILE *fp)
 {
@@ -297,13 +355,14 @@ size_t LogPrintStr(const string &str)
 {
     size_t nCharsWritten = 0; // Returns total number of characters written
     static bool fStartedNewLine = true;
-    if (fPrintToConsole)
+    const uint32_t nPrintToConsoleMode = gl_nPrintToConsoleMode;
+    if (nPrintToConsoleMode > 0)
     {
         // print to console
         nCharsWritten = fwrite(str.data(), 1, str.size(), stdout);
         fflush(stdout);
     }
-    else if (fPrintToDebugLog)
+    if (fPrintToDebugLog && (nPrintToConsoleMode != 1))
     {
         call_once(debugPrintInitFlag, &DebugPrintInit);
         scoped_lock scoped_lock(*mutexDebugLog);
