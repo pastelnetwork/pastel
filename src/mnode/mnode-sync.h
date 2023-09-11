@@ -55,6 +55,8 @@ private:
 
     int64_t nTimeLastProcess;
 
+    int64_t nTimeIBDDone;
+
 
     void Fail();
     void ClearFulfilledRequests();
