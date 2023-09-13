@@ -179,7 +179,6 @@ bool CBlockIndex::UpdateChainValues()
 
 /**
  * Update tx count, chain values for this block and all descendants.
- * 
  */
 void CBlockIndex::UpdateChainTx()
 {

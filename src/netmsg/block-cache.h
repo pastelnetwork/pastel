@@ -10,11 +10,6 @@
 #include <chainparams.h>
 #include <net.h>
 
-// max number of attempts to revalidate cached block
-inline constexpr uint32_t MAX_REVALIDATION_COUNT = 20;
-// time in secs cached block should wait in a cache for the revalidation attempt
-inline constexpr time_t BLOCK_REVALIDATION_WAIT_TIME = 3;
-
 /**
  * Class to use for temporary block cache.
  * Blocks received from the nodes concurrently.
@@ -31,7 +26,7 @@ public:
     CBlockCache() noexcept;
 
     // add block to cache for revalidation
-    bool add_block(const uint256& hash, const NodeId& nodeId, const TxOrigin txOrigin, CBlock && block) noexcept;
+    void add_block(const uint256& hash, const NodeId& nodeId, const TxOrigin txOrigin, CBlock && block) noexcept;
     // try to revalidate cached blocks
     size_t revalidate_blocks(const CChainParams& chainparams);
     // get number of blocks in a cache
@@ -85,9 +80,6 @@ protected:
         }
     } BLOCK_CACHE_ITEM;
 
-    // process next block after revalidation
-    bool ProcessNextBlock(const uint256& hash);
-
      /**
      * if true - processing cached blocks.
      * block cache revalidation can be called concurrently from multiple threads,
@@ -100,4 +92,17 @@ protected:
 	std::unordered_map<uint256, BLOCK_CACHE_ITEM> m_BlockCacheMap;
     // blocks to add to unlinked map <cached_block_hash> -> <next block hash>
     std::unordered_multimap<uint256, uint256> m_UnlinkedMap;
+    // time in secs cached block has to wait in the cache for the next revalidation attempt
+    // default min startup value is 3 secs (MIN_BLOCK_REVALIDATION_WAIT_TIME_SECS)
+    time_t m_nBlockRevalidationWaitTime;
+    time_t m_nRevalidationMonitorInterval;
+    size_t m_nLastCheckedCacheSize;
+    time_t m_nLastCacheAdjustmentTime;
+
+    // process next block after revalidation
+    bool ProcessNextBlock(const uint256& hash);
+    // adjust block revalidation wait time
+    void AdjustBlockRevalidationWaitTime();
+    // cleanup unlinked map
+    void CleanupUnlinkedMap(const uint256& hash);
 };
