@@ -8,6 +8,8 @@
 #include <main.h>
 #include <netmsg/nodemanager.h>
 
+#include "accept_to_mempool.h"
+
 #include <mnode/mnode-sync.h>
 #include <mnode/mnode-manager.h>
 #include <mnode/mnode-controller.h>
@@ -36,6 +38,7 @@ void CMasternodeSync::Reset()
     nTimeLastBumped = GetTime();
     nTimeLastFailure = 0;
     nTimeLastProcess = 0;
+    nTimeIBDDone = 0;
 }
 
 void CMasternodeSync::BumpAssetLastTime(const std::string &strMethodName, const std::string &strFuncName)
@@ -181,7 +184,7 @@ bool CMasternodeSync::CheckSyncTimeout(int nTick, node_vector_t &vNodesCopy)
             return false;
         }
         SwitchToNextAsset();
-    }    
+    }
     return true;
 }
 
@@ -216,6 +219,23 @@ void CMasternodeSync::ProcessTick()
 
     if (IsSynced())
         return;
+
+    if (IsInitial()) {
+        const auto& chainparams = Params();
+        const auto& consensusParams = chainparams.GetConsensus();
+        const bool fInitialDownload = fnIsInitialBlockDownload(consensusParams);
+        if (!fInitialDownload) {
+            if (nTimeIBDDone == 0) {
+                nTimeIBDDone = GetTime();
+            } else if (nTimeIBDDone + (10*60) > GetTime()){
+                LogFnPrintf(
+                        "WARNING: Stuck in Initial state for too long (10min) after Initial Block Download done, restarting sync...");
+                Reset();
+                SwitchToNextAsset();
+                return;
+            }
+        }
+    }
 
     // Calculate "progress" for LOG reporting / GUI notification
     double nSyncProgress = double(nRequestedMasternodeAttempt + (int)syncState * 8) / (8*4);
