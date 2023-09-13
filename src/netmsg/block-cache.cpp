@@ -12,8 +12,6 @@
 
 using namespace std;
 
-// max number of attempts to revalidate cached block
-constexpr uint32_t MAX_REVALIDATION_COUNT = 20;
 // min time in secs cached block should wait in a cache for the revalidation attempt
 constexpr time_t MIN_BLOCK_REVALIDATION_WAIT_TIME_SECS = 3;
 // max time in secs cached block should wait in a cache for the revalidation attempt
@@ -49,7 +47,6 @@ void CBlockCache::add_block(const uint256& hash, const NodeId& nodeId, const TxO
     if (it != m_BlockCacheMap.end())
     {
         // we have already this block in a cache
-        // just reset revalidation counter
         it->second.Added();
         LogFnPrint("net", "block %s already exists in a revalidation cache, peer=%d", hash.ToString(), nodeId);
         return;
