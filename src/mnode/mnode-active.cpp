@@ -109,7 +109,7 @@ bool CActiveMasternode::SendMasternodePing()
     // Update lastPing for our masternode in Masternode list
     if (masterNodeCtrl.masternodeManager.IsMasternodePingedWithin(outpoint, masterNodeCtrl.MasternodeMinMNPSeconds, mnp.getSigTime()))
     {
-        LogFnPrintf("Too early to send Masternode Ping");
+        LogFnPrintf("Too early to send Masternode Ping - last ping within %d secs", masterNodeCtrl.MasternodeMinMNPSeconds);
         return false;
     }
 

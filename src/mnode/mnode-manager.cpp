@@ -1884,12 +1884,16 @@ void CMasternodeMan::CheckMasternode(const CPubKey& pubKeyMasternode, bool fForc
     }
 }
 
-bool CMasternodeMan::IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt)
+bool CMasternodeMan::IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt, string *psReason)
 {
     LOCK(cs_mnMgr);
 
-    auto pmn = Find(outpoint);
-    return pmn ? pmn->IsPingedWithin(nSeconds, nTimeToCheckAt) : false;
+    const auto pmn = Find(outpoint);
+    if (pmn)
+        return pmn->IsPingedWithin(nSeconds, nTimeToCheckAt, psReason);
+    if (psReason)
+        *psReason = strprintf("masternode not found by outpoint %s", outpoint.ToStringShort());
+    return false;
 }
 
 void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMasterNodePing& mnp)

@@ -281,7 +281,8 @@ public:
 
     void CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce);
 
-    bool IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt = -1);
+    bool IsMasternodePingedWithin(const COutPoint& outpoint, const int nSeconds, 
+        int64_t nTimeToCheckAt = -1, std::string *psReason = nullptr);
     void SetMasternodeLastPing(const COutPoint& outpoint, const CMasterNodePing& mnp);
 
     void SetMasternodeFee(const COutPoint& outpoint, const MN_FEE mnFeeType, const CAmount newFee);
