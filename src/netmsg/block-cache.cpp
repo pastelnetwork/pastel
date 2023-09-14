@@ -1,6 +1,8 @@
 // Copyright (c) 2022-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cinttypes>
+
 #include <consensus/validation.h>
 #include <scope_guard.hpp>
 #include <main.h>
@@ -10,28 +12,44 @@
 
 using namespace std;
 
+// min time in secs cached block should wait in a cache for the revalidation attempt
+constexpr time_t MIN_BLOCK_REVALIDATION_WAIT_TIME_SECS = 3;
+// max time in secs cached block should wait in a cache for the revalidation attempt
+constexpr time_t MAX_BLOCK_REVALIDATION_WAIT_TIME_SECS = 21;
+// current wait time delta in secs for the cached block revalidation attempt
+constexpr time_t DELTA_BLOCK_REVALIDATION_WAIT_TIME_SECS = 3;
+// default interval in secs to monitor cached blocks for revalidation
+constexpr time_t DEFAULT_REVALIDATION_MONITOR_INTERVAL = 30;
+// block in cache expiration time in secs
+constexpr time_t BLOCK_IN_CACHE_EXPIRATION_TIME_IN_SECS = 60 * 60; // 1 hour
+
 CBlockCache::CBlockCache() noexcept : 
-    m_bProcessing(false)
+    m_bProcessing(false),
+    m_nBlockRevalidationWaitTime(MIN_BLOCK_REVALIDATION_WAIT_TIME_SECS),
+    m_nRevalidationMonitorInterval(DEFAULT_REVALIDATION_MONITOR_INTERVAL),
+    m_nLastCheckedCacheSize(0),
+    m_nLastCacheAdjustmentTime(0)
 {}
 
 /**
  * Add block to the cache.
+ * Monitor cache size and adjust revalidation wait time if needed.
  * 
  * \param nodeId - id of the node the block was received from
  * \param block that failed validation and has to be revalidated later
  * \return true if block was added to the cache map
  *         false if block already exists in a map
   */
-bool CBlockCache::add_block(const uint256& hash, const NodeId& nodeId, const TxOrigin txOrigin, CBlock&& block) noexcept
+void CBlockCache::add_block(const uint256& hash, const NodeId& nodeId, const TxOrigin txOrigin, CBlock&& block) noexcept
 {
     unique_lock<mutex> lck(m_CacheMapLock);
     auto it = m_BlockCacheMap.find(hash);
     if (it != m_BlockCacheMap.end())
     {
         // we have already this block in a cache
-        // just reset revalidation counter
         it->second.Added();
-        return false;
+        LogFnPrint("net", "block %s already exists in a revalidation cache, peer=%d", hash.ToString(), nodeId);
+        return;
     }
     uint32_t nBlockHeight = 0;
     {
@@ -48,7 +66,53 @@ bool CBlockCache::add_block(const uint256& hash, const NodeId& nodeId, const TxO
         }
     }
     m_BlockCacheMap.emplace(hash, BLOCK_CACHE_ITEM(nodeId, nBlockHeight, txOrigin, move(block)));
-    return true;
+
+    // monitor cache size and adjust revalidation wait time if needed
+    time_t nCurrentTime = time(nullptr);
+    if (!m_nLastCacheAdjustmentTime)
+        m_nLastCacheAdjustmentTime = nCurrentTime;
+    else if (difftime(nCurrentTime, m_nLastCacheAdjustmentTime) > m_nRevalidationMonitorInterval)
+    {
+        AdjustBlockRevalidationWaitTime();
+        m_nLastCacheAdjustmentTime = nCurrentTime;
+    }
+                
+    LogFnPrintf("block %s cached for revalidation, peer=%d", hash.ToString(), nodeId);
+}
+
+/**
+ * Adjust block revalidation wait time.
+ * Should be called under m_CacheMapLock.
+ */
+void CBlockCache::AdjustBlockRevalidationWaitTime()
+{
+    const size_t nCurrentCacheSize = m_BlockCacheMap.size();
+    const int nRateOfCacheSizeChange = static_cast<int>(nCurrentCacheSize - m_nLastCheckedCacheSize);
+
+    const time_t nPrevBlockRevalidationWaitTime = m_nBlockRevalidationWaitTime;
+    if (nRateOfCacheSizeChange > 20) // rapid growth of cache size
+    {
+        m_nBlockRevalidationWaitTime += DELTA_BLOCK_REVALIDATION_WAIT_TIME_SECS * 2;
+        m_nRevalidationMonitorInterval = DEFAULT_REVALIDATION_MONITOR_INTERVAL / 6; // fast reaction time
+    }
+    else if (nRateOfCacheSizeChange > 5 && nRateOfCacheSizeChange <= 20) // moderate growth
+    {
+        m_nBlockRevalidationWaitTime += DELTA_BLOCK_REVALIDATION_WAIT_TIME_SECS;
+        m_nRevalidationMonitorInterval = DEFAULT_REVALIDATION_MONITOR_INTERVAL / 2;
+    }
+    else if (nRateOfCacheSizeChange < 0) // decrease of cache size
+    {
+        m_nBlockRevalidationWaitTime -= DELTA_BLOCK_REVALIDATION_WAIT_TIME_SECS;
+        m_nRevalidationMonitorInterval = DEFAULT_REVALIDATION_MONITOR_INTERVAL;
+    }
+
+    if (m_nBlockRevalidationWaitTime > MAX_BLOCK_REVALIDATION_WAIT_TIME_SECS)
+        m_nBlockRevalidationWaitTime = MAX_BLOCK_REVALIDATION_WAIT_TIME_SECS;
+    else if (m_nBlockRevalidationWaitTime < MIN_BLOCK_REVALIDATION_WAIT_TIME_SECS)
+        m_nBlockRevalidationWaitTime = MIN_BLOCK_REVALIDATION_WAIT_TIME_SECS;
+    if (nPrevBlockRevalidationWaitTime != m_nBlockRevalidationWaitTime )
+        LogFnPrint("net", "block revalidation wait time adjusted to %" PRId64 " secs", m_nBlockRevalidationWaitTime);
+    m_nLastCheckedCacheSize = nCurrentCacheSize;
 }
 
 /**
@@ -86,16 +150,44 @@ bool CBlockCache::ProcessNextBlock(const uint256 &hash)
 }
 
 /**
- * Try to revalidate cached blocks from m_BlockCacheMap.
- * Blocks are revalidated only after waiting BLOCK_REVALIDATION_WAIT_TIME secs in a cache.
+ * Erase from m_UnlinkedMap all blocks that are linked to the gived block with hash.
+ * Should be called under m_CacheMapLock.
  * 
- * \param chainparams
- * \return 
+ * \param hash - hash of the block to erase
+ */
+void CBlockCache::CleanupUnlinkedMap(const uint256& hash)
+{
+    for (auto it = m_UnlinkedMap.begin(); it != m_UnlinkedMap.end(); )
+    {
+        if (it->second == hash)
+            it = m_UnlinkedMap.erase(it);
+        else
+            ++it;
+    }
+}
+
+/**
+ * Try to revalidate cached blocks from m_BlockCacheMap.
+ * Blocks are revalidated only after waiting m_nBlockRevalidationWaitTime secs in a cache.
+ * 
+ * \param chainparams - chain parameters
+ * \return number of blocks successfully revalidated
  */
 size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
 {
     if (m_bProcessing)
         return 0;
+
+    const auto fnDeleteCacheItems = [this](const char *szFuncName, const v_uint256& vToDelete, const char *szDesc = nullptr)
+    {
+        for (const auto &hash: vToDelete)
+        {
+            m_BlockCacheMap.erase(hash);
+            CleanupUnlinkedMap(hash);
+            if (LogAcceptCategory("net"))
+                LogPrintf("[%s] %sblock %s removed from revalidation cache", SAFE_SZ(szFuncName), SAFE_SZ(szDesc), hash.ToString());
+        }
+	};
     unique_lock<mutex> lck(m_CacheMapLock);
     // make sure this function is called only from one thread
     if (m_bProcessing)
@@ -110,7 +202,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
     // also added blocks without defined node.
     v_uint256 vToDelete;
     // blocks for which revalidation failed with the status other that REJECT_MISSING_INPUTS
-    v_uint256 vRejected; 
+    v_uint256 vRejected;
     static const string strCommand("block"); // for PushMessage serialization
     string sHash; // block hash
     time_t nNow = time(nullptr);
@@ -122,16 +214,18 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         // skip items that being processed
         if (item.bRevalidating)
             continue;
-        // block should be revalidated only after BLOCK_REVALIDATION_WAIT_TIME secs
+        // block should be revalidated only after m_nBlockRevalidationWaitTime secs
         // from either last revalidation attempt or time the block was cached
-        if (difftime(nNow, item.GetLastUpdateTime()) < BLOCK_REVALIDATION_WAIT_TIME)
+        // this wait time is adjusted dynamically based on the cache size change rate
+        if (difftime(nNow, item.GetLastUpdateTime()) < m_nBlockRevalidationWaitTime)
             continue;
 
         // get the node from which the cached block was downloaded
         const node_t pfrom = gl_NodeManager.FindNode(item.nodeId);
         if (!pfrom)
         {
-            LogFnPrintf("could not find node by peer id=%d for block %s", item.nodeId, hash.ToString());
+            LogFnPrintf("could not find node by peer id=%d for block %s (height=%u)",
+                item.nodeId, hash.ToString(), item.nBlockHeight);
             vToDelete.push_back(hash);
             continue;
         }
@@ -149,14 +243,51 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         // insert the tuple at the correct position
         vToRevalidate.insert(insertionPoint, blockTuple);
     }
+    // blocks in vToRevalidate are sorted by height in ascending order
+    // if height of the first block is greater than current chain height by more than 1
+    // then this block and all subsequent blocks have no chance to be revalidated
+    uint32_t nCurrentHeight = gl_nChainHeight;
+    if (!vToRevalidate.empty() && get<2>(vToRevalidate.front())->nBlockHeight > nCurrentHeight + 1)
+    {
+        fnDeleteCacheItems(__METHOD_NAME__, vToDelete, "orphan ");
+        return 0;
+    }
+
     // try to revalidate blocks
     for (auto& [hash, pfrom, pItem] : vToRevalidate)
     {
         sHash = hash.ToString();
         CValidationState state(pItem->txOrigin);
+        uint32_t nBlockHeight = pItem->nBlockHeight;
+        nCurrentHeight = gl_nChainHeight;
+
         // revalidation attempt counter
         ++pItem->nValidationCounter;
-        uint32_t nBlockHeight = pItem->nBlockHeight;
+        // chain can be rolled back and this block become obsolete
+        // so check if block height is less than the current chain height
+        if (nBlockHeight < nCurrentHeight)
+        {
+			LogFnPrintf("block %s height %u is less than current chain height %u",
+				sHash, nBlockHeight, nCurrentHeight);
+			vToDelete.push_back(hash);
+			continue;
+		}
+        if (nBlockHeight == nCurrentHeight)
+        {
+            // block is at the tip of the chain, so it is probably downloaded from another peer
+            // and we should not revalidate it
+            LogFnPrintf("block %s (height=%u) is at the tip of the chain, skip revalidation", sHash, nBlockHeight);
+            vToDelete.push_back(hash);
+            // process next potential blocks to be included into blockchain
+            // blocks with prevBlockHash==hash are added to the multimap cache
+            if (ProcessNextBlock(hash))
+            {
+                reverse_lock<unique_lock<mutex> > rlock(lck);
+                CValidationState state1(state.getTxOrigin());
+                ActivateBestChain(state1, chainparams);
+            }
+            continue;
+        }
         {
             LOCK(cs_main);
             // reconsider this block
@@ -186,25 +317,27 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         }
         int nDoS = 0; // denial-of-service code
         bool bReject = false;
-        if (state.IsRejectCode(REJECT_MISSING_INPUTS))
+        const bool bIsMissingInputs = state.IsRejectCode(REJECT_MISSING_INPUTS);
+        if (bIsMissingInputs) // block failed revalidation
         {
-            // block failed revalidation again
-            // increase revalidation counter and try again after some time
-            if (pItem->nValidationCounter < MAX_REVALIDATION_COUNT)
+            // update time of the last revalidation attempt
+            pItem->nTimeValidated = time(nullptr);
+            // clear revalidating flag for this item to be processed again
+            pItem->bRevalidating = false;
+
+            // check if the block is expired - then we have to reject it
+            const double fBlockInCacheTime = difftime(nNow, pItem->nTimeAdded);
+            if (fBlockInCacheTime >= BLOCK_IN_CACHE_EXPIRATION_TIME_IN_SECS)
             {
-                pItem->nTimeValidated = time(nullptr);
-                // clear revalidating flag for this item to be processed again
-                pItem->bRevalidating = false;
-                continue;
+                LogFnPrintf("block %s (height %u) from peer=%d expired in revalidation cache (%zu secs)",
+                    sHash, nBlockHeight, pItem->nodeId, static_cast<size_t>(fBlockInCacheTime));
+                nDoS = 10;
+                bReject = true;
             }
-            LogFnPrintf("max revalidation attempts reached (%u) for block %s (height %u) from peer=%d",
-                MAX_REVALIDATION_COUNT, sHash, nBlockHeight, pItem->nodeId);
-            nDoS = 10;
-            // we have to reject the block - max number of revalidation attempts has been reached
-            bReject = true;
         } 
         else
             bReject = state.IsInvalid(nDoS);
+
         if (bReject)
         {
             // send rejection message to the same peer
@@ -215,12 +348,10 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
             // add block hash to rejected array to be removed later from the cached map
             vRejected.push_back(hash);
         }
-        else
+        else if (!bIsMissingInputs)
         {
-            LogFnPrintf("block %s revalidated at height %u, peer=%d", sHash, nBlockHeight, pItem->nodeId);
-            // we have successfully processed this block and can safely remove it from the cache map
-            vToDelete.push_back(hash);
-            ++nCount;
+            // we have successfully revalidated this block
+            LogFnPrintf("block %s (height=%u) revalidated, peer=%d", sHash, nBlockHeight, pItem->nodeId);
 
             // process next potential blocks to be included into blockchain
             // blocks with prevBlockHash==hash are added to the multimap cache
@@ -230,20 +361,29 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
                 CValidationState state1(state.getTxOrigin());
                 ActivateBestChain(state1, chainparams);
             }
+            if (gl_nChainHeight >= nBlockHeight)
+            {
+                // chain tip height is greater than or equal to the revalidated block height
+                // that means the block was included into the blockchain
+                // and we can safely remove it from the cache map
+                LogFnPrintf("block %s (height=%u) was included into the blockchain, removing from cache",
+                    sHash, nBlockHeight);
+                vToDelete.push_back(hash);
+                ++nCount;
+            }
+            else
+            {
+                LogFnPrintf("block %s (height=%u) was revalidated, but not included yet into the blockchain, keeping in cache");
+                // update time of the last revalidation attempt
+                pItem->nTimeValidated = time(nullptr);
+                // clear revalidating flag for this item to be processed again
+                pItem->bRevalidating = false;
+            }
         } 
     }
-    // delete processed blocks
-    for (const auto &hash: vToDelete)
-    {
-        m_BlockCacheMap.erase(hash);
-        LogFnPrint("net", "block %s removed from revalidation cache", hash.ToString());
-    }
-    // delete rejected blocks
-    for (const auto &hash : vRejected)
-    {
-        m_BlockCacheMap.erase(hash);
-        LogFnPrint("net", "rejected block %s removed from revalidation cache", hash.ToString());
-    }
+
+    fnDeleteCacheItems(__METHOD_NAME__, vToDelete);  // delete processed blocks
+    fnDeleteCacheItems(__METHOD_NAME__, vRejected, "rejected "); // delete rejected blocks
     return nCount;
 }
 

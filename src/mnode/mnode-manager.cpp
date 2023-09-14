@@ -346,29 +346,62 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
     }
 }
 
-void CMasternodeMan::ClearCache(bool clearMnList, bool clearSeenLists, bool clearRecoveryLists, bool clearAskedLists)
+set<MNCacheItem> getAllMNCacheItems() noexcept
 {
-    LOCK_COND(clearMnList || clearSeenLists || clearRecoveryLists || clearAskedLists, cs_mnMgr);
-    if (clearMnList)
-        mapMasternodes.clear();
+    set<MNCacheItem> setCacheItems;
+    for (int i = 0; i < to_integral_type(MNCacheItem::COUNT); ++i)
+		setCacheItems.insert(static_cast<MNCacheItem>(i));
+    return setCacheItems;
+}
 
-    if (clearSeenLists)
+void CMasternodeMan::ClearCache(const std::set<MNCacheItem> &setCacheItems)
+{
+    LOCK_COND(!setCacheItems.empty(), cs_mnMgr);
+
+    if (setCacheItems.count(MNCacheItem::MN_LIST))
+    {
+        mapMasternodes.clear();
+        LogFnPrintf("Cleared Masternode list cache");
+    }
+    if (setCacheItems.count(MNCacheItem::SEEN_MN_BROADCAST))
     {
         mapSeenMasternodeBroadcast.clear();
-        mapSeenMasternodePing.clear();
+        LogFnPrintf("Cleared Masternode broadcast cache");
     }
-
-    if (clearRecoveryLists)
+    if (setCacheItems.count(MNCacheItem::SEEN_MN_PING))
+    {
+        mapSeenMasternodePing.clear();
+        LogFnPrintf("Cleared Masternode ping cache");
+    }
+    if (setCacheItems.count(MNCacheItem::RECOVERY_REQUESTS))
     {
         mMnbRecoveryRequests.clear();
-        mMnbRecoveryGoodReplies.clear();
+        LogFnPrintf("Cleared Masternode recovery requests cache");
     }
-
-    if (clearAskedLists)
+    if (setCacheItems.count(MNCacheItem::RECOVERY_GOOD_REPLIES))
+    {
+        mMnbRecoveryGoodReplies.clear();
+        LogFnPrintf("Cleared Masternode recovery good replies cache");
+    }
+    if (setCacheItems.count(MNCacheItem::ASKED_US_FOR_MN_LIST))
     {
         mAskedUsForMasternodeList.clear();
+        LogFnPrintf("Cleared Masternode asked us for list cache");
+    }
+    if (setCacheItems.count(MNCacheItem::WE_ASKED_FOR_MN_LIST))
+    {
         mWeAskedForMasternodeList.clear();
+        LogFnPrintf("Cleared Masternode we asked for list cache");
+    }
+    if (setCacheItems.count(MNCacheItem::WE_ASKED_FOR_MN_LIST_ENTRY))
+    {
         mWeAskedForMasternodeListEntry.clear();
+        LogFnPrintf("Cleared Masternode we asked for list entry cache");
+    }
+    if (setCacheItems.count(MNCacheItem::HISTORICAL_TOP_MNS))
+    {
+        mapHistoricalTopMNs.clear();
+        LogFnPrintf("Cleared Masternode historical top MNs cache");
     }
 }
 
@@ -1851,12 +1884,16 @@ void CMasternodeMan::CheckMasternode(const CPubKey& pubKeyMasternode, bool fForc
     }
 }
 
-bool CMasternodeMan::IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt)
+bool CMasternodeMan::IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt, string *psReason)
 {
     LOCK(cs_mnMgr);
 
-    auto pmn = Find(outpoint);
-    return pmn ? pmn->IsPingedWithin(nSeconds, nTimeToCheckAt) : false;
+    const auto pmn = Find(outpoint);
+    if (pmn)
+        return pmn->IsPingedWithin(nSeconds, nTimeToCheckAt, psReason);
+    if (psReason)
+        *psReason = strprintf("masternode not found by outpoint %s", outpoint.ToStringShort());
+    return false;
 }
 
 void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMasterNodePing& mnp)
@@ -1928,6 +1965,7 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
  * \param error - error message
  * \param topMNs - vector of top masternodes
  * \param nBlockHeight - block height
+ * \param bSkipValidCheck - skip masternode valid for payment check
  * \return - status of the operation
  */
 GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, masternode_vector_t &topMNs, int nBlockHeight, bool bSkipValidCheck)

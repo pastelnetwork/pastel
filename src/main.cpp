@@ -2757,7 +2757,7 @@ bool AcceptBlockHeader(
             return state.Invalid(error("%s: block (height=%d) is marked invalid", __func__, pindex->nHeight), 0, "duplicate");
         // if previous block has failed contextual validation - add it to unlinked block map as well
         if (gl_BlockCache.check_prev_block(pindex))
-            LogPrint("net", "block %s (height=%d) added to cached unlinked map\n", hash.ToString(), pindex->nHeight);
+            LogFnPrint("net", "block %s (height=%d) added to cached unlinked map", hash.ToString(), pindex->nHeight);
         return true;
     }
 
@@ -4893,13 +4893,8 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
         // some input transactions may be missing for this block, in this case ProcessNewBlock 
         // will set rejection code REJECT_MISSING_INPUTS.
         if (state.IsRejectCode(REJECT_MISSING_INPUTS))
-        {
             // add block to cache to revalidate later on periodically
-            if (gl_BlockCache.add_block(inv.hash, pfrom->id, state.getTxOrigin(), move(block)))
-                LogFnPrintf("block %s cached for revalidation, peer=%d", inv.hash.ToString(), pfrom->id);
-            else
-                LogFnPrint("net", "block %s already exists in a revalidation cache, peer=%d", inv.hash.ToString(), pfrom->id);
-        }
+            gl_BlockCache.add_block(inv.hash, pfrom->id, state.getTxOrigin(), move(block));
         else
         {
             int nDoS = 0; // denial-of-service code

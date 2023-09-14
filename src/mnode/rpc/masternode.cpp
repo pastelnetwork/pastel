@@ -961,7 +961,7 @@ UniValue masternode_pose_ban_score(const UniValue& params, const bool fHelp)
 
     if (fHelp || params.size() != 4 || !SCORE.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-            R"(masternode pose-ban-score "command" "txid" index
+R"(masternode pose-ban-score "command" "txid" index
 
 Set of commands to manage PoSe (Proof-Of-Service) ban score for the local Node.
 
@@ -1139,25 +1139,58 @@ UniValue masternode_print_cache(const UniValue& params)
 
 UniValue masternode_clear_cache(const UniValue& params)
 {
+    RPC_CMD_PARSER2(MN_CLEAR_CACHE, params, all, mns, seen, recovery, asked, top__mns);
 
-    RPC_CMD_PARSER2(MN_CLEAR_CACHE, params, all, mns, seen, recovery, asked);
+    if (params.size() < 2 || !MN_CLEAR_CACHE.IsCmdSupported())
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(masternode clear-cache "cache-item"
 
-    switch (MN_CLEAR_CACHE.cmd()) {
+Clear MasterNode cache items.
+
+Arguments:
+   "cache-item"   (string)  (required) The cache item to clear
+ 
+Available cache items:
+  all      - Clear all cache items
+  mns      - Clear masternode list cache
+  seen     - Clear seen masternode cache (broadcasts and pings)
+  recovery - Clear recovery cache (requests and good replies)
+  asked    - Clear asked masternode cache
+  top-mns  - Clear historical top masternodes cache
+
+Examples:
+Clear MasterNode list cache item:
+)" + HelpExampleCli("masternode clear-cache", "mns") + R"(
+As json rpc:
+)" + HelpExampleRpc("masternode clear-cache", "mns")
+);
+
+    switch (MN_CLEAR_CACHE.cmd())
+    {
         case RPC_CMD_MN_CLEAR_CACHE::all:
-            masterNodeCtrl.masternodeManager.ClearCache(true, true, true, true);
+            masterNodeCtrl.masternodeManager.ClearCache(getAllMNCacheItems());
             break;
+
         case RPC_CMD_MN_CLEAR_CACHE::mns:
-            masterNodeCtrl.masternodeManager.ClearCache(true, false, false, false);
+            masterNodeCtrl.masternodeManager.ClearCache({MNCacheItem::MN_LIST});
             break;
+
         case RPC_CMD_MN_CLEAR_CACHE::seen:
-            masterNodeCtrl.masternodeManager.ClearCache(false, true, false, false);
+            masterNodeCtrl.masternodeManager.ClearCache({MNCacheItem::SEEN_MN_BROADCAST, MNCacheItem::SEEN_MN_PING});
             break;
+
         case RPC_CMD_MN_CLEAR_CACHE::recovery:
-            masterNodeCtrl.masternodeManager.ClearCache(false, false, true, false);
+            masterNodeCtrl.masternodeManager.ClearCache({MNCacheItem::RECOVERY_REQUESTS, MNCacheItem::RECOVERY_GOOD_REPLIES});
             break;
+
         case RPC_CMD_MN_CLEAR_CACHE::asked:
-            masterNodeCtrl.masternodeManager.ClearCache(false, false, false, true);
+            masterNodeCtrl.masternodeManager.ClearCache({MNCacheItem::ASKED_US_FOR_MN_LIST, 
+                                                        MNCacheItem::WE_ASKED_FOR_MN_LIST, MNCacheItem::WE_ASKED_FOR_MN_LIST_ENTRY});
             break;
+
+        case RPC_CMD_MN_CLEAR_CACHE::top__mns:
+            masterNodeCtrl.masternodeManager.ClearCache({MNCacheItem::HISTORICAL_TOP_MNS});
+
         default:
             break;
     }

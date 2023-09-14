@@ -30,6 +30,23 @@ enum class GetTopMasterNodeStatus: int
     HISTORY_NOT_FOUND = -5,	    // historical top mn data not found
 };
 
+enum class MNCacheItem : uint8_t
+{
+    MN_LIST = 0,
+    SEEN_MN_BROADCAST,
+    SEEN_MN_PING,
+    RECOVERY_REQUESTS,
+    RECOVERY_GOOD_REPLIES,
+    ASKED_US_FOR_MN_LIST,
+    WE_ASKED_FOR_MN_LIST,
+    WE_ASKED_FOR_MN_LIST_ENTRY,
+    HISTORICAL_TOP_MNS,
+
+    COUNT
+};
+
+std::set<MNCacheItem> getAllMNCacheItems() noexcept;
+
 class CMasternodeMan
 {
 public:
@@ -249,7 +266,7 @@ public:
     std::string ToString() const;
     std::string ToJSON() const;
 
-    void ClearCache(bool clearMnList, bool clearSeenLists, bool clearRecoveryLists, bool clearAskedLists);
+    void ClearCache(const std::set<MNCacheItem> &setCacheItems);
 
     /// Update masternode list and maps using provided CMasternodeBroadcast
     void UpdateMasternodeList(CMasternodeBroadcast &mnb);
@@ -264,7 +281,8 @@ public:
 
     void CheckMasternode(const CPubKey& pubKeyMasternode, bool fForce);
 
-    bool IsMasternodePingedWithin(const COutPoint& outpoint, int nSeconds, int64_t nTimeToCheckAt = -1);
+    bool IsMasternodePingedWithin(const COutPoint& outpoint, const int nSeconds, 
+        int64_t nTimeToCheckAt = -1, std::string *psReason = nullptr);
     void SetMasternodeLastPing(const COutPoint& outpoint, const CMasterNodePing& mnp);
 
     void SetMasternodeFee(const COutPoint& outpoint, const MN_FEE mnFeeType, const CAmount newFee);

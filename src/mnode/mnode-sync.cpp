@@ -8,7 +8,7 @@
 #include <main.h>
 #include <netmsg/nodemanager.h>
 
-#include "accept_to_mempool.h"
+#include <accept_to_mempool.h>
 
 #include <mnode/mnode-sync.h>
 #include <mnode/mnode-manager.h>
@@ -220,19 +220,30 @@ void CMasternodeSync::ProcessTick()
     if (IsSynced())
         return;
 
-    if (IsInitial()) {
+    if (IsInitial())
+    {
         const auto& chainparams = Params();
         const auto& consensusParams = chainparams.GetConsensus();
         const bool fInitialDownload = fnIsInitialBlockDownload(consensusParams);
-        if (!fInitialDownload) {
-            if (nTimeIBDDone == 0) {
+        if (!fInitialDownload)
+        {
+            if (nTimeIBDDone == 0)
+            {
                 nTimeIBDDone = GetTime();
-            } else if (nTimeIBDDone + (10*60) > GetTime()){
-                LogFnPrintf(
-                        "WARNING: Stuck in Initial state for too long (10min) after Initial Block Download done, restarting sync...");
-                Reset();
-                SwitchToNextAsset();
-                return;
+                LogFnPrintf("MN Sync initial state - %" PRId64, nTimeIBDDone );
+            }
+            else
+            {
+                const time_t nCurrentTime = GetTime();
+                if (nCurrentTime > nTimeIBDDone + (10 * 60))
+                {
+                    LogFnPrintf(
+                        "WARNING: Stuck in Initial state for too long (%" PRId64 " secs) after Initial Block Download done, restarting sync...",
+                        nCurrentTime - nTimeIBDDone + (10 * 60));
+                    Reset();
+                    SwitchToNextAsset();
+                    return;
+                }
             }
         }
     }

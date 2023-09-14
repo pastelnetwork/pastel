@@ -352,12 +352,12 @@ Examples:
 + HelpExampleRpc("getblockhash", "1000")
 );
 
-    LOCK(cs_main);
-
+    uint32_t nCurrentHeight = gl_nChainHeight;
     int nHeight = params[0].get_int();
-    if (nHeight < 0 || nHeight > chainActive.Height())
+    if (nHeight < 0 || nHeight > nCurrentHeight)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
 
+    LOCK(cs_main);
     CBlockIndex* pblockindex = chainActive[nHeight];
     return pblockindex->GetBlockHash().GetHex();
 }
