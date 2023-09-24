@@ -344,15 +344,20 @@ ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const 
 		}
 
         // (ticket transaction replay attack protection)
-        CollectionRegTicket ticket;
-        if (FindTicketInDb(m_keyOne, ticket) && (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
+        CollectionRegTicket existingTicket;
+        if (FindTicketInDb(m_keyOne, existingTicket) &&
+            (!existingTicket.IsBlock(m_nBlock) ||
+            !existingTicket.IsTxId(m_txid)))
         {
-            tv.errorMsg = strprintf(
-                "This %s collection '%s' is already registered in blockchain [key=%s; label=%s] [%sfound ticket block=%u, txid=%s]",
-                getCollectionItemDesc(), m_sCollectionName, m_keyOne, m_label, 
-                bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
-                ticket.GetBlock(), ticket.m_txid);
-            break;
+            string message = strprintf("This %s collection '%s' is already registered in blockchain [key=%s; label=%s]",
+                                       getCollectionItemDesc(), m_sCollectionName, m_keyOne, KeyTwo());
+            bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
+                                                                                   m_txid, m_nBlock,
+                                                                                   bPreReg, message);
+            if (bFound) {
+                tv.errorMsg = message;
+                break;
+            }
         }
 
         // B. Something to validate always

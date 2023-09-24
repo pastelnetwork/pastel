@@ -1962,3 +1962,34 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
     }
     return bFound;
 }
+
+uint32_t CPastelTicketProcessor::GetTicketBlockHeightInActiveChain(const uint256& txid) {
+    ticket_parse_data_t data;
+    // get ticket transaction by txid, also may return ticket height
+    if (!GetTransaction(txid, data.tx, Params().GetConsensus(), data.hashBlock, true, &data.nTicketHeight)) {
+        LogFnPrintf("WARNING: No information available about transaction - %s", txid.GetHex());
+        return false;
+    }
+    try {
+        if (!data.hashBlock.IsNull()) // this will filter out tickets from mempool (not in block yet) NOTE: transactions in mempool DOES have non-zero block height!
+        {
+            if (data.nTicketHeight == numeric_limits<uint32_t>::max()) {
+                // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
+                const auto mi = mapBlockIndex.find(data.hashBlock);
+                if (mi != mapBlockIndex.cend() && mi->second) {
+                    const auto pindex = mi->second;
+                    if (chainActive.Contains(pindex))
+                        return pindex->nHeight;
+                }
+            }
+            return data.nTicketHeight;
+        }
+    }
+    catch (const exception &ex) {
+        LogFnPrintf("ERROR: Failed to check if ticket with txid=%s is in active chain. %s", txid.GetHex(), ex.what());
+    }
+    catch (...) {
+        LogFnPrintf("ERROR: Failed to check if ticket with txid=%s is in active chain. . Unknown error", txid.GetHex());
+    }
+    return numeric_limits<uint32_t>::max();
+}

@@ -218,6 +218,8 @@ public:
     // Get mempool tracker for ticket transactions
     static tx_mempool_tracker_t GetTxMemPoolTracker();
 
+    static uint32_t GetTicketBlockHeightInActiveChain(const uint256& txid);
+
 protected:
     static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, std::unique_ptr<CPastelTicket>&& ticket) noexcept;
 };
