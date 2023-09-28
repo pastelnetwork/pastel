@@ -174,6 +174,7 @@ public:
     static bool FindAndValidateTicketTransaction(const CPastelTicket& ticket,
                                                  const std::string& new_txid, uint32_t new_height,
                                                  bool bPreReg, std::string &message);
+    static void RemoveTicketFromMempool(const std::string& txid);
 
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, 

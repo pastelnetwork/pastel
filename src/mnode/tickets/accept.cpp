@@ -94,6 +94,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
                     tv.errorMsg = strprintf(
                         "The %s ticket you are trying to accept [%s] is already processed",
                         COfferTicket::GetTicketDescription(), m_offerTxId);
+                    CPastelTicketProcessor::RemoveTicketFromMempool(m_txid);
                     break;
                 }
 
@@ -114,6 +115,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
                         GetTicketDescription(), existingAcceptTicket.GetTxId(), m_offerTxId,
                         bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
                         existingAcceptTicket.GetBlock(), existingAcceptTicket.GetTxId());
+                    CPastelTicketProcessor::RemoveTicketFromMempool(m_txid);
                     break;
                 }
             }
@@ -137,6 +139,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
                 "%s ticket [%s] is only active after [%u] block height (%s ticket block is [%u])",
                 COfferTicket::GetTicketDescription(), pOfferTicket->GetTxId(), 
                 pOfferTicket->getValidAfter(), GetTicketDescription(), height);
+            CPastelTicketProcessor::RemoveTicketFromMempool(m_txid);
             break;
         }
         if (offerTicketState == OFFER_TICKET_STATE::EXPIRED)
@@ -145,6 +148,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
                 "%s ticket [%s] is only active before [%u] block height (%s ticket block is [%u])",
                 COfferTicket::GetTicketDescription(), pOfferTicket->GetTxId(), 
                 pOfferTicket->getValidBefore(), GetTicketDescription(), height);
+            CPastelTicketProcessor::RemoveTicketFromMempool(m_txid);
             break;
         }
 

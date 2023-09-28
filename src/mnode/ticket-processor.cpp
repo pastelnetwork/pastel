@@ -1944,7 +1944,7 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
             message += " already exists in blockchain.";
             CTransaction new_tx;
             if (mempool.lookup(uint256S(new_txid), new_tx)) {
-                message += strprintf(" Removing new[% s] from mempool.", new_txid);
+                message += strprintf(" Removing new[%s] from mempool.", new_txid);
                 mempool.remove(new_tx, false);
             }
         }
@@ -1961,6 +1961,18 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
         LogFnPrintf("WARNING: %s", message);
     }
     return bFound;
+}
+
+void CPastelTicketProcessor::RemoveTicketFromMempool(const string& txid)
+{
+    try {
+        CTransaction tx;
+        if (mempool.lookup(uint256S(txid), tx)) {
+            mempool.remove(tx, false);
+        }
+    } catch (const std::exception& e) {
+        LogFnPrintf("ERROR: txid [%s]. %s", txid, e.what());
+    }
 }
 
 uint32_t CPastelTicketProcessor::GetTicketBlockHeightInActiveChain(const uint256& txid) {

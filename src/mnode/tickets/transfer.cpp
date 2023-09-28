@@ -287,37 +287,50 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
         }
 
         // 1. Verify that there is no another Transfer ticket for the same Offer ticket
-        CTransferTicket transferTicket;
-        if (CTransferTicket::GetTransferTicketByOfferTicket(m_offerTxId, transferTicket))
+        CTransferTicket existingTicket;
+        if (CTransferTicket::GetTransferTicketByOfferTicket(m_offerTxId, existingTicket))
         {
             // (ticket transaction replay attack protection)
-            if (!transferTicket.IsSameSignature(m_signature) ||
-                !transferTicket.IsTxId(m_txid) ||
-                !transferTicket.IsBlock(m_nBlock))
+            if (!existingTicket.IsSameSignature(m_signature) ||
+                !existingTicket.IsTxId(m_txid) ||
+                !existingTicket.IsBlock(m_nBlock))
             {
-                tv.errorMsg = strprintf(
-                    "%s ticket already exists for the %s ticket with this txid [%s]. Signature - our=%s; their=%s [%sfound ticket block=%u, txid=%s]",
-                    GetTicketDescription(), COfferTicket::GetTicketDescription(), m_offerTxId,
-                    ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()),
-                    ed_crypto::Hex_Encode(transferTicket.m_signature.data(), transferTicket.m_signature.size()),
-                    bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
-                    transferTicket.GetBlock(), transferTicket.m_txid);
-                break;
+                string message = "";
+                bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
+                                                                                       m_txid, m_nBlock,
+                                                                                       bPreReg, message);
+                if (bFound) {
+                    tv.errorMsg = strprintf(
+                            "%s ticket already exists for the %s ticket with this txid [%s]. Signature - our=%s; their=%s [%sfound ticket block=%u, txid=%s]. %s",
+                            GetTicketDescription(), COfferTicket::GetTicketDescription(), m_offerTxId,
+                            ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()),
+                            ed_crypto::Hex_Encode(existingTicket.m_signature.data(), existingTicket.m_signature.size()),
+                            bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                            existingTicket.GetBlock(), existingTicket.m_txid,
+                            message);
+                    break;
+                }
             }
         }
         // 1. Verify that there is no another Transfer ticket for the same Accept ticket
-        transferTicket.m_offerTxId.clear();
-        if (CTransferTicket::GetTransferTicketByAcceptTicket(m_acceptTxId, transferTicket))
+        existingTicket.m_offerTxId.clear();
+        if (CTransferTicket::GetTransferTicketByAcceptTicket(m_acceptTxId, existingTicket))
         {
             //Compare signatures to skip if the same ticket
-            if (!transferTicket.IsSameSignature(m_signature) || 
-                !transferTicket.IsTxId(m_txid) || 
-                !transferTicket.IsBlock(m_nBlock))
+            if (!existingTicket.IsSameSignature(m_signature) ||
+                !existingTicket.IsTxId(m_txid) ||
+                !existingTicket.IsBlock(m_nBlock))
             {
-                tv.errorMsg = strprintf(
-                    "%s ticket already exists for the %s ticket with this txid [%s]", 
-                    GetTicketDescription(), CAcceptTicket::GetTicketDescription(), m_acceptTxId);
-                break;
+                string message = "";
+                bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
+                                                                                       m_txid, m_nBlock,
+                                                                                       bPreReg, message);
+                if (bFound) {
+                    tv.errorMsg = strprintf(
+                            "%s ticket already exists for the %s ticket with this txid [%s]. %s",
+                            GetTicketDescription(), CAcceptTicket::GetTicketDescription(), m_acceptTxId, message);
+                    break;
+                }
             }
         }
 
