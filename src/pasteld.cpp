@@ -205,7 +205,7 @@ void print_callstack()
     LogFnPrintf("Stack trace:");
     for (int i = 1; i < addrlen; i++)
     {
-        LogFnPrintf("%s", symbollist[i]);
+        LogFnPrintf("%s", symbol_list[i]);
         Dl_info info;
         if (dladdr(addrlist[i], &info) && info.dli_fbase)
         {
