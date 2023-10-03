@@ -16,6 +16,8 @@
 #include <util.h>
 #include <httpserver.h>
 #include <httprpc.h>
+#include <execinfo.h>
+#include <dlfcn.h>
 
 /* Introduction text for doxygen: */
 
@@ -176,12 +178,54 @@ bool AppInit(int argc, char* argv[])
     return fRet;
 }
 
+void print_callstack() {
+    const int max_frames = 64;
+    void* addrlist[max_frames];
+
+    int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
+
+    if (addrlen == 0) {
+        LogFnPrintf("No stack trace found");
+        return;
+    }
+
+    char** symbollist = backtrace_symbols(addrlist, addrlen);
+
+    LogFnPrintf("Stack trace:");
+    for (int i = 1; i < addrlen; i++) {
+        LogFnPrintf("%s", symbollist[i]);
+        Dl_info info;
+        if (dladdr(addrlist[i], &info) && info.dli_fbase) {
+            void* offset = (void*)((uintptr_t)addrlist[i] - (uintptr_t)info.dli_fbase);
+            char syscom[256];
+            snprintf(syscom, sizeof(syscom), "addr2line %p -e %s", offset, info.dli_fname);
+            system(syscom);
+        }
+    }
+    free(symbollist);
+}
+
+void my_terminate() {
+    LogFnPrintf("my_terminate():");
+    print_callstack();
+    exit(1);
+}
+
 int main(int argc, char* argv[])
 {
     SetupEnvironment();
+    std::set_terminate(my_terminate);
 
     // Connect bitcoind signal handlers
     noui_connect();
 
-    return (AppInit(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE);
+    bool res = false;
+    try {
+        res = AppInit(argc, argv);
+    }
+    catch (...) {
+        LogFnPrintf("main() exception catch:");
+        print_callstack();
+    }
+    return (res? EXIT_SUCCESS : EXIT_FAILURE);
 }
