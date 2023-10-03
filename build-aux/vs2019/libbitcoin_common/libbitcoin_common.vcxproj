@@ -92,12 +92,14 @@
     <ClCompile Include="..\..\..\src\base58.cpp" />
     <ClCompile Include="..\..\..\src\bech32.cpp" />
     <ClCompile Include="..\..\..\src\chainparams.cpp" />
+    <ClCompile Include="..\..\..\src\chain_options.cpp" />
     <ClCompile Include="..\..\..\src\coins.cpp" />
     <ClCompile Include="..\..\..\src\compressor.cpp" />
     <ClCompile Include="..\..\..\src\consensus\upgrades.cpp" />
     <ClCompile Include="..\..\..\src\core_read.cpp" />
     <ClCompile Include="..\..\..\src\core_write.cpp" />
     <ClCompile Include="..\..\..\src\datacompressor.cpp" />
+    <ClCompile Include="..\..\..\src\ecc_context.cpp" />
     <ClCompile Include="..\..\..\src\hash.cpp" />
     <ClCompile Include="..\..\..\src\key.cpp" />
     <ClCompile Include="..\..\..\src\keystore.cpp" />
@@ -124,6 +126,7 @@
     <ClInclude Include="..\..\..\src\base58.h" />
     <ClInclude Include="..\..\..\src\bech32.h" />
     <ClInclude Include="..\..\..\src\chainparams.h" />
+    <ClInclude Include="..\..\..\src\chain_options.h" />
     <ClInclude Include="..\..\..\src\coins.h" />
     <ClInclude Include="..\..\..\src\compressor.h" />
     <ClInclude Include="..\..\..\src\consensus\consensus.h" />
@@ -131,6 +134,7 @@
     <ClInclude Include="..\..\..\src\consensus\upgrades.h" />
     <ClInclude Include="..\..\..\src\consensus\validation.h" />
     <ClInclude Include="..\..\..\src\datacompressor.h" />
+    <ClInclude Include="..\..\..\src\ecc_context.h" />
     <ClInclude Include="..\..\..\src\hash.h" />
     <ClInclude Include="..\..\..\src\key.h" />
     <ClInclude Include="..\..\..\src\keystore.h" />
@@ -145,10 +149,12 @@
     <ClInclude Include="..\..\..\src\scheduler.h" />
     <ClInclude Include="..\..\..\src\script\interpreter.h" />
     <ClInclude Include="..\..\..\src\script\script.h" />
+    <ClInclude Include="..\..\..\src\script\scripttype.h" />
     <ClInclude Include="..\..\..\src\script\script_error.h" />
     <ClInclude Include="..\..\..\src\script\sigcache.h" />
     <ClInclude Include="..\..\..\src\script\sign.h" />
     <ClInclude Include="..\..\..\src\script\standard.h" />
+    <ClInclude Include="..\..\..\src\str_utils.h" />
     <ClInclude Include="..\..\..\src\svc_thread.h" />
     <ClInclude Include="..\..\..\src\transaction_builder.h" />
     <ClInclude Include="..\..\..\src\uint252.h" />

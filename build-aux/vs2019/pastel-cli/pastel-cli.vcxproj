@@ -87,14 +87,14 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\bitcoin-cli.cpp" />
+    <ClCompile Include="..\..\..\src\pastel-cli.cpp" />
     <ClCompile Include="..\..\..\src\rpc\client.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\rpc\client.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="..\..\..\src\bitcoin-cli-res.rc" />
+    <ResourceCompile Include="..\..\..\src\pastel-cli-res.rc" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\libbitcoin_crypto\libbitcoin_crypto.vcxproj">
