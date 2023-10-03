@@ -350,6 +350,10 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                                             self.creator_pastelid1, self.passphrase)["txid"]
         assert_true(self.nft_ticket1_act_ticket_txid, "No ticket was created")
 
+        self.sync_all(10, 30)
+        self.nodes[self.mining_node_num].generate(1)
+        self.sync_all(10, 30)
+
         tickets = {
             # 1. check Pastel ID in this ticket matches Pastel ID in the referred Activation ticket
             "offer-bad-nfts-sign": self.nodes[self.non_mn3].tickets("makefaketicket", "offer",

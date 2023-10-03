@@ -3,9 +3,10 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <stdio.h>
+#include <cstdio>
 
 #include <boost/algorithm/string/predicate.hpp>
+#include <scope_guard.hpp>
 
 #include <clientversion.h>
 #include <rpc/server.h>
@@ -16,6 +17,12 @@
 #include <util.h>
 #include <httpserver.h>
 #include <httprpc.h>
+#ifdef __linux__
+#include <execinfo.h>
+#include <dlfcn.h>
+#endif
+
+using namespace std;
 
 /* Introduction text for doxygen: */
 
@@ -66,7 +73,7 @@ bool AppInit(int argc, char* argv[])
     // Process help and version before taking care about datadir
     if (mapArgs.count("-?") || mapArgs.count("-h") ||  mapArgs.count("-help") || mapArgs.count("-version"))
     {
-        std::string strUsage = translate("Pastel Daemon") + " " + translate("version") + " " + FormatFullVersion() + "\n" + PrivacyInfo();
+        string strUsage = translate("Pastel Daemon") + " " + translate("version") + " " + FormatFullVersion() + "\n" + PrivacyInfo();
 
         if (mapArgs.count("-version"))
         {
@@ -112,7 +119,7 @@ bool AppInit(int argc, char* argv[])
                 "contrib/debian/examples/pastel.conf",
                 "/usr/share/doc/pastel/examples/pastel.conf");
             return false;
-        } catch (const std::exception& e) {
+        } catch (const exception& e) {
             fprintf(stderr,"Error reading configuration file: %s\n", e.what());
             return false;
         }
@@ -161,7 +168,7 @@ bool AppInit(int argc, char* argv[])
 
         fRet = AppInit2(threadGroup, scheduler);
     }
-    catch (const std::exception& e) {
+    catch (const exception& e) {
         PrintExceptionContinue(&e, "AppInit()");
     } catch (...) {
         PrintExceptionContinue(nullptr, "AppInit()");
@@ -176,12 +183,70 @@ bool AppInit(int argc, char* argv[])
     return fRet;
 }
 
+#ifdef __linux__
+void print_callstack()
+{
+    const int max_frames = 64;
+    void* addrlist[max_frames];
+
+    int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
+
+    if (addrlen == 0) {
+        LogFnPrintf("No stack trace found");
+        return;
+    }
+
+    char** symbol_list = backtrace_symbols(addrlist, addrlen);
+    auto guard = sg::make_scope_guard([&]() noexcept 
+    {
+        free(symbol_list);
+    });
+
+    LogFnPrintf("Stack trace:");
+    for (int i = 1; i < addrlen; i++)
+    {
+        LogFnPrintf("%s", symbollist[i]);
+        Dl_info info;
+        if (dladdr(addrlist[i], &info) && info.dli_fbase)
+        {
+            void* offset = (void*)((uintptr_t)addrlist[i] - (uintptr_t)info.dli_fbase);
+            char syscom[256];
+            snprintf(syscom, sizeof(syscom), "addr2line %p -e %s", offset, info.dli_fname);
+            system(syscom);
+        }
+    }
+}
+#else
+void print_callstack()
+{
+    return;
+}
+#endif
+
+void pasteld_terminate()
+{
+    LogFnPrintf("pasteld_terminate():");
+#ifdef __linux__
+    print_callstack();
+#endif
+    exit(1);
+}
+
 int main(int argc, char* argv[])
 {
     SetupEnvironment();
+    set_terminate(pasteld_terminate);
 
     // Connect bitcoind signal handlers
     noui_connect();
 
-    return (AppInit(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE);
+    bool res = false;
+    try {
+        res = AppInit(argc, argv);
+    }
+    catch (...) {
+        LogFnPrintf("main() exception catch:");
+        print_callstack();
+    }
+    return (res? EXIT_SUCCESS : EXIT_FAILURE);
 }

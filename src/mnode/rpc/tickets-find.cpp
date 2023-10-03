@@ -33,6 +33,8 @@ static UniValue getTickets(const string& key, T2 key2 = "", Lambda otherFunc = n
     // search TicketID by primary key (unique generated key)
     if (T::FindTicketInDb(key, ticket))
     {
+        uint32_t block = CPastelTicketProcessor::GetTicketBlockHeightInActiveChain(uint256S(ticket.GetTxId()));
+        ticket.SetBlock(block);
         UniValue obj(UniValue::VOBJ);
         obj.read(ticket.ToJSON());
         return obj;
@@ -40,6 +42,11 @@ static UniValue getTickets(const string& key, T2 key2 = "", Lambda otherFunc = n
     auto vTickets = T::FindAllTicketByMVKey(key);
     if (vTickets.empty() && otherFunc)
         vTickets = otherFunc(key2);
+    for (auto& tkt : vTickets)
+    {
+        uint32_t block = CPastelTicketProcessor::GetTicketBlockHeightInActiveChain(uint256S(tkt.GetTxId()));
+        tkt.SetBlock(block);
+    }
     UniValue tArray = getJSONforTickets<T>(vTickets);
     return tArray.isNull() ? MSG_KEY_NOT_FOUND : tArray;
 }

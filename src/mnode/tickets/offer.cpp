@@ -441,8 +441,10 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
 			}
             
         }
-        if (tv1.IsNotValid())
+        if (tv1.IsNotValid()) {
+            CPastelTicketProcessor::RemoveTicketFromMempool(m_txid);
             tv = move(tv1);
+        }
         else
             tv.setValid();
     } while (false);
