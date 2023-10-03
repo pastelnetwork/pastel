@@ -209,35 +209,18 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
                 break;
             }
 
-            // Masternodes beyond these Pastel IDs, were in the top 10 at the block when the registration happened
-            if (masterNodeCtrl.masternodeSync.IsSynced() &&
-                masterNodeCtrl.masternodeManager.HasEnoughEnabled() ) // ticket needs synced AND correct list of MNs
+            // Check that outpoint belongs to the one of the masternodes
+            if (masterNodeCtrl.masternodeSync.IsSynced())
             {
-                masternode_vector_t topBlockMNs;
-                string error;
-                const auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nCreatorHeight, true);
-                if (status != GetTopMasterNodeStatus::SUCCEEDED && status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
+                const auto pMN = masterNodeCtrl.masternodeManager.Get(outpoint);
+                if (!pMN)
                 {
 					tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
                     tv.errorMsg = strprintf(
-						"Failed to get top masternodes for block %u. %s", 
-						nCreatorHeight, error);
+						"MN%hi with outpoint %s was NOT found in the masternode list", 
+						mnIndex, outpoint.ToStringShort());
 					break;
 				}
-                const auto foundIt = find_if(topBlockMNs.cbegin(), topBlockMNs.cend(), [&](const masternode_t & pmn)
-                    {
-                        return pmn && (pmn->getOutPoint() == outpoint);
-                    });
-
-                if (foundIt == topBlockMNs.cend()) //not found
-                {
-                    LogFnPrintf("Top MNs for height=%u (status=%d): [%s]", nCreatorHeight, to_integral_type(status), GetListOfMasterNodes(topBlockMNs));
-                    tv.state = TICKET_VALIDATION_STATE::INVALID;
-                    tv.errorMsg = strprintf(
-                        "MN%hi was NOT in the top masternodes list for block %u",
-                        mnIndex, nCreatorHeight);
-                    break;
-                }
             }
         }
     }

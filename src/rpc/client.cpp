@@ -25,6 +25,7 @@ public:
     set<uint8_t> vParamIdx;       // set of 0-based indexes of the params to convert
 };
 
+// 0-based indexes of the params to convert
 static const array<CRPCConvertParam, 75> gl_vRPCConvertParams =
 {{
     { "stop", nullptr, {0} },

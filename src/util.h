@@ -289,10 +289,11 @@ std::string HelpMessageOpt(const std::string& option, const std::string& message
 
 /**
  * Return the number of physical cores available on the current system.
- * @note This does not count virtual cores, such as those provided by HyperThreading
- * when boost is newer than 1.56.
+ * @note This does not count virtual cores
  */
-int GetNumCores();
+unsigned int GetNumCores();
+// get total available physical memory (RAM) in bytes
+uint64_t GetTotalPhysicalMemory();
 
 void SetThreadPriority(int nPriority);
 // rename thread

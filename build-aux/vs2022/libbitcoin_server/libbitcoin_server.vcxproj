@@ -115,6 +115,7 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-msgsigner.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-notificationinterface.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-payments.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\mnode-perfcheck.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-requesttracker.cpp" />
     <ClCompile Include="..\..\..\src\mnode\p2fms-txbuilder.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\masternode.cpp" />
@@ -218,6 +219,7 @@
     <ClInclude Include="..\..\..\src\merkleblock.h" />
     <ClInclude Include="..\..\..\src\metrics.h" />
     <ClInclude Include="..\..\..\src\miner.h" />
+    <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h" />
     <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\ingest.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\masternode.h" />

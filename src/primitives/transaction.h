@@ -35,6 +35,14 @@ static_assert(SAPLING_TX_VERSION >= SAPLING_MIN_TX_VERSION,
 static_assert(SAPLING_TX_VERSION <= SAPLING_MAX_TX_VERSION,
     "Sapling tx version must not be higher than maximum");
 
+// Transaction change destination
+enum class TxChangeDestination
+{
+	ORIGINAL,  // Send change to the original address
+	NEW,       // Send change to a new address
+	SPECIFIED  // Send change to a specified address
+};
+
 /**
  * A shielded input to a transaction. It contains data that describes a Spend transfer.
  */

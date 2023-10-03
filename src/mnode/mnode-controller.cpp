@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cinttypes>
 #include <vector>
 
 #include <main.h>
@@ -17,6 +18,7 @@
 #include <mnode/mnode-manager.h>
 #include <mnode/mnode-msgsigner.h>
 #include <mnode/mnode-db.h>
+#include <mnode/mnode-perfcheck.h>
 
 using namespace std;
 
@@ -296,7 +298,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
 
     if (m_fMasterNode)
     {
-        LogPrintf("MASTERNODE:\n");
+        LogFnPrintf("MASTERNODE:");
 
         const string strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
         if (!strMasterNodePrivKey.empty())
@@ -311,7 +313,27 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
             const CTxDestination dest = activeMasternode.pubKeyMasternode.GetID();
             string address = keyIO.EncodeDestination(dest);
 
-            LogPrintf("  pubKeyMasternode: %s\n", address);
+            LogFnPrintf("  pubKeyMasternode: %s", address);
+
+            // check hardware requirements
+            LogFnPrintf("Checking hardware requirements...");
+            string error;
+            if (!checkHardwareRequirements(error, "MasterNode mode"))
+            {
+                strErrors << translate(error.c_str());
+                return false;
+            }
+            LogFnPrintf("...hardware requirements passed");
+            LogFnPrintf("Checking CPU benchmark...");
+            uint64_t nCPUBenchMark = cpuBenchmark(100);
+            if (nCPUBenchMark > CPU_BENCHMARK_THRESHOLD_MSECS)
+			{
+				strErrors << translate(strprintf("Machine does not meet the minimum requirements to run in Masternode mode.\n"
+                    "Your CPU is too weak - benchmark %" PRIu64 "ms with required %" PRIu64 "ms.", 
+                    nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS).c_str());
+				return false;
+			}
+            LogFnPrintf("...CPU benchmark passed (%" PRIu64 "ms, min required %" PRIu64"ms)", nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS);
         } else {
             strErrors << translate("You must specify a masternodeprivkey in the configuration. Please see documentation for help.");
             return false;

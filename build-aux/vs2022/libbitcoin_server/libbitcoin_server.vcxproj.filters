@@ -331,6 +331,9 @@
     <ClCompile Include="..\..\..\src\netmsg\netmessage.cpp">
       <Filter>Source Files\netmsg</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-perfcheck.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -707,6 +710,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\netmsg\netconsts.h">
       <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h">
+      <Filter>Source Files\mnode</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

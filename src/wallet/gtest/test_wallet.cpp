@@ -2,7 +2,6 @@
 // Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <set>
 #include <optional>
 
@@ -32,8 +31,6 @@ constexpr size_t RUN_TESTS = 100;
 // some tests fail 1% of the time due to bad luck.
 // we repeat those tests this many times and only complain if all iterations of the test fail
 constexpr size_t RANDOM_REPEATS = 5;
-
-typedef set<pair<const CWalletTx*,unsigned int> > CoinSet;
 
 static CWallet wallet;
 static vector<COutput> vCoins;
@@ -964,15 +961,15 @@ static void empty_wallet(void)
     vCoins.clear();
 }
 
-static bool equal_sets(CoinSet a, CoinSet b)
+static bool equal_sets(const coin_set_t &a, const coin_set_t &b)
 {
-    pair<CoinSet::iterator, CoinSet::iterator> ret = mismatch(a.begin(), a.end(), b.begin());
+    auto ret = mismatch(a.begin(), a.end(), b.begin());
     return ret.first == a.end() && ret.second == b.end();
 }
 
 TEST(test_wallet, coin_selection_tests)
 {
-    CoinSet setCoinsRet, setCoinsRet2;
+    coin_set_t setCoinsRet, setCoinsRet2;
     CAmount nValueRet;
 
     LOCK(wallet.cs_wallet);
