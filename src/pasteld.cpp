@@ -226,9 +226,7 @@ void print_callstack()
 void pasteld_terminate()
 {
     LogFnPrintf("pasteld_terminate():");
-#ifdef __linux__
     print_callstack();
-#endif
     exit(1);
 }
 
