@@ -87,11 +87,11 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\src\accept_to_mempool.cpp" />
     <ClCompile Include="..\..\..\src\addrman.cpp" />
     <ClCompile Include="..\..\..\src\alert.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcoperation.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcqueue.cpp" />
-    <ClCompile Include="..\..\..\src\bloom.cpp" />
     <ClCompile Include="..\..\..\src\chain.cpp" />
     <ClCompile Include="..\..\..\src\checkpoints.cpp" />
     <ClCompile Include="..\..\..\src\dbwrapper.cpp" />
@@ -115,7 +115,9 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-msgsigner.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-notificationinterface.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-payments.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\mnode-perfcheck.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-requesttracker.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\p2fms-txbuilder.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\masternode.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\ingest.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\masternodebroadcast.cpp" />
@@ -139,15 +141,17 @@
     <ClCompile Include="..\..\..\src\mnode\ticket-txmempool.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\action-act.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\action-reg.cpp" />
-    <ClCompile Include="..\..\..\src\mnode\tickets\etherium-address-change.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-item.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\ethereum-address-change.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-act.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\accept.cpp" />
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-act.cpp" />
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-reg.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-act.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-royalty.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\offer.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-take-down.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\ticket-key.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\transfer.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\pastelid-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\ticket-extra-fees.cpp" />
@@ -155,6 +159,12 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\username-change.cpp" />
     <ClCompile Include="..\..\..\src\net.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\block-cache.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\bloom.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\netmessage.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\node.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\nodemanager.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\nodestate.cpp" />
+    <ClCompile Include="..\..\..\src\net_manager.cpp" />
     <ClCompile Include="..\..\..\src\noui.cpp" />
     <ClCompile Include="..\..\..\src\orphan-tx.cpp" />
     <ClCompile Include="..\..\..\src\pastelid\pastel_key.cpp" />
@@ -184,11 +194,11 @@
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\src\accept_to_mempool.h" />
     <ClInclude Include="..\..\..\src\addrman.h" />
     <ClInclude Include="..\..\..\src\alert.h" />
     <ClInclude Include="..\..\..\src\asyncrpcoperation.h" />
     <ClInclude Include="..\..\..\src\asyncrpcqueue.h" />
-    <ClInclude Include="..\..\..\src\bloom.h" />
     <ClInclude Include="..\..\..\src\chain.h" />
     <ClInclude Include="..\..\..\src\checkpoints.h" />
     <ClInclude Include="..\..\..\src\checkqueue.h" />
@@ -209,6 +219,8 @@
     <ClInclude Include="..\..\..\src\merkleblock.h" />
     <ClInclude Include="..\..\..\src\metrics.h" />
     <ClInclude Include="..\..\..\src\miner.h" />
+    <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h" />
+    <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\ingest.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\masternode.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\masternodebroadcast.h" />
@@ -246,10 +258,12 @@
     <ClInclude Include="..\..\..\src\mnode\ticket-processor.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\action-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\action-reg.h" />
-    <ClInclude Include="..\..\..\src\mnode\tickets\etherium-address-change.h" />
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-act.h" />
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-reg.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-item.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\ethereum-address-change.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-act.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-extra-fees.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-key.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-mn-fees.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\accept.h" />
@@ -268,7 +282,14 @@
     <ClInclude Include="..\..\..\src\mruset.h" />
     <ClInclude Include="..\..\..\src\net.h" />
     <ClInclude Include="..\..\..\src\netmsg\block-cache.h" />
-    <ClInclude Include="..\..\..\src\nodehelper.h" />
+    <ClInclude Include="..\..\..\src\netmsg\bloom.h" />
+    <ClInclude Include="..\..\..\src\netmsg\mruset.h" />
+    <ClInclude Include="..\..\..\src\netmsg\netconsts.h" />
+    <ClInclude Include="..\..\..\src\netmsg\netmessage.h" />
+    <ClInclude Include="..\..\..\src\netmsg\node.h" />
+    <ClInclude Include="..\..\..\src\netmsg\nodemanager.h" />
+    <ClInclude Include="..\..\..\src\netmsg\nodestate.h" />
+    <ClInclude Include="..\..\..\src\net_manager.h" />
     <ClInclude Include="..\..\..\src\noui.h" />
     <ClInclude Include="..\..\..\src\orphan-tx.h" />
     <ClInclude Include="..\..\..\src\pastelid\common.h" />

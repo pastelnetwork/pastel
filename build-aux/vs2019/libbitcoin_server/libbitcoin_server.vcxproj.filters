@@ -49,9 +49,6 @@
     <ClCompile Include="..\..\..\src\asyncrpcqueue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\bloom.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\chain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -244,7 +241,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\username-change.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\etherium-address-change.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\ethereum-address-change.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\transfer.cpp">
@@ -289,13 +286,13 @@
     <ClCompile Include="..\..\..\src\orphan-tx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-reg.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-reg.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\ticket-extra-fees.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-collection-act.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-act.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-findbylabel.cpp">
@@ -303,6 +300,39 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\rpc\governance-rpc.cpp">
       <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\collection-item.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\ticket-key.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\net_manager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\nodestate.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\p2fms-txbuilder.cpp">
+      <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\accept_to_mempool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\nodemanager.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\node.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\bloom.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\netmessage.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\mnode-perfcheck.cpp">
+      <Filter>Source Files\mnode</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -316,9 +346,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\asyncrpcqueue.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\bloom.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\chain.h">
@@ -406,9 +433,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\prevector.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\nodehelper.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mruset.h">
@@ -579,7 +603,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\username-change.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\etherium-address-change.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\ethereum-address-change.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-utils.h">
@@ -633,7 +657,7 @@
     <ClInclude Include="..\..\..\src\orphan-tx.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-reg.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-reg.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-extra-fees.h">
@@ -642,7 +666,7 @@
     <ClInclude Include="..\..\..\src\set_types.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-collection-act.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-act.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-findbylabel.h">
@@ -650,6 +674,45 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\governance-rpc.h">
       <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\collection-item.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\ticket-key.h">
+      <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\net_manager.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\nodestate.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h">
+      <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\accept_to_mempool.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\nodemanager.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\node.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\bloom.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\netmessage.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\mruset.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\netconsts.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h">
+      <Filter>Source Files\mnode</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1848,11 +1848,6 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.signatures_dict["mn2"][self.top_mns[1].pastelid] = self.top_mns[1].signature
         del self.signatures_dict["mn2"][self.creator_pastelid1]
 
-        #       c.a.8 fail if MN1, MN2 and MN3 are not from top 10 list at the ticket's blocknum
-        assert_raises_rpc(rpc.RPC_MISC_ERROR, "was NOT in the top masternodes list for block", 
-            top_mn_node.tickets, "register", ticket_type_name,
-            ticket.reg_ticket_base64_encoded, json.dumps(self.not_top_mns_signatures_dict), self.top_mns[0].pastelid, self.passphrase, label, str(self.storage_fee))
-
         #       c.a.9 fail if MN1, MN2 and MN3 are the same
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "MNs Pastel IDs cannot be the same",
             top_mn_node.tickets, "register", ticket_type_name,

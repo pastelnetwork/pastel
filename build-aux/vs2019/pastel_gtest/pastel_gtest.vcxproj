@@ -123,13 +123,16 @@
     <ClCompile Include="..\..\..\src\gtest\test_hash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_main.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_payments.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_p2fms_txbuilder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastel.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastelid.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_rpc.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_secure_container.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_action-reg.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool_processor.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-collection-reg.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_collection-reg.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_nft-reg.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_offer.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_processor.cpp" />
@@ -149,6 +152,8 @@
     <ClCompile Include="..\..\..\src\gtest\test_merkletree.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_metrics.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_miner.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_types.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\mock_p2fms_txbuilder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mruset.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_multisig.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_netbase.cpp" />
@@ -165,6 +170,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_random.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_reverselock.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_rpc_utils.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpc_wallet.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_rpccmd_parser.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_sanity.cpp" />
@@ -209,11 +215,14 @@
     <ClInclude Include="..\..\..\src\gtest\data\base58_keys_valid.json.h" />
     <ClInclude Include="..\..\..\src\gtest\json_test_vectors.h" />
     <ClInclude Include="..\..\..\src\gtest\mock_validation_state.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_wallet.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\test_data.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mnode\test_ticket_mempool.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_ticket.h" />
     <ClInclude Include="..\..\..\src\gtest\pastel_gtest_main.h" />
     <ClInclude Include="..\..\..\src\gtest\test_mempool_entryhelper.h" />
     <ClInclude Include="..\..\..\src\gtest\pastel_gtest_utils.h" />
+    <ClInclude Include="..\..\..\src\gtest\test_mnode\mock_p2fms_txbuilder.h" />
     <ClInclude Include="..\..\vs\port\uint128.h" />
   </ItemGroup>
   <ItemGroup>

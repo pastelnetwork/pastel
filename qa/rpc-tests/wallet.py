@@ -1,18 +1,32 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
-from test_framework.util import assert_equal, assert_greater_than, \
-    initialize_chain_clean, start_nodes, start_node, connect_nodes_bi, \
-    stop_nodes, sync_blocks, sync_mempools, wait_and_assert_operationid_status, \
+from test_framework.util import (
+    assert_equal,
+    assert_true,
+    assert_raises_rpc,
+    assert_shows_help,
+    initialize_chain_clean,
+    start_nodes,
+    start_node,
+    connect_nodes_bi,
+    stop_nodes,
+    sync_blocks,
+    sync_mempools,
+    wait_and_assert_operationid_status,
     wait_pastelds
+)
+import test_framework.rpc_consts as rpc
 
-import time
+import math
 from decimal import Decimal, getcontext
 getcontext().prec = 16
+AMOUNT_TOLERANCE: float = 1e-5
 
 class WalletTest (BitcoinTestFramework):
 
@@ -20,6 +34,7 @@ class WalletTest (BitcoinTestFramework):
         super().__init__()
         self.setup_clean_chain = True
         self.num_nodes = 4
+        self.mining_node_num = 1
 
     def setup_chain(self):
         print(f"Initializing test directory {self.options.tmpdir}")
@@ -33,6 +48,252 @@ class WalletTest (BitcoinTestFramework):
         self.is_network_split=False
         self.sync_all()
 
+    def make_zero_balance(self, nodeNum: int):
+            """Make zero balance on the given node
+
+            Args:
+                nodeNum (int): node number
+            """
+            balance = self.nodes[nodeNum].getbalance()
+            print(f"node{nodeNum} balance: {balance}")
+            if balance > 0:
+                self.nodes[nodeNum].sendtoaddress(self.miner_address, balance, "make_zero_balance", "miner", True)
+                self.generate_and_sync_inc(1, self.mining_node_num)
+
+
+    def test_sendtoaddress(self):
+        print("=== testing sendtoaddress ===")
+        # create new t-addr on node0 and node1
+        node0_taddr1 = self.nodes[0].getnewaddress()
+        node0_taddr2 = self.nodes[0].getnewaddress()
+        node1_taddr1 = self.nodes[1].getnewaddress()
+        fixed_amount = 1000
+        extra_amount = 200
+        
+        assert_shows_help(self.nodes[0].sendtoaddress)
+        
+        print('sendtoaddress by default should return change to original address')
+        self.make_zero_balance(0)
+        assert_equal(0, self.nodes[0].getbalance())
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr1, fixed_amount)
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr2, fixed_amount + extra_amount)
+        self.generate_and_sync_inc(1)
+        print(f'node0: taddr1={self.nodes[0].z_getbalance(node0_taddr1)}, taddr2={self.nodes[0].z_getbalance(node0_taddr2)}')
+        assert_equal(fixed_amount, self.nodes[0].z_getbalance(node0_taddr1))
+        assert_equal(fixed_amount + extra_amount, self.nodes[0].z_getbalance(node0_taddr2))
+        # sendtoaddress by default should return change to original address
+        txid = self.nodes[0].sendtoaddress(node1_taddr1, 2 * fixed_amount)
+        assert_true(txid, "sendtoaddress with default change-address should return txid")
+        self.generate_and_sync_inc(1)
+        txfee = self.nodes[0].gettxfee(txid)["txFee"]
+        expected_balance_after = extra_amount - txfee
+        print(f"node0 sendtoaddress {2 * fixed_amount} to node1_taddr1, txid={txid}, txfee={txfee}, expected_balance_after={expected_balance_after}")
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].getbalance(), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(expected_balance_after, 
+                                 self.nodes[0].z_getbalance(node0_taddr1) + self.nodes[0].z_getbalance(node0_taddr2), rel_tol=AMOUNT_TOLERANCE))
+
+        print("sendtoaddress with change-address='original' should return change to original address")
+        self.make_zero_balance(0)
+        assert_equal(0, self.nodes[0].getbalance())
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr1, fixed_amount)
+        self.generate_and_sync_inc(1)
+        print(f'node0: taddr1={self.nodes[0].z_getbalance(node0_taddr1)}')
+        assert_equal(fixed_amount, self.nodes[0].z_getbalance(node0_taddr1))
+        txid = self.nodes[0].sendtoaddress(node1_taddr1, extra_amount, "test sendtoaddress with 'original' change-address", "node1_taddr1", False, "original")
+        assert_true(txid, "sendtoaddress with change-address='original' should return txid")
+        self.generate_and_sync_inc(1)
+        txfee = self.nodes[0].gettxfee(txid)["txFee"]
+        expected_balance_after = fixed_amount - extra_amount - txfee
+        print(f"node0 sendtoaddress {extra_amount} to node1_taddr1, txid={txid}, txfee={txfee}, expected_balance_after={expected_balance_after}")
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].getbalance(), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(expected_balance_after, 
+                                 self.nodes[0].z_getbalance(node0_taddr1), rel_tol=AMOUNT_TOLERANCE))
+
+        print("sendtoaddress with change-address='new' should return change to new address")
+        self.make_zero_balance(0)
+        assert_equal(0, self.nodes[0].getbalance())
+        addrlist_before = self.nodes[0].listaddressamounts()
+        assert_equal(0, len(addrlist_before), "addrlist_before should be empty (no addresses with empty balance)")
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr1, fixed_amount)
+        self.generate_and_sync_inc(1)
+        print(f'node0 taddr1 balance: {self.nodes[0].z_getbalance(node0_taddr1)}')
+        txid = self.nodes[0].sendtoaddress(node1_taddr1, fixed_amount - extra_amount, "test sendtoaddress with 'new' change-address", "node1_taddr1", False, "new")
+        assert_true(txid, "sendtoaddress with 'new' change-address should return txid")
+        self.generate_and_sync_inc(1)
+        txfee = self.nodes[0].gettxfee(txid)["txFee"]
+        addrlist_after = self.nodes[0].listaddressamounts()
+        assert_equal(1, len(addrlist_after), "addrlist_after should have one new address")
+        print(f"node0 addresses after sendtoaddress call with 'new' change-address: {addrlist_after}")
+        expected_balance_after = extra_amount - txfee
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].z_getbalance(next(iter(addrlist_after))), rel_tol=AMOUNT_TOLERANCE))
+        
+        print("sendtoaddress with change-address='specific t-addr' should return change to that address")
+        self.make_zero_balance(0)
+        assert_equal(0, self.nodes[0].getbalance())
+        node0_taddr3 = self.nodes[0].getnewaddress()
+        print(f"Created new t-addr on node0: {node0_taddr3}")
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr1, fixed_amount)
+        self.generate_and_sync_inc(1)
+        print(f'node0 balance: {self.nodes[0].getbalance()}')
+        txid = self.nodes[0].sendtoaddress(node1_taddr1, fixed_amount - extra_amount, "test sendtoaddress with 'specific t-addr' change-address", "node1_taddr1", False, node0_taddr3)
+        assert_true(txid, "sendtoaddress with 'specific t-addr' change-address should return txid")
+        self.generate_and_sync_inc(1)
+        txfee = self.nodes[0].gettxfee(txid)["txFee"]
+        expected_balance_after = extra_amount - txfee
+        print(f"node0 addresses after sendtoaddress call with '{node0_taddr3}' change-address: {self.nodes[0].listaddressamounts()}")
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].z_getbalance(node0_taddr3), rel_tol=AMOUNT_TOLERANCE))
+        
+        assert_raises_rpc(rpc.RPC_INVALID_ADDRESS_OR_KEY, 
+                          "Invalid Pastel address",
+                          self.nodes[0].sendtoaddress, node1_taddr1, fixed_amount, "comment", "comment_to", False, "invalid_change_address")
+        assert_raises_rpc(rpc.RPC_TYPE_ERROR, 
+                          "Amount is not a number or string",
+                          self.nodes[0].sendtoaddress, node1_taddr1, False)
+        assert_raises_rpc(rpc.RPC_TYPE_ERROR, 
+                          "Invalid amount for send",
+                          self.nodes[0].sendtoaddress, node1_taddr1, 0)
+        assert_raises_rpc(rpc.RPC_TYPE_ERROR, 
+                          "Amount out of range",
+                          self.nodes[0].sendtoaddress, node1_taddr1, -1)
+        assert_raises_rpc(rpc.RPC_TYPE_ERROR, 
+                          "Invalid amount",
+                          self.nodes[0].sendtoaddress, node1_taddr1, 0.123456)
+
+
+    def test_sendmany(self):
+        print("=== testing sendmany ===")        
+        node0_taddr1 = self.nodes[0].getnewaddress()
+        node0_taddr2 = self.nodes[0].getnewaddress()
+        
+        fixed_amount = 1000
+        send_amount = 500
+        extra_amount = 200
+        
+        assert_shows_help(self.nodes[0].sendmany)
+        
+        print('sendmany by default should return change to original address')
+        self.make_zero_balance(0)
+        assert_equal(0, self.nodes[0].getbalance())
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr1, fixed_amount)
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr2, fixed_amount + extra_amount)
+        self.generate_and_sync_inc(1)
+        print(f'node0: taddr1={self.nodes[0].z_getbalance(node0_taddr1)}, taddr2={self.nodes[0].z_getbalance(node0_taddr2)}')
+        assert_equal(fixed_amount, self.nodes[0].z_getbalance(node0_taddr1))
+        assert_equal(fixed_amount + extra_amount, self.nodes[0].z_getbalance(node0_taddr2))
+        # sendtomany by default should return change to original address
+        node1_taddr1 = self.nodes[1].getnewaddress()
+        node1_taddr2 = self.nodes[1].getnewaddress()
+        node1_taddr3 = self.nodes[1].getnewaddress()
+        send_to = {
+                    node1_taddr1:send_amount,
+                    node1_taddr2:send_amount + 1,
+                    node1_taddr3:send_amount + 2
+                  }
+        txid = self.nodes[0].sendmany("", send_to, 1, "test sendmany with default change-address")
+        assert_true(txid, "sendmany with default change-address should return txid")
+        self.generate_and_sync_inc(1)
+        txfee = self.nodes[0].gettxfee(txid)["txFee"]
+        expected_balance_after = 2 * fixed_amount + extra_amount - 3*send_amount - 3 - txfee
+        print(f"node0 sendmany [{send_amount}, {send_amount + 1}, {send_amount + 2}] to node1 addresses, txid={txid}, txfee={txfee}, expected_balance_after={expected_balance_after}")
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].getbalance(), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(expected_balance_after, 
+                                 self.nodes[0].z_getbalance(node0_taddr1) + self.nodes[0].z_getbalance(node0_taddr2), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount, self.nodes[1].z_getbalance(node1_taddr1), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount + 1, self.nodes[1].z_getbalance(node1_taddr2), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount + 2, self.nodes[1].z_getbalance(node1_taddr3), rel_tol=AMOUNT_TOLERANCE))
+        
+        print("sendmany with change-address='original' should return change to original address")
+        self.make_zero_balance(0)
+        assert_equal(0, self.nodes[0].getbalance())
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr1, 2 * fixed_amount)
+        self.generate_and_sync_inc(1)
+        print(f'node0: taddr1={self.nodes[0].z_getbalance(node0_taddr1)}')
+        assert_equal(2 * fixed_amount, self.nodes[0].z_getbalance(node0_taddr1))
+        # need to create new addresses on node1
+        node1_taddr1 = self.nodes[1].getnewaddress()
+        node1_taddr2 = self.nodes[1].getnewaddress()
+        node1_taddr3 = self.nodes[1].getnewaddress()
+        send_to = {
+                    node1_taddr1:send_amount,
+                    node1_taddr2:send_amount + 1,
+                    node1_taddr3:send_amount + 2
+                  }
+        txid = self.nodes[0].sendmany("", send_to, 1, "test sendmany with 'original' change-address", [], "original")
+        assert_true(txid, "sendmany with change-address='original' should return txid")
+        self.generate_and_sync_inc(1)
+        txfee = self.nodes[0].gettxfee(txid)["txFee"]
+        expected_balance_after = 2 * fixed_amount - 3 * send_amount - 3 - txfee
+        print(f"node0 sendmany [{send_amount}, {send_amount + 1}, {send_amount + 2}] to node1 addresses, txid={txid}, txfee={txfee}, expected_balance_after={expected_balance_after}")
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].getbalance(), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].z_getbalance(node0_taddr1), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount, self.nodes[1].z_getbalance(node1_taddr1), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount + 1, self.nodes[1].z_getbalance(node1_taddr2), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount + 2, self.nodes[1].z_getbalance(node1_taddr3), rel_tol=AMOUNT_TOLERANCE))
+        
+        print("sendmany with change-address='new' should return change to new address")
+        self.make_zero_balance(0)
+        assert_equal(0, self.nodes[0].getbalance())
+        addrlist_before = self.nodes[0].listaddressamounts()
+        assert_equal(0, len(addrlist_before), "addrlist_before should be empty (no addresses with empty balance)")
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr1, 2 * fixed_amount)
+        self.generate_and_sync_inc(1)
+        print(f'node0 taddr1 balance: {self.nodes[0].z_getbalance(node0_taddr1)}')
+        # need to create new addresses on node1
+        node1_taddr1 = self.nodes[1].getnewaddress()
+        node1_taddr2 = self.nodes[1].getnewaddress()
+        node1_taddr3 = self.nodes[1].getnewaddress()
+        send_to = {
+                    node1_taddr1:send_amount,
+                    node1_taddr2:send_amount + 1,
+                    node1_taddr3:send_amount + 2
+                  }
+        txid = self.nodes[0].sendmany("", send_to, 1, "test sendmany with 'new' change-address", [], "new")
+        assert_true(txid, "sendmany with 'new' change-address should return txid")
+        self.generate_and_sync_inc(1)
+        txfee = self.nodes[0].gettxfee(txid)["txFee"]
+        addrlist_after = self.nodes[0].listaddressamounts()
+        assert_equal(1, len(addrlist_after), "addrlist_after should have one new address")
+        print(f"node0 addresses after sendmany call with 'new' change-address: {addrlist_after}")
+        expected_balance_after = 2 * fixed_amount - 3 * send_amount - 3 - txfee
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].z_getbalance(next(iter(addrlist_after))), rel_tol=AMOUNT_TOLERANCE))
+        assert_equal(0,  self.nodes[0].z_getbalance(node0_taddr1))
+        assert_true(math.isclose(send_amount, self.nodes[1].z_getbalance(node1_taddr1), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount + 1, self.nodes[1].z_getbalance(node1_taddr2), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount + 2, self.nodes[1].z_getbalance(node1_taddr3), rel_tol=AMOUNT_TOLERANCE))
+        
+        print("sendmany with change-address='specific t-addr' should return change to that address")
+        self.make_zero_balance(0)
+        assert_equal(0, self.nodes[0].getbalance())
+        node0_taddr3 = self.nodes[0].getnewaddress()
+        print(f"Created new t-addr on node0: {node0_taddr3}")
+        self.nodes[self.mining_node_num].sendtoaddress(node0_taddr1, 2 * fixed_amount)
+        self.generate_and_sync_inc(1)
+        print(f'node0 balance: {self.nodes[0].getbalance()}')
+        # need to create new addresses on node1
+        node1_taddr1 = self.nodes[1].getnewaddress()
+        node1_taddr2 = self.nodes[1].getnewaddress()
+        node1_taddr3 = self.nodes[1].getnewaddress()
+        send_to = {
+                    node1_taddr1:send_amount,
+                    node1_taddr2:send_amount + 1,
+                    node1_taddr3:send_amount + 2
+                  }
+        txid = self.nodes[0].sendmany("", send_to, 1, "test sendmany with 'new' change-address", [], node0_taddr3)
+        assert_true(txid, "sendmany with 'specific t-addr' change-address should return txid")
+        self.generate_and_sync_inc(1)
+        txfee = self.nodes[0].gettxfee(txid)["txFee"]
+        expected_balance_after = 2 * fixed_amount - 3 * send_amount - 3 - txfee
+        print(f"node0 addresses after sendmany call with '{node0_taddr3}' change-address: {self.nodes[0].listaddressamounts()}")
+        assert_true(math.isclose(expected_balance_after, self.nodes[0].z_getbalance(node0_taddr3), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount, self.nodes[1].z_getbalance(node1_taddr1), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount + 1, self.nodes[1].z_getbalance(node1_taddr2), rel_tol=AMOUNT_TOLERANCE))
+        assert_true(math.isclose(send_amount + 2, self.nodes[1].z_getbalance(node1_taddr3), rel_tol=AMOUNT_TOLERANCE))
+        
+        assert_raises_rpc(rpc.RPC_INVALID_ADDRESS_OR_KEY, 
+                          "Invalid Pastel address",
+                          self.nodes[0].sendmany, "", send_to, 1, "comment", [], "invalid_change_address")
+        
+        
     def run_test (self):
         print("Mining blocks...")
         print(f"On REGTEST... \n\treward is {self._reward} per block\n\t100 blocks to maturity")
@@ -52,6 +313,8 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(self.nodes[0].getbalance("*"), self._reward*4)
         assert_equal(self.nodes[1].getbalance("*"), self._reward)
         assert_equal(self.nodes[2].getbalance("*"), 0)
+        
+        self.miner_address = self.nodes[self.mining_node_num].getnewaddress()
 
         # Send 26 PASTEL from 0 to 2 using sendtoaddress call. Now node_0 has 24, node_2 has 26
         # Second transaction will be child of first, and will require a fee
@@ -142,7 +405,7 @@ class WalletTest (BitcoinTestFramework):
         assert_equal(self.nodes[0].getbalance("*"), 0)
         assert_equal(self.nodes[2].getbalance("*"), self._reward*5)
 
-        # Send 1 coins from 2 to 0 with fee
+        # Send 1 coin from 2 to 0 with fee
         address = self.nodes[0].getnewaddress("")
         self.nodes[2].settxfee(self._fee)
         self.nodes[2].sendtoaddress(address, self._reward, "", "", False)
@@ -286,10 +549,9 @@ class WalletTest (BitcoinTestFramework):
         mybalance = self.nodes[2].z_getbalance(mytaddr)
         assert_equal(mybalance, self._reward)
 
-        mytxdetails = self.nodes[2].gettransaction(mytxid)
-        #myvjoinsplits = mytxdetails["vjoinsplit"]
-        #assert_equal(0, len(myvjoinsplits))
-
+        self.test_sendtoaddress()
+        self.test_sendmany()
+        
         # z_sendmany is expected to fail if tx size breaks limit
         myzaddr = self.nodes[0].z_getnewaddress()
 

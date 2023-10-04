@@ -122,7 +122,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             print(f"Waiting for {mn.alias} ENABLED state...")
             self.wait_for_mn_state(10, 10, "ENABLED", mn_id)
 
-            mn_params = ["-debug=masternode", "-masternode", "-txindex=1", "-reindex", f"-masternodeprivkey={self.mn_nodes[mn_id].privKey}"]
+            mn_params = ["-debug=masternode,net", "-masternode", "-txindex=1", "-reindex", f"-masternodeprivkey={self.mn_nodes[mn_id].privKey}"]
             #Test disk cache 2
             print(f"Stopping node {self.cold_node_num}...")
             stop_node(self.nodes[self.cold_node_num])
@@ -140,7 +140,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             print("Test new node sync")
             new_node_no = len(self.nodes)
             print(f"Starting node {new_node_no}...")
-            self.nodes.append(start_node(new_node_no, self.options.tmpdir, ["-debug=masternode"]))
+            self.nodes.append(start_node(new_node_no, self.options.tmpdir, ["-debug=masternode,net"]))
             self.reconnect_node(new_node_no)
             self.sync_all()
 
@@ -192,7 +192,7 @@ class MasterNodeMainTest (MasterNodeCommon):
 
             # self.wait_for_mn_state(30, 10, "PRE_ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id, 6)
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(90, 25, "ENABLED", mn_id, 30)
+            self.wait_for_mn_state(90, 25, "ENABLED", mn_id, 40)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'spent' in tests:

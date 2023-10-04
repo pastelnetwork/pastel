@@ -4,6 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <memory>
 #include <cinttypes>
+#include <limits>
 
 #include <vector_types.h>
 #include <init.h>
@@ -99,9 +100,11 @@ ticket_validation_t common_ticket_validation(
         if (!bPreReg && (referredItemTicket->GetBlock() > ticket.GetBlock()))
         {
             tv.errorMsg = strprintf(
-                "The %s ticket with this txid [%s] referred by this %s ticket [txid=%s] has invalid height (%u -> %u)",
-                sReferredItemTicketDescription, strReferredItemTxId, sThisTicketDescription, ticket.GetTxId(), 
-                referredItemTicket->GetBlock(), ticket.GetBlock());
+                    "The %s ticket with this txid [%s] referred by this %s ticket [txid=%s] has invalid height (%u -> %u)",
+                    sReferredItemTicketDescription, strReferredItemTxId, sThisTicketDescription, ticket.GetTxId(),
+                    referredItemTicket->GetBlock(), ticket.GetBlock());
+            if (referredItemTicket->GetBlock() == std::numeric_limits<uint32_t>::max())
+                tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
             break;
         }
         

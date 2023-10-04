@@ -20,6 +20,7 @@
 #include <main.h>
 #include <net.h>
 #include <netbase.h>
+#include <coincontrol.h>
 #include <rpc/server.h>
 #include <rpc/rpc-utils.h>
 #include <timedata.h>
@@ -42,7 +43,6 @@
 #include <wallet/missing_txs.h>
 
 using namespace std;
-
 using namespace libzcash;
 
 const string ADDR_TYPE_SAPLING = "sapling";
@@ -121,7 +121,7 @@ string AccountFromValue(const UniValue& value)
 {
     string strAccount = value.get_str();
     if (strAccount != "")
-        throw JSONRPCError(RPC_WALLET_ACCOUNTS_UNSUPPORTED, "Accounts are unsupported");
+        throw JSONRPCError(RPC_WALLET_ACCOUNTS_UNSUPPORTED, "Accounts are not supported");
     return strAccount;
 }
 
@@ -420,19 +420,39 @@ Examples:
     return ret;
 }
 
-static void SendMoney(const CTxDestination &address, const CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew)
+/**
+ * Send money to the specified address.
+ * 
+ * \param addressTo - the address to send money to
+ * \param nValue - the amount to send in 
+ * \param fSubtractFeeFromAmount - whether to subtract the fee from the amount
+ * \param txChangeDest - the type of change destination (original, new, specified)
+ * \param sChangeDestAddress - the change destination address (if changeDestType is TxChangeDestination::SPECIFIED)
+ * \param wtxNew - the commited wallet transaction
+ */
+static void SendMoney(const CTxDestination &addressTo, const CAmount nValueInPSL, const bool fSubtractFeeFromAmount,
+    const TxChangeDestination txChangeDest, const CTxDestination &txChangeDestination, CWalletTx& wtxNew)
 {
     CAmount curBalance = pwalletMain->GetBalance();
 
     // Check amount
-    if (nValue <= 0)
+    if (nValueInPSL <= 0)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
 
-    if (nValue > curBalance)
+    if (nValueInPSL > curBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
 
-    // Parse Pastel address
-    CScript scriptPubKey = GetScriptForDestination(address);
+    // Parse Pastel destination address
+    CScript scriptPubKey = GetScriptForDestination(addressTo);
+
+    unique_ptr<CCoinControl> pCoinControl;
+
+    if (txChangeDest == TxChangeDestination::SPECIFIED)
+    {
+        pCoinControl = make_unique<CCoinControl>();
+        pCoinControl->fAllowOtherInputs = true;
+        pCoinControl->destChange = txChangeDestination;
+    }
 
     // Create and send the transaction
     CReserveKey reservekey(pwalletMain);
@@ -440,15 +460,21 @@ static void SendMoney(const CTxDestination &address, const CAmount nValue, bool 
     string strError;
     vector<CRecipient> vecSend;
     int nChangePosRet = -1;
-    vecSend.emplace_back(scriptPubKey, nValue, fSubtractFeeFromAmount);
-    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError))
+    vecSend.emplace_back(scriptPubKey, nValueInPSL, fSubtractFeeFromAmount);
+    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError,
+        pCoinControl.get(), true, txChangeDest))
     {
-        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
-            strError = strprintf("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
+        if (!fSubtractFeeFromAmount && nValueInPSL + nFeeRequired > pwalletMain->GetBalance())
+            strError = strprintf(
+                "Error: This transaction requires a transaction fee of at least %s because of its amount, "
+                "complexity, or use of recently received funds!", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     if (!pwalletMain->CommitTransaction(wtxNew, reservekey))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.");
+        throw JSONRPCError(RPC_WALLET_ERROR, 
+            "Error: The transaction was rejected! This might happen if some of the coins in your wallet "
+            "were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy "
+            "but not marked as spent here.");
 }
 
 UniValue sendtoaddress(const UniValue& params, bool fHelp)
@@ -456,10 +482,11 @@ UniValue sendtoaddress(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 2 || params.size() > 5)
+    if (fHelp || params.size() < 2 || params.size() > 6)
         throw runtime_error(
-R"(sendtoaddress "t-address" amount ( "comment" "comment-to" subtractfeefromamount )
-Send an amount to a given address. The amount is a real and is rounded to the nearest 0.00000001
+R"(sendtoaddress "t-address" amount ("comment" "comment-to" subtractFeeFromAmount "change-address")
+Send an amount to a given address. The amount is a real and is rounded to the nearest 0.00000001.
+By default, the change is sent to the original address.
 ") + HelpRequiringPassphrase() + R"(
 
 Arguments:
@@ -470,8 +497,12 @@ Arguments:
 4. "comment-to"  (string, optional) A comment to store the name of the person or organization 
                              to which you're sending the transaction. This is not part of the 
                              transaction, just kept in your wallet.
-5. subtractfeefromamount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.
+5. subtractFeeFromAmount  (boolean, optional, default=false) The fee will be deducted from the amount being sent.
                              The recipient will receive less Pastel than you enter in the amount field.
+6. "change-address" (string, optional, default="original") The destination address to send the change to, can be one of the following:
+	- "original" - Send the change to the original address (default);
+	- "new" - Send the change to the new generated t-address
+	- <change t-address> - Send the change to the given Pastel t-address
 
 Result:
 "transactionid"  (string) The transaction id.
@@ -486,7 +517,7 @@ Examples:
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     KeyIO keyIO(Params());
-    const CTxDestination dest = keyIO.DecodeDestination(params[0].get_str());
+    const auto dest = keyIO.DecodeDestination(params[0].get_str());
     if (!IsValidDestination(dest))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
 
@@ -504,11 +535,32 @@ Examples:
 
     bool fSubtractFeeFromAmount = false;
     if (params.size() > 4)
-        fSubtractFeeFromAmount = params[4].get_bool();
+        fSubtractFeeFromAmount = get_bool_value(params[4]);
+
+    TxChangeDestination changeDestType = TxChangeDestination::ORIGINAL;
+    string sChangeDestAddress;
+    CTxDestination changeDest = CNoDestination();
+    if (params.size() > 5)
+    {
+		const string& sChangeDestType = params[5].get_str();
+		if (str_icmp(sChangeDestType, "original"))
+			changeDestType = TxChangeDestination::ORIGINAL;
+		else if (str_icmp(sChangeDestType, "new"))
+			changeDestType = TxChangeDestination::NEW;
+        else
+        {
+			changeDestType = TxChangeDestination::SPECIFIED;
+			sChangeDestAddress = sChangeDestType;
+            changeDest = keyIO.DecodeDestination(sChangeDestAddress);
+            if (!IsValidDestination(changeDest))
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, 
+                    strprintf("Invalid Pastel address [%s] to send the change to. Supported values: [original, new, t-address]",
+                        sChangeDestAddress));
+		}
+	}
 
     EnsureWalletIsUnlocked();
-
-    SendMoney(dest, nAmount, fSubtractFeeFromAmount, wtx);
+    SendMoney(dest, nAmount, fSubtractFeeFromAmount, changeDestType, changeDest, wtx);
 
     return wtx.GetHash().GetHex();
 }
@@ -1077,7 +1129,7 @@ As a json rpc call
     if (nAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
-    SendMoney(dest, nAmount, false, wtx);
+    SendMoney(dest, nAmount, false, TxChangeDestination::ORIGINAL, CNoDestination(), wtx);
 
     return wtx.GetHash().GetHex();
 }
@@ -1088,9 +1140,9 @@ UniValue sendmany(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
 
-    if (fHelp || params.size() < 2 || params.size() > 5)
+    if (fHelp || params.size() < 2 || params.size() > 6)
         throw runtime_error(
-R"(sendmany "fromaccount" {"address":amount,...} ( minconf "comment" ["address",...] )
+R"(sendmany "fromaccount" {"address":amount,...} ( minconf "comment" ["address",...] "change-address" )
 
 Send multiple times. Amounts are decimal numbers with at most 8 digits of precision.)"
 + HelpRequiringPassphrase() + R"(
@@ -1112,6 +1164,10 @@ Arguments:
       "address"            (string) Subtract fee from this address
       ,...
     ]
+6. "change-address" (string, optional, default="original") The destination address to send the change to, can be one of the following:
+	- "original" - Send the change to the original address (default);
+	- "new" - Send the change to the new generated t-address
+	- <change t-address> - Send the change to the given Pastel t-address
 
 Result:
 "transactionid"            (string) The transaction id for the send. Only 1 transaction is created regardless of 
@@ -1145,12 +1201,38 @@ As a json rpc call
     if (params.size() > 4)
         subtractFeeFromAmount = params[4].get_array();
 
+    KeyIO keyIO(Params());
+    TxChangeDestination changeDestType = TxChangeDestination::ORIGINAL;
+    string sChangeDestAddress;
+    CTxDestination changeDest = CNoDestination();
+    unique_ptr<CCoinControl> pCoinControl;
+    if (params.size() > 5)
+    {
+		const string& sChangeDestType = params[5].get_str();
+		if (str_icmp(sChangeDestType, "original"))
+			changeDestType = TxChangeDestination::ORIGINAL;
+		else if (str_icmp(sChangeDestType, "new"))
+			changeDestType = TxChangeDestination::NEW;
+        else
+        {
+			changeDestType = TxChangeDestination::SPECIFIED;
+			sChangeDestAddress = sChangeDestType;
+            changeDest = keyIO.DecodeDestination(sChangeDestAddress);
+            if (!IsValidDestination(changeDest))
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, 
+                    strprintf("Invalid Pastel address [%s] to send the change to. Supported values: [original, new, t-address]",
+                        sChangeDestAddress));
+            pCoinControl = make_unique<CCoinControl>();
+            pCoinControl->fAllowOtherInputs = true;
+            pCoinControl->destChange = changeDest;
+		}
+	}
+
     set<CTxDestination> destinations;
     vector<CRecipient> vecSend;
 
-    KeyIO keyIO(Params());
     CAmount totalAmount = 0;
-    vector<string> keys = sendTo.getKeys();
+    v_strings keys = sendTo.getKeys();
     for (const string& name_ : keys)
     {
         CTxDestination dest = keyIO.DecodeDestination(name_);
@@ -1175,8 +1257,7 @@ As a json rpc call
                 fSubtractFeeFromAmount = true;
         }
 
-        CRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount};
-        vecSend.push_back(recipient);
+        vecSend.emplace_back(scriptPubKey, nAmount, fSubtractFeeFromAmount);
     }
 
     EnsureWalletIsUnlocked();
@@ -1192,7 +1273,7 @@ As a json rpc call
     CAmount nFeeRequired = 0;
     int nChangePosRet = -1;
     string strFailReason;
-    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason);
+    bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason, pCoinControl.get(), true, changeDestType);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
     if (!pwalletMain->CommitTransaction(wtx, keyChange))
@@ -2910,8 +2991,9 @@ Output: [
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid samplecount");
     }
 
-    vector<double> sample_times;
-    for (int i = 0; i < samplecount; i++) {
+    v_doubles sample_times;
+    for (int i = 0; i < samplecount; i++)
+    {
         if (benchmarktype == "sleep") {
             sample_times.push_back(benchmark_sleep());
 #ifdef ENABLE_MINING
@@ -2920,7 +3002,7 @@ Output: [
                 sample_times.push_back(benchmark_solve_equihash());
             } else {
                 int nThreads = params[2].get_int();
-                vector<double> vals = benchmark_solve_equihash_threaded(nThreads);
+                v_doubles vals = benchmark_solve_equihash_threaded(nThreads);
                 sample_times.insert(sample_times.end(), vals.begin(), vals.end());
             }
 #endif
@@ -3770,9 +3852,9 @@ Examples:
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, amount must be positive");
 
         if (isZaddr)
-            zaddrRecipients.push_back( SendManyRecipient(address, nAmount, memo) );
+            zaddrRecipients.emplace_back(address, nAmount, memo);
         else
-            taddrRecipients.push_back( SendManyRecipient(address, nAmount, memo) );
+            taddrRecipients.emplace_back(address, nAmount, memo);
 
         nTotalOut += nAmount;
     }
@@ -3862,7 +3944,9 @@ Examples:
 
     // Create operation and add to global queue
     auto q = getAsyncRPCQueue();
-    auto operation = make_shared<AsyncRPCOperation_sendmany>(move(builder), contextualTx, fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee, contextInfo, bReturnChangeToSenderAddr);
+    auto operation = make_shared<AsyncRPCOperation_sendmany>(move(builder), contextualTx, 
+        fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee,
+        contextInfo, bReturnChangeToSenderAddr);
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
     return operationId;

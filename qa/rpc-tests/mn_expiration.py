@@ -345,7 +345,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         time.sleep(5)
         print(f"Generate {block_count} blocks. 1 chunk is {chunk_size} blocks, total {chunk_count} chunks")
         for ind in range(chunk_count):
-            print(f"chunk - {ind + 1}")
+            print(f"chunk - {ind + 1}/{chunk_count}")
             self.generate_and_sync_inc(chunk_size, self.mining_node_num)
             time.sleep(2)
 

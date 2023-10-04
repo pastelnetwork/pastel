@@ -174,6 +174,7 @@ public:
     static bool FindAndValidateTicketTransaction(const CPastelTicket& ticket,
                                                  const std::string& new_txid, uint32_t new_height,
                                                  bool bPreReg, std::string &message);
+    static void RemoveTicketFromMempool(const std::string& txid);
 
 #ifdef ENABLE_WALLET
     static bool CreateP2FMSTransaction(const std::string& input_string, CMutableTransaction& tx_out, 
@@ -217,6 +218,8 @@ public:
 
     // Get mempool tracker for ticket transactions
     static tx_mempool_tracker_t GetTxMemPoolTracker();
+
+    static uint32_t GetTicketBlockHeightInActiveChain(const uint256& txid);
 
 protected:
     static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, std::unique_ptr<CPastelTicket>&& ticket) noexcept;

@@ -10,15 +10,19 @@
 
 #include <fstream>
 #include <mutex>
+#include <cstdint>
 #include <stdarg.h>
 #include <stdio.h>
 #include <thread>
-#include <unistd.h>
 #include <errno.h>
 
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
 #include <pthread.h>
 #include <pthread_np.h>
+#elif defined(__APPLE__)
+#include <sys/sysctl.h>
+#elif defined(__linux__)
+#include <sys/sysinfo.h>
 #endif
 
 #include <util.h>
@@ -1029,8 +1033,8 @@ string PrivacyInfo()
 string LicenseInfo()
 {
     return "\n" +
-           FormatParagraph(strprintf(translate("Copyright (C) 2009-%i The Bitcoin Core Developers"), COPYRIGHT_YEAR)) + "\n" +
-           FormatParagraph(strprintf(translate("Copyright (C) 2015-%i The Zcash Developers"), COPYRIGHT_YEAR)) + "\n" +
+           FormatParagraph(translate("Copyright (C) 2009-2014 The Bitcoin Core Developers") + "\n" +
+           FormatParagraph(translate("Copyright (C) 2015-2017 The Zcash Developers")) + "\n" +
            FormatParagraph(strprintf(translate("Copyright (C) 2018-%i The Pastel Developers"), COPYRIGHT_YEAR)) + "\n" +
            "\n" +
            FormatParagraph(translate("This is experimental software.")) + "\n" +
@@ -1038,12 +1042,80 @@ string LicenseInfo()
            FormatParagraph(translate("Distributed under the MIT software license, see the accompanying file COPYING or <http://www.opensource.org/licenses/mit-license.php>.")) + "\n" +
            "\n" +
            FormatParagraph(translate("This product includes software developed by the OpenSSL Project for use in the OpenSSL Toolkit <https://www.openssl.org/> and cryptographic software written by Eric Young.")) +
-           "\n";
+           "\n");
 }
 
-int GetNumCores()
+/**
+ * Get number of physical CPU cores available on the current system.
+ * This does not count virtual cores.
+ * 
+ * \return number of CPU cores
+ */
+unsigned int GetNumCores()
 {
-    return thread::hardware_concurrency();
+    unsigned int nNumCores = thread::hardware_concurrency();
+    if (nNumCores == 0)
+    {
+#ifdef __linux__
+        ifstream cpuinfo("/proc/cpuinfo");
+        if (!cpuinfo)
+            return 0;
+        string line;
+        while (getline(cpuinfo, line))
+        {
+            if (line.find("processor") != string::npos)
+                ++nNumCores;
+        }
+#elif defined(__APPLE__)
+        int nm[2];
+        size_t len = 4;
+
+        nm[0] = CTL_HW;
+        nm[1] = HW_AVAILCPU;
+        sysctl(nm, 2, &nNumCores, &len, nullptr, 0);
+
+        if (nNumCores < 1)
+        {
+            nm[1] = HW_NCPU;
+            sysctl(nm, 2, &nNumCores, &len, nullptr, 0);
+            if (nNumCores < 1)
+                nNumCores = 1;
+        }
+#elif defined(WIN32)
+		SYSTEM_INFO sysinfo;
+		GetSystemInfo(&sysinfo);
+		nNumCores = sysinfo.dwNumberOfProcessors;
+#endif
+    }
+    return nNumCores;
+}
+
+/**
+ * Get total physical memory (RAM) in bytes.
+ * 
+ * \return total available physical memory in bytes
+ */
+uint64_t GetTotalPhysicalMemory()
+{
+    uint64_t nTotalMemory = 0;
+#ifdef __linux__
+    struct sysinfo info;
+    if (sysinfo(&info) == 0)
+		nTotalMemory = static_cast<uint64_t>(info.totalram) * info.mem_unit;
+#elif defined(__APPLE__)
+    int mib[2];
+    size_t len = sizeof(nTotalMemory);
+    mib[0] = CTL_HW;
+    mib[1] = HW_MEMSIZE; // Total physical memory in bytes
+
+    sysctl(mib, 2, &nTotalMemory, &len, nullptr, 0);
+#elif defined (WIN32)
+    MEMORYSTATUSEX status;
+	status.dwLength = sizeof(status);
+	if (GlobalMemoryStatusEx(&status))
+		nTotalMemory = status.ullTotalPhys;
+#endif
+    return nTotalMemory;
 }
 
 InsecureRand::InsecureRand(bool _fDeterministic) :

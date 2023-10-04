@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2023 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -584,6 +584,37 @@ def wait_and_assert_operationid_status_result(node, myopid, in_status='success',
     assert_equal(in_status, status, f"Operation returned mismatched status. Error Message: {errormsg}")
 
     return result
+
+def check_array_result(object_array, to_match, expected, skip_conditions=None):
+    """
+    Pass in array of JSON objects, a dictionary with key/value pairs
+    to match against, and another dictionary with expected key/value
+    pairs.
+    @param object_array: array of JSON objects
+    @param to_match: dictionary of key/value pairs to match against
+    @param expected: dictionary of key/value pairs to expect
+    @param skip_conditions: dictionary of key/value pairs to skip
+    """
+    num_matched = 0
+    for item in object_array:
+        all_match = True
+        
+        for key,value in to_match.items():
+            if item[key] != value:
+                all_match = False
+                
+        if not all_match:
+            continue
+        
+        for key, value in expected.items():
+            if skip_conditions and key in skip_conditions:
+                if skip_conditions[key](item[key]):
+                    continue
+            if item[key] != value:
+                raise AssertionError(f"{item} : expected {key}={value}")
+            num_matched = num_matched + 1
+    if num_matched == 0:
+        raise AssertionError(f"No objects matched: {to_match}")
 
 
 # Returns txid if operation was a success or None

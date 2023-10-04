@@ -120,18 +120,22 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const ui
 
         // Check the Royalty change ticket for that NFT is already in the database
         // (ticket transaction replay attack protection)
-        CNFTRoyaltyTicket _ticket;
-        if (FindTicketInDb(KeyOne(), _ticket) &&
+        CNFTRoyaltyTicket existingTicket;
+        if (FindTicketInDb(KeyOne(), existingTicket) &&
             (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
-             !_ticket.IsSameSignature(m_signature) || 
-             !_ticket.IsBlock(m_nBlock) || 
-             !_ticket.IsTxId(m_txid)))
+             !existingTicket.IsSameSignature(m_signature) ||
+             !existingTicket.IsBlock(m_nBlock) ||
+             !existingTicket.IsTxId(m_txid)))
         {
-            tv.errorMsg =strprintf(
-                "The Change Royalty ticket is already registered in blockchain [pastelID=%s; new_pastelID=%s] [%sfound ticket block=%u, txid=%s] with NFT txid [%s]",
-                m_sPastelID, m_sNewPastelID, 
-                bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
-                _ticket.GetBlock(), _ticket.m_txid, m_sNFTTxId);
+            string message = strprintf("The Change Royalty ticket from pastelID=%s to new_pastelID=%s for NFT txid [%s]",
+                                       m_sPastelID, m_sNewPastelID, m_sNFTTxId);
+            bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
+                                                                                   m_txid, m_nBlock,
+                                                                                   bPreReg, message);
+            if (bFound) {
+                tv.errorMsg = message;
+                break;
+            }
         }
 
         CPastelIDRegTicket newPastelIDticket;

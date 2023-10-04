@@ -290,15 +290,19 @@ ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32
             }
         }
         // (ticket transaction replay attack protection)
-        CNFTRegTicket ticket;
-        if (FindTicketInDb(m_keyOne, ticket) && (!ticket.IsBlock(m_nBlock) || !ticket.IsTxId(m_txid)))
+        CNFTRegTicket existingTicket;
+        if (FindTicketInDb(m_keyOne, existingTicket) &&
+            (!existingTicket.IsBlock(m_nBlock) ||
+            !existingTicket.IsTxId(m_txid)))
         {
-            tv.errorMsg = strprintf(
-                "This NFT is already registered in blockchain [key=%s; label=%s] [%sfound ticket block=%u, txid=%s]",
-                m_keyOne, m_label, 
-                bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
-                ticket.GetBlock(), ticket.GetTxId());
-            break;
+            string message = strprintf("This NFT is already registered in blockchain [key=%s; label=%s]", m_keyOne, KeyTwo());
+            bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
+                                                                                   m_txid, m_nBlock,
+                                                                                   bPreReg, message);
+            if (bFound) {
+                tv.errorMsg = message;
+                break;
+            }
         }
 
         // validate referenced collection (for v2 only)

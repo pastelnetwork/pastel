@@ -612,6 +612,8 @@ private:
 
 using wallet_txmap_t = std::unordered_map<uint256, CWalletTx>;
 using BalanceMap_t = std::map<CTxDestination, CAmount> ;
+using coin_ref_t = std::pair<const CWalletTx*, uint32_t>;
+using coin_set_t = std::set<coin_ref_t>;
 
 /** 
  * A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
@@ -625,7 +627,7 @@ private:
      * all coins from coinControl are selected; Never select unconfirmed coins
      * if they are not ours
      */
-    bool SelectCoins(const CAmount& nTargetValue, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet, bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl *coinControl = nullptr) const;
+    bool SelectCoins(const CAmount& nTargetValue, coin_set_t& setCoinsRet, CAmount& nValueRet, bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl *coinControl = nullptr) const;
 
     CWalletDB *pwalletdbEncryption;
 
@@ -877,7 +879,7 @@ public:
      * completion the coin set and corresponding actual target value is
      * assembled
      */
-    bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, CAmount& nValueRet) const;
+    bool SelectCoinsMinConf(const CAmount& nTargetValue, int nConfMine, int nConfTheirs, std::vector<COutput> vCoins, coin_set_t& setCoinsRet, CAmount& nValueRet) const;
 
     bool IsSpent(const uint256& hash, const uint32_t n) const noexcept;
     bool IsSaplingSpent(const uint256& nullifier) const noexcept;
@@ -1018,7 +1020,8 @@ public:
      * selected by SelectCoins(); Also create the change output, when needed
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosRet,
-                           std::string& strFailReason, const CCoinControl *coinControl = nullptr, bool sign = true);
+                           std::string& strFailReason, const CCoinControl *coinControl = nullptr, 
+                           const bool bSign = true, const TxChangeDestination txChangeDest = TxChangeDestination::ORIGINAL);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
 
     static CFeeRate minTxFee;

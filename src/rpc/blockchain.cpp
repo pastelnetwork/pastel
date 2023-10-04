@@ -352,9 +352,9 @@ Examples:
 + HelpExampleRpc("getblockhash", "1000")
 );
 
-    uint32_t nCurrentHeight = gl_nChainHeight;
+    const uint32_t nCurrentHeight = gl_nChainHeight;
     int nHeight = params[0].get_int();
-    if (nHeight < 0 || nHeight > nCurrentHeight)
+    if (nHeight < 0 || static_cast<uint32_t>(nHeight) > nCurrentHeight)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
 
     LOCK(cs_main);
