@@ -219,7 +219,6 @@ public:
     uint32_t GetCachedBlockHeight() const noexcept { return nCachedBlockHeight; }
 
     size_t CountCurrent(const int nProtocolVersion = -1) const noexcept;
-    bool HasEnoughEnabled() const noexcept;
 
     /// Count Masternodes by network type - NET_IPV4, NET_IPV6, NET_TOR
     // int CountByIP(int nNetworkType);

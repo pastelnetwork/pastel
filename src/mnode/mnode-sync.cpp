@@ -219,38 +219,40 @@ void CMasternodeSync::ProcessTick()
     }
 
     if (IsSynced()){
-        // check if we have enough supernodes in the list (>=10) after 10 minutes of being fully synced, and then every 10 minutes but not more than 3 times in the row
-        int64_t currentTime = GetTime();
-        int64_t secsFromPrevious = (currentTime-nTimeLastBumped) % (10*60);
-        if (secsFromPrevious < 6 &&
-            currentTime-nTimeLastBumped > 10*60 &&
-            nReSyncAttempt < 3)
-        {
-            LogFnPrintf("Check that has enough top 10 supernodes: %d seconds after previous check", secsFromPrevious+(10*60));
-            int nHeight;
-            {
-                LOCK(cs_main);
-                CBlockIndex* pindex = chainActive.Tip();
-                if (!pindex)
-                    return;
-                nHeight = pindex->nHeight;
-            }
-
-            string error;
-            masternode_vector_t topBlockMNs;
-            auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nHeight, true);
-            if ((status != GetTopMasterNodeStatus::SUCCEEDED &&
-                status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY) ||
-                topBlockMNs.size() < 10)
-            {
-                if (nReSyncAttempt == 0) {
-                    LogFnPrintf("WARNING: not enough top 10 supernodes, clearing cache...");
-                    //clear cache and try again
-                    masterNodeCtrl.masternodeManager.ClearCache(getAllMNCacheItems());
+        if (masterNodeCtrl.EnableMNSyncCheckAndReset) {
+            // check if we have enough supernodes in the list (>=10) after 10 minutes of being fully synced, and then every 10 minutes but not more than 3 times in the row
+            int64_t currentTime = GetTime();
+            int64_t secsFromPrevious = (currentTime - nTimeLastBumped) % (10 * 60);
+            if (secsFromPrevious < 6 &&
+                currentTime - nTimeLastBumped > 10 * 60 &&
+                nReSyncAttempt < 3) {
+                LogFnPrintf("Check that has enough top 10 supernodes: %d seconds after previous check",
+                            secsFromPrevious + (10 * 60));
+                int nHeight;
+                {
+                    LOCK(cs_main);
+                    CBlockIndex *pindex = chainActive.Tip();
+                    if (!pindex)
+                        return;
+                    nHeight = pindex->nHeight;
                 }
-                LogFnPrintf("WARNING: not enough top 10 supernodes, trying to re-sync (attempt #%d) ...", ++nReSyncAttempt);
-                Reset();
-                SwitchToNextAsset();
+
+                string error;
+                masternode_vector_t topBlockMNs;
+                auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nHeight, true);
+                if ((status != GetTopMasterNodeStatus::SUCCEEDED &&
+                     status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY) ||
+                    topBlockMNs.size() < 10) {
+                    if (nReSyncAttempt == 0) {
+                        LogFnPrintf("WARNING: not enough top 10 supernodes, clearing cache...");
+                        //clear cache and try again
+                        masterNodeCtrl.masternodeManager.ClearCache(getAllMNCacheItems());
+                    }
+                    LogFnPrintf("WARNING: not enough top 10 supernodes, trying to re-sync (attempt #%d) ...",
+                                ++nReSyncAttempt);
+                    Reset();
+                    SwitchToNextAsset();
+                }
             }
         }
         return;

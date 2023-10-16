@@ -1197,50 +1197,12 @@ As json rpc:
     return NullUniValue;
 }
 
-UniValue masternode_set_min_mn_count(const UniValue& params)
-{
-    if (params.size() < 2)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is: masternode set-min-mn-count <count>");
-
-    int64_t nLongValue = get_long_number(params[1]);
-    rpc_check_unsigned_param<uint32_t>("<count>", nLongValue);
-    uint32_t nCount = (uint32_t)nLongValue;
-
-    uint32_t nTotalCount = masterNodeCtrl.masternodeManager.CountMasternodes();
-    if (nCount > nTotalCount)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Count should be less or equal to total number of MNs: %zu", nTotalCount));
-
-    UniValue obj(UniValue::VOBJ);
-    obj.pushKV("OldMinMnCount", static_cast<uint64_t>(masterNodeCtrl.nMinRequiredEnabledMasternodes));
-    masterNodeCtrl.nMinRequiredEnabledMasternodes = nCount;
-    obj.pushKV("NewMinMnCount", static_cast<uint64_t>(masterNodeCtrl.nMinRequiredEnabledMasternodes));
-
-    return obj;
-}
-
-UniValue masternode_set_min_mn_percent(const UniValue& params)
-{
-    if (params.size() < 2)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Correct usage is: masternode set-min-mn-percent <percent>");
-
-    int percent = get_number(params[1]);
-    if (percent <0 || percent > 100)
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "Percent should be in range 0-100");
-
-    UniValue obj(UniValue::VOBJ);
-    obj.pushKV("OldMinMnPercent", (int)masterNodeCtrl.nMinRequiredEnabledMasternodesPercent);
-    masterNodeCtrl.nMinRequiredEnabledMasternodesPercent = percent;
-    obj.pushKV("NewMinMnPercent", (int)masterNodeCtrl.nMinRequiredEnabledMasternodesPercent);
-
-    return obj;
-}
-
 UniValue masternode(const UniValue& params, bool fHelp)
 {
 #ifdef ENABLE_WALLET
     RPC_CMD_PARSER(MN, params, init, list, list__conf, count, debug, current, winner, winners,
         genkey, connect, status, top, message, make__conf, pose__ban__score,
-        print__cache, clear__cache, min__enabled__mn__count, min__enabled__mn__percent,
+        print__cache, clear__cache,
         start__many, start__alias, start__all, start__missing, start__disabled, outputs);
 #else
     RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
@@ -1287,9 +1249,6 @@ R"(
                  (this maybe not accurate - MN existed before might not be in the current list)
   message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n"
   pose-ban-score - PoSe (Proof-of-Service) ban score management
-  min-enabled-mn-count - Set minimum required ENABLED masternode count in the LOCAL list to validate Tickets
-  min-enabled-mn-percent - Set minimum required ENABLED masternode percent in the LOCAL list to validate Tickets (0-100).
-                           Used only if min count is not set by either 'min-enabled-mn-count' or '-setminenabledmncount' command line option (default: 0)
 )"
 );
 
@@ -1339,12 +1298,6 @@ R"(
 
         case RPC_CMD_MN::clear__cache:
             return masternode_clear_cache(params);
-
-        case RPC_CMD_MN::min__enabled__mn__count:
-            return masternode_set_min_mn_count(params);
-
-        case RPC_CMD_MN::min__enabled__mn__percent:
-            return masternode_set_min_mn_percent(params);
 
 #ifdef ENABLE_WALLET
         case RPC_CMD_MN::init:

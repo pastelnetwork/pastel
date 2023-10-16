@@ -537,8 +537,7 @@ string HelpMessage(HelpMessageMode mode)
     }
 
     strUsage += HelpMessageGroup(translate("Masternode options:"));
-    strUsage += HelpMessageOpt("-setminenabledmncount=<n>", translate("Set minimum required ENABLED masternode count in the LOCAL list to validate Tickets (default: 0)"));
-    strUsage += HelpMessageOpt("-setminenabledmnpercent=<n>", translate("Set minimum required ENABLED masternode percent in the LOCAL list to validate Tickets (0-100). Used only if min count is not set by '-setminenabledmncount' command line option (default: 0)"));
+    strUsage += HelpMessageOpt("-enablemnsynccheck", translate("Enable automatic mn sync checks status and reset if no 10 SN received in the 30 minutes after initial block download done and then check every 30 minutes (default: 0)"));
 
     return strUsage;
 }
