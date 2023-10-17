@@ -240,9 +240,8 @@ void CMasternodeSync::ProcessTick()
                 string error;
                 masternode_vector_t topBlockMNs;
                 auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nHeight, true);
-                if ((status != GetTopMasterNodeStatus::SUCCEEDED &&
-                     status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY) ||
-                    topBlockMNs.size() < 10) {
+                LogFnPrintf("GetTopMNsForBlock: %s, status = %d, topBlockMNs.size = %d", error, topBlockMNs.size(), int(status));
+                if (topBlockMNs.size() < 10) {
                     if (nReSyncAttempt == 0) {
                         LogFnPrintf("WARNING: not enough top 10 supernodes, clearing cache...");
                         //clear cache and try again
