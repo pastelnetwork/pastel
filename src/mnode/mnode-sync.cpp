@@ -220,7 +220,7 @@ void CMasternodeSync::ProcessTick()
 
     if (IsSynced()){
         if (masterNodeCtrl.EnableMNSyncCheckAndReset) {
-            int MNSyncCheckInterval = 1;
+            int MNSyncCheckInterval = 30;
             // check if we have enough supernodes in the list (>=10) after 10 minutes of being fully synced, and then every 10 minutes but not more than 3 times in the row
             int64_t currentTime = GetTime();
             int64_t secsFromPrevious = (currentTime - nTimeLastBumped) % (MNSyncCheckInterval * 60);
