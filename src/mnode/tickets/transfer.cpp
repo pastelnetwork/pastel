@@ -18,6 +18,7 @@
 #include <mnode/ticket-processor.h>
 #include <mnode/tickets/action-reg.h>
 #include <mnode/tickets/action-act.h>
+#include <mnode/ticket-mempool-processor.h>
 
 using json = nlohmann::json;
 using namespace std;
@@ -254,6 +255,21 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
     do
     {
         const bool bPreReg = isPreReg(txOrigin);
+        if (bPreReg)
+        {
+            // initialize Pastel Ticket mempool processor for transfer tickets
+			// retrieve mempool transactions with TicketID::Transfer tickets
+			CPastelTicketMemPoolProcessor TktMemPool(ID());
+			TktMemPool.Initialize(mempool);
+            // check if Transfer ticket with the same Offer txid is already in the mempool
+            if (TktMemPool.TicketExists(KeyOne()))
+            {
+                tv.errorMsg = strprintf(
+					"The %s ticket with %s txid [%s] is already in the mempool", 
+					GetTicketDescription(), COfferTicket::GetTicketDescription(), m_offerTxId);
+				break;
+			}
+        }
         // 0. Common validations
         unique_ptr<CPastelTicket> offerTicket;
         ticket_validation_t commonTV = common_ticket_validation(

@@ -540,8 +540,14 @@ public:
     const uint32_t nVersionGroupId;
     const std::vector<CTxIn> vin;       // tx inputs
     const std::vector<CTxOut> vout;     // tx outputs
+    // Represents the earliest time or block height at which a transaction is considered valid and 
+    // can be added to a block.
     // There are two possible values of nLockTime: 
     // lock-by-blockheight and lock-by-blocktime, distinguished by whether nLockTime < LOCKTIME_THRESHOLD.
+    // lock-by-blockheight: the transaction can be added to any block which has this height or higher.
+    // lock-by-blocktime: the transaction can be added to any block whose block time is greater than or equal to 
+    // the provided timestamp (Unix epoch timestamp).
+    // 0: the transaction is considered "final" and can be included in a block regardless of its timestamp or height.
     const uint32_t nLockTime;
     const uint32_t nExpiryHeight;
     const CAmount valueBalance;

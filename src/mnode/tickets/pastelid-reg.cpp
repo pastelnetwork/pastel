@@ -11,6 +11,7 @@
 #include <mnode/mnode-masternode.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-msgsigner.h>
+#include <mnode/ticket-mempool-processor.h>
 
 using json = nlohmann::json;
 using namespace std;
@@ -127,8 +128,8 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
         const bool bPreReg = isPreReg(txOrigin);
         // Something to check ONLY before ticket made into transaction
         if (bPreReg)
-        { 
-            //1. check that Pastel ID ticket is not already in the blockchain.
+        {
+            // check that Pastel ID ticket is not already in the blockchain.
             // Only done after Create
             if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
             {
@@ -136,6 +137,27 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
                 break;
             }
 
+            // initialize Pastel Ticket mempool processor for pastelid tickets
+            // retrieve mempool transactions with TicketID::PastelID tickets
+            CPastelTicketMemPoolProcessor TktMemPool(ID());
+            TktMemPool.Initialize(mempool);
+            // check if Pastel MNID ticket with the same Pastel ID is already in the mempool
+            if (TktMemPool.TicketExists(KeyOne()))
+            {
+                tv.errorMsg = strprintf(
+					"Pastel ID ticket (MNID) with the same Pastel ID [%s] is already in the mempool",
+                    m_sPastelID);
+				break;
+			}
+
+            // check if we have already mnid ticket with the same outpoint in the mempool
+            if (TktMemPool.TicketExistsBySecondaryKey(KeyTwo()))
+            {
+				tv.errorMsg = strprintf("Pastel ID ticket (MNID) with the same outpoint [%s] is already in the mempool",
+                    m_outpoint.ToStringShort());
+				break;
+			}
+            
             //TODO Pastel: validate that address has coins to pay for registration - 10PSL + fee
             // ...
         }

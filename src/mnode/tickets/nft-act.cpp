@@ -12,6 +12,7 @@
 #include <mnode/tickets/nft-act.h>
 #include <mnode/tickets/collection-act.h>
 #include <mnode/tickets/ticket-utils.h>
+#include <mnode/ticket-mempool-processor.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif // ENABLE_WALLET
@@ -69,6 +70,21 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
     do
     {
         const bool bPreReg = isPreReg(txOrigin);
+        if (bPreReg)
+        {
+            // initialize Pastel Ticket mempool processor for NFT Activation tickets
+			// retrieve mempool transactions with TicketID::Activate tickets
+			CPastelTicketMemPoolProcessor TktMemPool(ID());
+			TktMemPool.Initialize(mempool);
+			// check if the NFT Activation ticket is already in the mempool
+            if (TktMemPool.TicketExists(KeyOne()))
+            {
+                tv.errorMsg = strprintf(
+					"The %s ticket with this %s txid [%s] is already in the mempool",
+					GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), m_txid);
+				break;
+			}
+        }
         // 0. Common validations
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
@@ -81,8 +97,10 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
         {
             // enrich the error message
             tv.errorMsg = strprintf(
-                "The Activation ticket for the Registration ticket with txid [%s] is not validated%s. %s",
-                m_regTicketTxId, bPreReg ? "" : strprintf(" [block=%u, txid=%s]", m_nBlock, m_txid), commonTV.errorMsg);
+                "The %s ticket for the %s ticket with txid [%s] is not validated%s. %s",
+                GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), 
+                m_regTicketTxId, bPreReg ? "" : strprintf(" [block=%u, txid=%s]", m_nBlock, m_txid),
+                commonTV.errorMsg);
             tv.state = commonTV.state;
             break;
         }
@@ -97,12 +115,13 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
                 !existingTicket.IsBlock(m_nBlock) ||
                 !existingTicket.IsTxId(m_txid))
             {
-                string message = strprintf( "The Activation ticket for the Registration ticket with txid [%s]", m_regTicketTxId);
+                string sMessage = strprintf( "The Activation ticket for the Registration ticket with txid [%s]", m_regTicketTxId);
                 bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
                                                                                        m_txid, m_nBlock,
-                                                                                       bPreReg, message);
-                if (bFound) {
-                    tv.errorMsg = message;
+                                                                                       bPreReg, sMessage);
+                if (bFound)
+                {
+                    tv.errorMsg = sMessage;
                     break;
                 }
             }

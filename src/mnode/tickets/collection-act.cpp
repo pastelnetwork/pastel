@@ -15,6 +15,7 @@
 #include <mnode/tickets/collection-reg.h>
 #include <mnode/tickets/collection-act.h>
 #include <mnode/tickets/ticket-utils.h>
+#include <mnode/ticket-mempool-processor.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif // ENABLE_WALLET
@@ -72,6 +73,21 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
     do
     {
         const bool bPreReg = isPreReg(txOrigin);
+        if (bPreReg)
+        {
+			// initialize Pastel Ticket mempool processor for collection activate tickets
+			// retrieve mempool transactions with TicketID::CollectionActivate tickets
+			CPastelTicketMemPoolProcessor TktMemPool(ID());
+			TktMemPool.Initialize(mempool);
+			// check if Collection Activate ticket with the same Registration txid is already in the mempool
+            if (TktMemPool.TicketExists(KeyOne()))
+            {
+                tv.errorMsg = strprintf(
+					"The %s ticket with this %s txid [%s] is already in the mempool",
+					GetTicketDescription(), CollectionRegTicket::GetTicketDescription(), m_txid);
+				break;
+			}
+		}
         // 0. Common validations
         unique_ptr<CPastelTicket> pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(

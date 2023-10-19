@@ -15,6 +15,7 @@ from decimal import getcontext
 from test_framework.util import (
     assert_true,
     assert_equal,
+    assert_raises_rpc,
     assert_greater_than,
     start_node,
     connect_nodes_bi,
@@ -26,6 +27,7 @@ from pastel_test_framework import (
     PastelTestFramework,
     TicketType
 )
+import test_framework.rpc_consts as rpc
 
 getcontext().prec = 16
 
@@ -416,8 +418,13 @@ class MasterNodeCommon (PastelTestFramework):
             for mn in self.mn_nodes:
                 if mn.index >= self.number_of_cold_nodes:
                     continue
-                result = self.nodes[mn.index].tickets("register", "mnid", mn.mnid,
+                result = self.nodes[mn.index].tickets("register", TicketType.MNID.type_name, mn.mnid,
                     self.passphrase, mn.mnid_reg_address)
+                # only for mn0 - duplicate mnid registration should not be accepted to mempool
+                if mn.index == 0:
+                    assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already in the mempool",
+                        self.nodes[mn.index].tickets, "register", TicketType.MNID.type_name, mn.mnid,
+                        self.passphrase, mn.mnid_reg_address)
                 mn.mnid_reg_txid = result["txid"]
                 self.generate_and_sync_inc(1, self.mining_node_num)
             # wait for ticket transactions

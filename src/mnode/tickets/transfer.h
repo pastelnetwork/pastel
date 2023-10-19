@@ -5,8 +5,8 @@
 #include <tuple>
 #include <optional>
 
-#include <mnode/tickets/ticket.h>
 #include <map_types.h>
+#include <mnode/tickets/ticket.h>
 
 // forward ticket class declaration
 class CTransferTicket;

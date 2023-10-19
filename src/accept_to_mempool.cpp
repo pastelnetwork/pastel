@@ -720,15 +720,15 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
 }
 
 bool AcceptToMemoryPool(
-        const CChainParams& chainparams,
-        CTxMemPool& pool, CValidationState &state, const CTransaction &tx, bool fLimitFree,
-        bool* pfMissingInputs, bool fRejectAbsurdFee)
+    const CChainParams& chainparams,
+    CTxMemPool& pool, CValidationState& state, const CTransaction& tx, bool fLimitFree,
+    bool* pfMissingInputs, bool fRejectAbsurdFee)
 {
     AssertLockHeld(cs_main);
     if (pfMissingInputs)
         *pfMissingInputs = false;
 
-    int nextBlockHeight = chainActive.Height() + 1;
+    int nextBlockHeight = gl_nChainHeight + 1;
     const auto& consensusParams = chainparams.GetConsensus();
     auto consensusBranchId = CurrentEpochBranchId(nextBlockHeight, consensusParams);
 
@@ -738,7 +738,9 @@ bool AcceptToMemoryPool(
     const uint256 hash = tx.GetHash();
     auto verifier = libzcash::ProofVerifier::Strict();
     if (!CheckTransaction(tx, state, verifier))
-        return error("AcceptToMemoryPool [%s]: CheckTransaction failed", hash.ToString());
+    {
+        return error("AcceptToMemoryPool [%s]: CheckTransaction failed. %s", hash.ToString(), state.GetRejectReason());
+    }
 
     // Check transaction contextually against the set of consensus rules which apply in the next block to be mined.
     if (!ContextualCheckTransaction(tx, state, chainparams, nextBlockHeight))
@@ -756,30 +758,41 @@ bool AcceptToMemoryPool(
     // Note that if a valid transaction belonging to the wallet is in the mempool and the node is shutdown,
     // upon restart, CWalletTx::AcceptToMemoryPool() will be invoked which might result in rejection.
     if (IsExpiringSoonTx(tx, nextBlockHeight))
-        return state.DoS(0, error("AcceptToMemoryPool [%s]: transaction is expiring soon", hash.ToString()), 
-                         REJECT_INVALID, "tx-expiring-soon");
+    {
+        return state.DoS(0, error("AcceptToMemoryPool [%s]: transaction is expiring soon", hash.ToString()),
+            REJECT_INVALID, "tx-expiring-soon");
+    }
 
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
+    {
         return state.DoS(100, error("AcceptToMemoryPool [%s]: coinbase as individual tx", hash.ToString()),
-                         REJECT_INVALID, "coinbase");
+            REJECT_INVALID, "coinbase");
+    }
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     string reason;
     if (chainparams.RequireStandard() && !IsStandardTx(tx, reason, chainparams, nextBlockHeight))
+    {
         return state.DoS(0, error("AcceptToMemoryPool [%s]: nonstandard transaction: %s", hash.ToString(), reason),
-                         REJECT_NONSTANDARD, reason);
+            REJECT_NONSTANDARD, reason);
+    }
 
     // Only accept nLockTime-using transactions that can be mined in the next
     // block; we don't want our mempool filled up with transactions that can't
     // be mined yet.
     if (!CheckFinalTx(tx, STANDARD_LOCKTIME_VERIFY_FLAGS))
-        return state.DoS(0, false, 
-                         REJECT_NONSTANDARD, "non-final");
+    {
+        return state.DoS(0, false,
+            REJECT_NONSTANDARD, "non-final");
+    }
 
     // is it already in the memory pool?
     if (pool.exists(hash))
-        return false;
+    {
+        return state.DoS(0, error("AcceptToMemoryPool [%s]: duplication transaction", hash.ToString()),
+            REJECT_DUPLICATE, "duplicate");
+    }
 
     // Check for conflicts with in-memory transactions
     {
@@ -790,15 +803,17 @@ bool AcceptToMemoryPool(
             if (pool.mapNextTx.count(outpoint))
             {
                 // Disable replacement feature for now
-                return false;
+                return state.DoS(0, error("AcceptToMemoryPool [%s]: transaction with the same input already exists in the memory pool", hash.ToString()),
+                    REJECT_INVALID, "mempool-same-input-exists");
             }
         }
         for (const auto &spendDescription : tx.vShieldedSpend)
         {
             if (pool.nullifierExists(spendDescription.nullifier, SAPLING))
-                return false;
+                return state.DoS(0, warning_msg("AcceptToMemoryPool [%s]: nullifier exists for the shielded spend in the memory pool", hash.ToString()),
+                    REJECT_INVALID, "mempool-nullifier-exists");
         }
-    }
+    } // end of mempool locked section (pool.cs)
 
     {
         CCoinsView dummy;
@@ -812,7 +827,10 @@ bool AcceptToMemoryPool(
 
             // do we already have it?
             if (view.HaveCoins(hash))
-                return false;
+            {
+                return state.DoS(0, warning_msg("AcceptToMemoryPool [%s]: transaction already exists in the mempool coins cache", hash.ToString()),
+                    REJECT_INVALID, "mempool-view-coin-already-exists");
+            }
 
             // do all inputs exist?
             // Note that this does not check for the presence of actual outputs (see the next check for that),
@@ -881,9 +899,9 @@ bool AcceptToMemoryPool(
         // Grab the branch ID we expect this transaction to commit to. We don't
         // yet know if it does, but if the entry gets added to the mempool, then
         // it has passed ContextualCheckInputs and therefore this is correct.
-        auto consensusBranchId = CurrentEpochBranchId(chainActive.Height() + 1, consensusParams);
+        consensusBranchId = CurrentEpochBranchId(gl_nChainHeight + 1, consensusParams);
 
-        CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, chainActive.Height(), mempool.HasNoInputsOf(tx), fSpendsCoinbase, consensusBranchId);
+        CTxMemPoolEntry entry(tx, nFees, GetTime(), dPriority, gl_nChainHeight, mempool.HasNoInputsOf(tx), fSpendsCoinbase, consensusBranchId);
         const size_t nTxSize = entry.GetTxSize();
 
         // Accept a tx if it contains joinsplits and has at least the default fee specified by z_sendmany.
@@ -897,7 +915,7 @@ bool AcceptToMemoryPool(
         if (GetBoolArg("-relaypriority", false) && nFees < gl_ChainOptions.minRelayTxFee.GetFee(nTxSize) && 
             !AllowFree(view.GetPriority(tx, chainActive.Height() + 1)))
         {
-            return state.DoS(0, false, 
+            return state.DoS(0, error("AcceptToMemoryPool [%s]: insufficient priority to be mined in the next block", hash.ToString()),
                              REJECT_INSUFFICIENTFEE, "insufficient priority");
         }
 
