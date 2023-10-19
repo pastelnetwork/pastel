@@ -1,14 +1,15 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "amount.h"
-#include "uint256.h"
-#include "vector_types.h"
-#include "txmempool_entry.h"
 #include <map>
+
+#include <amount.h>
+#include <uint256.h>
+#include <vector_types.h>
+#include <txmempool_entry.h>
 
 class CAutoFile;
 class CFeeRate;
@@ -144,7 +145,7 @@ public:
     void Record(int blocksToConfirm, double val);
 
     /** Record a new transaction entering the mempool*/
-    unsigned int NewTx(unsigned int nBlockHeight, double val);
+    unsigned int NewTx(const uint32_t nBlockHeight, const double val, std::string &sMsg);
 
     /** Remove a transaction from mempool tracking stats*/
     void removeTx(unsigned int entryHeight, unsigned int nBestSeenHeight,

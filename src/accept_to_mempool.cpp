@@ -751,7 +751,7 @@ bool AcceptToMemoryPool(
                 *pfMissingInputs = true;
             return warning_msg("AcceptToMemoryPool [%s]: ContextualCheckTransaction missing inputs", hash.ToString());
         }
-        return error("AcceptToMemoryPool [%s]: ContextualCheckTransaction failed", hash.ToString());
+        return error("AcceptToMemoryPool [%s]: ContextualCheckTransaction failed. %s", hash.ToString(), state.GetRejectReason());
     }
 
     // DoS mitigation: reject transactions expiring soon
@@ -783,15 +783,14 @@ bool AcceptToMemoryPool(
     // be mined yet.
     if (!CheckFinalTx(tx, STANDARD_LOCKTIME_VERIFY_FLAGS))
     {
-        return state.DoS(0, false,
+        return state.DoS(0, error("AcceptToMemoryPool[% s]: non-final transaction", hash.ToString()),
             REJECT_NONSTANDARD, "non-final");
     }
 
     // is it already in the memory pool?
     if (pool.exists(hash))
     {
-        return state.DoS(0, error("AcceptToMemoryPool [%s]: duplication transaction", hash.ToString()),
-            REJECT_DUPLICATE, "duplicate");
+        return warning_msg("AcceptToMemoryPool [%s]: duplication transaction", hash.ToString());
     }
 
     // Check for conflicts with in-memory transactions
@@ -803,15 +802,13 @@ bool AcceptToMemoryPool(
             if (pool.mapNextTx.count(outpoint))
             {
                 // Disable replacement feature for now
-                return state.DoS(0, error("AcceptToMemoryPool [%s]: transaction with the same input already exists in the memory pool", hash.ToString()),
-                    REJECT_INVALID, "mempool-same-input-exists");
+                return warning_msg("AcceptToMemoryPool [%s]: transaction with the same input already exists in the memory pool", hash.ToString());
             }
         }
         for (const auto &spendDescription : tx.vShieldedSpend)
         {
             if (pool.nullifierExists(spendDescription.nullifier, SAPLING))
-                return state.DoS(0, warning_msg("AcceptToMemoryPool [%s]: nullifier exists for the shielded spend in the memory pool", hash.ToString()),
-                    REJECT_INVALID, "mempool-nullifier-exists");
+                return warning_msg("AcceptToMemoryPool [%s]: nullifier exists for the shielded spend in the memory pool", hash.ToString());
         }
     } // end of mempool locked section (pool.cs)
 
@@ -828,8 +825,7 @@ bool AcceptToMemoryPool(
             // do we already have it?
             if (view.HaveCoins(hash))
             {
-                return state.DoS(0, warning_msg("AcceptToMemoryPool [%s]: transaction already exists in the mempool coins cache", hash.ToString()),
-                    REJECT_INVALID, "mempool-view-coin-already-exists");
+                return warning_msg("AcceptToMemoryPool [%s]: transaction already exists in the mempool coins cache", hash.ToString());
             }
 
             // do all inputs exist?

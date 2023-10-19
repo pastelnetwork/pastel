@@ -1,25 +1,27 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "policy/fees.h"
+#include <policy/fees.h>
 
-#include "amount.h"
-#include "primitives/transaction.h"
-#include "streams.h"
-#include "txmempool.h"
-#include "util.h"
+#include <amount.h>
+#include <primitives/transaction.h>
+#include <streams.h>
+#include <txmempool.h>
+#include <util.h>
+
+using namespace std;
 
 void TxConfirmStats::Initialize(v_doubles& defaultBuckets,
-                                unsigned int maxConfirms, double _decay, std::string _dataTypeString)
+                                unsigned int maxConfirms, double _decay, string _dataTypeString)
 {
     decay = _decay;
     dataTypeString = _dataTypeString;
 
     buckets.insert(buckets.end(), defaultBuckets.begin(), defaultBuckets.end());
-    buckets.push_back(std::numeric_limits<double>::infinity());
+    buckets.push_back(numeric_limits<double>::infinity());
 
     for (unsigned int i = 0; i < buckets.size(); i++) {
         bucketMap[buckets[i]] = i;
@@ -200,7 +202,7 @@ void TxConfirmStats::Read(CAutoFile& filein)
     // Read data file into temporary variables and do some very basic sanity checking
     v_doubles fileBuckets;
     v_doubles fileAvg;
-    std::vector<v_doubles> fileConfAvg;
+    vector<v_doubles> fileConfAvg;
     v_doubles fileTxCtAvg;
     double fileDecay;
     size_t maxConfirms;
@@ -208,24 +210,24 @@ void TxConfirmStats::Read(CAutoFile& filein)
 
     filein >> fileDecay;
     if (fileDecay <= 0 || fileDecay >= 1)
-        throw std::runtime_error("Corrupt estimates file. Decay must be between 0 and 1 (non-inclusive)");
+        throw runtime_error("Corrupt estimates file. Decay must be between 0 and 1 (non-inclusive)");
     filein >> fileBuckets;
     numBuckets = fileBuckets.size();
     if (numBuckets <= 1 || numBuckets > 1000)
-        throw std::runtime_error("Corrupt estimates file. Must have between 2 and 1000 fee/pri buckets");
+        throw runtime_error("Corrupt estimates file. Must have between 2 and 1000 fee/pri buckets");
     filein >> fileAvg;
     if (fileAvg.size() != numBuckets)
-        throw std::runtime_error("Corrupt estimates file. Mismatch in fee/pri average bucket count");
+        throw runtime_error("Corrupt estimates file. Mismatch in fee/pri average bucket count");
     filein >> fileTxCtAvg;
     if (fileTxCtAvg.size() != numBuckets)
-        throw std::runtime_error("Corrupt estimates file. Mismatch in tx count bucket count");
+        throw runtime_error("Corrupt estimates file. Mismatch in tx count bucket count");
     filein >> fileConfAvg;
     maxConfirms = fileConfAvg.size();
     if (maxConfirms <= 0 || maxConfirms > 6 * 24 * 7) // one week
-        throw std::runtime_error("Corrupt estimates file.  Must maintain estimates for between 1 and 1008 (one week) confirms");
+        throw runtime_error("Corrupt estimates file.  Must maintain estimates for between 1 and 1008 (one week) confirms");
     for (unsigned int i = 0; i < maxConfirms; i++) {
         if (fileConfAvg[i].size() != numBuckets)
-            throw std::runtime_error("Corrupt estimates file. Mismatch in fee/pri conf average bucket count");
+            throw runtime_error("Corrupt estimates file. Mismatch in fee/pri conf average bucket count");
     }
     // Now that we've processed the entire fee estimate data file and not
     // thrown any errors, we can copy it to our data structures
@@ -258,12 +260,12 @@ void TxConfirmStats::Read(CAutoFile& filein)
              numBuckets, dataTypeString, maxConfirms);
 }
 
-unsigned int TxConfirmStats::NewTx(unsigned int nBlockHeight, double val)
+unsigned int TxConfirmStats::NewTx(const uint32_t nBlockHeight, const double val, string &sMsg)
 {
     unsigned int bucketindex = FindBucketIndex(val);
     unsigned int blockIndex = nBlockHeight % unconfTxs.size();
     unconfTxs[blockIndex][bucketindex]++;
-    LogPrint("estimatefee", "adding to %s", dataTypeString);
+    sMsg += strprintf("adding to %s", dataTypeString);
     return bucketindex;
 }
 
@@ -392,21 +394,21 @@ void CBlockPolicyEstimator::processTransaction(const CTxMemPoolEntry& entry, con
     double curPri = entry.GetPriority(txHeight);
     mapMemPoolTxs[hash].blockHeight = txHeight;
 
-    LogPrint("estimatefee", "Blockpolicy mempool tx %s ", hash.ToString().substr(0,10));
+    string sMsg = strprintf("Blockpolicy mempool tx %s", hash.ToString().substr(0,10));
     // Record this as a priority estimate
-    if (entry.GetFee() == 0 || isPriDataPoint(feeRate, curPri)) {
+    if (entry.GetFee() == 0 || isPriDataPoint(feeRate, curPri))
+    {
         mapMemPoolTxs[hash].stats = &priStats;
-        mapMemPoolTxs[hash].bucketIndex =  priStats.NewTx(txHeight, curPri);
+        mapMemPoolTxs[hash].bucketIndex =  priStats.NewTx(txHeight, curPri, sMsg);
     }
     // Record this as a fee estimate
     else if (isFeeDataPoint(feeRate, curPri)) {
         mapMemPoolTxs[hash].stats = &feeStats;
-        mapMemPoolTxs[hash].bucketIndex = feeStats.NewTx(txHeight, (double)feeRate.GetFeePerK());
+        mapMemPoolTxs[hash].bucketIndex = feeStats.NewTx(txHeight, (double)feeRate.GetFeePerK(), sMsg);
     }
-    else {
-        LogPrint("estimatefee", "not adding");
-    }
-    LogPrint("estimatefee", "\n");
+    else
+        sMsg += " not adding";
+    LogFnPrint("estimatefee", sMsg);
 }
 
 void CBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const CTxMemPoolEntry& entry)
@@ -447,7 +449,7 @@ void CBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const CTxM
 }
 
 void CBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
-                                         std::vector<CTxMemPoolEntry>& entries, bool fCurrentEstimate)
+                                         vector<CTxMemPoolEntry>& entries, bool fCurrentEstimate)
 {
     if (nBlockHeight <= nBestSeenHeight) {
         // Ignore side chains and re-orgs; assuming they are random
