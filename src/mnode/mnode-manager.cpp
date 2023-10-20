@@ -426,32 +426,6 @@ size_t CMasternodeMan::CountCurrent(const int nProtocolVersion) const noexcept
     return nCount;
 }
 
-bool CMasternodeMan::HasEnoughEnabled() const noexcept
-{
-    size_t nCurrent = CountCurrent();
-    size_t nEnabled = CountEnabled();
-
-    uint32_t nRequired = masterNodeCtrl.nMinRequiredEnabledMasternodes;
-    uint32_t nPercent = masterNodeCtrl.nMinRequiredEnabledMasternodesPercent;
-
-    if (nRequired == 0) // default when not set
-    {
-        if (nPercent == 0)
-            return true;
-
-        nRequired = static_cast<uint32_t>(nCurrent * nPercent / 100);
-    }
-
-    if (nEnabled < nRequired)
-    {
-        LogFnPrintf("WARNING: Not enough Enabled MNs in local list %zu, required %u, total %zu", nEnabled, nRequired,
-                    nCurrent);
-        return false;
-    }
-    return true;
-}
-
-
 void CMasternodeMan::Clear()
 {
     LOCK(cs_mnMgr);

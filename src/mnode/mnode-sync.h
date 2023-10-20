@@ -57,6 +57,8 @@ private:
 
     int64_t nTimeIBDDone;
 
+    int nReSyncAttempt;
+
 
     void Fail();
     void ClearFulfilledRequests();
