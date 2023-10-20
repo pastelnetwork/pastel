@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -8,10 +8,10 @@
  * network protocol versioning
  */
 
-inline constexpr int PROTOCOL_VERSION = 170009;
+inline constexpr int PROTOCOL_VERSION = 170010;
 
-// min MasterNodes protocol version before Cezanne upgrade
-inline constexpr int MN_MIN_PROTOCOL_VERSION = 170008;
+// min MasterNodes protocol version before Monet upgrade
+inline constexpr int MN_MIN_PROTOCOL_VERSION = 170009;
 
 //! initial proto version, to be increased after version/verack negotiation
 inline constexpr int INIT_PROTO_VERSION = 209;

@@ -46,12 +46,13 @@ using namespace std;
 constexpr uint32_t MAINNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t MAINNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK = 337'800;
+constexpr uint32_t MAINNET_MONET_UPGRADE_STARTING_BLOCK = 575'000;
 
 // testnet upgrades activation heights
 constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 158'530;
-
+constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 367'000;
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
@@ -337,6 +338,7 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, MAINNET_OVERWINTER_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170007, MAINNET_SAPLING_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, MAINNET_MONET_UPGRADE_STARTING_BLOCK);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
@@ -447,6 +449,7 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, TESTNET_OVERWINTER_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170007, TESTNET_SAPLING_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, TESTNET_MONET_UPGRADE_STARTING_BLOCK);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
@@ -552,6 +555,7 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170003, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170008, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = REGTEST_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;

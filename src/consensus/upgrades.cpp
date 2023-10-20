@@ -35,6 +35,11 @@ const struct NUInfo NetworkUpgradeInfo[to_integral_type(Consensus::UpgradeIndex:
         /*.nBranchId =*/ 0x26ab2455,
         /*.strName =*/ "Cezanne",
         /*.strInfo =*/ "See https://pastel.network/cezanne-mainnet-release/ for details.",
+    },
+    {
+        /*.nBranchId =*/ 0x017014e2,
+        /*.strName =*/ "Monet",
+        /*.strInfo =*/ "See https://pastel.network/monet-mainnet-release/ for details.",
     }
 };
 
