@@ -1384,7 +1384,7 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
         throw runtime_error(strprintf("Failed to create P2FMS from data provided. %s", error));
 
     if (!StoreP2FMSTransaction(tx, error))
-        throw runtime_error(strprintf("Failed to send P2FMS transaction - %s", error));
+        throw runtime_error(strprintf("Failed to send P2FMS transaction. %s", error));
     return make_tuple(tx.GetHash().GetHex(), ticket.KeyOne());
 }
 
@@ -1592,6 +1592,8 @@ void CPastelTicketProcessor::SearchForNFTs(const search_thumbids_t& p, function<
  */
 bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx_out, string& error_ret)
 {
+    static constexpr auto TX_NOT_ACCEPTED_MSG = "Transaction was not accepted to memory pool";
+
     bool bRet = false;
     CValidationState state(TxOrigin::NEW_TX);
     do
@@ -1606,17 +1608,19 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
             bRet = true;
             break;
         }
-        if (state.IsInvalid())
+        int nDoS = 0;
+        if (state.IsInvalid(nDoS))
         {
-            error_ret = strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason());
+            error_ret = strprintf("%s - %i: %s, DoS: %d",
+                TX_NOT_ACCEPTED_MSG, state.GetRejectCode(), state.GetRejectReason(), nDoS);
             break;
         }
         if (fMissingInputs)
         {
-            error_ret = "Missing inputs";
+            error_ret = strprintf("%s. Missing inputs", TX_NOT_ACCEPTED_MSG);
             break;
         }
-        error_ret = state.GetRejectReason();
+        error_ret = strprintf("%s. %s", TX_NOT_ACCEPTED_MSG, state.GetRejectReason());
     } while (false);
     return bRet;
 }
@@ -1908,7 +1912,7 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
     if (bSend)
     {
         if (!StoreP2FMSTransaction(tx, error))
-            throw runtime_error(strprintf("Failed to send P2FMS transaction - %s", error));
+            throw runtime_error(strprintf("Failed to send P2FMS transaction. %s", error));
         return tx.GetHash().GetHex();
     }
     return EncodeHexTx(tx);

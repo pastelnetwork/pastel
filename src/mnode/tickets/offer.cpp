@@ -16,6 +16,7 @@
 #include <mnode/tickets/ticket-utils.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/mnode-controller.h>
+#include <mnode/ticket-mempool-processor.h>
 
 using json = nlohmann::json;
 using namespace std;
@@ -173,6 +174,19 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
 
         if (bPreReg)
         {
+            // initialize Pastel Ticket mempool processor for offer tickets
+            // retrieve mempool transactions with TicketID::Offer tickets
+            CPastelTicketMemPoolProcessor TktMemPool(ID());
+            TktMemPool.Initialize(mempool);
+            // check if Offer ticket with the same Registration txid is already in the mempool
+            if (TktMemPool.TicketExists(KeyOne()))
+            {
+                tv.errorMsg = strprintf(
+					"The %s ticket with registration txid [%s] is already in the mempool", 
+					GetTicketDescription(), m_itemTxId);
+				break;
+			}
+
             // if intended recipient is specified then Offer replacement tickets cannot be created
             // and also means that this Offer cannot be expired - check that valid_before is 0
             if (!m_sIntendedForPastelID.empty() && m_nValidBefore != 0)

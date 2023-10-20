@@ -1960,6 +1960,11 @@ class MasterNodeTicketsTest(MasterNodeCommon):
             ticket.reg_txid, str(ticket.reg_height), str(self.storage_fee), ticket.reg_pastelid, self.passphrase)["txid"]
         assert_true(ticket.act_txid, "NFT was not activated")
         self.inc_ticket_counter(TicketType.ACTIVATE)
+        
+        # another activation ticket for the same NFT should not be accepted to mempool
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already in the mempool",
+            self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid, str(ticket.reg_height), 
+            str(self.storage_fee), ticket.reg_pastelid, self.passphrase)
         self.wait_for_ticket_tnx()
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
@@ -2138,9 +2143,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         coins_before = self.nodes[self.non_mn3].getbalance()
         print(f"Coins before '{ticket_type_name}' registration: {coins_before}")
 
+        # activate action withouth errors
         ticket.act_txid = self.nodes[self.non_mn3].tickets(cmd, cmd_param,
             ticket.reg_txid, str(ticket.reg_height), str(self.storage_fee), self.action_caller_pastelid, self.passphrase)["txid"]
         assert_true(ticket.act_txid, "Action was not activated")
+        
+        # another activation ticket for the same action should not be accepted to mempool
+        assert_raises_rpc(rpc.RPC_MISC_ERROR, "is already in the mempool",
+            self.nodes[self.non_mn3].tickets, cmd, cmd_param, ticket.reg_txid, str(ticket.reg_height),
+            str(self.storage_fee), self.action_caller_pastelid, self.passphrase)
         self.wait_for_ticket_tnx()
 
         #       d.a.9 check correct amount of change and correct amount spent and correct amount of fee paid
