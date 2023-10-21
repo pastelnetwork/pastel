@@ -119,18 +119,14 @@ bool checkHardwareRequirements(string &error, const char *szDesc)
 
     if (nNumCores < HARDWARE_REQUIREMENTS_MIN_CORES || nTotalRAMBytes < HARDWARE_REQUIREMENTS_MIN_TOTAL_RAM)
     {
-		error = strprintf("Machine does not meet the minimum requirements for %s:", SAFE_SZ(szDesc));
-        bool bCPUReqFailed = false;
+		error = strprintf("Your machine does not meet the minimum hardware requirements for %s.", SAFE_SZ(szDesc));
         if (nNumCores < HARDWARE_REQUIREMENTS_MIN_CORES)
-        {
-            error += strprintf(" CPU cores: %u/%u", nNumCores, HARDWARE_REQUIREMENTS_MIN_CORES);
-            bCPUReqFailed = true;
-        }
+            error += strprintf("\nIt has %u CPU cores, less than the required minimum of %u CPU cores!",
+                nNumCores, HARDWARE_REQUIREMENTS_MIN_CORES);
         if (nTotalRAMBytes < HARDWARE_REQUIREMENTS_MIN_TOTAL_RAM)
         {
-            if (bCPUReqFailed)
-                error += ";";
-            error += strprintf(" RAM: %u Mb /%u Mb", nTotalRAMBytes / (1024 * 1024), HARDWARE_REQUIREMENTS_MIN_TOTAL_RAM / (1024 * 1024));
+            error += strprintf("\nIt has only has %u Mb of RAM, less than the required minimum of %u Mb of RAM!",
+                nTotalRAMBytes / (1024 * 1024), HARDWARE_REQUIREMENTS_MIN_TOTAL_RAM / (1024 * 1024));
         }
 		return false;
 	}
