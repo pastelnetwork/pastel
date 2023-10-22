@@ -232,16 +232,32 @@ void CActiveMasternode::ManageStateRemote()
 
     masterNodeCtrl.masternodeManager.CheckMasternode(pubKeyMasternode, true);
     masternode_info_t infoMn;
+    const auto &chainparams = Params();
+    const auto &consensusParams = chainparams.GetConsensus();
+    const auto lastNetworkUpgrade = consensusParams.GetLastNetworkUpgrade();
     if (masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyMasternode, infoMn))
     {
-        if (infoMn.nProtocolVersion != PROTOCOL_VERSION)
+        if (NetworkUpgradeActive(gl_nChainHeight, consensusParams, lastNetworkUpgrade))
         {
-            nState = ActiveMasternodeState::NotCapable;
-            strNotCapableReason = strprintf("Invalid protocol version %d, required %d", infoMn.nProtocolVersion, PROTOCOL_VERSION);
-            LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
-            return;
+            if (infoMn.nProtocolVersion < PROTOCOL_VERSION)
+            {
+                nState = ActiveMasternodeState::NotCapable;
+                strNotCapableReason = strprintf("Masternode protocol version %d is less than required %d", infoMn.nProtocolVersion, PROTOCOL_VERSION);
+                LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
+                return;
+            }
         }
-        if (!Params().IsRegTest() && service != infoMn.get_addr())
+        else
+        {
+            if (infoMn.nProtocolVersion < MN_MIN_PROTOCOL_VERSION)
+            {
+				nState = ActiveMasternodeState::NotCapable;
+				strNotCapableReason = strprintf("Masternode protocol version %d is less than minimum required %d", infoMn.nProtocolVersion, MN_MIN_PROTOCOL_VERSION);
+				LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
+				return;
+			}
+        }
+        if (!chainparams.IsRegTest() && service != infoMn.get_addr())
         {
             nState = ActiveMasternodeState::NotCapable;
             strNotCapableReason = "Broadcasted IP doesn't match our external address. Make sure you issued a new broadcast if IP of this masternode changed recently.";
