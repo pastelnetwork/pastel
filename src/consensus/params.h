@@ -134,6 +134,11 @@ struct Params
     {
 		return vUpgrades[to_integral_type(idx)].nActivationHeight;
     }
+
+    UpgradeIndex GetLastNetworkUpgrade() const noexcept
+    {
+		return UpgradeIndex(to_integral_type(UpgradeIndex::MAX_NETWORK_UPGRADES) - 1);
+	}
 };
 
 } // namespace Consensus
