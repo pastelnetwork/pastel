@@ -1,4 +1,4 @@
-Pastel v1.1 - Cezanne
+Pastel v2.0 - Monet
 
 [![PastelNetwork](https://circleci.com/gh/pastelnetwork/pastel.svg?style=shield)](https://app.circleci.com/pipelines/github/pastelnetwork/pastel)
 
