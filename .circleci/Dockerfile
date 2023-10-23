@@ -1,21 +1,18 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
   && apt update \
   && apt install -y --no-install-recommends \
      pkg-config tzdata make automake cmake libtool patch \
-     bsdmainutils curl wget zip unzip xz-utils zlib1g-dev git openssh-client \
-     g++-10-multilib mingw-w64 python3-dev python3-pip gnupg2\
-  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave \
-     /usr/bin/g++ g++ /usr/bin/g++-10 --slave /usr/bin/gcov gcov /usr/bin/gcov-10 \
+     bsdmainutils curl wget zip unzip lbzip2 xz-utils zlib1g-dev git openssh-client \
+     g++-11-multilib mingw-w64 python3-dev python3-pip gnupg2\
+  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 100 --slave \
+     /usr/bin/g++ g++ /usr/bin/g++-11 --slave /usr/bin/gcov gcov /usr/bin/gcov-11 \
   && update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix \
   && update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix \
-  && ln -fs /usr/bin/x86_64-linux-gnu-gcc-10 /usr/bin/x86_64-linux-gnu-gcc \
+  && ln -fs /usr/bin/x86_64-linux-gnu-gcc-11 /usr/bin/x86_64-linux-gnu-gcc \
   && ln -fs /usr/bin/gcc /usr/bin/cc && pip3 install pyblake2 simplejson
-
-RUN wget -q -O - https://files.viva64.com/etc/pubkey.txt | apt-key add - \
-   && wget -O /etc/apt/sources.list.d/viva64.list https://files.viva64.com/etc/viva64.list \
-   && apt update && apt install -y --no-install-recommends pvs-studio
+RUN apt clean
 
 WORKDIR /pastel
