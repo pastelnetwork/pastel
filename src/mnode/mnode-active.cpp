@@ -237,25 +237,13 @@ void CActiveMasternode::ManageStateRemote()
     const auto lastNetworkUpgrade = consensusParams.GetLastNetworkUpgrade();
     if (masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyMasternode, infoMn))
     {
-        if (NetworkUpgradeActive(gl_nChainHeight, consensusParams, lastNetworkUpgrade))
+        const int nSupportedProtocolVersion = masterNodeCtrl.GetSupportedProtocolVersion();
+        if (infoMn.nProtocolVersion < nSupportedProtocolVersion)
         {
-            if (infoMn.nProtocolVersion < PROTOCOL_VERSION)
-            {
-                nState = ActiveMasternodeState::NotCapable;
-                strNotCapableReason = strprintf("Masternode protocol version %d is less than required %d", infoMn.nProtocolVersion, PROTOCOL_VERSION);
-                LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
-                return;
-            }
-        }
-        else
-        {
-            if (infoMn.nProtocolVersion < MN_MIN_PROTOCOL_VERSION)
-            {
-				nState = ActiveMasternodeState::NotCapable;
-				strNotCapableReason = strprintf("Masternode protocol version %d is less than minimum required %d", infoMn.nProtocolVersion, MN_MIN_PROTOCOL_VERSION);
-				LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
-				return;
-			}
+            nState = ActiveMasternodeState::NotCapable;
+            strNotCapableReason = strprintf("Masternode protocol version %d is less than required %d", infoMn.nProtocolVersion, nSupportedProtocolVersion);
+            LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
+            return;
         }
         if (!chainparams.IsRegTest() && service != infoMn.get_addr())
         {

@@ -560,13 +560,12 @@ void CMasternode::Check(const bool fForce, bool bLockMain)
     const bool fOurMasterNode = masterNodeCtrl.IsMasterNode() && masterNodeCtrl.activeMasternode.pubKeyMasternode == pubKeyMasternode;
 
     // change status to UPDATE_REQUIRED if:
-    //   - masternode doesn't meet payment protocol requirements ... or
-    //   - we're masternode and our current protocol version is less than latest
-    const bool bUpdateRequired = (nProtocolVersion < masterNodeCtrl.GetSupportedProtocolVersion()) ||
-        (fOurMasterNode && (nProtocolVersion < PROTOCOL_VERSION));
-    if (bUpdateRequired)
+    //   - masternode doesn't meet min protocol requirements for the current epoch
+    const int nSupportedProtocolVersion = masterNodeCtrl.GetSupportedProtocolVersion();
+    if (nProtocolVersion < nSupportedProtocolVersion)
     {
-        SetState(MASTERNODE_STATE::UPDATE_REQUIRED, __METHOD_NAME__, strprintf("protocol version %d is no supported", nProtocolVersion).c_str());
+        SetState(MASTERNODE_STATE::UPDATE_REQUIRED, __METHOD_NAME__,
+            strprintf("protocol version %d is less than required %d", nProtocolVersion, nSupportedProtocolVersion).c_str());
         return;
     }
 
