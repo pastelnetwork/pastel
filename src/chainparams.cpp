@@ -52,7 +52,7 @@ constexpr uint32_t MAINNET_MONET_UPGRADE_STARTING_BLOCK = 575'000;
 constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 158'530;
-constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 367'000;
+constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 370'000;
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
