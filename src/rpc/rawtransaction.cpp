@@ -948,14 +948,8 @@ Examples:
     }
 
     const bool fHashSingle = ((nHashType & ~to_integral_type(SIGHASH::ANYONECANPAY)) == to_integral_type(SIGHASH::SINGLE));
-    // Use the approximate release height if it is greater so offline nodes 
-    // have a better estimation of the current height and will be more likely to
-    // determine the correct consensus branch ID.  Regtest & Testnet modes ignore release height.
-    uint32_t nChainHeightToGetBranchId = gl_nChainHeight + 1;
-    if (Params().IsMainNet())
-        nChainHeightToGetBranchId = max(nChainHeightToGetBranchId, APPROX_RELEASE_HEIGHT);
-    // Grab the current consensus branch ID
-    auto consensusBranchId = CurrentEpochBranchId(nChainHeightToGetBranchId, Params().GetConsensus());
+    // Get the consensus branch ID for the next block
+    auto consensusBranchId = CurrentEpochBranchId(gl_nChainHeight + 1, Params().GetConsensus());
 
     if (params.size() > 4 && !params[4].isNull())
     {
