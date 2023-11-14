@@ -431,7 +431,7 @@ static UniValue GetNetworksInfo()
 UniValue getdeprecationinfo(const UniValue& params, bool fHelp)
 {
     const CChainParams& chainparams = Params();
-    if (fHelp || params.size() != 0 || chainparams.NetworkIDString() != "main")
+    if (fHelp || params.size() != 0 || !chainparams.IsMainNet())
         throw runtime_error(
 R"(getdeprecationinfo
 

@@ -152,7 +152,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         uint32_t consensusBranchId = CurrentEpochBranchId(nHeight, chainparams.GetConsensus());
         pblock->nTime = GetAdjustedTime();
         const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
-        CCoinsViewCache view(pcoinsTip);
+        CCoinsViewCache view(gl_pCoinsTip.get());
 
         SaplingMerkleTree sapling_tree;
         assert(view.GetSaplingAnchorAt(view.GetBestAnchor(SAPLING), sapling_tree));

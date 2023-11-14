@@ -305,7 +305,7 @@ jobs:
             ./rpc-tests.sh --name=mn_tickets.py
 workflows:
     version: 2
-    PastelBuild:
+    Pastel-cNode-Build:
       jobs:
         - build_platform:
             name: Build Pastel for Linux platform (debug)

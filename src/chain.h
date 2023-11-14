@@ -16,6 +16,9 @@
 constexpr int SPROUT_VALUE_VERSION = 1001400;
 constexpr int SAPLING_VALUE_VERSION = 1010100;
 
+
+#define SPEC_CHAIN_WORK "%.8g"
+
 // cached current blockchain height - reflects chainActive.Height()
 // except that it can't be negative (-1)
 extern std::atomic_uint32_t gl_nChainHeight;
@@ -146,7 +149,7 @@ public:
     //! Change to 64-bit type when necessary; won't happen before 2030
     unsigned int nChainTx;
 
-    //! Verification status of this block. See enum BlockStatus
+    // Verification status of this block. See enum BlockStatus
     unsigned int nStatus;
 
     //! Branch ID corresponding to the consensus rules used to validate this block.
@@ -216,6 +219,11 @@ public:
         return *phashBlock;
     }
 
+    std::string GetBlockHashString() const noexcept
+    {
+		return phashBlock->ToString();
+	}
+
     int64_t GetBlockTime() const noexcept
     {
         return (int64_t)nTime;
@@ -242,31 +250,20 @@ public:
         return strprintf("CBlockIndex(pprev=%p, nHeight=%d, merkle=%s, hashBlock=%s)",
             pprev, nHeight,
             hashMerkleRoot.ToString(),
-            GetBlockHash().ToString());
+            GetBlockHashString());
     }
 
-    //! Check whether this block index entry is valid up to the passed validity level.
-    bool IsValid(enum BlockStatus nUpTo = BLOCK_VALID_TRANSACTIONS) const noexcept
-    {
-        assert(!(nUpTo & ~BLOCK_VALID_MASK)); // Only validity flags allowed.
-        if (nStatus & BLOCK_FAILED_MASK)
-            return false;
-        return ((nStatus & BLOCK_VALID_MASK) >= nUpTo);
-    }
+    // Check whether this block index entry is valid up to the passed validity level.
+    bool IsValid(enum BlockStatus nUpTo = BLOCK_VALID_TRANSACTIONS) const noexcept;
 
-    //! Raise the validity level of this block index entry.
-    //! Returns true if the validity was changed.
-    bool RaiseValidity(enum BlockStatus nUpTo) noexcept
-    {
-        assert(!(nUpTo & ~BLOCK_VALID_MASK)); // Only validity flags allowed.
-        if (nStatus & BLOCK_FAILED_MASK)
-            return false;
-        if ((nStatus & BLOCK_VALID_MASK) < nUpTo) {
-            nStatus = (nStatus & ~BLOCK_VALID_MASK) | nUpTo;
-            return true;
-        }
-        return false;
-    }
+    // Raise the validity level of this block index entry.
+    bool RaiseValidity(enum BlockStatus nUpTo) noexcept;
+
+    // Set block status flag.
+    void SetStatusFlag(enum BlockStatus statusFlag) noexcept;
+
+    // Clear block status flag.
+    void ClearStatusFlag(enum BlockStatus statusFlag) noexcept;
 
     //! Build the skiplist pointer for this entry.
     void BuildSkip();
@@ -280,6 +277,9 @@ public:
 
     // update tx count, chain values for this block and all descendants
     void UpdateChainTx();
+
+    // get log2_work - chain work for this block
+    double GetLog2ChainWork() const noexcept;
 };
 
 /** Used to marshal pointers into hashes for db storage. */
@@ -375,16 +375,19 @@ public:
         std::string str = "CDiskBlockIndex(";
         str += CBlockIndex::ToString();
         str += strprintf("\n                hashBlock=%s, hashPrev=%s)",
-            GetBlockHash().ToString(),
+            GetBlockHashString(),
             hashPrev.ToString());
         return str;
     }
 };
 
+using block_index_cvector_t = std::vector<const CBlockIndex*>;
+using block_index_vector_t = std::vector<CBlockIndex*>;
+
 /** An in-memory indexed chain of blocks. */
 class CChain {
 private:
-    std::vector<CBlockIndex*> vChain;
+    block_index_vector_t vChain;
 
 public:
     CChain();
@@ -441,3 +444,6 @@ public:
     /** Find the last common block between this chain and a block index entry. */
     const CBlockIndex *FindFork(const CBlockIndex *pindex) const;
 };
+
+// Find the last common ancestor two blocks have.
+CBlockIndex* FindLastCommonAncestorBlockIndex(CBlockIndex* pa, CBlockIndex* pb);

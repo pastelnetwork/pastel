@@ -167,8 +167,8 @@ public:
     // Writes do not need similar protection, as failure to write is handled by the caller.
 };
 
-static CCoinsViewDB *pcoinsdbview = nullptr;
-static CCoinsViewErrorCatcher* pcoinscatcher = nullptr;
+static unique_ptr<CCoinsViewDB> gl_pCoinsDbView;
+static unique_ptr<CCoinsViewErrorCatcher> pCoinsCatcher;
 
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
@@ -234,12 +234,12 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 
     {
         LOCK(cs_main);
-        if (pcoinsTip)
+        if (gl_pCoinsTip)
             FlushStateToDisk();
-        safe_delete_obj(pcoinsTip);
-        safe_delete_obj(pcoinscatcher);
-        safe_delete_obj(pcoinsdbview);
-        safe_delete_obj(pblocktree);
+        gl_pCoinsTip.reset();
+        pCoinsCatcher.reset();
+        gl_pCoinsDbView.reset();
+        gl_pBlockTreeDB.reset();
     }
 #ifdef ENABLE_WALLET
     if (pwalletMain)
@@ -342,7 +342,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-alerts", strprintf(translate("Receive and display P2P network alerts (default: %u)"), DEFAULT_ALERTS));
     strUsage += HelpMessageOpt("-alertnotify=<cmd>", translate("Execute command when a relevant alert is received or we see a really long fork (%s in cmd is replaced by message)"));
     strUsage += HelpMessageOpt("-blocknotify=<cmd>", translate("Execute command when the best block changes (%s in cmd is replaced by block hash)"));
-    strUsage += HelpMessageOpt("-checkblocks=<n>", strprintf(translate("How many blocks to check at startup (default: %u, 0 = all)"), 288));
+    strUsage += HelpMessageOpt("-checkblocks=<n>", strprintf(translate("How many blocks to check at startup (default: %u, 0 = all)"), FORK_BLOCK_LIMIT));
     strUsage += HelpMessageOpt("-checklevel=<n>", strprintf(translate("How thorough the block verification of -checkblocks is (0-4, default: %u)"), 3));
     strUsage += HelpMessageOpt("-conf=<file>", strprintf(translate("Specify configuration file (default: %s)"), "pastel.conf"));
     if (mode == HMM_BITCOIND) //-V547
@@ -629,7 +629,7 @@ void ThreadImport(vector<fs::path> vImportFiles)
             LoadExternalBlockFile(chainparams, file, &pos);
             nFile++;
         }
-        pblocktree->WriteReindexing(false);
+        gl_pBlockTreeDB->WriteReindexing(false);
         fReindex = false;
         LogFnPrintf("Reindexing finished");
         // To avoid ending up in a situation without genesis block, re-try initializing (no-op if reindexing worked):
@@ -1504,8 +1504,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     // connect Pastel Ticket txmempool tracker
     mempool.AddTxMemPoolTracker(CPastelTicketProcessor::GetTxMemPoolTracker());
 
-    bool clearWitnessCaches = false;
-
+    bool bClearWitnessCaches = false;
     bool fLoaded = false;
     while (!fLoaded) {
         bool fReset = fReindex;
@@ -1517,24 +1516,26 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         do {
             try {
                 UnloadBlockIndex();
-                safe_delete_obj(pcoinsTip);
-                safe_delete_obj(pcoinsdbview);
-                safe_delete_obj(pcoinscatcher);
-                safe_delete_obj(pblocktree);
+                gl_pCoinsTip.reset();
+                gl_pCoinsDbView.reset();
+                pCoinsCatcher.reset();
+                gl_pBlockTreeDB.reset();
 
-                pblocktree = new CBlockTreeDB(nBlockTreeDBCache, false, fReindex);
-                pcoinsdbview = new CCoinsViewDB(nCoinDBCache, false, fReindex);
-                pcoinscatcher = new CCoinsViewErrorCatcher(pcoinsdbview);
-                pcoinsTip = new CCoinsViewCache(pcoinscatcher);
+                gl_pBlockTreeDB = make_unique<CBlockTreeDB>(nBlockTreeDBCache, false, fReindex);
+                gl_pCoinsDbView = make_unique<CCoinsViewDB>(nCoinDBCache, false, fReindex);
+                pCoinsCatcher = make_unique<CCoinsViewErrorCatcher>(gl_pCoinsDbView.get());
+                gl_pCoinsTip = make_unique<CCoinsViewCache>(pCoinsCatcher.get());
 
-                if (fReindex) {
-                    pblocktree->WriteReindexing(true);
+                if (fReindex)
+                {
+                    gl_pBlockTreeDB->WriteReindexing(true);
                     //If we're reindexing in prune mode, wipe away unusable block files and all undo data files
                     if (fPruneMode)
                         CleanupBlockRevFiles();
                 }
 
-                if (!LoadBlockIndex()) {
+                if (!LoadBlockIndex())
+                {
                     strLoadError = translate("Error loading block database");
                     break;
                 }
@@ -1568,21 +1569,22 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                 if (!fReindex)
                 {
                     uiInterface.InitMessage(translate("Rewinding blocks if needed..."));
-                    if (!RewindBlockIndex(chainparams, clearWitnessCaches))
+                    if (!RewindBlockIndex(chainparams, bClearWitnessCaches))
                     {
                         strLoadError = translate("Unable to rewind the database to a pre-upgrade state. You will need to redownload the blockchain");
                         break;
                     }
-                }
+                }   
 
-                uiInterface.InitMessage(translate("Verifying blocks..."));
-                if (fHavePruned && GetArg("-checkblocks", 288) > MIN_BLOCKS_TO_KEEP)
+                const int64_t nCheckBlocks = GetArg("-checkblocks", FORK_BLOCK_LIMIT);
+                uiInterface.InitMessage(strprintf(translate("Verifying last %" PRId64 " blocks..."), nCheckBlocks));
+                if (fHavePruned && nCheckBlocks > MIN_BLOCKS_TO_KEEP)
                 {
-                    LogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%d may fail\n",
-                        MIN_BLOCKS_TO_KEEP, GetArg("-checkblocks", 288));
+                    LogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%" PRId64 " may fail\n",
+                        MIN_BLOCKS_TO_KEEP, nCheckBlocks);
                 }
-                if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, static_cast<int>(GetArg("-checklevel", 3)),
-                               static_cast<int>(GetArg("-checkblocks", 288))))
+                if (!CVerifyDB().VerifyDB(chainparams, gl_pCoinsDbView.get(), static_cast<int>(GetArg("-checklevel", 3)),
+                               static_cast<int>(nCheckBlocks)))
                 {
                     strLoadError = translate("Corrupted block database detected");
                     break;
@@ -1735,7 +1737,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         RegisterValidationInterface(pwalletMain);
 
         CBlockIndex *pindexRescan = chainActive.Tip();
-        if (clearWitnessCaches || GetBoolArg("-rescan", false))
+        if (bClearWitnessCaches || GetBoolArg("-rescan", false))
         {
             pwalletMain->ClearNoteWitnessCache();
             pindexRescan = chainActive.Genesis();

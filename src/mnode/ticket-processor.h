@@ -108,6 +108,8 @@ public:
     bool CheckTicketExist(const CPastelTicket& ticket) const;
     bool FindTicket(CPastelTicket& ticket) const;
     bool EraseTicketFromDB(const CPastelTicket& ticket) const;
+    bool EraseIfTicketTransaction(const uint256& txid, std::string &error);
+    size_t EraseTicketsFromDbByList(const block_index_cvector_t& vBlockIndex);
 
     // Check whether ticket exists (use keyTwo as a key).
     bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket) const;

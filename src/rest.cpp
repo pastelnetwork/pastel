@@ -154,7 +154,7 @@ static bool rest_headers(HTTPRequest* req, const string& strURIPart)
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTPStatusCode::BAD_REQUEST, "Invalid hash: " + hashStr);
 
-    vector<const CBlockIndex *> vHeaders;
+    block_index_cvector_t vHeaders;
     vHeaders.reserve(count);
     {
         LOCK(cs_main);
@@ -516,9 +516,7 @@ static bool rest_getutxos(HTTPRequest* req, const string& strURIPart)
 
         CCoinsView viewDummy;
         CCoinsViewCache view(&viewDummy);
-
-        CCoinsViewCache& viewChain = *pcoinsTip;
-        CCoinsViewMemPool viewMempool(&viewChain, mempool);
+        CCoinsViewMemPool viewMempool(gl_pCoinsTip.get(), mempool);
 
         if (fCheckMemPool)
             view.SetBackend(viewMempool); // switch cache backend to db+mempool in case user likes to query mempool

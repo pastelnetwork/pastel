@@ -181,10 +181,9 @@ void CPastelTest_Environment::InitializeChainTest(const ChainNetwork network)
     const auto sTempDataDir = GenerateTempDataDir();
     ASSERT_TRUE(fs::exists(m_TempDataDir)) << "Failed to initialize temporary datadir [" << sTempDataDir << "] for regtest network unittests";
 
-    ASSERT_EQ(pblocktree, nullptr);
-    pblocktree = new CBlockTreeDB(1 << 20, true);
-    pcoinsdbview = new CCoinsViewDB(1 << 23, true);
-    pcoinsTip = new CCoinsViewCache(pcoinsdbview);
+    gl_pBlockTreeDB = make_unique<CBlockTreeDB>(1 << 20, true);
+    m_pCoinsDbView = make_unique<CCoinsViewDB>(1 << 23, true);
+    gl_pCoinsTip = make_unique<CCoinsViewCache>(m_pCoinsDbView.get());
     ASSERT_TRUE(InitBlockIndex(Params())) << "Failed to initialize block index for regtest network unittests";
 
 #ifdef ENABLE_WALLET
@@ -228,21 +227,9 @@ void CPastelTest_Environment::FinalizeChainTest()
     }
 #endif // ENABLE_WALLET
     UnloadBlockIndex();
-    if (pcoinsTip)
-    {
-        delete pcoinsTip;
-        pcoinsTip = nullptr;
-    }
-    if (pcoinsdbview)
-    {
-        delete pcoinsdbview;
-        pcoinsdbview = nullptr;
-    }
-    if (pblocktree)
-    {
-        delete pblocktree;
-        pblocktree = nullptr;
-    }
+    gl_pCoinsTip.reset();
+    m_pCoinsDbView.reset();
+    gl_pBlockTreeDB.reset();
     // reset TestIsInitialBlockDownload
     latchToFalse.store(false, memory_order_relaxed);
 #ifdef ENABLE_WALLET

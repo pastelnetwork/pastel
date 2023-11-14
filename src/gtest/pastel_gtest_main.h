@@ -35,7 +35,7 @@ public:
     fs::path GetTempDataDir() const noexcept { return m_TempDataDir; }
 
 protected:
-    CCoinsViewDB* pcoinsdbview = nullptr;
+    std::unique_ptr<CCoinsViewDB> m_pCoinsDbView;
     CServiceThreadGroup threadGroup;
     fs::path m_TempDataDir; // generated temp datadir
     std::optional<ChainNetwork> m_TestNetwork;
