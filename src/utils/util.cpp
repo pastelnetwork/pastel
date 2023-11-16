@@ -36,6 +36,7 @@
 #include <utils/util.h>
 #include <utils/sync.h>
 #include <utils/utilstrencodings.h>
+#include <utils/scope_guard.hpp>
 #include <chainparamsbase.h>
 #include <random.h>
 #include <serialize.h>
@@ -1163,19 +1164,25 @@ int exec_system_command(const char* szCommand, string& stdOutput, string& stdErr
         sFullCommand += " 2>&1";
 
     array<char, 128> buffer;
-    unique_ptr<FILE, decltype(&pclose)> pipe(popen(sFullCommand.c_str(), "r"), pclose);
+    FILE* pipe = popen(sFullCommand.c_str(), "r");
     if (!pipe)
     {
         stdError = "popen() failed!";
         return -1;
     }
+    auto pipe_guard = sg::make_scope_guard([&]() noexcept
+    {
+        if (pipe)
+			pclose(pipe);
+    });
 
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
+    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr)
     {
         stdOutput += buffer.data();
     }
 
-    int nExitStatus = pclose(pipe.get());
+    int nExitStatus = pclose(pipe);
+    pipe_guard.dismiss();
     if (nExitStatus != 0)
         stdError = stdOutput;  // In this case, the output is considered as an error.
 
