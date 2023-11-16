@@ -3,9 +3,9 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
-#include <str_utils.h>
+#include <utils/str_utils.h>
+#include <utils/utilstrencodings.h>
 #include <init.h>
-#include <utilstrencodings.h>
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/action-reg.h>
 #include <mnode/tickets/collection-act.h>

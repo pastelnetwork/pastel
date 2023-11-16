@@ -17,6 +17,9 @@
     <Filter Include="Source Files\support\allocators">
       <UniqueIdentifier>{3431ebf1-8c05-4f9f-9d31-2634ad60e3d4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{46564cab-4eac-49bc-af98-af2a6913e1d0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\clientversion.cpp">
@@ -37,16 +40,7 @@
     <ClCompile Include="..\..\..\src\rpc\client.cpp">
       <Filter>Source Files\rpc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\sync.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\util.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\utilmoneystr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\utilstrencodings.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\utiltime.cpp">
@@ -61,17 +55,41 @@
     <ClCompile Include="..\..\..\src\support\lockedpool.cpp">
       <Filter>Source Files\support</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\ascii85.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\chainparamsbase.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\trimmean.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\rpc\rpc-utils.cpp">
       <Filter>Source Files\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\scheduler.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\sync.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\trimmean.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\util.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\ascii85.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\base58.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\bech32.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\uint256.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\utilstrencodings.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\ping_util.cpp">
+      <Filter>Source Files\utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -93,16 +111,7 @@
     <ClInclude Include="..\..\..\src\rpc\client.h">
       <Filter>Source Files\rpc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\sync.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\util.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\utilmoneystr.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\utilstrencodings.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\utiltime.h">
@@ -126,14 +135,8 @@
     <ClInclude Include="..\..\..\src\rpc\register.h">
       <Filter>Source Files\rpc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\fs.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\support\lockedpool.h">
       <Filter>Source Files\support</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\ascii85.h">
-      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\chainparamsbase.h">
       <Filter>Source Files</Filter>
@@ -141,23 +144,77 @@
     <ClInclude Include="..\..\..\src\chainparamsseeds.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\str_utils.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\numeric_range.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\scope_guard.hpp">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\trimmean.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\enum_util.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\rpc\rpc-utils.h">
       <Filter>Source Files\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\svc_thread.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\enum_util.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\map_types.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\numeric_range.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\reverselock.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\scheduler.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\scope_guard.hpp">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\set_types.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\str_types.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\str_utils.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\sync.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\trimmean.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\util.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\vector_types.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\ascii85.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\base58.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\bech32.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\fs.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\uint252.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\uint256.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\utilstrencodings.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\tinyformat.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\ping_util.h">
+      <Filter>Source Files\utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -87,7 +87,6 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\ascii85.cpp" />
     <ClCompile Include="..\..\..\src\chainparamsbase.cpp" />
     <ClCompile Include="..\..\..\src\clientversion.cpp" />
     <ClCompile Include="..\..\..\src\compat\glibcxx_sanity.cpp" />
@@ -104,41 +103,60 @@
     <ClCompile Include="..\..\..\src\rpc\rpc-utils.cpp" />
     <ClCompile Include="..\..\..\src\support\cleanse.cpp" />
     <ClCompile Include="..\..\..\src\support\lockedpool.cpp" />
-    <ClCompile Include="..\..\..\src\sync.cpp" />
-    <ClCompile Include="..\..\..\src\trimmean.cpp" />
-    <ClCompile Include="..\..\..\src\util.cpp" />
     <ClCompile Include="..\..\..\src\utilmoneystr.cpp" />
-    <ClCompile Include="..\..\..\src\utilstrencodings.cpp" />
+    <ClCompile Include="..\..\..\src\utils\ascii85.cpp" />
+    <ClCompile Include="..\..\..\src\utils\base58.cpp" />
+    <ClCompile Include="..\..\..\src\utils\bech32.cpp" />
+    <ClCompile Include="..\..\..\src\utils\ping_util.cpp" />
+    <ClCompile Include="..\..\..\src\utils\scheduler.cpp" />
+    <ClCompile Include="..\..\..\src\utils\sync.cpp" />
+    <ClCompile Include="..\..\..\src\utils\trimmean.cpp" />
+    <ClCompile Include="..\..\..\src\utils\uint256.cpp" />
+    <ClCompile Include="..\..\..\src\utils\util.cpp" />
+    <ClCompile Include="..\..\..\src\utils\utilstrencodings.cpp" />
     <ClCompile Include="..\..\..\src\utiltime.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\ascii85.h" />
     <ClInclude Include="..\..\..\src\chainparamsbase.h" />
     <ClInclude Include="..\..\..\src\chainparamsseeds.h" />
     <ClInclude Include="..\..\..\src\clientversion.h" />
     <ClInclude Include="..\..\..\src\compat\byteswap.h" />
     <ClInclude Include="..\..\..\src\compat\endian.h" />
     <ClInclude Include="..\..\..\src\compat\sanity.h" />
-    <ClInclude Include="..\..\..\src\enum_util.h" />
-    <ClInclude Include="..\..\..\src\fs.h" />
-    <ClInclude Include="..\..\..\src\numeric_range.h" />
     <ClInclude Include="..\..\..\src\random.h" />
     <ClInclude Include="..\..\..\src\rpc\client.h" />
     <ClInclude Include="..\..\..\src\rpc\protocol.h" />
     <ClInclude Include="..\..\..\src\rpc\register.h" />
     <ClInclude Include="..\..\..\src\rpc\rpc-utils.h" />
-    <ClInclude Include="..\..\..\src\scope_guard.hpp" />
-    <ClInclude Include="..\..\..\src\str_utils.h" />
     <ClInclude Include="..\..\..\src\support\allocators\secure.h" />
     <ClInclude Include="..\..\..\src\support\allocators\zeroafterfree.h" />
     <ClInclude Include="..\..\..\src\support\cleanse.h" />
     <ClInclude Include="..\..\..\src\support\events.h" />
     <ClInclude Include="..\..\..\src\support\lockedpool.h" />
-    <ClInclude Include="..\..\..\src\sync.h" />
-    <ClInclude Include="..\..\..\src\trimmean.h" />
-    <ClInclude Include="..\..\..\src\util.h" />
     <ClInclude Include="..\..\..\src\utilmoneystr.h" />
-    <ClInclude Include="..\..\..\src\utilstrencodings.h" />
+    <ClInclude Include="..\..\..\src\utils\ascii85.h" />
+    <ClInclude Include="..\..\..\src\utils\base58.h" />
+    <ClInclude Include="..\..\..\src\utils\bech32.h" />
+    <ClInclude Include="..\..\..\src\utils\enum_util.h" />
+    <ClInclude Include="..\..\..\src\utils\fs.h" />
+    <ClInclude Include="..\..\..\src\utils\map_types.h" />
+    <ClInclude Include="..\..\..\src\utils\numeric_range.h" />
+    <ClInclude Include="..\..\..\src\utils\ping_util.h" />
+    <ClInclude Include="..\..\..\src\utils\reverselock.h" />
+    <ClInclude Include="..\..\..\src\utils\scheduler.h" />
+    <ClInclude Include="..\..\..\src\utils\scope_guard.hpp" />
+    <ClInclude Include="..\..\..\src\utils\set_types.h" />
+    <ClInclude Include="..\..\..\src\utils\str_types.h" />
+    <ClInclude Include="..\..\..\src\utils\str_utils.h" />
+    <ClInclude Include="..\..\..\src\utils\svc_thread.h" />
+    <ClInclude Include="..\..\..\src\utils\sync.h" />
+    <ClInclude Include="..\..\..\src\utils\tinyformat.h" />
+    <ClInclude Include="..\..\..\src\utils\trimmean.h" />
+    <ClInclude Include="..\..\..\src\utils\uint252.h" />
+    <ClInclude Include="..\..\..\src\utils\uint256.h" />
+    <ClInclude Include="..\..\..\src\utils\util.h" />
+    <ClInclude Include="..\..\..\src\utils\utilstrencodings.h" />
+    <ClInclude Include="..\..\..\src\utils\vector_types.h" />
     <ClInclude Include="..\..\..\src\utiltime.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

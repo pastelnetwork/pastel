@@ -5,8 +5,8 @@
 #include <zstd.h>
 #include <zstd_errors.h>
 
+#include <utils/str_utils.h>
 #include <datacompressor.h>
-#include <str_utils.h>
 
 using namespace std;
 

@@ -7,7 +7,7 @@
 
 #include <univalue.h>
 
-#include <enum_util.h>
+#include <utils/enum_util.h>
 #include <chain.h>
 #include <net.h>
 #include <netmsg/node.h>

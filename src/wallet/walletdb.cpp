@@ -5,16 +5,16 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <atomic>
 
+#include <utils/fs.h>
+#include <utils/sync.h>
+#include <utils/util.h>
 #include <wallet/walletdb.h>
 #include <consensus/validation.h>
-#include <fs.h>
 #include <key_io.h>
 #include <accept_to_mempool.h>
 #include <main.h>
 #include <protocol.h>
 #include <serialize.h>
-#include <sync.h>
-#include <util.h>
 #include <utiltime.h>
 #include <wallet/wallet.h>
 #include <zcash/Proof.hpp>

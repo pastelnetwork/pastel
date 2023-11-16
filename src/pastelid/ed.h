@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <memory>
-#include <math.h>
+#include <cmath>
 
 #include <openssl/ec.h>
 #include <openssl/evp.h>
@@ -12,9 +12,9 @@
 #include <openssl/err.h>
 #include <openssl/crypto.h>
 
-#include "vector_types.h"
-#include "pastelid/common.h"
-#include "pastelid/secure_container.h"
+#include <utils/vector_types.h>
+#include <pastelid/common.h>
+#include <pastelid/secure_container.h>
 
 //EdDSA uses small public keys ED25519 - 32 bytes; ED448 - 57 bytes
 // and signatures ED25519 - 64 bytes; Ed448 - 114 bytes

@@ -2,12 +2,11 @@
 // Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <string>
 #include <tuple>
 
 #include <gtest/gtest.h>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 #include <netbase.h>
 
 using namespace std;

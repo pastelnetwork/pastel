@@ -1,5 +1,5 @@
 // Copyright (c) 2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -9,10 +9,10 @@
 
 #include <gtest/gtest.h>
 
-#include "arith_uint256.h"
-#include "crypto/equihash.h"
-#include "uint256.h"
-#include "vector_types.h"
+#include <utils/vector_types.h>
+#include <utils/uint256.h>
+#include <arith_uint256.h>
+#include <crypto/equihash.h>
 
 using namespace testing;
 using namespace std;

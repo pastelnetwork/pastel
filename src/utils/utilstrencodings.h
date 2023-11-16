@@ -10,7 +10,7 @@
  */
 #include <cstdint>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 
 #define BEGIN(a)            ((char*)&(a))
 #define END(a)              ((char*)&((&(a))[1]))

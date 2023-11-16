@@ -1,8 +1,8 @@
 #pragma once
-#include "serialize.h"
-#include "uint256.h"
-
 #include <variant>
+
+#include <utils/uint256.h>
+#include <serialize.h>
 
 namespace libzcash {
 

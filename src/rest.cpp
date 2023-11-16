@@ -1,25 +1,25 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
 
 #include <univalue.h>
 
+#include <utils/vector_types.h>
+#include <utils/str_utils.h>
+#include <utils/enum_util.h>
+#include <utils/sync.h>
+#include <utils/utilstrencodings.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <main.h>
 #include <httpserver.h>
 #include <rpc/server.h>
 #include <streams.h>
-#include <sync.h>
 #include <txmempool.h>
-#include <utilstrencodings.h>
 #include <version.h>
-#include <str_utils.h>
-#include <enum_util.h>
-#include <vector_types.h>
 
 using namespace std;
 
@@ -154,7 +154,7 @@ static bool rest_headers(HTTPRequest* req, const string& strURIPart)
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTPStatusCode::BAD_REQUEST, "Invalid hash: " + hashStr);
 
-    vector<const CBlockIndex *> vHeaders;
+    block_index_cvector_t vHeaders;
     vHeaders.reserve(count);
     {
         LOCK(cs_main);
@@ -516,9 +516,7 @@ static bool rest_getutxos(HTTPRequest* req, const string& strURIPart)
 
         CCoinsView viewDummy;
         CCoinsViewCache view(&viewDummy);
-
-        CCoinsViewCache& viewChain = *pcoinsTip;
-        CCoinsViewMemPool viewMempool(&viewChain, mempool);
+        CCoinsViewMemPool viewMempool(gl_pCoinsTip.get(), mempool);
 
         if (fCheckMemPool)
             view.SetBackend(viewMempool); // switch cache backend to db+mempool in case user likes to query mempool

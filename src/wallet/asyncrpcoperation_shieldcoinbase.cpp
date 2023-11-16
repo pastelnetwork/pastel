@@ -10,6 +10,7 @@
 #include <string>
 #include <variant>
 
+#include <utils/util.h>
 #include <asyncrpcqueue.h>
 #include <consensus/upgrades.h>
 #include <core_io.h>
@@ -21,7 +22,6 @@
 #include <rpc/protocol.h>
 #include <rpc/server.h>
 #include <timedata.h>
-#include <util.h>
 #include <utilmoneystr.h>
 #include <script/interpreter.h>
 #include <utiltime.h>

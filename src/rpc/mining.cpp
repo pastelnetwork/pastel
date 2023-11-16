@@ -16,6 +16,7 @@
 #ifdef ENABLE_MINING
 #include <crypto/equihash.h>
 #endif
+#include <utils/util.h>
 #include <init.h>
 #include <key_io.h>
 #include <main.h>
@@ -25,7 +26,6 @@
 #include <pow.h>
 #include <rpc/server.h>
 #include <txmempool.h>
-#include <util.h>
 #include <validationinterface.h>
 #include <netmsg/nodemanager.h>
 #ifdef ENABLE_WALLET

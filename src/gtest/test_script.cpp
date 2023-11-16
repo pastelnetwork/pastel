@@ -11,6 +11,7 @@
 
 #include <gtest/gtest.h>
 
+#include <utils/util.h>
 #include <data/script_invalid.json.h>
 #include <data/script_valid.json.h>
 #include <consensus/upgrades.h>
@@ -21,7 +22,6 @@
 #include <script/script.h>
 #include <script/script_error.h>
 #include <script/sign.h>
-#include <util.h>
 #include <json_test_vectors.h>
 
 #if defined(HAVE_CONSENSUS_LIB)

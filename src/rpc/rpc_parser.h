@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2021-2022 Pastel Core developers
+// Copyright (c) 2021-2023 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -7,11 +7,11 @@
 #include <string>
 #include <unordered_map>
 
-#include <enum_util.h>
-#include <tinyformat.h>
+#include <utils/tinyformat.h>
+#include <utils/enum_util.h>
+#include <utils/str_utils.h>
 #include <rpc/protocol.h>
 #include <core_io.h>
-#include <str_utils.h>
 
 template <typename RPC_CMD_ENUM>
 class RPCCommandParser

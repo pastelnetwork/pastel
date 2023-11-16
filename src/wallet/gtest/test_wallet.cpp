@@ -8,9 +8,9 @@
 #include <gmock/gmock.h>
 #include <sodium.h>
 
-#include <base58.h>
+#include <utils/base58.h>
+#include <utils/fs.h>
 #include <chainparams.h>
-#include <fs.h>
 #include <key_io.h>
 #include <main.h>
 #include <primitives/block.h>

@@ -7,10 +7,10 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdexcept>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
+#include <utils/uint256.h>
 #include <hash.h>
 #include <serialize.h>
-#include <uint256.h>
 
 constexpr size_t BIP32_EXTKEY_SIZE = 74;
 

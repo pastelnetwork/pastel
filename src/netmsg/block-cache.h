@@ -28,13 +28,16 @@ public:
     // add block to cache for revalidation
     void add_block(const uint256& hash, const NodeId& nodeId, const TxOrigin txOrigin, CBlock && block) noexcept;
     // try to revalidate cached blocks
-    size_t revalidate_blocks(const CChainParams& chainparams);
+    size_t revalidate_blocks(const CChainParams& chainparams, const bool bForce = false);
     // get number of blocks in a cache
     size_t size() const noexcept;
     // check whether block with the given hash exists in the cache
     bool exists(const uint256& hash) const noexcept;
     // check where prev block exists in the cache - if yes, add to unlinked map
     bool check_prev_block(const CBlockIndex *pindex);
+
+    bool is_valid_fork_detected() const noexcept { return m_bValidForkDetected; }
+    void reset_valid_fork_detected() noexcept { m_bValidForkDetected = false; }
 
 protected:
     typedef struct _BLOCK_CACHE_ITEM
@@ -47,12 +50,14 @@ protected:
         bool bRevalidating;          // true if block is being revalidated
         uint32_t nBlockHeight;	     // block height (0 - not defined)
         TxOrigin txOrigin;           // block origin
+        bool bIsInForkedChain;       // true if block is in forked chain
 
         _BLOCK_CACHE_ITEM(const NodeId id, uint32_t nHeight, TxOrigin txOrigin, CBlock &&block_in) noexcept : 
             nodeId(id),
             nBlockHeight(nHeight),
             txOrigin(txOrigin),
-            block(std::move(block_in))
+            block(std::move(block_in)),
+            bIsInForkedChain(false)
         {
             Added();
         }
@@ -80,6 +85,11 @@ protected:
         }
     } BLOCK_CACHE_ITEM;
 
+    typedef struct _FORKED_CHAIN_INFO
+    {
+
+    } FORKED_CHAIN_INFO;
+
      /**
      * if true - processing cached blocks.
      * block cache revalidation can be called concurrently from multiple threads,
@@ -88,6 +98,8 @@ protected:
      * exclusive lock
      */
     std::atomic_bool m_bProcessing;
+	// true if valid forked chain detected
+    std::atomic_bool m_bValidForkDetected;
     mutable std::mutex m_CacheMapLock; // mutex to protect access to m_BlockCacheMap
 	std::unordered_map<uint256, BLOCK_CACHE_ITEM> m_BlockCacheMap;
     // blocks to add to unlinked map <cached_block_hash> -> <next block hash>
@@ -95,8 +107,11 @@ protected:
     // time in secs cached block has to wait in the cache for the next revalidation attempt
     // default min startup value is 3 secs (MIN_BLOCK_REVALIDATION_WAIT_TIME_SECS)
     time_t m_nBlockRevalidationWaitTime;
+    // period in secs to monitor block revalidation
     time_t m_nRevalidationMonitorInterval;
+    // last block cache size checked
     size_t m_nLastCheckedCacheSize;
+    // time in secs when the last cache adjustment was done (new block added)
     time_t m_nLastCacheAdjustmentTime;
 
     // process next block after revalidation

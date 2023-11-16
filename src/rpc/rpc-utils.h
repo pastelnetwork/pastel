@@ -5,8 +5,8 @@
 #include <limits>
 
 #include <univalue.h>
-#include <tinyformat.h>
 
+#include <utils/tinyformat.h>
 #include <rpc/protocol.h>
 
 int get_number(const UniValue& v);

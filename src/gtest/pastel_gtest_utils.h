@@ -4,8 +4,8 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 
+#include <utils/uint256.h>
 #include <consensus/params.h>
-#include <uint256.h>
 
 int GenZero(int n);
 int GenMax(int n);

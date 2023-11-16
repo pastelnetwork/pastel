@@ -40,12 +40,11 @@ the bad alert.
 
 */
 
+#include <utils/util.h>
 #include <main.h>
 #include <net.h>
 #include <alert.h>
 #include <init.h>
-
-#include <util.h>
 #include <utiltime.h>
 #include <key.h>
 #include <clientversion.h>

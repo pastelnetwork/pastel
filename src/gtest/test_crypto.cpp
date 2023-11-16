@@ -1,20 +1,19 @@
 // Copyright (c) 2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include <vector>
 
 #include <gtest/gtest.h>
 
-#include "crypto/ripemd160.h"
-#include "crypto/sha1.h"
-#include "crypto/sha256.h"
-#include "crypto/sha512.h"
-#include "crypto/hmac_sha512.h"
-#include "crypto/hmac_sha256.h"
-#include "random.h"
-#include "utilstrencodings.h"
+#include <crypto/ripemd160.h>
+#include <crypto/sha1.h>
+#include <crypto/sha256.h>
+#include <crypto/sha512.h>
+#include <crypto/hmac_sha512.h>
+#include <crypto/hmac_sha256.h>
+#include <random.h>
+#include <utils/utilstrencodings.h>
 
 using namespace std;
 using namespace testing;

@@ -8,6 +8,7 @@
 
 #include <univalue.h>
 
+#include <utils/util.h>
 #include <clientversion.h>
 #include <init.h>
 #include <key_io.h>
@@ -17,7 +18,6 @@
 #include <rpc/server.h>
 #include <timedata.h>
 #include <txmempool.h>
-#include <util.h>
 #include <chain_options.h>
 #include <script/scripttype.h>
 #ifdef ENABLE_WALLET

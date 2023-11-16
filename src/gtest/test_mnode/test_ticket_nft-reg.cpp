@@ -3,7 +3,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
-#include <utilstrencodings.h>
+#include <utils/utilstrencodings.h>
 #include <mnode/tickets/nft-reg.h>
 #include <mnode/mnode-controller.h>
 #include <pastel_gtest_main.h>

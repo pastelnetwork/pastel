@@ -3,17 +3,17 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or httpd://www.opensource.org/licenses/mit-license.php.
 #include <array>
-#include <stdint.h>
+#include <cstdint>
 
 #include <gtest/gtest.h>
 
+#include <utils/vector_types.h>
+#include <utils/enum_util.h>
+#include <utils/utilstrencodings.h>
 #include <serialize.h>
 #include <streams.h>
 #include <hash.h>
-#include <utilstrencodings.h>
 #include <primitives/transaction.h>
-#include <vector_types.h>
-#include <enum_util.h>
 
 using namespace std;
 using namespace testing;

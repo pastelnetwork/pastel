@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include <trimmean.h>
+#include <utils/trimmean.h>
 
 using namespace testing;
 using namespace std;

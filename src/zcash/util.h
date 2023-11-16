@@ -6,7 +6,7 @@
 #include <vector>
 #include <cstdint>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 
 v_uint8 convertIntToVectorLE(const uint64_t val_int);
 std::vector<bool> convertBytesVectorToVector(const v_uint8& bytes);

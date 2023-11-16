@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <functional>
 
-#include <uint256.h>
+#include <utils/uint256.h>
 
 /**
  * Functions to gather random data via the libsodium CSPRNG

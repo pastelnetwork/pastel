@@ -5,8 +5,8 @@
 #include <algorithm>
 
 #include <gtest/gtest.h>
-#include <scope_guard.hpp>
 
+#include <utils/scope_guard.hpp>
 #ifdef ENABLE_WALLET
 #include <init.h>
 #include <key_io.h>

@@ -6,8 +6,8 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
 
+#include <utils/uint256.h>
 #include <serialize.h>
-#include <uint256.h>
 #include <primitives/block.h>
 #include <netmsg/bloom.h>
 

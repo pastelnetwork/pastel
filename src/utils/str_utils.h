@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <set>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 
 /**
  * test if character is white space not using locale.

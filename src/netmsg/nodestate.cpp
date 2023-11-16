@@ -2,7 +2,7 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <str_utils.h>
+#include <utils/str_utils.h>
 #include <netmsg/nodestate.h>
 #include <main.h>
 
@@ -64,6 +64,12 @@ void CNodeState::MarkBlockAsInFlight(const uint256& hash, const Consensus::Param
     mapBlocksInFlight[hash] = make_pair(id, it);
 }
 
+/**
+ * Update max chain work from the new node state.
+ * 
+ * \param state - new node state
+ * \return - true if the max chain work was updated
+ */
 bool CChainWorkTracker::update(const CNodeState& state) noexcept
 {
     auto pBlockIndex = state.pindexBestKnownBlock;

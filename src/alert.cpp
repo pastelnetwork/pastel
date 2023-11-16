@@ -8,13 +8,13 @@
 #include <map>
 #include <cstdint>
 
+#include <utils/util.h>
 #include <alert.h>
 #include <clientversion.h>
 #include <net.h>
 #include <pubkey.h>
 #include <timedata.h>
 #include <ui_interface.h>
-#include <util.h>
 
 using namespace std;
 

@@ -1,15 +1,16 @@
 // Copyright (c) 2018 The Zcash developers
 // Copyright (c) 2012-2017 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <gtest/gtest.h>
 
-#include "dbwrapper.h"
-#include "uint256.h"
-#include "random.h"
-#include "vector_types.h"
+#include <utils/fs.h>
+#include <utils/vector_types.h>
+#include <utils/uint256.h>
+#include <dbwrapper.h>
+#include <random.h>
                     
 using namespace std;
 using namespace fs;

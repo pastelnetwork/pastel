@@ -6,7 +6,7 @@
 #include <cinttypes>
 #include <limits>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 #include <init.h>
 #include <mnode/tickets/ticket.h>
 #include <mnode/ticket-processor.h>

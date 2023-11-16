@@ -10,6 +10,7 @@
 #include <univalue.h>
 #include <sodium.h>
 
+#include <utils/util.h>
 #include <amount.h>
 #include <consensus/upgrades.h>
 #include <consensus/consensus.h>
@@ -25,7 +26,6 @@
 #include <rpc/rpc-utils.h>
 #include <timedata.h>
 #include <transaction_builder.h>
-#include <util.h>
 #include <utilmoneystr.h>
 #include <primitives/transaction.h>
 #include <zcbenchmarks.h>

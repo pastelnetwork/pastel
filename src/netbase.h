@@ -6,7 +6,7 @@
 #if defined(HAVE_CONFIG_H)
 #include <config/bitcoin-config.h>
 #endif
-#include <vector_types.h>
+#include <utils/vector_types.h>
 #include <compat.h>
 #include <serialize.h>
 

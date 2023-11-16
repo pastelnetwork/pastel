@@ -8,7 +8,8 @@
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
-#include <str_utils.h>
+#include <utils/str_utils.h>
+#include <utils/utilstrencodings.h>
 #include <chain.h>
 #include <main.h>
 #include <deprecation.h>
@@ -16,7 +17,6 @@
 #include <core_io.h>
 #include <key_io.h>
 #include <init.h>
-#include <utilstrencodings.h>
 #include <accept_to_mempool.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/tickets-all.h>
@@ -598,6 +598,7 @@ string CPastelTicketProcessor::GetTicketJSON(const uint256& txid, const bool bDe
 
 bool CPastelTicketProcessor::SerializeTicketToStream(const uint256& txid, string &error, ticket_parse_data_t &data, const bool bUncompressData)
 {
+    error.erase();
     // get ticket transaction by txid, also may return ticket height
     if (!GetTransaction(txid, data.tx, Params().GetConsensus(), data.hashBlock, true, &data.nTicketHeight))
     {
@@ -653,9 +654,8 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
                         data.nTicketHeight = pindex->nHeight;
                 }
             }
-        } else {
+        } else
             data.nTicketHeight = numeric_limits<uint32_t>::max();
-        }
 
         // create Pastel ticket by id
         ticket = CreateTicket(data.ticket_id);
@@ -697,6 +697,33 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid,
         throw runtime_error(strprintf(
             "The ticket with this txid [%s] is not in the blockchain", _txid));
     return ticket;
+}
+
+bool CPastelTicketProcessor::EraseIfTicketTransaction(const uint256& txid, string& error)
+{
+    ticket_parse_data_t data;
+    if (!SerializeTicketToStream(txid, error, data, true))
+    {
+        error = strprintf("Failed to get ticket by txid=%s. ERROR: %s.", txid.GetHex(), error);
+        return false;
+    }
+
+    // create Pastel ticket by id
+    unique_ptr<CPastelTicket> ticket = CreateTicket(data.ticket_id);
+    if (!ticket)
+    {
+        error = strprintf("Failed to create ticket by id=%hhu.", to_integral_type<TicketID>(data.ticket_id));
+        return false;
+    }
+
+    // deserialize data to ticket object
+    data.data_stream >> *ticket;
+    if (!EraseTicketFromDB(*ticket))
+    {
+        error = strprintf("Failed to erase ticket from DB by txid=%s.", txid.GetHex());
+		return false;
+    }
+    return true;
 }
 
 /**
@@ -773,6 +800,34 @@ bool CPastelTicketProcessor::EraseTicketFromDB(const CPastelTicket& ticket) cons
     return itDB->second->Erase(sKey);
 }
 
+/**
+ * Delete tickets from TicketDB by block index list.
+ * 
+ * \param vBlockIndex - list of block indices
+ * \return number of deleted tickets
+ */
+size_t CPastelTicketProcessor::EraseTicketsFromDbByList(const block_index_cvector_t& vBlockIndex)
+{
+    size_t nErasedCount = 0;
+    string error;
+    const auto &consensusParams = Params().GetConsensus();
+    for (const auto& pindex : vBlockIndex)
+    {
+        if (!pindex || !(pindex->nTx) || !(pindex->nStatus & BLOCK_HAVE_DATA))
+            continue;
+        
+        CBlock block;
+        if (!ReadBlockFromDisk(block, pindex, consensusParams))
+			continue;
+
+        for (const auto& tx : block.vtx)
+        {
+            if (EraseIfTicketTransaction(tx.GetHash(), error))
+                ++nErasedCount;
+        }
+	}
+    return nErasedCount;
+}
 
 /**
  * Find ticket in TicketDB by secondary key.

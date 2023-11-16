@@ -8,8 +8,8 @@
 #include <iostream>
 #include <random>
 
-#include <util.h>
-#include <str_utils.h>
+#include <utils/util.h>
+#include <utils/str_utils.h>
 #include <mnode/mnode-perfcheck.h>
 
 using namespace std;

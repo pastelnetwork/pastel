@@ -8,13 +8,13 @@
 #include <sys/stat.h>
 #endif
 
+#include <utils/fs.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
+#include <utils/svc_thread.h>
 #include <addrman.h>
-#include <fs.h>
 #include <hash.h>
 #include <protocol.h>
-#include <util.h>
-#include <utilstrencodings.h>
-#include <svc_thread.h>
 #include <wallet/db.h>
 
 using namespace std;

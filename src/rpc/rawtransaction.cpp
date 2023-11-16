@@ -9,6 +9,7 @@
 
 #include <univalue.h>
 
+#include <utils/uint256.h>
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <chain_options.h>
@@ -26,7 +27,6 @@
 #include <script/script_error.h>
 #include <script/sign.h>
 #include <script/standard.h>
-#include <uint256.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif
@@ -390,7 +390,7 @@ Examples:
         pblockindex = mapBlockIndex[hashBlock];
     } else {
         CCoins coins;
-        if (pcoinsTip->GetCoins(oneTxid, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
+        if (gl_pCoinsTip->GetCoins(oneTxid, coins) && coins.nHeight > 0 && coins.nHeight <= chainActive.Height())
             pblockindex = chainActive[coins.nHeight];
     }
 
@@ -820,8 +820,7 @@ Examples:
     CCoinsViewCache view(&viewDummy);
     {
         LOCK(mempool.cs);
-        CCoinsViewCache &viewChain = *pcoinsTip;
-        CCoinsViewMemPool viewMempool(&viewChain, mempool);
+        CCoinsViewMemPool viewMempool(gl_pCoinsTip.get(), mempool);
         view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
 
         for (const auto& txin : mergedTx.vin)
@@ -1057,8 +1056,7 @@ As a json rpc call
     if (params.size() > 1)
         fOverrideFees = params[1].get_bool();
 
-    CCoinsViewCache &view = *pcoinsTip;
-    const CCoins* existingCoins = view.AccessCoins(txid);
+    const CCoins* existingCoins = gl_pCoinsTip->AccessCoins(txid);
     bool fHaveMempool = mempool.exists(txid);
     bool fHaveChain = existingCoins && existingCoins->nHeight < 1000000000;
     if (!fHaveMempool && !fHaveChain)

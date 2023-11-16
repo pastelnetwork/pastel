@@ -1,20 +1,19 @@
 // Copyright (c) 2014-2016 The Bitcoin Core developers
 // Copyright (c) 2016-2018 The Zcash developers
-// Copyright (c) 2018-2021 Pastel Core Developers
+// Copyright (c) 2018-2023 Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <key_io.h>
-#include <base58.h>
-#include <bech32.h>
-#include <script/script.h>
-#include <utilstrencodings.h>
-#include <vector_types.h>
-
-#include <assert.h>
+#include <cassert>
 #include <string.h>
 #include <algorithm>
 #include <variant>
+
+#include <utils/vector_types.h>
+#include <utils/base58.h>
+#include <utils/bech32.h>
+#include <utils/utilstrencodings.h>
+#include <script/script.h>
+#include <key_io.h>
 
 using namespace std;
 

@@ -2,13 +2,12 @@
 // Copyright (c) 2018 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "serialize.h"
-#include "support/allocators/secure.h"
-#include "uint256.h"
-#include "zcash/address/sapling.hpp"
-
 #include <optional>
+
+#include <utils/uint256.h>
+#include <serialize.h>
+#include <support/allocators/secure.h>
+#include <zcash/address/sapling.hpp>
 
 const uint32_t ZIP32_HARDENED_KEY_LIMIT = 0x80000000;
 const size_t ZIP32_XFVK_SIZE = 169;

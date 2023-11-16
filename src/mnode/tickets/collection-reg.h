@@ -4,8 +4,8 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
 
-#include <str_utils.h>
-#include <set_types.h>
+#include <utils/str_utils.h>
+#include <utils/set_types.h>
 #include <mnode/tickets/ticket-key.h>
 #include <mnode/tickets/ticket-extra-fees.h>
 

@@ -1,18 +1,19 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <string>
 #include <vector>
+
 #include <openssl/aes.h>
 #include <openssl/evp.h>
-#include <scope_guard.hpp>
 
+#include <utils/scope_guard.hpp>
+#include <utils/util.h>
 #include <wallet/crypter.h>
 #include <script/script.h>
 #include <script/standard.h>
 #include <streams.h>
-#include <util.h>
 
 bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const v_uint8& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod)
 {

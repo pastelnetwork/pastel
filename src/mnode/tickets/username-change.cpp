@@ -4,7 +4,7 @@
 #include <cinttypes>
 #include <json/json.hpp>
 
-#include <str_utils.h>
+#include <utils/str_utils.h>
 #include <init.h>
 #include <pastelid/common.h>
 #include <mnode/tickets/username-change.h>

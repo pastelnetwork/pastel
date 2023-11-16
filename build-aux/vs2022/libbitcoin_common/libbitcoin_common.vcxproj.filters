@@ -22,12 +22,6 @@
     <ClCompile Include="..\..\..\src\arith_uint256.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\base58.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\bech32.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\chainparams.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -73,9 +67,6 @@
     <ClCompile Include="..\..\..\src\pubkey.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\scheduler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\script\interpreter.cpp">
       <Filter>Source Files\script</Filter>
     </ClCompile>
@@ -97,9 +88,6 @@
     <ClCompile Include="..\..\..\src\transaction_builder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\uint256.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\utiltest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -118,12 +106,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\arith_uint256.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\base58.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\bech32.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\chainparams.h">
@@ -174,9 +156,6 @@
     <ClInclude Include="..\..\..\src\pubkey.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\scheduler.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\script\interpreter.h">
       <Filter>Source Files\script</Filter>
     </ClInclude>
@@ -198,12 +177,6 @@
     <ClInclude Include="..\..\..\src\transaction_builder.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\uint252.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\uint256.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\key_constants.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -214,12 +187,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\datacompressor.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\svc_thread.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\str_utils.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\script\scripttype.h">

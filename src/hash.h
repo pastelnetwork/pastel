@@ -1,18 +1,19 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "crypto/ripemd160.h"
-#include "crypto/sha256.h"
-#include "prevector.h"
-#include "serialize.h"
-#include "uint256.h"
-#include "version.h"
-
-#include "sodium.h"
-
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
+
+#include <utils/uint256.h>
+#include <prevector.h>
+#include <serialize.h>
+#include <version.h>
+
+#include <crypto/ripemd160.h>
+#include <crypto/sha256.h>
+#include <sodium.h>
 
 typedef uint256 ChainCode;
 

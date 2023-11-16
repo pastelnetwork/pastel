@@ -4,13 +4,13 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <utils/vector_types.h>
+#include <utils/enum_util.h>
 #include <chainparamsbase.h>
 #include <consensus/params.h>
 #include <primitives/block.h>
 #include <protocol.h>
-#include <enum_util.h>
 #include <key_constants.h>
-#include <vector_types.h>
 
 struct CDNSSeedData
 {

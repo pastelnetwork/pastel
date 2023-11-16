@@ -1,12 +1,11 @@
 // Copyright (c) 2017 Pieter Wuille
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include "crypto/sha256.h"
-#include "uint256.h"
-
 #include <stdexcept>
+
+#include <utils/uint256.h>
+#include <crypto/sha256.h>
 
 #include <gtest/gtest.h>
 

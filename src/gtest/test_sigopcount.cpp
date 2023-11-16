@@ -1,16 +1,16 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel developers
+// Copyright (c) 2018-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include <vector>
+
 #include <gtest/gtest.h>
 
+#include <utils/uint256.h>
 #include <pubkey.h>
 #include <key.h>
 #include <script/script.h>
 #include <script/standard.h>
-#include <uint256.h>
 
 using namespace std;
 using namespace testing;

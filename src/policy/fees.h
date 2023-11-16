@@ -6,9 +6,9 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <map>
 
+#include <utils/vector_types.h>
+#include <utils/uint256.h>
 #include <amount.h>
-#include <uint256.h>
-#include <vector_types.h>
 #include <txmempool_entry.h>
 
 class CAutoFile;

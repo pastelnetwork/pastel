@@ -3,12 +3,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <utils/util.h>
 #include <deprecation.h>
 #include <alert.h>
 #include <clientversion.h>
 #include <init.h>
 #include <ui_interface.h>
-#include <util.h>
 #include <chainparams.h>
 
 using namespace std;

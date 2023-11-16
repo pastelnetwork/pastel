@@ -6,9 +6,9 @@
 
 #include <gtest/gtest.h>
 
-#include <base58.h>
-#include <utilstrencodings.h>
-#include <vector_types.h>
+#include <utils/vector_types.h>
+#include <utils/base58.h>
+#include <utils/utilstrencodings.h>
 #include <chainparams.h>
 #include <mnode/rpc/mnode-rpc.h>
 #include <mnode/rpc/ingest.h>

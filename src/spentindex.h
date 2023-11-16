@@ -4,9 +4,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #pragma once 
-#include <uint256.h>
+#include <utils/uint256.h>
+#include <utils/util.h>
 #include <amount.h>
-#include <util.h>
 #include <script/scripttype.h>
 
 struct CSpentIndexKey

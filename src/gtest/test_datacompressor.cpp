@@ -1,4 +1,4 @@
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -6,9 +6,9 @@
 #include <zstd.h>
 #include <zstd_errors.h>
 
+#include <utils/utilstrencodings.h>
 #include <datacompressor.h>
 #include <mnode/ticket-processor.h>
-#include <utilstrencodings.h>
 
 using namespace testing;
 using namespace std;

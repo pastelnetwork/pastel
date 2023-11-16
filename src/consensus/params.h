@@ -8,9 +8,9 @@
 #include <functional>
 #include <limits>
 
-#include <uint256.h>
+#include <utils/uint256.h>
+#include <utils/enum_util.h>
 #include <key_constants.h>
-#include <enum_util.h>
 #include <consensus/consensus.h>
 
 namespace Consensus {

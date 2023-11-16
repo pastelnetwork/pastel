@@ -7,7 +7,7 @@
 #include <assert.h>
 #include <stdexcept>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 
 template <class T>
 inline void hash_combine(std::size_t& seed, const T& v)

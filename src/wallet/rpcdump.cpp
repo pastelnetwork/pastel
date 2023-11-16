@@ -9,6 +9,9 @@
 
 #include <univalue.h>
 
+#include <utils/str_utils.h>
+#include <utils/sync.h>
+#include <utils/util.h>
 #include <chain.h>
 #include <key_io.h>
 #include <rpc/server.h>
@@ -17,11 +20,8 @@
 #include <script/script.h>
 #include <script/standard.h>
 #include <zcash/Address.hpp>
-#include <sync.h>
-#include <util.h>
 #include <utiltime.h>
 #include <wallet/wallet.h>
-#include <str_utils.h>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -554,7 +554,7 @@ UniValue dumpwallet_impl(const UniValue& params, bool fHelp, bool fDumpZKeys)
     // produce output
     file << strprintf("# Wallet dump created by Pastel %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
     file << strprintf("# * Created on %s\n", EncodeDumpTime(GetTime()));
-    file << strprintf("# * Best block at time of backup was %i (%s),\n", chainActive.Height(), chainActive.Tip()->GetBlockHash().ToString());
+    file << strprintf("# * Best block at time of backup was %i (%s),\n", chainActive.Height(), chainActive.Tip()->GetBlockHashString());
     file << strprintf("#   mined on %s\n", EncodeDumpTime(chainActive.Tip()->GetBlockTime()));
     {
         HDSeed hdSeed;

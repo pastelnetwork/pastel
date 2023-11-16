@@ -144,7 +144,8 @@ bool CCoinsViewCache::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tre
     return true;
 }
 
-bool CCoinsViewCache::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const {
+bool CCoinsViewCache::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const
+{
     CAnchorsSaplingMap::const_iterator it = cacheSaplingAnchors.find(rt);
     if (it != cacheSaplingAnchors.end()) {
         if (it->second.entered) {
@@ -167,9 +168,11 @@ bool CCoinsViewCache::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &t
     return true;
 }
 
-bool CCoinsViewCache::GetNullifier(const uint256 &nullifier, ShieldedType type) const {
+bool CCoinsViewCache::GetNullifier(const uint256 &nullifier, ShieldedType type) const
+{
     CNullifiersMap* cacheToUse;
-    switch (type) {
+    switch (type)
+    {
         case SPROUT:
             cacheToUse = &cacheSproutNullifiers;
             break;
@@ -338,7 +341,8 @@ bool CCoinsViewCache::GetCoins(const uint256 &txid, CCoins &coins) const {
     return false;
 }
 
-CCoinsModifier CCoinsViewCache::ModifyCoins(const uint256 &txid) {
+CCoinsModifier CCoinsViewCache::ModifyCoins(const uint256 &txid)
+{
     assert(!hasModifier);
     pair<CCoinsMap::iterator, bool> ret = cacheCoins.insert(make_pair(txid, CCoinsCacheEntry()));
     size_t cachedCoinUsage = 0;
@@ -388,14 +392,16 @@ bool CCoinsViewCache::HaveCoins(const uint256 &txid) const
     return (it != cacheCoins.cend() && !it->second.coins.vout.empty());
 }
 
-uint256 CCoinsViewCache::GetBestBlock() const {
+uint256 CCoinsViewCache::GetBestBlock() const
+{
     if (hashBlock.IsNull())
         hashBlock = base->GetBestBlock();
     return hashBlock;
 }
 
 
-uint256 CCoinsViewCache::GetBestAnchor(ShieldedType type) const {
+uint256 CCoinsViewCache::GetBestAnchor(ShieldedType type) const
+{
     switch (type) {
         case SPROUT:
             if (hashSproutAnchor.IsNull())
@@ -412,7 +418,8 @@ uint256 CCoinsViewCache::GetBestAnchor(ShieldedType type) const {
     }
 }
 
-void CCoinsViewCache::SetBestBlock(const uint256 &hashBlockIn) {
+void CCoinsViewCache::SetBestBlock(const uint256 &hashBlockIn)
+{
     hashBlock = hashBlockIn;
 }
 

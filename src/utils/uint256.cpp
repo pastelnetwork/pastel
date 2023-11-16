@@ -3,13 +3,12 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <string>
 
-#include <tinyformat.h>
-
-#include <uint256.h>
-#include <utilstrencodings.h>
+#include <utils/tinyformat.h>
+#include <utils/uint256.h>
+#include <utils/utilstrencodings.h>
 
 using namespace std;
 

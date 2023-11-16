@@ -273,7 +273,7 @@ bool COrphanTxManager::AcceptOrphanTxToMemPool(const CChainParams & chainparams,
     const bool bAccepted = AcceptToMemoryPool(chainparams, mempool, state, orphanTx, true, &fMissingInputs);
     if (bAccepted)
     {
-        mempool.check(pcoinsTip);
+        mempool.check(gl_pCoinsTip.get());
         RelayTransaction(orphanTx);
     }
     return bAccepted;

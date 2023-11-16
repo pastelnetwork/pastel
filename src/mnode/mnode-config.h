@@ -6,7 +6,7 @@
 #include <vector>
 #include <mutex>
 
-#include <map_types.h>
+#include <utils/map_types.h>
 #include <primitives/transaction.h>
 
 class CMasternodeConfig
