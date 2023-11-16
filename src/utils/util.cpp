@@ -84,16 +84,16 @@
 #define NOMINMAX
 #endif
 
+#define popen _popen
+#define pclose _pclose
+
 #include <io.h> /* for _commit */
 #include <shlobj.h>
-#endif
+#endif // WIN32
 
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
-
-#define popen _popen
-#define pclose _pclose
 
 #include <boost/program_options/detail/config_file.hpp>
 #include <boost/program_options/parsers.hpp>
