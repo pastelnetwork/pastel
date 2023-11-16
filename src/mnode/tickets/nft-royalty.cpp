@@ -3,9 +3,9 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
 
+#include <utils/vector_types.h>
+#include <utils/utilstrencodings.h>
 #include <init.h>
-#include <vector_types.h>
-#include <utilstrencodings.h>
 #include <pastelid/common.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/tickets/pastelid-reg.h>

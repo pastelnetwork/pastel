@@ -8,12 +8,12 @@
 #include <variant>
 #include <vector>
 
+#include <utils/uint256.h>
 #include <amount.h>
 #include <random.h>
 #include <script/script.h>
 #include <serialize.h>
 #include <streams.h>
-#include <uint256.h>
 #include <consensus/consensus.h>
 
 #include <zcash/NoteEncryption.hpp>

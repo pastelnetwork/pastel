@@ -5,9 +5,9 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <limits>
 
+#include <utils/tinyformat.h>
 #include <amount.h>
 #include <consensus/consensus.h>
-#include <tinyformat.h>
 
 using namespace std;
 

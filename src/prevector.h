@@ -1,12 +1,11 @@
 #pragma once
-#include <util.h>
-#include <assert.h>
-#include <stdlib.h>
+#include <cassert>
+#include <cstdlib>
 #include <cstdint>
-#include <string.h>
+#include <string>
 #include <iterator>
 
-#include <util.h>
+#include <utils/util.h>
 
 #pragma pack(push, 1)
 /** Implements a drop-in replacement for std::vector<T> which stores up to N

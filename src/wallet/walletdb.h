@@ -9,13 +9,13 @@
 #include <string>
 #include <utility>
 
+#include <utils/vector_types.h>
+#include <utils/svc_thread.h>
 #include <amount.h>
 #include <wallet/db.h>
 #include <key.h>
 #include <keystore.h>
-#include <vector_types.h>
 #include <zcash/Address.hpp>
-#include <svc_thread.h>
 
 class CAccount;
 class CAccountingEntry;

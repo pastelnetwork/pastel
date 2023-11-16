@@ -1,11 +1,10 @@
 #include <gtest/gtest.h>
-
-#include "utilstrencodings.h"
-#include "version.h"
-#include "serialize.h"
-#include "streams.h"
-
 #include <univalue.h>
+
+#include <utils/utilstrencodings.h>
+#include <version.h>
+#include <serialize.h>
+#include <streams.h>
 
 UniValue read_json(const std::string& jsondata);
 UniValue read_json(const char* szJsonData);

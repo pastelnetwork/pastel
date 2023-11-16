@@ -5,7 +5,7 @@
 
 #include <array>
 
-#include <enum_util.h>
+#include <utils/enum_util.h>
 #include <amount.h>
 
 // ticket names

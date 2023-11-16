@@ -6,8 +6,8 @@
 
 #include <clientversion.h>
 #include <chainparams.h>
-#include <fs.h>
-#include <util.h>
+#include <utils/fs.h>
+#include <utils/util.h>
 #include <hash.h>
 #include <serialize.h>
 #include <streams.h>

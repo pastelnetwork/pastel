@@ -1,20 +1,21 @@
 // Copyright (c) 2011-2013 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <stdint.h>
+#include <cstdint>
 #include <sstream>
 #include <iomanip>
 #include <limits>
 #include <cmath>
 #include <string>
+
 #include <gmock/gmock.h>
 
-#include "uint256.h"
-#include "arith_uint256.h"
-#include "version.h"
-#include <vector_types.h>
+#include <utils/vector_types.h>
+#include <utils/uint256.h>
+#include <arith_uint256.h>
+#include <version.h>
 
 using namespace testing;
 using namespace std;

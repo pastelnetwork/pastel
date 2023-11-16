@@ -8,12 +8,11 @@
 #include <set>
 #include <atomic>
 
-#include <scope_guard.hpp>
-
+#include <utils/scope_guard.hpp>
+#include <utils/vector_types.h>
+#include <utils/map_types.h>
+#include <utils/sync.h>
 #include <net.h>
-#include <sync.h>
-#include <map_types.h>
-#include <vector_types.h>
 #include <mnode/mnode-masternode.h>
 
 constexpr auto MNCACHE_FILENAME = "mncache.dat";

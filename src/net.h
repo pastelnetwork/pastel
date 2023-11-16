@@ -13,9 +13,9 @@
 #include <arpa/inet.h>
 #endif
 
-#include <utilstrencodings.h>
+#include <utils/utilstrencodings.h>
+#include <utils/svc_thread.h>
 #include <chainparams.h>
-#include <svc_thread.h>
 #include <netmsg/node.h>
 
 class CAddrMan;

@@ -5,12 +5,12 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
 
+#include <utils/uint256.h>
 #include <txdb.h>
 #include <chainparams.h>
 #include <hash.h>
 #include <main.h>
 #include <pow.h>
-#include <uint256.h>
 #include <script/scripttype.h>
 
 using namespace std;
@@ -266,7 +266,7 @@ bool CCoinsViewDB::GetStats(CCoinsStats &stats) const
     return true;
 }
 
-bool CBlockTreeDB::WriteBatchSync(const vector<pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const vector<const CBlockIndex*>& blockinfo)
+bool CBlockTreeDB::WriteBatchSync(const vector<pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const block_index_cvector_t& blockinfo)
 {
     CDBBatch batch(*this);
     for (const auto& [nFile, pBlockFileInfo] : fileInfo)
@@ -277,7 +277,7 @@ bool CBlockTreeDB::WriteBatchSync(const vector<pair<int, const CBlockFileInfo*> 
     return WriteBatch(batch, true);
 }
 
-bool CBlockTreeDB::EraseBatchSync(const vector<const CBlockIndex*>& blockinfo)
+bool CBlockTreeDB::EraseBatchSync(const block_index_cvector_t& blockinfo)
 {
     CDBBatch batch(*this);
     for (const auto pBlockIndex : blockinfo)

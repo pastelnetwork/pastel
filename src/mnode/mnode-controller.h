@@ -5,9 +5,9 @@
 
 #include <string>
 
+#include <utils/svc_thread.h>
+#include <utils/sync.h>
 #include <coins.h>
-#include <svc_thread.h>
-#include <sync.h>
 #include <mnode/mnode-config.h>
 #include <mnode/mnode-manager.h>
 #include <mnode/mnode-sync.h>

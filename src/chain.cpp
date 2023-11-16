@@ -4,6 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <deque>
+#include <cmath>
 
 #include <chain.h>
 #include <main.h>
@@ -201,6 +202,14 @@ void CBlockIndex::UpdateChainTx()
     }
 }
 
+// Returns log2_work for this block
+double CBlockIndex::GetLog2ChainWork() const noexcept
+{
+    if (nChainWork == arith_uint256())
+		return 0.0;
+	return log(nChainWork.getdouble()) / log(2.0);
+}
+
 CBlockIndex* CBlockIndex::GetAncestor(const int height) noexcept
 {
     return const_cast<CBlockIndex*>(static_cast<const CBlockIndex*>(this)->GetAncestor(height));
@@ -287,8 +296,87 @@ CBlockHeader CBlockIndex::GetBlockHeader() const noexcept
     return block;
 }
 
+/**
+ * Raise the validity level of this block index entry.
+ * 
+ * \param nUpTo - new validity level
+ * \return true if the validity was changed 
+ */
+bool CBlockIndex::RaiseValidity(enum BlockStatus nUpTo) noexcept
+{
+    assert(!(nUpTo & ~BLOCK_VALID_MASK)); // Only validity flags allowed.
+    if (nStatus & BLOCK_FAILED_MASK)
+        return false;
+    if ((nStatus & BLOCK_VALID_MASK) < nUpTo) {
+        nStatus = (nStatus & ~BLOCK_VALID_MASK) | nUpTo;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Check whether this block index entry is valid up to the passed validity level.
+ * 
+ * \param nUpTo - validity level to check
+ * \return true if the block index entry is valid up to the passed validity level
+ */
+bool CBlockIndex::IsValid(enum BlockStatus nUpTo) const noexcept
+{
+    assert(!(nUpTo & ~BLOCK_VALID_MASK)); // Only validity flags allowed.
+    if (nStatus & BLOCK_FAILED_MASK)
+        return false;
+    return ((nStatus & BLOCK_VALID_MASK) >= nUpTo);
+}
+
+/**
+ * Set block status flag.
+ * 
+ * \param statusFlag - block status flag to set
+ */
+void CBlockIndex::SetStatusFlag(enum BlockStatus statusFlag) noexcept
+{
+	nStatus |= statusFlag;
+}
+
+/**
+ * Unset block status flag.
+ * 
+ * \param statusFlag - block status flag to unset
+ */
+void CBlockIndex::ClearStatusFlag(enum BlockStatus statusFlag) noexcept
+{
+	nStatus &= ~statusFlag;
+}
+
 void CBlockIndex::BuildSkip()
 {
     if (pprev)
         pskip = pprev->GetAncestor(GetSkipHeight(nHeight));
+}
+
+/** 
+* Find the last common ancestor two blocks have.
+* Both pa and pb must be non-NULL.
+* 
+* \param pa - first block index
+* \param pb - second block index
+* \return - last common ancestor block index or NULL if there is no common ancestor
+*           (missing blocks in a first chain)
+*/
+CBlockIndex* FindLastCommonAncestorBlockIndex(CBlockIndex* pa, CBlockIndex* pb)
+{
+    if (pa->nHeight > pb->nHeight)
+        pa = pa->GetAncestor(pb->nHeight);
+    else if (pb->nHeight > pa->nHeight)
+        pb = pb->GetAncestor(pa->nHeight);
+
+    while (pa != pb && pa && pb)
+    {
+        pa = pa->pprev;
+        pb = pb->pprev;
+    }
+
+    // Eventually all chain branches meet at the genesis block.
+    assert(pa == pb);
+    return pa;
 }

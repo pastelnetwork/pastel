@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "zcash/util.h"
-#include <vector_types.h>
+#include <zcash/util.h>
+#include <utils/vector_types.h>
 
 TEST(libzcash_utils, convertBytesVectorToVector)
 {

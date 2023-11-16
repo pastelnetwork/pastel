@@ -92,8 +92,6 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\src\amount.cpp" />
     <ClCompile Include="..\..\..\src\arith_uint256.cpp" />
-    <ClCompile Include="..\..\..\src\base58.cpp" />
-    <ClCompile Include="..\..\..\src\bech32.cpp" />
     <ClCompile Include="..\..\..\src\chainparams.cpp" />
     <ClCompile Include="..\..\..\src\chain_options.cpp" />
     <ClCompile Include="..\..\..\src\coins.cpp" />
@@ -112,7 +110,6 @@
     <ClCompile Include="..\..\..\src\primitives\transaction.cpp" />
     <ClCompile Include="..\..\..\src\protocol.cpp" />
     <ClCompile Include="..\..\..\src\pubkey.cpp" />
-    <ClCompile Include="..\..\..\src\scheduler.cpp" />
     <ClCompile Include="..\..\..\src\script\interpreter.cpp" />
     <ClCompile Include="..\..\..\src\script\script.cpp" />
     <ClCompile Include="..\..\..\src\script\script_error.cpp" />
@@ -120,14 +117,11 @@
     <ClCompile Include="..\..\..\src\script\sign.cpp" />
     <ClCompile Include="..\..\..\src\script\standard.cpp" />
     <ClCompile Include="..\..\..\src\transaction_builder.cpp" />
-    <ClCompile Include="..\..\..\src\uint256.cpp" />
     <ClCompile Include="..\..\..\src\utiltest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\amount.h" />
     <ClInclude Include="..\..\..\src\arith_uint256.h" />
-    <ClInclude Include="..\..\..\src\base58.h" />
-    <ClInclude Include="..\..\..\src\bech32.h" />
     <ClInclude Include="..\..\..\src\chainparams.h" />
     <ClInclude Include="..\..\..\src\chain_options.h" />
     <ClInclude Include="..\..\..\src\coins.h" />
@@ -149,7 +143,6 @@
     <ClInclude Include="..\..\..\src\primitives\transaction.h" />
     <ClInclude Include="..\..\..\src\protocol.h" />
     <ClInclude Include="..\..\..\src\pubkey.h" />
-    <ClInclude Include="..\..\..\src\scheduler.h" />
     <ClInclude Include="..\..\..\src\script\interpreter.h" />
     <ClInclude Include="..\..\..\src\script\script.h" />
     <ClInclude Include="..\..\..\src\script\scripttype.h" />
@@ -157,11 +150,7 @@
     <ClInclude Include="..\..\..\src\script\sigcache.h" />
     <ClInclude Include="..\..\..\src\script\sign.h" />
     <ClInclude Include="..\..\..\src\script\standard.h" />
-    <ClInclude Include="..\..\..\src\str_utils.h" />
-    <ClInclude Include="..\..\..\src\svc_thread.h" />
     <ClInclude Include="..\..\..\src\transaction_builder.h" />
-    <ClInclude Include="..\..\..\src\uint252.h" />
-    <ClInclude Include="..\..\..\src\uint256.h" />
     <ClInclude Include="..\..\..\src\utiltest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

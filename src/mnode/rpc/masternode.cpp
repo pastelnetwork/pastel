@@ -6,7 +6,7 @@
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
-#include <str_utils.h>
+#include <utils/str_utils.h>
 #include <key_io.h>
 #include <init.h>
 #include <main.h>

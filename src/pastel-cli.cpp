@@ -10,16 +10,16 @@
 #include "support/events.h"
 #include <univalue.h>
 
+#include <utils/enum_util.h>
+#include <utils/vector_types.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
+#include <utils/svc_thread.h>
 #include <chainparamsbase.h>
 #include <clientversion.h>
 #include <rpc/client.h>
 #include <rpc/protocol.h>
 #include <rpc/rpc_consts.h>
-#include <vector_types.h>
-#include <util.h>
-#include <enum_util.h>
-#include <utilstrencodings.h>
-#include <svc_thread.h>
 #include <port_config.h>
 
 constexpr int DEFAULT_HTTP_CLIENT_TIMEOUT = 900;

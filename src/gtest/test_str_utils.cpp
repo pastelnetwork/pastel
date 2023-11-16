@@ -1,6 +1,7 @@
-#include "str_utils.h"
-#include "gtest/gtest.h"
-#include <vector_types.h>
+#include <gtest/gtest.h>
+
+#include <utils/str_utils.h>
+#include <utils/vector_types.h>
 
 using namespace testing;
 using namespace std;

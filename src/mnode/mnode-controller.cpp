@@ -4,13 +4,13 @@
 #include <cinttypes>
 #include <vector>
 
+#include <utils/util.h>
+#include <utils/base58.h>
+#include <utils/trimmean.h>
 #include <main.h>
 #include <init.h>
-#include <util.h>
-#include <base58.h>
 #include <ui_interface.h>
 #include <key_io.h>
-#include <trimmean.h>
 #include <netmsg/nodemanager.h>
 
 #include <mnode/mnode-controller.h>

@@ -16,6 +16,7 @@
 #include <pow/tromp/equi_miner.h>
 #endif
 
+#include <utils/util.h>
 #include <amount.h>
 #include <chainparams.h>
 #include <chain_options.h>
@@ -35,7 +36,6 @@
 #include <random.h>
 #include <timedata.h>
 #include <ui_interface.h>
-#include <util.h>
 #include <utilmoneystr.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
@@ -152,7 +152,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         uint32_t consensusBranchId = CurrentEpochBranchId(nHeight, chainparams.GetConsensus());
         pblock->nTime = GetAdjustedTime();
         const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
-        CCoinsViewCache view(pcoinsTip);
+        CCoinsViewCache view(gl_pCoinsTip.get());
 
         SaplingMerkleTree sapling_tree;
         assert(view.GetSaplingAnchorAt(view.GetBestAnchor(SAPLING), sapling_tree));

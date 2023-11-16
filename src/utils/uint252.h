@@ -1,7 +1,8 @@
 #pragma once
 #include <vector>
-#include "uint256.h"
-#include "serialize.h"
+
+#include <utils/uint256.h>
+#include <serialize.h>
 
 // Wrapper of uint256 with guarantee that first
 // four bits are zero.

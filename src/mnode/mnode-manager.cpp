@@ -15,9 +15,9 @@
 
 #include <json/json.hpp>
 
+#include <utils/util.h>
 #include <addrman.h>
 #include <script/standard.h>
-#include <util.h>
 #include <main.h>
 #include <net.h>
 #include <timedata.h>

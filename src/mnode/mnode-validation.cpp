@@ -29,7 +29,7 @@ bool GetBlockHash(uint256& hashRet, int nBlockHeight)
 bool GetUTXOCoin(const COutPoint& outpoint, CCoins& coins)
 {
     LOCK(cs_main);
-    if (!pcoinsTip->GetCoins(outpoint.hash, coins))
+    if (!gl_pCoinsTip->GetCoins(outpoint.hash, coins))
         return false;
     if (outpoint.n >= coins.vout.size() || coins.vout[outpoint.n].IsNull())
         return false; // SPENT!!! (spent outputs are .IsNull(); spent outputs at the end of the array are dropped!!!)

@@ -2,7 +2,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <utilstrencodings.h>
+#include <utils/utilstrencodings.h>
 #include <pastelid/pastel_key.h>
 #include <rpc/rpc_parser.h>
 #include <rpc/rpc_consts.h>

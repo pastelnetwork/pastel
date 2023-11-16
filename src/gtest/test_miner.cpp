@@ -1,10 +1,13 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <gmock/gmock.h>
 #include <optional>
 
+#include <gmock/gmock.h>
+
+#include <utils/uint256.h>
+#include <utils/util.h>
 #include <arith_uint256.h>
 #include <consensus/validation.h>
 #include <chainparams.h>
@@ -12,8 +15,6 @@
 #include <main.h>
 #include <miner.h>
 #include <pubkey.h>
-#include <uint256.h>
-#include <util.h>
 //#include "pow/tromp/equi_miner.h"
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>

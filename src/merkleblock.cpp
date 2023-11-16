@@ -1,14 +1,12 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include "merkleblock.h"
-
-#include "hash.h"
-#include "consensus/consensus.h"
-#include "utilstrencodings.h"
+#include <utils/utilstrencodings.h>
+#include <merkleblock.h>
+#include <hash.h>
+#include <consensus/consensus.h>
 
 using namespace std;
 

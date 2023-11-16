@@ -12,6 +12,7 @@
 
 #include <wallet/asyncrpcoperation_mergetoaddress.h>
 
+#include <utils/util.h>
 #include <asyncrpcqueue.h>
 #include <core_io.h>
 #include <init.h>
@@ -26,7 +27,6 @@
 #include <script/interpreter.h>
 #include <sodium.h>
 #include <timedata.h>
-#include <util.h>
 #include <utilmoneystr.h>
 #include <utiltime.h>
 #include <zcash/IncrementalMerkleTree.hpp>

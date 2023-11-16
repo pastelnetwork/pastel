@@ -4,12 +4,12 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <set>
 #include <deque>
+
 #include <gtest/gtest.h>
 
+#include <utils/util.h>
 #include <netmsg/mruset.h>
 #include <random.h>
-#include <util.h>
-
 
 #define NUM_TESTS 16
 #define MAX_SIZE 100

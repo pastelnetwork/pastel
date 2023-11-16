@@ -4,6 +4,13 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <cstdio>
 
+#include <univalue.h>
+
+#include <utils/str_utils.h>
+#include <utils/util.h>
+#include <utilmoneystr.h>
+#include <utils/utilstrencodings.h>
+#include <utils/svc_thread.h>
 #include <clientversion.h>
 #include <coins.h>
 #include <consensus/consensus.h>
@@ -14,12 +21,6 @@
 #include <primitives/transaction.h>
 #include <script/script.h>
 #include <script/sign.h>
-#include <univalue.h>
-#include <util.h>
-#include <utilmoneystr.h>
-#include <utilstrencodings.h>
-#include <str_utils.h>
-#include <svc_thread.h>
 
 using namespace std;
 

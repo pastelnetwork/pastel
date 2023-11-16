@@ -5,11 +5,11 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <atomic>
 
+#include <utils/vector_types.h>
 #include <keystore.h>
 #include <serialize.h>
 #include <streams.h>
 #include <support/allocators/secure.h>
-#include <vector_types.h>
 #include <zcash/Address.hpp>
 
 class uint256;

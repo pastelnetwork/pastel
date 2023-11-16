@@ -10,11 +10,11 @@
 
 #include <boost/signals2/signal.hpp>
 
+#include <utils/sync.h>
+#include <utils/uint256.h>
 #include <compat.h>
 #include <limitedmap.h>
 #include <streams.h>
-#include <sync.h>
-#include <uint256.h>
 #include <netbase.h>
 #include <protocol.h>
 #include <chainparams.h>

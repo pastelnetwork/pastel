@@ -6,14 +6,14 @@
 
 #include <json/json.hpp>
 
-#include <mnode/mnode-config.h>
-#include <mnode/mnode-controller.h>
-
+#include <utils/str_utils.h>
+#include <utils/util.h>
 #include <netbase.h>
 #include <chainparams.h>
-#include <util.h>
-#include <str_utils.h>
 #include <port_config.h>
+
+#include <mnode/mnode-config.h>
+#include <mnode/mnode-controller.h>
 
 using json = nlohmann::json;
 using namespace std;

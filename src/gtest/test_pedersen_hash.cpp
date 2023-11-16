@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
-#include "librustzcash.h"
-#include "uint256.h"
+
+#include <librustzcash.h>
+#include <utils/uint256.h>
 
 TEST(PedersenHash, TestAPI) {
     const uint256 a = uint256S("87a086ae7d2252d58729b30263fb7b66308bf94ef59a76c9c86e7ea016536505");

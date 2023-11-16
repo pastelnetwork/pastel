@@ -20,16 +20,16 @@
 #endif
 #include <unistd.h>
 
+#include <utils/vector_types.h>
+#include <utils/str_utils.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
+#include <utils/svc_thread.h>
+#include <utils/sync.h>
+#include <utils/uint256.h>
 #include <netbase.h>
 #include <hash.h>
-#include <sync.h>
-#include <uint256.h>
 #include <random.h>
-#include <util.h>
-#include <str_utils.h>
-#include <vector_types.h>
-#include <utilstrencodings.h>
-#include <svc_thread.h>
 
 using namespace std;
 

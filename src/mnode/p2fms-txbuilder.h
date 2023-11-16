@@ -4,8 +4,8 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <optional>
 
-#include <str_types.h>
-#include <vector_types.h>
+#include <utils/str_types.h>
+#include <utils/vector_types.h>
 #include <streams.h>
 #include <primitives/transaction.h>
 #include <script/standard.h>

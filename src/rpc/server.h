@@ -10,10 +10,10 @@
 
 #include <univalue.h>
 
-#include <uint256.h>
+#include <utils/vector_types.h>
+#include <utils/uint256.h>
 #include <amount.h>
 #include <rpc/protocol.h>
-#include <vector_types.h>
 
 class AsyncRPCQueue;
 class CRPCCommand;

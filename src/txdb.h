@@ -14,6 +14,7 @@
 #include <dbwrapper.h>
 #include <spentindex.h>
 #include <chainparams.h>
+#include <chain.h>
 
 class CBlockFileInfo;
 class CBlockIndex;
@@ -63,8 +64,8 @@ private:
     CBlockTreeDB(const CBlockTreeDB&);
     void operator=(const CBlockTreeDB&);
 public:
-    bool WriteBatchSync(const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const std::vector<const CBlockIndex*>& blockinfo);
-    bool EraseBatchSync(const std::vector<const CBlockIndex*>& blockinfo);
+    bool WriteBatchSync(const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const block_index_cvector_t& blockinfo);
+    bool EraseBatchSync(const block_index_cvector_t& blockinfo);
     bool ReadBlockFileInfo(int nFile, CBlockFileInfo &fileinfo);
     bool ReadLastBlockFile(int &nFile);
     bool WriteReindexing(bool fReindex);

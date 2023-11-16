@@ -4,7 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #pragma once
-#include <uint256.h>
+#include <utils/uint256.h>
 #include <amount.h>
 #include <script/scripttype.h>
 

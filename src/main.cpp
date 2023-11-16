@@ -4,7 +4,6 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <algorithm>
 #include <atomic>
 #include <sstream>
@@ -13,12 +12,15 @@
 #include <boost/math/distributions/poisson.hpp>
 #include <sodium.h>
 
+#include <utils/enum_util.h>
+#include <utils/util.h>
 #include <main.h>
 #include <addrman.h>
 #include <alert.h>
 #include <arith_uint256.h>
 #include <chainparams.h>
 #include <chain_options.h>
+#include <chain.h>
 #include <checkpoints.h>
 #include <checkqueue.h>
 #include <consensus/upgrades.h>
@@ -35,8 +37,6 @@
 #include <accept_to_mempool.h>
 #include <ui_interface.h>
 #include <undo.h>
-#include <util.h>
-#include <enum_util.h>
 #include <utilmoneystr.h>
 #include <validationinterface.h>
 #include <wallet/asyncrpcoperation_sendmany.h>
@@ -295,7 +295,7 @@ void AllNodesProcessed()
 
             LOCK(cs_main);
             if (state && state->pindexBestKnownBlock)
-                LogPrint("net", "chain work for peer=%d [%s]\n", nodeId, state->pindexBestKnownBlock->nChainWork.ToString());
+                LogPrint("net", "chain work for peer=%d [" SPEC_CHAIN_WORK "]\n", nodeId, state->pindexBestKnownBlock->GetLog2ChainWork());
         }
     }
     chainWorkTracker.checkPoint();
@@ -338,28 +338,9 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash)
     }
 }
 
-/** Find the last common ancestor two blocks have.
- *  Both pa and pb must be non-NULL. */
-CBlockIndex* LastCommonAncestor(CBlockIndex* pa, CBlockIndex* pb) {
-    if (pa->nHeight > pb->nHeight) {
-        pa = pa->GetAncestor(pb->nHeight);
-    } else if (pb->nHeight > pa->nHeight) {
-        pb = pb->GetAncestor(pa->nHeight);
-    }
-
-    while (pa != pb && pa && pb) {
-        pa = pa->pprev;
-        pb = pb->pprev;
-    }
-
-    // Eventually all chain branches meet at the genesis block.
-    assert(pa == pb);
-    return pa;
-}
-
 /** Update pindexLastCommonBlock and add not-in-flight missing successors to vBlocks, until it has
  *  at most count entries. */
-void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, vector<CBlockIndex*>& vBlocks, NodeId& nodeStaller)
+void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, block_index_vector_t& vBlocks, NodeId& nodeStaller)
 {
     if (count == 0 || !pNodeState)
         return;
@@ -379,28 +360,42 @@ void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, vector<C
         return;
     }
 
-    if (!pNodeState->pindexLastCommonBlock)
+    const auto pNodeBestKnownBlock = pNodeState->pindexBestKnownBlock;
+    auto pLastCommonBlockIndex = pNodeState->pindexLastCommonBlock;
+    if (!pLastCommonBlockIndex)
     {
         // Bootstrap quickly by guessing a parent of our best tip is the forking point.
         // Guessing wrong in either direction is not a problem.
-        pNodeState->pindexLastCommonBlock = chainActive[min(pNodeState->pindexBestKnownBlock->nHeight, chainActive.Height())];
+        pLastCommonBlockIndex = chainActive[min(pNodeBestKnownBlock->nHeight, chainActive.Height())];
+        if (pLastCommonBlockIndex)
+        {
+            LogPrint("net", "Last common block for peer=%d, our block height=%d (%s); peer best known block height=%d (%s)\n",
+                pNodeState->id, 
+                pLastCommonBlockIndex->nHeight, pLastCommonBlockIndex->GetBlockHashString(),
+                pNodeBestKnownBlock->nHeight, pNodeBestKnownBlock->GetBlockHashString());
+        }
     }
 
     // If the peer reorganized, our previous pindexLastCommonBlock may not be an ancestor
     // of its current tip anymore. Go back enough to fix that.
-    pNodeState->pindexLastCommonBlock = LastCommonAncestor(pNodeState->pindexLastCommonBlock, pNodeState->pindexBestKnownBlock);
-    if (pNodeState->pindexLastCommonBlock == pNodeState->pindexBestKnownBlock)
+    pNodeState->pindexLastCommonBlock = FindLastCommonAncestorBlockIndex(pLastCommonBlockIndex, pNodeBestKnownBlock);
+    if (pNodeState->pindexLastCommonBlock != pLastCommonBlockIndex)
+    {
+        LogPrint("net", "Last common ancestor block for peer=%d: height=%d (%s)\n",
+            pNodeState->id, pNodeState->pindexLastCommonBlock->nHeight, pNodeState->pindexLastCommonBlock->GetBlockHashString());
+    }
+    if (pNodeState->pindexLastCommonBlock == pNodeBestKnownBlock)
         return;
 
     vBlocks.reserve(vBlocks.size() + count);
 
-    vector<CBlockIndex*> vToFetch;
-    CBlockIndex *pindexWalk = pNodeState->pindexLastCommonBlock;
+    block_index_vector_t vToFetch;
+    auto pindexWalk = pNodeState->pindexLastCommonBlock;
     // Never fetch further than the best block we know the peer has, or more than BLOCK_DOWNLOAD_WINDOW + 1 beyond the last
     // linked block we have in common with this peer. The +1 is so we can detect stalling, namely if we would be able to
     // download that next block if the window were 1 larger.
     const int nWindowEnd = pNodeState->pindexLastCommonBlock->nHeight + BLOCK_DOWNLOAD_WINDOW;
-    const int nMaxHeight = min<int>(pNodeState->pindexBestKnownBlock->nHeight, nWindowEnd + 1);
+    const int nMaxHeight = min<int>(pNodeBestKnownBlock->nHeight, nWindowEnd + 1);
     NodeId waitingfor = -1;
     while (pindexWalk->nHeight < nMaxHeight)
     {
@@ -411,7 +406,7 @@ void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, vector<C
             static_cast<size_t>(nMaxHeight - pindexWalk->nHeight), 
             static_cast<size_t>(max<int>(count - static_cast<unsigned int>(vBlocks.size()), 128)));
         vToFetch.resize(nToFetch);
-        pindexWalk = pNodeState->pindexBestKnownBlock->GetAncestor(static_cast<int>(pindexWalk->nHeight + nToFetch));
+        pindexWalk = pNodeBestKnownBlock->GetAncestor(static_cast<int>(pindexWalk->nHeight + nToFetch));
         vToFetch[nToFetch - 1] = pindexWalk;
         for (size_t i = nToFetch - 1; i > 0; i--)
             vToFetch[i - 1] = vToFetch[i]->pprev;
@@ -510,8 +505,8 @@ CBlockIndex* FindForkInGlobalIndex(const CChain& chain, const CBlockLocator& loc
     return chain.Genesis();
 }
 
-CCoinsViewCache *pcoinsTip = nullptr;
-CBlockTreeDB *pblocktree = nullptr;
+unique_ptr<CCoinsViewCache> gl_pCoinsTip;
+unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
 
 unsigned int GetLegacySigOpCount(const CTransaction& tx)
 {
@@ -608,7 +603,7 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
             {
                 CDiskTxPos postx;
                 // get tx position in block tree file
-                if (pblocktree->ReadTxIndex(txid, postx))
+                if (gl_pBlockTreeDB->ReadTxIndex(txid, postx))
                 {
                     CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
                     if (file.IsNull())
@@ -647,10 +642,9 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
             if (fAllowSlow)
             {
                 int nHeight = -1;
-                if (pcoinsTip)
+                if (gl_pCoinsTip)
                 {
-                    const CCoinsViewCache& view = *pcoinsTip;
-                    const CCoins* coins = view.AccessCoins(txid);
+                    const CCoins* coins = gl_pCoinsTip->AccessCoins(txid);
                     if (coins)
                         nHeight = coins->nHeight;
                 }
@@ -803,9 +797,9 @@ void CheckForkWarningConditions(const Consensus::Params& consensusParams)
     if (fnIsInitialBlockDownload(consensusParams))
         return;
 
-    // If our best fork is no longer within 288 blocks (+/- 12 hours if no one mines it)
+    // If our best fork is no longer within FORK_BLOCK_LIMIT(288) blocks (+/- 12 hours if no one mines it)
     // of our head, drop it
-    if (pindexBestForkTip && chainActive.Height() - pindexBestForkTip->nHeight >= 288)
+    if (pindexBestForkTip && chainActive.Height() - pindexBestForkTip->nHeight >= FORK_BLOCK_LIMIT)
         pindexBestForkTip = nullptr;
 
     if (pindexBestForkTip || (pindexBestInvalid && pindexBestInvalid->nChainWork > chainActive.Tip()->nChainWork + (GetBlockProof(*chainActive.Tip()) * 6)))
@@ -853,7 +847,7 @@ void CheckForkWarningConditionsOnNewFork(CBlockIndex* pindexNewForkTip, const CC
         pfork = pfork->pprev;
     }
 
-    // We define a condition where we should warn the user about as a fork of at least 7 blocks
+    // We define a condition where we should warn the user about a fork of at least 7 blocks
     // with a tip within 72 blocks (+/- 3 hours if no one mines it) of ours
     // We use 7 blocks rather arbitrarily as it represents just under 10% of sustained network
     // hash rate operating on the fork.
@@ -897,14 +891,13 @@ void static InvalidChainFound(CBlockIndex* pindexNew, const CChainParams& chainp
     if (!pindexBestInvalid || pindexNew->nChainWork > pindexBestInvalid->nChainWork)
         pindexBestInvalid = pindexNew;
 
-    LogPrintf("%s: invalid block=%s  height=%d  log2_work=%.8g  date=%s\n", __func__,
-      pindexNew->GetBlockHash().ToString(), pindexNew->nHeight,
-      log(pindexNew->nChainWork.getdouble())/log(2.0), DateTimeStrFormat("%Y-%m-%d %H:%M:%S",
-      pindexNew->GetBlockTime()));
+    LogPrintf("%s: invalid block=%s  height=%d  log2_work=" SPEC_CHAIN_WORK "  date=%s\n", __func__,
+      pindexNew->GetBlockHashString(), pindexNew->nHeight, pindexNew->GetLog2ChainWork(),
+      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexNew->GetBlockTime()));
     CBlockIndex *tip = chainActive.Tip();
     assert (tip);
-    LogPrintf("%s:  current best=%s  height=%d  log2_work=%.8g  date=%s\n", __func__,
-      tip->GetBlockHash().ToString(), chainActive.Height(), log(tip->nChainWork.getdouble())/log(2.0),
+    LogPrintf("%s:  current best=%s  height=%d  log2_work=" SPEC_CHAIN_WORK "  date=%s\n", __func__,
+      tip->GetBlockHashString(), chainActive.Height(), tip->GetLog2ChainWork(),
       DateTimeStrFormat("%Y-%m-%d %H:%M:%S", tip->GetBlockTime()));
     CheckForkWarningConditions(chainparams.GetConsensus());
 }
@@ -929,7 +922,7 @@ void static InvalidBlockFound(CBlockIndex *pindex, const CValidationState &state
     }
     if (!state.CorruptionPossible())
     {
-        pindex->nStatus |= BLOCK_FAILED_VALID;
+        pindex->SetStatusFlag(BLOCK_FAILED_VALID);
         setDirtyBlockIndex.insert(pindex);
         setBlockIndexCandidates.erase(pindex);
         InvalidChainFound(pindex, chainparams);
@@ -1271,7 +1264,7 @@ bool DisconnectBlock(
     // undo transactions in reverse order
     if (!block.vtx.empty())
     {
-        for (size_t i = block.vtx.size() - 1; i >= 0; i--)
+        for (size_t i = block.vtx.size(); i-- > 0;)
         {
             const CTransaction& tx = block.vtx[i];
             const uint256 &hash = tx.GetHash();
@@ -1290,7 +1283,7 @@ bool DisconnectBlock(
                 if (outsBlock.nVersion < 0)
                     outs->nVersion = outsBlock.nVersion;
                 if (*outs != outsBlock)
-                    fClean = fClean && errorFn(__METHOD_NAME__, "height=%s, added transaction mismatch? database corrupted", pindex->nHeight);
+                    fClean = fClean && errorFn(__METHOD_NAME__, "height=%d, added transaction mismatch? database corrupted", pindex->nHeight);
 
                 // remove outputs
                 outs->Clear();
@@ -1652,7 +1645,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
             // update nUndoPos in block index
             pindex->nUndoPos = pos.nPos;
-            pindex->nStatus |= BLOCK_HAVE_UNDO;
+            pindex->SetStatusFlag(BLOCK_HAVE_UNDO);
         }
 
         // Now that all consensus rules have been validated, set nCachedBranchId.
@@ -1660,7 +1653,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
         static_assert(BLOCK_VALID_CONSENSUS == BLOCK_VALID_SCRIPTS,
             "nCachedBranchId must be set after all consensus rules have been validated.");
         if (IsActivationHeightForAnyUpgrade(pindex->nHeight, consensusParams)) {
-            pindex->nStatus |= BLOCK_ACTIVATES_UPGRADE;
+            pindex->SetStatusFlag(BLOCK_ACTIVATES_UPGRADE);
             pindex->nCachedBranchId = CurrentEpochBranchId(pindex->nHeight, consensusParams);
         } else if (pindex->pprev) {
             pindex->nCachedBranchId = pindex->pprev->nCachedBranchId;
@@ -1670,7 +1663,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
         setDirtyBlockIndex.insert(pindex);
     }
 
-    if (fTxIndex && !pblocktree->WriteTxIndex(vPos))
+    if (fTxIndex && !gl_pBlockTreeDB->WriteTxIndex(vPos))
         return AbortNode(state, "Failed to write transaction index");
 
     // add this block to the view's block chain
@@ -1714,89 +1707,88 @@ static bool FlushStateToDisk(
     static int64_t nLastSetChain = 0;
     set<int> setFilesToPrune;
     bool fFlushForPrune = false;
-    try {
-    if (fPruneMode && fCheckForPruning && !fReindex) {
-        FindFilesToPrune(setFilesToPrune);
-        fCheckForPruning = false;
-        if (!setFilesToPrune.empty()) {
-            fFlushForPrune = true;
-            if (!fHavePruned) {
-                pblocktree->WriteFlag("prunedblockfiles", true);
-                fHavePruned = true;
-            }
-        }
-    }
-    int64_t nNow = GetTimeMicros();
-    // Avoid writing/flushing immediately after startup.
-    if (nLastWrite == 0) {
-        nLastWrite = nNow;
-    }
-    if (nLastFlush == 0) {
-        nLastFlush = nNow;
-    }
-    if (nLastSetChain == 0) {
-        nLastSetChain = nNow;
-    }
-    size_t cacheSize = pcoinsTip->DynamicMemoryUsage();
-    // The cache is large and close to the limit, but we have time now (not in the middle of a block processing).
-    bool fCacheLarge = mode == FLUSH_STATE_PERIODIC && cacheSize * (10.0/9) > nCoinCacheUsage;
-    // The cache is over the limit, we have to write now.
-    bool fCacheCritical = mode == FLUSH_STATE_IF_NEEDED && cacheSize > nCoinCacheUsage;
-    // It's been a while since we wrote the block index to disk. Do this frequently, so we don't need to redownload after a crash.
-    bool fPeriodicWrite = mode == FLUSH_STATE_PERIODIC && nNow > nLastWrite + (int64_t)DATABASE_WRITE_INTERVAL * 1000000;
-    // It's been very long since we flushed the cache. Do this infrequently, to optimize cache usage.
-    bool fPeriodicFlush = mode == FLUSH_STATE_PERIODIC && nNow > nLastFlush + (int64_t)DATABASE_FLUSH_INTERVAL * 1000000;
-    // Combine all conditions that result in a full cache flush.
-    bool fDoFullFlush = (mode == FLUSH_STATE_ALWAYS) || fCacheLarge || fCacheCritical || fPeriodicFlush || fFlushForPrune;
-    // Write blocks and block index to disk.
-    if (fDoFullFlush || fPeriodicWrite) {
-        // Depend on nMinDiskSpace to ensure we can write block index
-        if (!CheckDiskSpace(0))
-            return state.Error("out of disk space");
-        // First make sure all block and undo data is flushed to disk.
-        FlushBlockFile();
-        // Then update all block file information (which may refer to block and undo files).
+    try
+    {
+        if (fPruneMode && fCheckForPruning && !fReindex)
         {
-            vector<pair<int, const CBlockFileInfo*> > vFiles;
-            vFiles.reserve(setDirtyFileInfo.size());
-            for (set<int>::iterator it = setDirtyFileInfo.begin(); it != setDirtyFileInfo.end(); ) {
-                vFiles.push_back(make_pair(*it, &vinfoBlockFile[*it]));
-                it = setDirtyFileInfo.erase(it);
-            }
-            vector<const CBlockIndex*> vBlocks;
-            vBlocks.reserve(setDirtyBlockIndex.size());
-            for (set<CBlockIndex*>::iterator it = setDirtyBlockIndex.begin(); it != setDirtyBlockIndex.end(); ) {
-                vBlocks.push_back(*it);
-                it = setDirtyBlockIndex.erase(it);
-            }
-            if (!pblocktree->WriteBatchSync(vFiles, nLastBlockFile, vBlocks)) {
-                return AbortNode(state, "Files to write to block index database");
+            FindFilesToPrune(setFilesToPrune);
+            fCheckForPruning = false;
+            if (!setFilesToPrune.empty())
+            {
+                fFlushForPrune = true;
+                if (!fHavePruned)
+                {
+                    gl_pBlockTreeDB->WriteFlag("prunedblockfiles", true);
+                    fHavePruned = true;
+                }
             }
         }
-        // Finally remove any pruned files
-        if (fFlushForPrune)
-            UnlinkPrunedFiles(setFilesToPrune);
-        nLastWrite = nNow;
-    }
-    // Flush best chain related state. This can only be done if the blocks / block index write was also done.
-    if (fDoFullFlush) {
-        // Typical CCoins structures on disk are around 128 bytes in size.
-        // Pushing a new one to the database can cause it to be written
-        // twice (once in the log, and once in the tables). This is already
-        // an overestimation, as most will delete an existing entry or
-        // overwrite one. Still, use a conservative safety factor of 2.
-        if (!CheckDiskSpace(128 * 2 * 2 * pcoinsTip->GetCacheSize()))
-            return state.Error("out of disk space");
-        // Flush the chainstate (which may refer to block index entries).
-        if (!pcoinsTip->Flush())
-            return AbortNode(state, "Failed to write to coin database");
-        nLastFlush = nNow;
-    }
-    if ((mode == FLUSH_STATE_ALWAYS || mode == FLUSH_STATE_PERIODIC) && nNow > nLastSetChain + (int64_t)DATABASE_WRITE_INTERVAL * 1000000) {
-        // Update best block in wallet (so we can detect restored wallets).
-        GetMainSignals().SetBestChain(chainActive.GetLocator());
-        nLastSetChain = nNow;
-    }
+        int64_t nNow = GetTimeMicros();
+        // Avoid writing/flushing immediately after startup.
+        if (nLastWrite == 0)
+            nLastWrite = nNow;
+        if (nLastFlush == 0)
+            nLastFlush = nNow;
+        if (nLastSetChain == 0)
+            nLastSetChain = nNow;
+        size_t cacheSize = gl_pCoinsTip->DynamicMemoryUsage();
+        // The cache is large and close to the limit, but we have time now (not in the middle of a block processing).
+        bool fCacheLarge = mode == FLUSH_STATE_PERIODIC && cacheSize * (10.0/9) > nCoinCacheUsage;
+        // The cache is over the limit, we have to write now.
+        bool fCacheCritical = mode == FLUSH_STATE_IF_NEEDED && cacheSize > nCoinCacheUsage;
+        // It's been a while since we wrote the block index to disk. Do this frequently, so we don't need to redownload after a crash.
+        bool fPeriodicWrite = mode == FLUSH_STATE_PERIODIC && nNow > nLastWrite + (int64_t)DATABASE_WRITE_INTERVAL * 1000000;
+        // It's been very long since we flushed the cache. Do this infrequently, to optimize cache usage.
+        bool fPeriodicFlush = mode == FLUSH_STATE_PERIODIC && nNow > nLastFlush + (int64_t)DATABASE_FLUSH_INTERVAL * 1000000;
+        // Combine all conditions that result in a full cache flush.
+        bool fDoFullFlush = (mode == FLUSH_STATE_ALWAYS) || fCacheLarge || fCacheCritical || fPeriodicFlush || fFlushForPrune;
+        // Write blocks and block index to disk.
+        if (fDoFullFlush || fPeriodicWrite)
+        {
+            // Depend on nMinDiskSpace to ensure we can write block index
+            if (!CheckDiskSpace(0))
+                return state.Error("out of disk space");
+            // First make sure all block and undo data is flushed to disk.
+            FlushBlockFile();
+            // Then update all block file information (which may refer to block and undo files).
+            {
+                vector<pair<int, const CBlockFileInfo*> > vFiles;
+                vFiles.reserve(setDirtyFileInfo.size());
+                for (int fileInfo : setDirtyFileInfo)
+                    vFiles.emplace_back(fileInfo, &vinfoBlockFile[fileInfo]);
+                setDirtyFileInfo.clear();
+
+                block_index_cvector_t vBlocks;
+                vBlocks.reserve(setDirtyBlockIndex.size());
+                for (auto pBlockIndex : setDirtyBlockIndex)
+                    vBlocks.emplace_back(pBlockIndex);
+                if (!gl_pBlockTreeDB->WriteBatchSync(vFiles, nLastBlockFile, vBlocks))
+                    return AbortNode(state, "Files to write to block index database");
+            }
+            // Finally remove any pruned files
+            if (fFlushForPrune)
+                UnlinkPrunedFiles(setFilesToPrune);
+            nLastWrite = nNow;
+        }
+        // Flush best chain related state. This can only be done if the blocks / block index write was also done.
+        if (fDoFullFlush) {
+            // Typical CCoins structures on disk are around 128 bytes in size.
+            // Pushing a new one to the database can cause it to be written
+            // twice (once in the log, and once in the tables). This is already
+            // an overestimation, as most will delete an existing entry or
+            // overwrite one. Still, use a conservative safety factor of 2.
+            if (!CheckDiskSpace(128 * 2 * 2 * gl_pCoinsTip->GetCacheSize()))
+                return state.Error("out of disk space");
+            // Flush the chainstate (which may refer to block index entries).
+            if (!gl_pCoinsTip->Flush())
+                return AbortNode(state, "Failed to write to coin database");
+            nLastFlush = nNow;
+        }
+        if ((mode == FLUSH_STATE_ALWAYS || mode == FLUSH_STATE_PERIODIC) && nNow > nLastSetChain + (int64_t)DATABASE_WRITE_INTERVAL * 1000000) {
+            // Update best block in wallet (so we can detect restored wallets).
+            GetMainSignals().SetBestChain(chainActive.GetLocator());
+            nLastSetChain = nNow;
+        }
     } catch (const runtime_error& e) {
         return AbortNode(state, string("System error while flushing: ") + e.what());
     }
@@ -1825,10 +1817,11 @@ void static UpdateTip(const CChainParams& chainparams, CBlockIndex* pindexNew)
     nTimeBestReceived = GetTime();
     mempool.AddTransactionsUpdated(1);
     const auto pChainTip = chainActive.Tip();
-    LogFnPrintf("new best=%s  height=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%.1fMiB(%zutx)",
-              pChainTip->GetBlockHash().ToString(), chainActive.Height(), log(pChainTip->nChainWork.getdouble()) / log(2.0), (unsigned long)pChainTip->nChainTx,
+    LogFnPrintf("new best=%s  height=%d  log2_work=" SPEC_CHAIN_WORK "  tx=%lu  date=%s progress=%f  cache=%.1fMiB(%zutx)",
+              pChainTip->GetBlockHashString(), chainActive.Height(), pChainTip->GetLog2ChainWork(), (unsigned long)pChainTip->nChainTx,
               DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pChainTip->GetBlockTime()),
-              Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), pChainTip), pcoinsTip->DynamicMemoryUsage() * (1.0 / (1 << 20)), pcoinsTip->GetCacheSize());
+              Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), pChainTip), 
+              gl_pCoinsTip->DynamicMemoryUsage() * (1.0 / (1 << 20)), gl_pCoinsTip->GetCacheSize());
 
     cvBlockChange.notify_all();
 
@@ -1860,26 +1853,27 @@ void static UpdateTip(const CChainParams& chainparams, CBlockIndex* pindexNew)
  * Disconnect chainActive's tip. You probably want to call mempool.removeForReorg and
  * mempool.removeWithoutBranchId after this, with cs_main held.
  */
-static bool DisconnectTip(CValidationState &state, const CChainParams& chainparams, bool fBare = false) {
-    CBlockIndex *pindexDelete = chainActive.Tip();
+static bool DisconnectTip(CValidationState &state, const CChainParams& chainparams, bool fBare = false)
+{
+    auto pindexDelete = chainActive.Tip();
     assert(pindexDelete);
     // Read block from disk.
     CBlock block;
     if (!ReadBlockFromDisk(block, pindexDelete, chainparams.GetConsensus()))
         return AbortNode(state, "Failed to read block");
     // Apply the block atomically to the chain state.
-    uint256 sproutAnchorBeforeDisconnect = pcoinsTip->GetBestAnchor(SPROUT);
-    uint256 saplingAnchorBeforeDisconnect = pcoinsTip->GetBestAnchor(SAPLING);
+    uint256 sproutAnchorBeforeDisconnect = gl_pCoinsTip->GetBestAnchor(SPROUT);
+    uint256 saplingAnchorBeforeDisconnect = gl_pCoinsTip->GetBestAnchor(SAPLING);
     int64_t nStart = GetTimeMicros();
     {
-        CCoinsViewCache view(pcoinsTip);
+        CCoinsViewCache view(gl_pCoinsTip.get());
         if (!DisconnectBlock(block, state, chainparams, pindexDelete, view))
-            return error("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
+            return error("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHashString());
         assert(view.Flush());
     }
     LogPrint("bench", "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
-    uint256 sproutAnchorAfterDisconnect = pcoinsTip->GetBestAnchor(SPROUT);
-    uint256 saplingAnchorAfterDisconnect = pcoinsTip->GetBestAnchor(SAPLING);
+    uint256 sproutAnchorAfterDisconnect = gl_pCoinsTip->GetBestAnchor(SPROUT);
+    uint256 saplingAnchorAfterDisconnect = gl_pCoinsTip->GetBestAnchor(SAPLING);
     // Write the chain state to disk, if necessary.
     if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_IF_NEEDED))
         return false;
@@ -1894,12 +1888,14 @@ static bool DisconnectTip(CValidationState &state, const CChainParams& chainpara
             if (tx.IsCoinBase() || !AcceptToMemoryPool(chainparams, mempool, stateDummy, tx, false, nullptr))
                 mempool.remove(tx);
         }
-        if (sproutAnchorBeforeDisconnect != sproutAnchorAfterDisconnect) {
+        if (sproutAnchorBeforeDisconnect != sproutAnchorAfterDisconnect)
+        {
             // The anchor may not change between block disconnects,
             // in which case we don't want to evict from the mempool yet!
             mempool.removeWithAnchor(sproutAnchorBeforeDisconnect, SPROUT);
         }
-        if (saplingAnchorBeforeDisconnect != saplingAnchorAfterDisconnect) {
+        if (saplingAnchorBeforeDisconnect != saplingAnchorAfterDisconnect)
+        {
             // The anchor may not change between block disconnects,
             // in which case we don't want to evict from the mempool yet!
             mempool.removeWithAnchor(saplingAnchorBeforeDisconnect, SAPLING);
@@ -1910,7 +1906,7 @@ static bool DisconnectTip(CValidationState &state, const CChainParams& chainpara
     UpdateTip(chainparams, pindexDelete->pprev);
     // Get the current commitment tree
     SaplingMerkleTree newSaplingTree;
-    assert(pcoinsTip->GetSaplingAnchorAt(pcoinsTip->GetBestAnchor(SAPLING), newSaplingTree));
+    assert(gl_pCoinsTip->GetSaplingAnchorAt(gl_pCoinsTip->GetBestAnchor(SAPLING), newSaplingTree));
     // Let wallets know transactions went from 1-confirmed to
     // 0-confirmed or conflicted:
     for (const auto &tx : block.vtx)
@@ -1946,19 +1942,19 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
     }
     // Get the current commitment tree
     SaplingMerkleTree oldSaplingTree;
-    assert(pcoinsTip->GetSaplingAnchorAt(pcoinsTip->GetBestAnchor(SAPLING), oldSaplingTree));
+    assert(gl_pCoinsTip->GetSaplingAnchorAt(gl_pCoinsTip->GetBestAnchor(SAPLING), oldSaplingTree));
     // Apply the block atomically to the chain state.
     int64_t nTime2 = GetTimeMicros(); nTimeReadFromDisk += nTime2 - nTime1;
     int64_t nTime3;
     LogPrint("bench", "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * 0.001, nTimeReadFromDisk * 0.000001);
     {
-        CCoinsViewCache view(pcoinsTip);
+        CCoinsViewCache view(gl_pCoinsTip.get());
         bool rv = ConnectBlock(*pblock, state, chainparams, pindexNew, view);
         GetMainSignals().BlockChecked(*pblock, state);
         if (!rv) {
             if (state.IsInvalid())
                 InvalidBlockFound(pindexNew, state, chainparams);
-            return error("ConnectTip(): ConnectBlock %s failed", pindexNew->GetBlockHash().ToString());
+            return error("ConnectTip(): ConnectBlock %s failed", pindexNew->GetBlockHashString());
         }
         mapBlockSource.erase(pindexNew->GetBlockHash());
         nTime3 = GetTimeMicros(); nTimeConnectTotal += nTime3 - nTime2;
@@ -2041,7 +2037,7 @@ static CBlockIndex* FindMostWorkChain()
                 while (pindexTest != pindexFailed)
                 {
                     if (fFailedChain)
-                        pindexFailed->nStatus |= BLOCK_FAILED_CHILD;
+                        pindexFailed->SetStatusFlag(BLOCK_FAILED_CHILD);
                     else if (fMissingData)
                     {
                         // If we're missing data, then add back to mapBlocksUnlinked,
@@ -2064,7 +2060,8 @@ static CBlockIndex* FindMostWorkChain()
 }
 
 /** Delete all entries in setBlockIndexCandidates that are worse than the current tip. */
-static void PruneBlockIndexCandidates() {
+static void PruneBlockIndexCandidates()
+{
     // Note that we can't delete the current block itself, as we may need to return to it later in case a
     // reorganization to a better block fails.
     auto it = setBlockIndexCandidates.begin();
@@ -2089,14 +2086,14 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
     // - If pindexMostWork is in a chain that doesn't have the same genesis block as our chain,
     //   then pindexFork will be null, and we would need to remove the entire chain including
     //   our genesis block. In practice this (probably) won't happen because of checks elsewhere.
-    auto reorgLength = pindexOldTip ? pindexOldTip->nHeight - (pindexFork ? pindexFork->nHeight : -1) : 0;
+    const int nReorgLength = pindexOldTip ? pindexOldTip->nHeight - (pindexFork ? pindexFork->nHeight : -1) : 0;
     static_assert(MAX_REORG_LENGTH > 0, "We must be able to reorg some distance");
-    if (reorgLength > MAX_REORG_LENGTH)
+    if (nReorgLength > static_cast<int>(MAX_REORG_LENGTH))
     {
         auto msg = strprintf(translate(
             "A block chain reorganization has been detected that would roll back %d blocks! "
             "This is larger than the maximum of %d blocks, and so the node is shutting down for your safety."
-            ), reorgLength, MAX_REORG_LENGTH) + "\n\n" +
+            ), nReorgLength, MAX_REORG_LENGTH) + "\n\n" +
             translate("Reorganization details") + ":\n" +
             "- " + strprintf(translate("Current tip: %s, height %d, work %s"),
                 pindexOldTip->phashBlock->GetHex(), pindexOldTip->nHeight, pindexOldTip->nChainWork.GetHex()) + "\n" +
@@ -2113,17 +2110,19 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
 
     // Disconnect active blocks which are no longer in the best chain.
     bool fBlocksDisconnected = false;
-    while (chainActive.Tip() && chainActive.Tip() != pindexFork) {
+    while (chainActive.Tip() && chainActive.Tip() != pindexFork)
+    {
         if (!DisconnectTip(state, chainparams))
             return false;
         fBlocksDisconnected = true;
     }
 
     // Build list of new blocks to connect.
-    vector<CBlockIndex*> vpindexToConnect;
+    block_index_vector_t vpindexToConnect;
     bool fContinue = true;
     int nHeight = pindexFork ? pindexFork->nHeight : -1;
-    while (fContinue && nHeight != pindexMostWork->nHeight) {
+    while (fContinue && nHeight != pindexMostWork->nHeight)
+    {
         // Don't iterate the entire list of potential improvements toward the best tip, as we likely only need
         // a few blocks along the way.
         const int nTargetHeight = min(nHeight + 32, pindexMostWork->nHeight);
@@ -2165,12 +2164,12 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
         }
     }
 
-    if (fBlocksDisconnected) {
-        mempool.removeForReorg(pcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
-    }
+    if (fBlocksDisconnected)
+        mempool.removeForReorg(gl_pCoinsTip.get(), chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
+
     mempool.removeWithoutBranchId(
         CurrentEpochBranchId(chainActive.Tip()->nHeight + 1, chainparams.GetConsensus()));
-    mempool.check(pcoinsTip);
+    mempool.check(gl_pCoinsTip.get());
 
     // Callbacks/notifications for a new best chain.
     if (fInvalidFound)
@@ -2217,6 +2216,10 @@ static void NotifyHeaderTip(const Consensus::Params &consensusParams)
  * Make the best chain active, in multiple steps. The result is either failure
  * or an activated best chain. pblock is either nullptr or a pointer to a block
  * that is already loaded (to avoid loading it again from disk).
+ * 
+ * \param state - chain validation state
+ * \param chainparams - chain parameters
+ * \param pblock 
  */
 bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams, const CBlock *pblock)
 {
@@ -2312,6 +2315,50 @@ void ExtractUnlinkedBlocks(deque<CBlockIndex*>& queue, CBlockIndex* pindex)
     }
 }
 
+/**
+ * Erase all unlinked blocks to the given block index.
+ * 
+ * \param pBlockIndex - block index key
+ */
+void EraseUnlinkedBlocksTo(const CBlockIndex *pBlockIndex)
+{
+    if (!pBlockIndex)
+        return;
+    auto pprev = pBlockIndex->pprev;
+    if (!pprev)
+        return;
+    auto range = mapBlocksUnlinked.equal_range(pprev);
+    size_t nErased = 0;
+    while (range.first != range.second)
+    {
+        if (range.first->second == pBlockIndex)
+            range.first = mapBlocksUnlinked.erase(range.first);
+        else
+            ++range.first;
+        ++nErased;
+    }
+}
+
+/**
+ * Remove block indices from the map.
+ * 
+ * \param vBlocksToRemove - vector of block indices to remove
+ */
+void EraseBlockIndices(const block_index_cvector_t& vBlocksToRemove)
+{
+    // Erase block indices in-memory
+    for (auto pindex : vBlocksToRemove)
+    {
+        auto itBlockIndex = mapBlockIndex.find(*pindex->phashBlock);
+        if (itBlockIndex != mapBlockIndex.end())
+        {
+            setDirtyBlockIndex.erase(itBlockIndex->second);
+            mapBlockIndex.erase(itBlockIndex);
+            delete pindex;
+        }
+    }
+}
+
 void AddBlockIndexCandidate(CBlockIndex* pindex)
 {
     if (!chainActive.Tip() || !setBlockIndexCandidates.value_comp()(pindex, chainActive.Tip()))
@@ -2322,8 +2369,10 @@ bool InvalidateBlock(CValidationState& state, const CChainParams& chainparams, C
 {
     AssertLockHeld(cs_main);
 
+    LogFnPrintf("invalidating active blockchain starting at height %d (%s)", pindex->nHeight, pindex->GetBlockHashString());
+
     // Mark the block itself as invalid.
-    pindex->nStatus |= BLOCK_FAILED_VALID;
+    pindex->SetStatusFlag(BLOCK_FAILED_VALID);
     setDirtyBlockIndex.insert(pindex);
     setBlockIndexCandidates.erase(pindex);
 
@@ -2331,14 +2380,14 @@ bool InvalidateBlock(CValidationState& state, const CChainParams& chainparams, C
     while (chainActive.Contains(pindex))
     {
         CBlockIndex *pindexWalk = chainActive.Tip();
-        pindexWalk->nStatus |= BLOCK_FAILED_CHILD;
+        pindexWalk->SetStatusFlag(BLOCK_FAILED_CHILD);
         setDirtyBlockIndex.insert(pindexWalk);
         setBlockIndexCandidates.erase(pindexWalk);
         // ActivateBestChain considers blocks already in chainActive
         // unconditionally valid already, so force disconnect away from it.
         if (!DisconnectTip(state, chainparams))
         {
-            mempool.removeForReorg(pcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
+            mempool.removeForReorg(gl_pCoinsTip.get(), chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
             mempool.removeWithoutBranchId(
                 CurrentEpochBranchId(chainActive.Tip()->nHeight + 1, consensusParams));
             return false;
@@ -2353,7 +2402,7 @@ bool InvalidateBlock(CValidationState& state, const CChainParams& chainparams, C
     }
 
     InvalidChainFound(pindex, chainparams);
-    mempool.removeForReorg(pcoinsTip, chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
+    mempool.removeForReorg(gl_pCoinsTip.get(), chainActive.Tip()->nHeight + 1, STANDARD_LOCKTIME_VERIFY_FLAGS);
     mempool.removeWithoutBranchId(
         CurrentEpochBranchId(chainActive.Tip()->nHeight + 1, consensusParams));
     return true;
@@ -2407,6 +2456,7 @@ void ReconsiderBlock(CValidationState& state, CBlockIndex *pindex)
 
 /**
  * Add new block header to mapBlockIndex. Skips duplicates.
+ * Called from AcceptBlockHeader & InitBlockIndex.
  * 
  * \param block - block header to add
  * \param consensusParams
@@ -2474,7 +2524,7 @@ void ReceivedBlockTransactions(
     pindexNew->nFile = pos.nFile;
     pindexNew->nDataPos = pos.nPos;
     pindexNew->nUndoPos = 0;
-    pindexNew->nStatus |= BLOCK_HAVE_DATA;
+    pindexNew->SetStatusFlag(BLOCK_HAVE_DATA);
     pindexNew->RaiseValidity(BLOCK_VALID_TRANSACTIONS);
     setDirtyBlockIndex.insert(pindexNew);
 
@@ -2817,18 +2867,18 @@ bool AcceptBlock(
     // Try to process all requested blocks that we don't have, but only
     // process an unrequested block if it's new and has enough work to
     // advance our tip, and isn't too many blocks ahead.
-    const bool fAlreadyHave = pindex->nStatus & BLOCK_HAVE_DATA;
+    const bool fAlreadyHaveBlockData = pindex->nStatus & BLOCK_HAVE_DATA;
     const bool fHasMoreWork = (chainActive.Tip() ? pindex->nChainWork > chainActive.Tip()->nChainWork : true);
     // Blocks that are too out-of-order needlessly limit the effectiveness of
     // pruning, because pruning will not delete block files that contain any
     // blocks which are too close in height to the tip.  Apply this test
     // regardless of whether pruning is enabled; it should generally be safe to
     // not process unrequested blocks.
-    const bool fTooFarAhead = (pindex->nHeight > int(chainActive.Height() + MIN_BLOCKS_TO_KEEP));
+    const bool fTooFarAhead = (static_cast<uint32_t>(pindex->nHeight) > chainActive.Height() + MIN_BLOCKS_TO_KEEP);
 
     // TODO: deal better with return value and error conditions for duplicate
     // and unrequested blocks.
-    if (fAlreadyHave)
+    if (fAlreadyHaveBlockData)
         return true;
     if (!fRequested)
     {  // If we didn't ask for it:
@@ -2847,7 +2897,7 @@ bool AcceptBlock(
     {
         if (state.IsInvalid() && !state.CorruptionPossible())
         {
-            pindex->nStatus |= BLOCK_FAILED_VALID;
+            pindex->SetStatusFlag(BLOCK_FAILED_VALID);
             setDirtyBlockIndex.insert(pindex);
         }
         return false;
@@ -2920,13 +2970,19 @@ bool MarkBlockAsReceived(const uint256& hash)
     return false;
 }
 
-bool ProcessNewBlock(
-    CValidationState &state, 
-    const CChainParams& chainparams, 
-    const node_t &pfrom, 
-    const CBlock* pblock, 
-    const bool fForceProcessing, 
-    CDiskBlockPos *dbp)
+/**
+ * Process new block recevied from the node.
+ * 
+ * \param state - chain validation state
+ * \param chainparams - chain parameters
+ * \param pfrom - node that sent us the block
+ * \param pblock - block to process
+ * \param fForceProcessing - whether to force processing of the block
+ * \param dbp - block position on disk
+ * \return a bool indicating whether the block was processed successfully
+ */
+bool ProcessNewBlock(CValidationState &state, const CChainParams& chainparams, 
+    const node_t &pfrom, const CBlock* pblock, const bool fForceProcessing, CDiskBlockPos *dbp)
 {
     // Preliminary checks
     auto verifier = libzcash::ProofVerifier::Disabled();
@@ -2978,7 +3034,7 @@ bool TestBlockValidity(
     AssertLockHeld(cs_main);
     assert(pindexPrev == chainActive.Tip());
 
-    CCoinsViewCache viewNew(pcoinsTip);
+    CCoinsViewCache viewNew(gl_pCoinsTip.get());
     CBlockIndex indexDummy(block);
     indexDummy.pprev = pindexPrev;
     indexDummy.nHeight = pindexPrev->nHeight + 1;
@@ -3015,29 +3071,22 @@ uint64_t CalculateCurrentUsage()
 /* Prune a block file (modify associated database entries)*/
 void PruneOneBlockFile(const int fileNumber)
 {
-    for (BlockMap::iterator it = mapBlockIndex.begin(); it != mapBlockIndex.end(); ++it) {
-        CBlockIndex* pindex = it->second;
-        if (pindex->nFile == fileNumber) {
-            pindex->nStatus &= ~BLOCK_HAVE_DATA;
-            pindex->nStatus &= ~BLOCK_HAVE_UNDO;
-            pindex->nFile = 0;
-            pindex->nDataPos = 0;
-            pindex->nUndoPos = 0;
-            setDirtyBlockIndex.insert(pindex);
+    for (auto &[hash, pBlockIndex] : mapBlockIndex)
+    {
+        if (pBlockIndex->nFile == fileNumber)
+        {
+            pBlockIndex->ClearStatusFlag(BLOCK_HAVE_DATA);
+            pBlockIndex->ClearStatusFlag(BLOCK_HAVE_UNDO);
+            pBlockIndex->nFile = 0;
+            pBlockIndex->nDataPos = 0;
+            pBlockIndex->nUndoPos = 0;
+            setDirtyBlockIndex.insert(pBlockIndex);
 
             // Prune from mapBlocksUnlinked -- any block we prune would have
             // to be downloaded again in order to consider its chain, at which
             // point it would be considered as a candidate for
             // mapBlocksUnlinked or setBlockIndexCandidates.
-            auto range = mapBlocksUnlinked.equal_range(pindex->pprev);
-            while (range.first != range.second)
-            {
-                auto it = range.first;
-                if (it->second == pindex)
-                    range.first = mapBlocksUnlinked.erase(it);
-                else
-                    ++range.first;
-            }
+            EraseUnlinkedBlocksTo(pBlockIndex);
         }
     }
 
@@ -3189,7 +3238,7 @@ CBlockIndex * InsertBlockIndex(uint256 hash)
 
 static bool LoadBlockIndexDB(const CChainParams& chainparams)
 {
-    if (!pblocktree->LoadBlockIndexGuts(chainparams))
+    if (!gl_pBlockTreeDB->LoadBlockIndexGuts(chainparams))
         return false;
 
     func_thread_interrupt_point();
@@ -3230,16 +3279,16 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     }
 
     // Load block file info
-    pblocktree->ReadLastBlockFile(nLastBlockFile);
+    gl_pBlockTreeDB->ReadLastBlockFile(nLastBlockFile);
     vinfoBlockFile.resize(nLastBlockFile + 1);
     LogPrintf("%s: last block file = %i\n", __func__, nLastBlockFile);
     for (int nFile = 0; nFile <= nLastBlockFile; nFile++)
-        pblocktree->ReadBlockFileInfo(nFile, vinfoBlockFile[nFile]);
+        gl_pBlockTreeDB->ReadBlockFileInfo(nFile, vinfoBlockFile[nFile]);
     LogPrintf("%s: last block file info: %s\n", __func__, vinfoBlockFile[nLastBlockFile].ToString());
     for (int nFile = nLastBlockFile + 1; true; nFile++)
     {
         CBlockFileInfo info;
-        if (pblocktree->ReadBlockFileInfo(nFile, info))
+        if (gl_pBlockTreeDB->ReadBlockFileInfo(nFile, info))
             vinfoBlockFile.push_back(info);
         else
             break;
@@ -3261,21 +3310,21 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     }
 
     // Check whether we have ever pruned block & undo files
-    pblocktree->ReadFlag("prunedblockfiles", fHavePruned);
+    gl_pBlockTreeDB->ReadFlag("prunedblockfiles", fHavePruned);
     if (fHavePruned)
         LogPrintf("LoadBlockIndexDB(): Block files have previously been pruned\n");
 
     // Check whether we need to continue reindexing
     bool fReindexing = false;
-    pblocktree->ReadReindexing(fReindexing);
+    gl_pBlockTreeDB->ReadReindexing(fReindexing);
     fReindex = fReindex.load() || fReindexing;
 
     // Check whether we have a transaction index
-    pblocktree->ReadFlag("txindex", fTxIndex);
+    gl_pBlockTreeDB->ReadFlag("txindex", fTxIndex);
     LogPrintf("%s: transaction index %s\n", __func__, fTxIndex ? "enabled" : "disabled");
 
     // Check whether block explorer features are enabled
-    pblocktree->ReadFlag("insightexplorer", fInsightExplorer);
+    gl_pBlockTreeDB->ReadFlag("insightexplorer", fInsightExplorer);
     LogPrintf("%s: insight explorer %s\n", __func__, fAddressIndex ? "enabled" : "disabled");
     fAddressIndex = fInsightExplorer.load();
     fSpentIndex = fInsightExplorer.load();
@@ -3293,17 +3342,17 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     }
 
     // Load pointer to end of best chain
-    auto it = mapBlockIndex.find(pcoinsTip->GetBestBlock());
+    auto it = mapBlockIndex.find(gl_pCoinsTip->GetBestBlock());
     if (it == mapBlockIndex.end())
         return true;
     chainActive.SetTip(it->second);
     // Set hashFinalSproutRoot for the end of best chain
-    it->second->hashFinalSproutRoot = pcoinsTip->GetBestAnchor(SPROUT);
+    it->second->hashFinalSproutRoot = gl_pCoinsTip->GetBestAnchor(SPROUT);
 
     PruneBlockIndexCandidates();
 
     LogPrintf("%s: hashBestChain=%s height=%d date=%s progress=%f\n", __func__,
-        chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(),
+        chainActive.Tip()->GetBlockHashString(), chainActive.Height(),
         DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
         Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), chainActive.Tip()));
 
@@ -3333,7 +3382,8 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     if (nCheckDepth > chainActive.Height())
         nCheckDepth = chainActive.Height();
     nCheckLevel = max(0, min(4, nCheckLevel));
-    LogFnPrintf("Verifying last %i blocks at level %i", nCheckDepth, nCheckLevel);
+
+    LogFnPrintf("Verifying last %d blocks at level %d", nCheckDepth, nCheckLevel);
     CCoinsViewCache coins(coinsview);
     CBlockIndex* pindexState = chainActive.Tip();
     CBlockIndex* pindexFailure = nullptr;
@@ -3342,20 +3392,20 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     // No need to verify JoinSplits twice
     auto verifier = libzcash::ProofVerifier::Disabled();
     const auto &consensusParams = chainparams.GetConsensus();
-    for (CBlockIndex* pindex = chainActive.Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
+    for (auto pindex = chainActive.Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
     {
         func_thread_interrupt_point();
         uiInterface.ShowProgress(translate("Verifying blocks..."), max(1, min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
-        if (pindex->nHeight < chainActive.Height()-nCheckDepth)
+        if (pindex->nHeight < chainActive.Height() - nCheckDepth)
             break;
 
         CBlock block;
         // check level 0: read from disk
         if (!ReadBlockFromDisk(block, pindex, consensusParams))
-            return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
         // check level 1: verify block validity
         if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams, verifier))
-            return errorFn(__METHOD_NAME__, "*** found bad block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            return errorFn(__METHOD_NAME__, "*** found bad block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex)
         {
@@ -3364,15 +3414,15 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             if (!pos.IsNull())
             {
                 if (!UndoReadFromDisk(undo, pos, pindex->pprev->GetBlockHash()))
-                    return errorFn(__METHOD_NAME__, "*** found bad undo data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                    return errorFn(__METHOD_NAME__, "*** found bad undo data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
             }
         }
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
-        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + pcoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage)
+        if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + gl_pCoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage)
         {
             bool fClean = true;
             if (!DisconnectBlock(block, state, chainparams, pindex, coins, &fClean))
-                return errorFn(__METHOD_NAME__, "*** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn(__METHOD_NAME__, "*** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
             pindexState = pindex->pprev;
             if (!fClean)
             {
@@ -3399,9 +3449,9 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             pindex = chainActive.Next(pindex);
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex, consensusParams))
-                return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
             if (!ConnectBlock(block, state, chainparams, pindex, coins))
-                return errorFn(__METHOD_NAME__, "*** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                return errorFn(__METHOD_NAME__, "*** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
         }
     }
 
@@ -3409,66 +3459,46 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     return true;
 }
 
-bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
+bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nInvalidBlockHeight, const uint256& invalidBlockHash)
 {
-    LOCK(cs_main);
+    //(chainparams.IsTestNet() && nInvalidBlockHeight == 252500 && invalidBlockHash ==
+    //    uint256S("0018bd16a9c6f15795a754c498d2b2083ab78f14dae44a66a8d0e90ba8464d9c"));
+    return false;
+}
 
-    // RewindBlockIndex is called after LoadBlockIndex, so at this point every block
-    // index will have nCachedBranchId set based on the values previously persisted
-    // to disk. By definition, a set nCachedBranchId means that the block was
-    // fully-validated under the corresponding consensus rules. Thus we can quickly
-    // identify whether the current active chain matches our expected sequence of
-    // consensus rule changes, with two checks:
-    //
-    // - BLOCK_ACTIVATES_UPGRADE is set only on blocks that activate upgrades.
-    // - nCachedBranchId for each block matches what we expect.
-    auto sufficientlyValidated = [&chainparams](const CBlockIndex* pindex) {
-        const auto &consensusParams = chainparams.GetConsensus();
-        bool fFlagSet = pindex->nStatus & BLOCK_ACTIVATES_UPGRADE;
-        bool fFlagExpected = IsActivationHeightForAnyUpgrade(pindex->nHeight, consensusParams);
-        return fFlagSet == fFlagExpected &&
-            pindex->nCachedBranchId &&
-            *pindex->nCachedBranchId == CurrentEpochBranchId(pindex->nHeight, consensusParams);
-    };
+bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlockHeight, 
+    const char *szRewindBlockDesc, bool& bClearWitnessCaches)
+{
+    AssertLockHeld(cs_main);
 
-    int nHeight = 1;
-    while (nHeight <= chainActive.Height()) {
-        if (!sufficientlyValidated(chainActive[nHeight])) {
-            break;
-        }
-        nHeight++;
-    }
-
-    // nHeight is now the height of the first insufficiently-validated block, or tipheight + 1
-    auto rewindLength = chainActive.Height() - nHeight;
-    clearWitnessCaches = false;
-
-    if (rewindLength > 0) {
-        LogPrintf("*** First insufficiently validated block at height %d, rewind length %d\n", nHeight, rewindLength);
-        const uint256 *phashFirstInsufValidated = chainActive[nHeight]->phashBlock;
+    const int nRewindLength = chainActive.Height() - nInvalidBlockHeight;
+    if (nRewindLength > 0)
+    {
+        const uint256 *phashInvalidBlock = chainActive[nInvalidBlockHeight]->phashBlock;
+        LogPrintf("*** First %s block at height=%d (%s), rewind length %d\n", 
+            SAFE_SZ(szRewindBlockDesc), nInvalidBlockHeight, phashInvalidBlock->GetHex(), nRewindLength);
         const auto networkID = chainparams.NetworkIDString();
 
         // This is true when we intend to do a long rewind.
-        bool intendedRewind =
-            (networkID == "test" && nHeight == 252500 && *phashFirstInsufValidated ==
-             uint256S("0018bd16a9c6f15795a754c498d2b2083ab78f14dae44a66a8d0e90ba8464d9c"));
+        bool bIntendedRewind = IsIntendedChainRewind(chainparams, nInvalidBlockHeight, *phashInvalidBlock);
 
-        clearWitnessCaches = (rewindLength > MAX_REORG_LENGTH && intendedRewind);
-
-        if (clearWitnessCaches) {
+        bClearWitnessCaches = (nRewindLength > MAX_REORG_LENGTH && bIntendedRewind);
+        if (bClearWitnessCaches)
+        {
             auto msg = strprintf(translate(
                 "An intended block chain rewind has been detected: network %s, hash %s, height %d"
-                ), networkID, phashFirstInsufValidated->GetHex(), nHeight);
+                ), networkID, phashInvalidBlock->GetHex(), nInvalidBlockHeight);
             LogPrintf("*** %s\n", msg);
         }
 
-        if (rewindLength > MAX_REORG_LENGTH && !intendedRewind) {
+        if (nRewindLength > MAX_REORG_LENGTH && !bIntendedRewind)
+        {
             auto pindexOldTip = chainActive.Tip();
-            auto pindexRewind = chainActive[nHeight - 1];
-            auto msg = strprintf(translate(
+            auto pindexRewind = chainActive[nInvalidBlockHeight - 1];
+            string msg = strprintf(translate(
                 "A block chain rewind has been detected that would roll back %d blocks! "
                 "This is larger than the maximum of %d blocks, and so the node is shutting down for your safety."
-                ), rewindLength, MAX_REORG_LENGTH) + "\n\n" +
+                ), nRewindLength, MAX_REORG_LENGTH) + "\n\n" +
                 translate("Rewind details") + ":\n" +
                 "- " + strprintf(translate("Current tip:   %s, height %d"),
                     pindexOldTip->phashBlock->GetHex(), pindexOldTip->nHeight) + "\n" +
@@ -3481,10 +3511,20 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
             return false;
         }
     }
+    return true;
+}
+
+bool RewindBlockIndexToHeight(const CChainParams& chainparams, bool& bClearWitnessCaches, const int nInvalidBlockHeight, 
+    const char *szRewindBlockDesc, const function<bool(const CBlockIndex *)> &fnCheckBlockIndex)
+{
+    if (!ValidateRewindLength(chainparams, nInvalidBlockHeight, szRewindBlockDesc, bClearWitnessCaches))
+        return false;
+
+    AssertLockHeld(cs_main);
 
     CValidationState state(TxOrigin::UNKNOWN);
-    CBlockIndex* pindex = chainActive.Tip();
-    while (chainActive.Height() >= nHeight)
+    auto pindex = chainActive.Tip();
+    while (chainActive.Height() >= nInvalidBlockHeight)
     {
         if (fPruneMode && !(chainActive.Tip()->nStatus & BLOCK_HAVE_DATA))
         {
@@ -3496,7 +3536,7 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
             break;
         }
         if (!DisconnectTip(state, chainparams, true))
-            return error("RewindBlockIndex: unable to disconnect block at height %i", pindex->nHeight);
+            return error("RewindBlockIndex: unable to disconnect block at height %d", pindex->nHeight);
         // Occasionally flush state to disk.
         if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC))
             return false;
@@ -3505,36 +3545,26 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
     // Collect blocks to be removed (blocks in mapBlockIndex must be at least BLOCK_VALID_TREE).
     // We do this after actual disconnecting, otherwise we'll end up writing the lack of data
     // to disk before writing the chainstate, resulting in a failure to continue if interrupted.
-    vector<const CBlockIndex*> vBlocks;
-    for (BlockMap::iterator it = mapBlockIndex.begin(); it != mapBlockIndex.end(); it++) {
-        CBlockIndex* pindexIter = it->second;
-
+    block_index_cvector_t vBlocksToRemove;
+    for (auto &[block_hash, pBlockIndex] : mapBlockIndex)
+    {
         // Note: If we encounter an insufficiently validated block that
         // is on chainActive, it must be because we are a pruning node, and
         // this block or some successor doesn't HAVE_DATA, so we were unable to
         // rewind all the way.  Blocks remaining on chainActive at this point
         // must not have their validity reduced.
-        if (!sufficientlyValidated(pindexIter) && !chainActive.Contains(pindexIter)) {
+        if (!fnCheckBlockIndex(pBlockIndex) && !chainActive.Contains(pBlockIndex))
+        {
             // Add to the list of blocks to remove
-            vBlocks.push_back(pindexIter);
-            if (pindexIter == pindexBestInvalid) {
-                // Reset invalid block marker if it was pointing to this block
-                pindexBestInvalid = nullptr;
-            }
+            vBlocksToRemove.push_back(pBlockIndex);
+            if (pBlockIndex == pindexBestInvalid)
+                pindexBestInvalid = nullptr; // Reset invalid block marker if it was pointing to this block
+
             // Update indices
-            auto pprev = pindexIter->pprev;
-            setBlockIndexCandidates.erase(pindexIter);
-            auto range = mapBlocksUnlinked.equal_range(pprev);
-            while (range.first != range.second)
-            {
-                if (range.first->second == pindexIter)
-                    range.first = mapBlocksUnlinked.erase(range.first);
-                else
-                    ++range.first;
-            }
-        } else if (pindexIter->IsValid(BLOCK_VALID_TRANSACTIONS) && pindexIter->nChainTx) {
-            setBlockIndexCandidates.insert(pindexIter);
-        }
+            setBlockIndexCandidates.erase(pBlockIndex);
+            EraseUnlinkedBlocksTo(pBlockIndex);
+        } else if (pBlockIndex->IsValid(BLOCK_VALID_TRANSACTIONS) && pBlockIndex->nChainTx)
+            setBlockIndexCandidates.insert(pBlockIndex);
     }
 
     // Set pindexBestHeader to the current chain tip
@@ -3542,28 +3572,214 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches)
     pindexBestHeader = chainActive.Tip();
 
     // Erase block indices on-disk
-    if (!pblocktree->EraseBatchSync(vBlocks)) {
+    if (!gl_pBlockTreeDB->EraseBatchSync(vBlocksToRemove))
         return AbortNode(state, "Failed to erase from block index database");
-    }
 
     // Erase block indices in-memory
-    for (auto pindex : vBlocks) {
-        auto ret = mapBlockIndex.find(*pindex->phashBlock);
-        if (ret != mapBlockIndex.end()) {
-            mapBlockIndex.erase(ret);
-            delete pindex;
-        }
-    }
+    EraseBlockIndices(vBlocksToRemove);
 
     PruneBlockIndexCandidates();
-
     CheckBlockIndex(chainparams.GetConsensus());
 
-    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS)) {
+    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
         return false;
-    }
 
     return true;
+}
+
+bool RewindBlockIndex(const CChainParams& chainparams, bool& bClearWitnessCaches)
+{
+    LOCK(cs_main);
+
+    // RewindBlockIndex is called after LoadBlockIndex, so at this point every block
+    // index will have nCachedBranchId set based on the values previously persisted
+    // to disk. By definition, a set nCachedBranchId means that the block was
+    // fully-validated under the corresponding consensus rules. Thus we can quickly
+    // identify whether the current active chain matches our expected sequence of
+    // consensus rule changes, with two checks:
+    //
+    // - BLOCK_ACTIVATES_UPGRADE is set only on blocks that activate upgrades.
+    // - nCachedBranchId for each block matches what we expect.
+    const auto &consensusParams = chainparams.GetConsensus();
+    const auto fnIsSufficientlyValidated = [&consensusParams](const CBlockIndex* pindex) -> bool
+    {
+        const bool fFlagSet = pindex->nStatus & BLOCK_ACTIVATES_UPGRADE;
+        const bool fFlagExpected = IsActivationHeightForAnyUpgrade(pindex->nHeight, consensusParams);
+        return fFlagSet == fFlagExpected &&
+            pindex->nCachedBranchId &&
+            *pindex->nCachedBranchId == CurrentEpochBranchId(pindex->nHeight, consensusParams);
+    };
+
+    int nInvalidBlockHeight = 1;
+    while (nInvalidBlockHeight <= chainActive.Height())
+    {
+        if (!fnIsSufficientlyValidated(chainActive[nInvalidBlockHeight]))
+            break;
+        nInvalidBlockHeight++;
+    }
+
+    return RewindBlockIndexToHeight(chainparams, bClearWitnessCaches, nInvalidBlockHeight, 
+        "insufficiently validated", fnIsSufficientlyValidated);
+}
+
+/**
+ * Rewind active chain to the valid fork if all the required conditions are met:
+ *  - the forked chain is longer than the active chain by 6 blocks
+ *  - the forked chain is valid (all blocks have at least BLOCK_VALID_TREE)
+ *  - the forked chain has higher chain work than the active chain + 6 blocks
+ *  - rewind length is less than or equal MAX_REORG_LENGTH (99 blocks)
+ * 
+ * \param chainparams - chain parameters
+ * \return true if successfully rewound the chain
+ */
+bool RewindBlockIndexToValidFork(const CChainParams& chainparams)
+{
+    constexpr auto REWIND_ERRMSG = "Unable to rewind the chain";
+
+    int nInvalidBlockHeight = -1;
+    uint32_t nOldChainHeight = gl_nChainHeight;
+    uint256 hashOldChainTip;
+    {
+        LOCK(cs_main);
+
+        if (!pindexBestHeader)
+            return error("%s: valid fork chain block is not defined", REWIND_ERRMSG);
+
+        const uint256 &forkedChainBlockHash = pindexBestHeader->GetBlockHash();
+        if (static_cast<uint32_t>(pindexBestHeader->nHeight) <= nOldChainHeight + 6)
+		    return error("%s to block with height=%d (%s): forked chain is not long enough",
+                REWIND_ERRMSG, pindexBestHeader->nHeight, forkedChainBlockHash.ToString());
+
+        auto pindexOldTip = chainActive.Tip();
+        hashOldChainTip = pindexOldTip->GetBlockHash();
+        // check if the forked chain has valid tree
+        if ((pindexBestHeader->nStatus & BLOCK_VALID_TREE) == 0)
+            return error("%s: forked chain tree is invalid", REWIND_ERRMSG);
+
+        if (pindexBestHeader->nChainWork < pindexOldTip->nChainWork + (GetBlockProof(*pindexOldTip) * 6))
+            return error("%s: valid forked chain does not have enough chain work to switch to", REWIND_ERRMSG);
+
+        // find the fork point
+        auto pLastCommonBlock = FindLastCommonAncestorBlockIndex(pindexOldTip, pindexBestHeader);
+        if (!pLastCommonBlock)
+            return error("%s: last common block for the current active chain and the forked chain not found", REWIND_ERRMSG);
+
+        bool bClearWitnessCaches = false;
+        nInvalidBlockHeight = pLastCommonBlock->nHeight + 1;
+        if (!ValidateRewindLength(chainparams, nInvalidBlockHeight, "invalid active chain", bClearWitnessCaches))
+            return false;
+
+        string sMsg = strprintf(translate(
+            "\n*** Valid forked chain with higher chain work has been detected! ***\n"
+            "Current active block chain will be rewound for %d blocks."), nOldChainHeight - nInvalidBlockHeight);
+        sMsg += "\n" + translate("Rewind details") + ":\n" +
+            "  - " + strprintf(translate("Current tip:  %s, height %d, log2 chain work - " SPEC_CHAIN_WORK),
+                pindexOldTip->phashBlock->GetHex(), nOldChainHeight, pindexOldTip->GetLog2ChainWork()) + "\n" +
+            "  - " + strprintf(translate("Rewinding to: %s, height %d"),
+                pLastCommonBlock->phashBlock->GetHex(), pLastCommonBlock->nHeight) + "\n" +
+            "  - " + strprintf(translate("Forked chain: %s, height %d, log2 chain work - " SPEC_CHAIN_WORK),
+                forkedChainBlockHash.ToString(), pindexBestHeader->nHeight, pindexBestHeader->GetLog2ChainWork()) + "\n";
+        LogPrintf("%s\n", sMsg);
+    }
+
+    bool bSwitchedToForkedChain = false;
+    try
+    {
+        uint256 hashInvalidBlock;
+        CValidationState state(TxOrigin::UNKNOWN);
+        {
+            LOCK(cs_main);
+
+            hashInvalidBlock = chainActive[nInvalidBlockHeight]->GetBlockHash();
+            // rewind the chain to the fork point
+            if (!InvalidateBlock(state, chainparams, chainActive[nInvalidBlockHeight]))
+                return error("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, nInvalidBlockHeight);
+            LogFnPrintf("*** Invalidated %u blocks", nOldChainHeight - nInvalidBlockHeight + 1);
+            // clear invalidity status from all blocks in that forked chain
+            ReconsiderBlock(state, pindexBestHeader);
+            if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
+                return error("%s: unable to flush the blockchain state to disk", REWIND_ERRMSG);
+        }
+
+        // activate the best chain up to the first invalid block (that can be in a revalidation cache)
+        ActivateBestChain(state, chainparams);
+
+        // some blocks from that valid forked chain may be in a block cache, try to revalidate them
+        // force revalidation of all blocks in the cache
+        const size_t nRevalidated = gl_BlockCache.revalidate_blocks(chainparams, true);
+        if (nRevalidated)
+            LogFnPrintf("Revalidated %zu blocks from the block cache", nRevalidated);
+
+        ActivateBestChain(state, chainparams);
+
+        {
+            LOCK(cs_main);
+            auto pCheckForkedBlockHeader = pindexBestHeader->GetAncestor(nOldChainHeight + 7);
+            if (chainActive.Contains(pCheckForkedBlockHeader))
+            {
+                bSwitchedToForkedChain = true;
+                LogPrintf("*** SUCCESSFULLY SWITCHED TO THE VALID FORKED CHAIN: %s, height %u\n",
+                    chainActive.Tip()->GetBlockHashString(), gl_nChainHeight.load());
+                // cleaning up the old chain starting with the old tip block
+                auto it = mapBlockIndex.find(hashOldChainTip);
+                if ((nInvalidBlockHeight != -1) && (it != mapBlockIndex.end()))
+                {
+                    auto pindexToRemove = it->second;
+                    LogPrintf("Cleaning up the old chain %d..%d, starting from %s\n",
+                        nInvalidBlockHeight, pindexToRemove->nHeight, hashOldChainTip.ToString());
+                    block_index_cvector_t vBlocksToRemove;
+                    vBlocksToRemove.reserve(pindexToRemove->nHeight - nInvalidBlockHeight);
+                    while (pindexToRemove && pindexToRemove->nHeight >= nInvalidBlockHeight)
+                    {
+						auto pindexPrev = pindexToRemove->pprev;
+                        vBlocksToRemove.push_back(pindexToRemove);
+                        if (pindexToRemove == pindexBestInvalid)
+                            pindexBestInvalid = nullptr; // Reset invalid block marker if it was pointing to this block
+                        setBlockIndexCandidates.erase(pindexToRemove);
+                        EraseUnlinkedBlocksTo(pindexToRemove);
+                        pindexToRemove = pindexPrev;
+					}
+
+                    if (!vBlocksToRemove.empty())
+                    {
+                        LogPrintf("Erasing %zu blocks from the block database\n", vBlocksToRemove.size());
+
+                        const size_t nErasedTicketCount = masterNodeCtrl.masternodeTickets.EraseTicketsFromDbByList(vBlocksToRemove);
+                        if (nErasedTicketCount > 0)
+							LogPrintf("Erased %zu tickets from the database\n", nErasedTicketCount);
+                        // Erase blocks on-disk
+                        if (!gl_pBlockTreeDB->EraseBatchSync(vBlocksToRemove))
+                            return AbortNode(state, "Failed to erase from block index database");
+
+                        // Erase block indices in-memory
+                        EraseBlockIndices(vBlocksToRemove);
+                    }
+                }
+            }
+            else
+            {
+                LogPrintf("*** FAILED TO SWITCH TO THE VALID FORKED CHAIN."
+                    " Block height=%d (%s) not found in the active chain. Restoring old chain...\n",
+                    pCheckForkedBlockHeader->nHeight, pCheckForkedBlockHeader->GetBlockHashString());
+                // restore the old chain
+                if (!InvalidateBlock(state, chainparams, chainActive[nInvalidBlockHeight]))
+                    return error("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, nInvalidBlockHeight);
+                auto itOldInvalidBlock = mapBlockIndex.find(hashInvalidBlock);
+                if (itOldInvalidBlock != mapBlockIndex.end())
+                    ReconsiderBlock(state, itOldInvalidBlock->second);
+            }
+            PruneBlockIndexCandidates();
+            CheckBlockIndex(chainparams.GetConsensus());
+
+            if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
+                return false;
+        }
+    }
+    catch (const std::exception& e)
+    {
+		return error("%s: %s", REWIND_ERRMSG, e.what());
+	}
+    return bSwitchedToForkedChain;
 }
 
 void UnloadBlockIndex()
@@ -3620,11 +3836,11 @@ bool InitBlockIndex(const CChainParams& chainparams)
 
     // Use the provided setting for -txindex in the new database
     fTxIndex = GetBoolArg("-txindex", false);
-    pblocktree->WriteFlag("txindex", fTxIndex);
+    gl_pBlockTreeDB->WriteFlag("txindex", fTxIndex);
 
     // Use the provided setting for -insightexplorer in the new database
     fInsightExplorer = GetBoolArg("-insightexplorer", false);
-    pblocktree->WriteFlag("insightexplorer", fInsightExplorer.load());
+    gl_pBlockTreeDB->WriteFlag("insightexplorer", fInsightExplorer.load());
     fAddressIndex = fInsightExplorer.load();
     fSpentIndex = fInsightExplorer.load();
     fTimestampIndex = fInsightExplorer.load();
@@ -3642,17 +3858,17 @@ bool InitBlockIndex(const CChainParams& chainparams)
             CDiskBlockPos blockPos;
             CValidationState state(TxOrigin::LOADED_BLOCK);
             if (!FindBlockPos(state, blockPos, nBlockSize + 8, 0, block.GetBlockTime()))
-                return error("LoadBlockIndex(): FindBlockPos failed");
+                return error("InitBlockIndex(): FindBlockPos failed");
             if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart()))
-                return error("LoadBlockIndex(): writing genesis block to disk failed");
+                return error("InitBlockIndex(): writing genesis block to disk failed");
             CBlockIndex *pindex = AddToBlockIndex(block, chainparams.GetConsensus());
             ReceivedBlockTransactions(block, state, chainparams, pindex, blockPos);
             if (!ActivateBestChain(state, chainparams, &block))
-                return error("LoadBlockIndex(): genesis block cannot be activated");
+                return error("InitBlockIndex(): genesis block cannot be activated");
             // Force a chainstate write so that when we VerifyDB in a moment, it doesn't check stale data
             return FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS);
         } catch (const runtime_error& e) {
-            return error("LoadBlockIndex(): failed to initialize block database: %s", e.what());
+            return error("InitBlockIndex(): failed to initialize block database: %s", e.what());
         }
     }
 
@@ -4073,7 +4289,7 @@ static bool AlreadyHave(const CInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
             return recentRejects->contains(inv.hash) ||
                    mempool.exists(inv.hash) ||
                    gl_pOrphanTxManager->exists(inv.hash) ||
-                   pcoinsTip->HaveCoins(inv.hash);
+                   gl_pCoinsTip->HaveCoins(inv.hash);
         }
     case MSG_BLOCK:
         return mapBlockIndex.count(inv.hash);
@@ -4642,7 +4858,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
         {
             if (pindex->GetBlockHash() == hashStop)
             {
-                LogFnPrint("net", " getblocks stopping at %d %s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                LogFnPrint("net", " getblocks stopping at %d %s", pindex->nHeight, pindex->GetBlockHashString());
                 break;
             }
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
@@ -4650,7 +4866,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
             const int nPrunedBlocksLikelyToHave = static_cast<int>(MIN_BLOCKS_TO_KEEP - 3600 / consensusParams.nPowTargetSpacing);
             if (fPruneMode && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
-                LogFnPrint("net", " getblocks stopping, pruned or too old block at %d %s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                LogFnPrint("net", " getblocks stopping, pruned or too old block at %d %s", pindex->nHeight, pindex->GetBlockHashString());
                 break;
             }
             pfrom->PushInventory(CInv(MSG_BLOCK, pindex->GetBlockHash()));
@@ -4658,7 +4874,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
             {
                 // When this block is requested, we'll send an inv that'll
                 // trigger the peer to getblocks the next batch of inventory.
-                LogFnPrint("net", " getblocks stopping at limit %d %s", pindex->nHeight, pindex->GetBlockHash().ToString());
+                LogFnPrint("net", " getblocks stopping at limit %d %s", pindex->nHeight, pindex->GetBlockHashString());
                 pfrom->hashContinue = pindex->GetBlockHash();
                 break;
             }
@@ -4735,7 +4951,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
 
                 if (!AlreadyHave(inv) && AcceptToMemoryPool(chainparams, mempool, state, tx, true, &fMissingInputs))
                 {
-                    mempool.check(pcoinsTip);
+                    mempool.check(gl_pCoinsTip.get());
                     RelayTransaction(tx);
                     LogFnPrint("mempool", "AcceptToMemoryPool: peer=%d %s: accepted %s (poolsz %u)",
                         pfrom->id, pfrom->cleanSubVer,
@@ -5542,7 +5758,7 @@ void NodeSendGetData(node_t& pto, node_state_t& pNodeState, const Consensus::Par
         (bFetch || !bIsInitialBlockDownload) && 
         pNodeState->nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER)
     {
-        vector<CBlockIndex*> vToDownload;
+        block_index_vector_t vToDownload;
         NodeId staller = -1;
 
         {
@@ -5646,8 +5862,14 @@ void RevalidateBlocks(const CChainParams& chainparams)
             sBlockCacheSize = strprintf("remaining block cache size=%zu", nBlockCacheSize);
         else
             sBlockCacheSize = "block cache is empty";
-        LogPrintf("%zu block%s revalidated (%s)\n", nBlocksRevalidated, nBlocksRevalidated > 1 ? "s" : "", sBlockCacheSize);
+        LogFnPrintf("%zu block%s revalidated (%s)", nBlocksRevalidated, nBlocksRevalidated > 1 ? "s" : "", sBlockCacheSize);
     }
+    if (gl_BlockCache.is_valid_fork_detected())
+    {
+		LogFnPrintf("Detected a valid fork");
+        if (RewindBlockIndexToValidFork(chainparams))
+            gl_BlockCache.reset_valid_fork_detected();
+	}
 }
 
 /**
@@ -5693,7 +5915,7 @@ bool SendMessages(const CChainParams& chainparams, node_t& pto, bool fSendTrickl
     NodeDetectStalledDownload(pto, pNodeState, consensusParams);
     NodeSendGetData(pto, pNodeState, consensusParams, bIsInitialBlockDownload, bFetch);
 
-    // revalidate cached blocks if any
+    // revalidate cached blocks
     RevalidateBlocks(chainparams);
     return true;
 }
@@ -5725,5 +5947,5 @@ bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
 
     if (mempool.getSpentIndex(key, value))
         return true;
-    return pblocktree->ReadSpentIndex(key, value);
+    return gl_pBlockTreeDB->ReadSpentIndex(key, value);
 }

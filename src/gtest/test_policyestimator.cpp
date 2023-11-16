@@ -6,10 +6,10 @@
 
 #include <gtest/gtest.h>
 
+#include <utils/uint256.h>
+#include <utils/util.h>
 #include <policy/fees.h>
 #include <txmempool.h>
-#include <uint256.h>
-#include <util.h>
 #include <amount.h>
 
 #include <test_mempool_entryhelper.h>

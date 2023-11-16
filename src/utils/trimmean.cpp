@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <limits>
 
-#include <trimmean.h>
+#include <utils/trimmean.h>
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////

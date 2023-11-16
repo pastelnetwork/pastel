@@ -1,8 +1,8 @@
 #include <sodium.h>
 
+#include <utils/utilstrencodings.h>
 #include <consensus/upgrades.h>
 #include <primitives/transaction.h>
-#include <utilstrencodings.h>
 #include <chain_options.h>
 #include <accept_to_mempool.h>
 

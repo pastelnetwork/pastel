@@ -4,6 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <utils/enum_util.h>
+#include <utils/uint256.h>
 #include <script/interpreter.h>
 #include <consensus/upgrades.h>
 #include <primitives/transaction.h>
@@ -12,8 +14,6 @@
 #include <crypto/sha256.h>
 #include <pubkey.h>
 #include <script/script.h>
-#include <uint256.h>
-#include <enum_util.h>
 
 using namespace std;
 

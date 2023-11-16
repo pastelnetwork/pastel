@@ -12,19 +12,19 @@
 #include <utility>
 #include <vector>
 
+#include <utils/map_types.h>
+#include <utils/util.h>
+#include <utils/base58.h>
+#include <utils/tinyformat.h>
+#include <utils/utilstrencodings.h>
 #include <amount.h>
 #include <coins.h>
 #include <key.h>
-#include <map_types.h>
 #include <keystore.h>
-#include <util.h>
 #include <main.h>
-#include <base58.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
-#include <tinyformat.h>
 #include <ui_interface.h>
-#include <utilstrencodings.h>
 #include <validationinterface.h>
 #include <wallet/crypter.h>
 #include <wallet/wallet_ismine.h>

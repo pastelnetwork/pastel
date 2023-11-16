@@ -6,13 +6,14 @@
 #include <gtest/gtest.h>
 #include <univalue.h>
 
+#include <utils/utilstrencodings.h>
 #include <rpc/server.h>
 #include <rpc/client.h>
 #include <rpc/register.h>
 #include <key_io.h>
 #include <netbase.h>
 #include <main.h>
-#include <utilstrencodings.h>
+
 #include <pastel_gtest_main.h>
 
 using namespace std;

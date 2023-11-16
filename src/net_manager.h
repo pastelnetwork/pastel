@@ -3,7 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <atomic>
-#include <svc_thread.h>
+
+#include <utils/svc_thread.h>
 
 class CNetManagerThread : public CStoppableServiceThread
 {

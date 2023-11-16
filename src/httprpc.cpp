@@ -1,7 +1,12 @@
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <utils/str_utils.h>
+#include <utils/util.h>
+#include <utils/enum_util.h>
+#include <utils/utilstrencodings.h>
+#include <utils/sync.h>
 #include <httprpc.h>
 #include <chainparams.h>
 #include <httpserver.h>
@@ -9,12 +14,7 @@
 #include <rpc/protocol.h>
 #include <rpc/server.h>
 #include <random.h>
-#include <sync.h>
-#include <util.h>
-#include <enum_util.h>
-#include <utilstrencodings.h>
 #include <ui_interface.h>
-#include <str_utils.h>
 
 using namespace std;
 

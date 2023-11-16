@@ -1,14 +1,14 @@
 #include "Note.hpp"
 #include "prf.h"
-#include "crypto/sha256.h"
+#include <crypto/sha256.h>
 
-#include "random.h"
-#include "version.h"
-#include "streams.h"
-#include <svc_thread.h>
+#include <utils/svc_thread.h>
+#include <random.h>
+#include <version.h>
+#include <streams.h>
 
-#include "zcash/util.h"
-#include "librustzcash.h"
+#include <zcash/util.h>
+#include <librustzcash.h>
 
 using namespace libzcash;
 

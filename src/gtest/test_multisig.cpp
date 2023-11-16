@@ -1,27 +1,25 @@
 // Copyright (c) 2011-2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "consensus/upgrades.h"
-#include "key.h"
-#include "keystore.h"
-#include "main.h"
-#include "script/script.h"
-#include "script/script_error.h"
-#include "script/interpreter.h"
-#include "script/sign.h"
-#include "uint256.h"
+#include <utils/uint256.h>
+#include <consensus/upgrades.h>
+#include <key.h>
+#include <keystore.h>
+#include <main.h>
+#include <script/script.h>
+#include <script/script_error.h>
+#include <script/interpreter.h>
+#include <script/sign.h>
 
 #ifdef ENABLE_WALLET
-#include "wallet/wallet_ismine.h"
+#include <wallet/wallet_ismine.h>
 #endif
 
 #include <gtest/gtest.h>
 
 using namespace std;
 using namespace testing;
-
 
 CScript
 sign_multisig(CScript scriptPubKey, vector<CKey> keys, CTransaction transaction, int whichIn, uint32_t consensusBranchId)

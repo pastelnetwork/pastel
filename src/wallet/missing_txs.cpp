@@ -5,7 +5,7 @@
 #include <future>
 #include <queue>
 
-#include <sync.h>
+#include <utils/sync.h>
 #include <main.h>
 #include <wallet/wallet.h>
 #include <init.h>

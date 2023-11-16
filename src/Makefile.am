@@ -233,11 +233,48 @@ PASTELID_CPP =\
   pastelid/secure_container.cpp\
   pastelid/pastel_key.cpp
 
-PASTELID_H =\
+PASTELID_H = \
   pastelid/secure_container.h\
   pastelid/pastel_key.h\
   pastelid/common.h\
   pastelid/ed.h
+
+UTILS_CPP = \
+  utils/ascii85.cpp \
+  utils/base58.cpp \
+  utils/bech32.cpp \
+  utils/ping_util.cpp \
+  utils/scheduler.cpp \
+  utils/sync.cpp \
+  utils/trimmean.cpp \
+  utils/uint256.cpp \
+  utils/util.cpp \
+  utils/utilstrencodings.cpp
+
+UTILS_H = \
+  utils/ascii85.h \
+  utils/base58.h \
+  utils/bech32.h \
+  utils/enum_util.h \
+  utils/fs.h \
+  utils/map_types.h \
+  utils/numeric_range.h \
+  utils/ping_util.h \
+  utils/reverselock.h \
+  utils/scheduler.h \
+  utils/set_types.h \
+  utils/str_types.h \
+  utils/str_utils.h \
+  utils/svc_thread.h \
+  utils/sync.h \
+  utils/tinyformat.h \
+  utils/trimmean.h \
+  utils/uint256.h \
+  utils/uint252.h \
+  utils/util.h \
+  utils/utilstrencodings.h \
+  utils/vector_types.h
+
 
 .PHONY: FORCE collate-libsnark check-symbols check-security
 # bitcoin core #
@@ -252,11 +289,8 @@ BITCOIN_CORE_H = \
   amqp/amqppublishnotifier.h \
   amqp/amqpsender.h \
   arith_uint256.h \
-  ascii85.h \
   asyncrpcoperation.h \
   asyncrpcqueue.h \
-  base58.h \
-  bech32.h \
   chain.h \
   chain_options.h \
   chainparams.h \
@@ -281,8 +315,6 @@ BITCOIN_CORE_H = \
   datacompressor.h\
   deprecation.h \
   ecc_context.h \
-  enum_util.h \
-  fs.h \
   hash.h \
   httprpc.h \
   httpserver.h \
@@ -295,7 +327,6 @@ BITCOIN_CORE_H = \
   legroast.h \
   limitedmap.h \
   main.h \
-  map_types.h \
   memusage.h \
   merkleblock.h \
   metrics.h \
@@ -312,7 +343,6 @@ BITCOIN_CORE_H = \
   net_manager.h \
   netbase.h \
   noui.h \
-  numeric_range.h\
   orphan-tx.h\
   policy/fees.h \
   port_config.h \
@@ -323,7 +353,6 @@ BITCOIN_CORE_H = \
   protocol.h \
   pubkey.h \
   random.h \
-  reverselock.h \
   rpc/client.h \
   rpc/protocol.h \
   rpc/server.h \
@@ -331,7 +360,6 @@ BITCOIN_CORE_H = \
   rpc/rpc_consts.h \
   rpc/rpc_parser.h \
   rpc/rpc-utils.h \
-  scheduler.h \
   script_check.h \
   script/interpreter.h \
   script/script.h \
@@ -341,34 +369,22 @@ BITCOIN_CORE_H = \
   script/sign.h \
   script/standard.h \
   serialize.h \
-  set_types.h \
   streams.h \
-  str_types.h\
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \
   support/events.h \
   support/lockedpool.h \
-  svc_thread.h \
-  sync.h \
   threadsafety.h \
   timedata.h \
-  tinyformat.h \
   torcontrol.h \
   transaction_builder.h \
-  trimmean.h\
   txdb.h \
   txmempool.h \
   txmempool_entry.h\
   ui_interface.h \
-  uint256.h \
-  uint252.h \
   undo.h \
-  util.h \
-  str_utils.h \
-  vector_types.h \
   utilmoneystr.h \
-  utilstrencodings.h \
   utiltest.h \
   utiltime.h \
   validationinterface.h \
@@ -387,7 +403,7 @@ BITCOIN_CORE_H = \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
   zmq/zmqpublishnotifier.h \
-  $(MNODE_H)\
+  $(MNODE_H) \
   $(PASTELID_H)
 
 obj/build.h: FORCE
@@ -528,8 +544,6 @@ libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_SOURCES = \
   amount.cpp \
   arith_uint256.cpp \
-  base58.cpp \
-  bech32.cpp \
   chainparams.cpp \
   coins.cpp \
   compressor.cpp \
@@ -547,7 +561,6 @@ libbitcoin_common_a_SOURCES = \
   primitives/transaction.cpp \
   protocol.cpp \
   pubkey.cpp \
-  scheduler.cpp \
   script/interpreter.cpp \
   script/script.cpp \
   script/script_error.cpp \
@@ -555,7 +568,8 @@ libbitcoin_common_a_SOURCES = \
   script/standard.cpp \
   transaction_builder.cpp \
   utiltest.cpp \
-  $(BITCOIN_CORE_H)\
+  $(UTILS_H) \
+  $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 
 # util: shared between all executables.
@@ -569,19 +583,15 @@ libbitcoin_util_a_SOURCES =\
   compat/strnlen.cpp \
   support/lockedpool.cpp \
   support/cleanse.cpp \
-  ascii85.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
   random.cpp \
   rpc/protocol.cpp \
   rpc/rpc-utils.cpp \
-  sync.cpp \
-  trimmean.cpp \
-  uint256.cpp \
-  util.cpp \
   utilmoneystr.cpp \
-  utilstrencodings.cpp \
   utiltime.cpp \
+  $(UTILS_CPP) \
+  $(UTILS_H) \
   $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 

@@ -4,10 +4,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <utils/tinyformat.h>
+#include <utils/vector_types.h>
+#include <utils/utilstrencodings.h>
 #include <script/script.h>
-
-#include <tinyformat.h>
-#include <utilstrencodings.h>
 
 using namespace std;
 

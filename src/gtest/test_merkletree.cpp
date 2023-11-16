@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -35,11 +35,11 @@
 #include <zcash/IncrementalMerkleTree.hpp>
 #include <zcash/util.h>
 
-#include <utilstrencodings.h>
+#include <utils/vector_types.h>
+#include <utils/utilstrencodings.h>
 #include <version.h>
 #include <serialize.h>
 #include <streams.h>
-#include <vector_types.h>
 #include <json_test_vectors.h>
 
 using namespace std;

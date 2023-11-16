@@ -7,16 +7,16 @@
 
 #include <univalue.h>
 
+#include <utils/str_utils.h>
+#include <utils/sync.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
 #include <rpc/server.h>
 #include <init.h>
 #include <key_io.h>
 #include <random.h>
-#include <sync.h>
 #include <ui_interface.h>
-#include <util.h>
-#include <utilstrencodings.h>
 #include <asyncrpcqueue.h>
-#include <str_utils.h>
 
 #include <boost/iostreams/concepts.hpp>
 #include <boost/iostreams/stream.hpp>

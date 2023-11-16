@@ -4,10 +4,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <utils/util.h>
 #include <clientversion.h>
 #include <serialize.h>
 #include <streams.h>
-#include <util.h>
 #include <version.h>
 
 #include <leveldb/db.h>

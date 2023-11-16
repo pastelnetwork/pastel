@@ -8,10 +8,10 @@
 #include <stdexcept>
 #include <vector>
 
+#include <utils/uint256.h>
 #include <pubkey.h>
 #include <serialize.h>
 #include <support/allocators/secure.h>
-#include <uint256.h>
 
 /**
  * secure_allocator is defined in allocators.h

@@ -23,10 +23,10 @@
 **/
 
 #include <cstdint>
-#include <util.h>
-#include <stdbool.h>
+#include <cstdbool>
 
-#include <ascii85.h>
+#include <utils/util.h>
+#include <utils/ascii85.h>
 
 // From Wikipedia re: Ascii85 length...
 // Adobe adopted the basic btoa encoding, but with slight changes, and gave it the name Ascii85.

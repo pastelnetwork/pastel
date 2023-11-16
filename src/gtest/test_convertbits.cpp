@@ -1,12 +1,12 @@
 // Copyright (c) 2018 The Zcash developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <gtest/gtest.h>
 
-#include "vector_types.h"
-#include <utilstrencodings.h>
+#include <utils/vector_types.h>
+#include <utils/utilstrencodings.h>
 #include <zcash/NoteEncryption.hpp>
 
 using namespace std;

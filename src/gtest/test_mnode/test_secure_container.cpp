@@ -1,14 +1,16 @@
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <stdio.h>
+#include <cstdio>
+#include <unistd.h>
+
 #include <json/json.hpp>
 #include <gtest/gtest.h>
 
-#include <unistd.h>
-#include <fs.h>
+#include <utils/fs.h>
+#include <utils/utilstrencodings.h>
 #include <pastelid/secure_container.h>
-#include <utilstrencodings.h>
+
 #include <pastel_gtest_utils.h>
 
 using json = nlohmann::json;

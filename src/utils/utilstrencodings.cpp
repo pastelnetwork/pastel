@@ -9,12 +9,12 @@
 #include <iomanip>
 #include <limits>
 
-#include <utilstrencodings.h>
-#include <ascii85.h>
-#include <tinyformat.h>
-#include <vector_types.h>
-#include <str_utils.h>
-#include <util.h>
+#include <utils/vector_types.h>
+#include <utils/str_utils.h>
+#include <utils/utilstrencodings.h>
+#include <utils/ascii85.h>
+#include <utils/tinyformat.h>
+#include <utils/util.h>
 
 using namespace std;
 

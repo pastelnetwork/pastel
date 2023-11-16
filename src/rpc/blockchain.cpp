@@ -3,12 +3,13 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <stdint.h>
+#include <cstdint>
 #include <regex>
 
 #include <univalue.h>
 
+#include <utils/sync.h>
+#include <utils/util.h>
 #include <amount.h>
 #include <chain.h>
 #include <chainparams.h>
@@ -19,8 +20,6 @@
 #include <primitives/transaction.h>
 #include <rpc/server.h>
 #include <streams.h>
-#include <sync.h>
-#include <util.h>
 
 using namespace std;
 
@@ -572,7 +571,8 @@ Examples:
 
     CCoinsStats stats;
     FlushStateToDisk();
-    if (pcoinsTip->GetStats(stats)) {
+    if (gl_pCoinsTip->GetStats(stats))
+    {
         ret.pushKV("height", (int64_t)stats.nHeight);
         ret.pushKV("bestblock", stats.hashBlock.GetHex());
         ret.pushKV("transactions", (int64_t)stats.nTransactions);
@@ -640,18 +640,18 @@ As a json rpc call
     CCoins coins;
     if (fMempool) {
         LOCK(mempool.cs);
-        CCoinsViewMemPool view(pcoinsTip, mempool);
+        CCoinsViewMemPool view(gl_pCoinsTip.get(), mempool);
         if (!view.GetCoins(hash, coins))
             return NullUniValue;
         mempool.pruneSpent(hash, coins); // TODO: this should be done by the CCoinsViewMemPool
     } else {
-        if (!pcoinsTip->GetCoins(hash, coins))
+        if (!gl_pCoinsTip->GetCoins(hash, coins))
             return NullUniValue;
     }
     if (n<0 || (unsigned int)n>=coins.vout.size() || coins.vout[n].IsNull())
         return NullUniValue;
 
-    BlockMap::iterator it = mapBlockIndex.find(pcoinsTip->GetBestBlock());
+    BlockMap::iterator it = mapBlockIndex.find(gl_pCoinsTip->GetBestBlock());
     CBlockIndex *pindex = it->second;
     ret.pushKV("bestblock", pindex->GetBlockHash().GetHex());
     if ((unsigned int)coins.nHeight == MEMPOOL_HEIGHT)
@@ -692,13 +692,13 @@ Examples:
     LOCK(cs_main);
 
     int nCheckLevel = static_cast<int>(GetArg("-checklevel", 3));
-    int nCheckDepth = static_cast<int>(GetArg("-checkblocks", 288));
+    int nCheckDepth = static_cast<int>(GetArg("-checkblocks", FORK_BLOCK_LIMIT));
     if (params.size() > 0)
         nCheckLevel = params[0].get_int();
     if (params.size() > 1)
         nCheckDepth = params[1].get_int();
 
-    return CVerifyDB().VerifyDB(Params(), pcoinsTip, nCheckLevel, nCheckDepth);
+    return CVerifyDB().VerifyDB(Params(), gl_pCoinsTip.get(), nCheckLevel, nCheckDepth);
 }
 
 /** Implementation of IsSuperMajority with better feedback */
@@ -838,7 +838,7 @@ Examples:
     obj.pushKV("pruned",                fPruneMode.load());
 
     SproutMerkleTree tree;
-    pcoinsTip->GetSproutAnchorAt(pcoinsTip->GetBestAnchor(SPROUT), tree);
+    gl_pCoinsTip->GetSproutAnchorAt(gl_pCoinsTip->GetBestAnchor(SPROUT), tree);
     obj.pushKV("commitments",           static_cast<uint64_t>(tree.size()));
 
     CBlockIndex* tip = chainActive.Tip();

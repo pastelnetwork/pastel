@@ -4,12 +4,12 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
+#include <utils/sync.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
 #include <timedata.h>
 #include <netbase.h>
-#include <sync.h>
 #include <ui_interface.h>
-#include <util.h>
-#include <utilstrencodings.h>
 
 using namespace std;
 

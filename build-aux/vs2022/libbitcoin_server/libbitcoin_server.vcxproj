@@ -283,6 +283,7 @@
     <ClInclude Include="..\..\..\src\net.h" />
     <ClInclude Include="..\..\..\src\netmsg\block-cache.h" />
     <ClInclude Include="..\..\..\src\netmsg\bloom.h" />
+    <ClInclude Include="..\..\..\src\netmsg\fork-info.h" />
     <ClInclude Include="..\..\..\src\netmsg\mruset.h" />
     <ClInclude Include="..\..\..\src\netmsg\netconsts.h" />
     <ClInclude Include="..\..\..\src\netmsg\netmessage.h" />

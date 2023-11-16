@@ -13,16 +13,16 @@
 
 #include <boost/thread/synchronized_value.hpp>
 
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
 #include <metrics.h>
 #include <chainparams.h>
 #include <checkpoints.h>
 #include <accept_to_mempool.h>
 #include <main.h>
 #include <ui_interface.h>
-#include <util.h>
 #include <utiltime.h>
 #include <utilmoneystr.h>
-#include <utilstrencodings.h>
 #include <netmsg/nodemanager.h>
 
 using namespace std;

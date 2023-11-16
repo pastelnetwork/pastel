@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include <uint256.h>
+#include <utils/uint256.h>
 
 #ifdef DEBUG
 #undef DEBUG
@@ -13,7 +13,7 @@
 #include <libsnark/gadgetlib1/gadgets/merkle_tree/merkle_tree_check_read_gadget.hpp>
 
 #include <zcash/util.h>
-#include "zcash/IncrementalMerkleTree.hpp"
+#include <zcash/IncrementalMerkleTree.hpp>
 
 using namespace libsnark;
 using namespace libzcash;

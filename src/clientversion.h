@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2016-2017 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -14,9 +14,9 @@
  */
 
 //! These need to be macros, as clientversion.cpp's and pastel*-res.rc's voodoo requires it
-#define CLIENT_VERSION_MAJOR 1
+#define CLIENT_VERSION_MAJOR 2
 #define CLIENT_VERSION_MINOR 1
-#define CLIENT_VERSION_REVISION 5
+#define CLIENT_VERSION_REVISION 0
 #define CLIENT_VERSION_BUILD 1
 
 //! Set to true for release, false for prerelease or test build

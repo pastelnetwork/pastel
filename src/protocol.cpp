@@ -8,9 +8,9 @@
 # include <arpa/inet.h>
 #endif
 
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
 #include <protocol.h>
-#include <util.h>
-#include <utilstrencodings.h>
 
 using namespace std;
 

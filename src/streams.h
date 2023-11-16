@@ -18,7 +18,7 @@
 #include <string.h>
 #include <utility>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 #include <serialize.h>
 
 template<typename Stream>

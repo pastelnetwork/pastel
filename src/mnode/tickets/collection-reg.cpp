@@ -3,10 +3,10 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
-#include <str_utils.h>
+#include <utils/str_utils.h>
+#include <utils/utilstrencodings.h>
 #include <init.h>
 #include <key_io.h>
-#include <utilstrencodings.h>
 #include <pastelid/common.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/mnode-controller.h>

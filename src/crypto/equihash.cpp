@@ -21,9 +21,9 @@
 #include <iostream>
 #include <optional>
 
+#include <utils/util.h>
 #include <compat/endian.h>
 #include <crypto/equihash.h>
-#include <util.h>
 
 static EhSolverCancelledException solver_cancelled;
 

@@ -1,20 +1,20 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <utils/uint256.h>
+#include <utils/util.h>
+#include <arith_uint256.h>
+#include <chain.h>
+#include <chainparams.h>
+#include <primitives/block.h>
+#include <streams.h>
+#include <main.h>
+#include <pow.h>
 
-#include "pow.h"
-
-#include "arith_uint256.h"
-#include "chain.h"
-#include "chainparams.h"
-#include "crypto/equihash.h"
-#include "primitives/block.h"
-#include "streams.h"
-#include "uint256.h"
-#include "util.h"
-#include "main.h"
-#include "sodium.h"
+#include <crypto/equihash.h>
+#include <sodium.h>
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {

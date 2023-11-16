@@ -1,9 +1,13 @@
+// Copyright (c) 2021-2023 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
-#include "utilstrencodings.h"
-#include "tinyformat.h"
-#include "vector_types.h"
-#include "gtest/gtest.h"
+#include <utils/vector_types.h>
+#include <utils/utilstrencodings.h>
+#include <utils/tinyformat.h>
+
+#include <gtest/gtest.h>
 
 using namespace testing;
 using namespace std;

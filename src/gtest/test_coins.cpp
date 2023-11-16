@@ -2,24 +2,23 @@
 // Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include <vector>
 #include <map>
 
 #include <gtest/gtest.h>
 
-#include "coins.h"
-#include "random.h"
-#include "script/standard.h"
-#include "uint256.h"
-#include "utilstrencodings.h"
-#include "consensus/validation.h"
-#include "main.h"
-#include "undo.h"
-#include "primitives/transaction.h"
-#include "pubkey.h"
-#include "zcash/IncrementalMerkleTree.hpp"
-#include "clientversion.h"
+#include <utils/uint256.h>
+#include <utils/utilstrencodings.h>
+#include <coins.h>
+#include <random.h>
+#include <script/standard.h>
+#include <consensus/validation.h>
+#include <main.h>
+#include <undo.h>
+#include <primitives/transaction.h>
+#include <pubkey.h>
+#include <zcash/IncrementalMerkleTree.hpp>
+#include <clientversion.h>
 
 using namespace std;
 using namespace testing;

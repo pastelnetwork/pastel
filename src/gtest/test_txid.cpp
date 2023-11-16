@@ -1,11 +1,13 @@
 #include <gtest/gtest.h>
-#include "primitives/transaction.h"
-#include "clientversion.h"
-#include "serialize.h"
-#include "streams.h"
-#include "uint256.h"
-#include "util.h"
-#include "utilstrencodings.h"
+
+#include <utils/uint256.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
+
+#include <primitives/transaction.h>
+#include <clientversion.h>
+#include <serialize.h>
+#include <streams.h>
 
 /*
  Test that removing #1144 succeeded by verifying the hash of a transaction is over the entire serialized form.
