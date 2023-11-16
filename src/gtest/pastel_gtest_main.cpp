@@ -8,12 +8,12 @@
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 #include "librustzcash.h"
 
+#include <utils/util.h>
 #include <rpc/server.h>
 #include <rpc/register.h>
 #include <crypto/common.h>
 #include <key.h>
 #include <pubkey.h>
-#include <util.h>
 #include <metrics.h>
 #include <orphan-tx.h>
 #include <accept_to_mempool.h>

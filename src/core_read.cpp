@@ -6,16 +6,16 @@
 
 #include <univalue.h>
 
+#include <utils/str_utils.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
 #include <core_io.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <script/script.h>
 #include <serialize.h>
 #include <streams.h>
-#include <util.h>
-#include <utilstrencodings.h>
 #include <version.h>
-#include <str_utils.h>
 
 using namespace std;
 

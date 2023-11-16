@@ -2,10 +2,10 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <utils/base58.h>
 #include <rpc/protocol.h>
 #include <rpc/rpc_parser.h>
 #include <script/standard.h>
-#include <base58.h>
 #include <key.h>
 #include <key_io.h>
 #include <rpc/server.h>

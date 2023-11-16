@@ -1,21 +1,20 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <fstream>
-#include <stdint.h>
+#include <cstdint>
 
 #include <rpc/protocol.h>
 #include <rpc/rpc_consts.h>
 
-#include "random.h"
-#include "tinyformat.h"
-#include "util.h"
-#include "utilstrencodings.h"
-#include "utiltime.h"
-#include "version.h"
+#include <utils/tinyformat.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
+#include <random.h>
+#include <utiltime.h>
+#include <version.h>
 
 using namespace std;
 

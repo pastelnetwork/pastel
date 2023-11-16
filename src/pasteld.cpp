@@ -6,15 +6,15 @@
 #include <cstdio>
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <scope_guard.hpp>
 
 #include <clientversion.h>
+#include <utils/scope_guard.hpp>
+#include <utils/scheduler.h>
+#include <utils/util.h>
 #include <rpc/server.h>
 #include <init.h>
 #include <main.h>
 #include <noui.h>
-#include <scheduler.h>
-#include <util.h>
 #include <httpserver.h>
 #include <httprpc.h>
 #ifdef __linux__

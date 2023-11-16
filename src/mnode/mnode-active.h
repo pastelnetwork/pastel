@@ -1,14 +1,14 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2019-2022 The Pastel Core developers
+// Copyright (c) 2019-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 #include <map>
 
+#include <utils/sync.h>
 #include <chainparams.h>
 #include <net.h>
-#include <sync.h>
 #include <primitives/transaction.h>
 #include <key.h>
 

@@ -6,13 +6,13 @@
 #include <vector>
 #include <deque>
 #include <set>
-#include <stdlib.h>
+#include <cstdlib>
 
-#include <map_types.h>
+#include <utils/map_types.h>
+#include <utils/utilstrencodings.h>
+#include <utils/util.h>
 #include <torcontrol.h>
-#include <utilstrencodings.h>
 #include <net.h>
-#include <util.h>
 #include <crypto/hmac_sha256.h>
 #include <netmsg/nodemanager.h>
 

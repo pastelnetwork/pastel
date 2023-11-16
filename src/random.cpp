@@ -12,9 +12,9 @@
 
 #include <sodium.h>
 
+#include <utils/util.h>             // for LogPrint()
+#include <utils/utilstrencodings.h> // for GetTime()
 #include <serialize.h>        // for begin_ptr(vec)
-#include <util.h>             // for LogPrint()
-#include <utilstrencodings.h> // for GetTime()
 #include <random.h>
 #include <support/cleanse.h>
 

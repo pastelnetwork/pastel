@@ -1,9 +1,9 @@
-// Copyright (c) 2022 The Pastel developers
+// Copyright (c) 2022-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
-#include <enum_util.h>
+#include <utils/enum_util.h>
 
 enum class TEST_ENUM : uint8_t
 {

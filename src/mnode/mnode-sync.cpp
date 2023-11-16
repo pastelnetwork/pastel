@@ -4,7 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
-#include <util.h>
+#include <utils/util.h>
 #include <main.h>
 #include <netmsg/nodemanager.h>
 

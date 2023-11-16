@@ -7,7 +7,7 @@
 
 #include <json/json.hpp>
 
-#include <enum_util.h>
+#include <utils/enum_util.h>
 #include <amount.h>
 #include <consensus/validation.h>
 #include <primitives/transaction.h>

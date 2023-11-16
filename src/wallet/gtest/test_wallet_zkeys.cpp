@@ -1,13 +1,16 @@
+// Copyright (c) 2021-2023 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
-#include <fs.h>
+#include <utils/fs.h>
+#include <utils/util.h>
+#include <utils/scope_guard.hpp>
 #include <zcash/Address.hpp>
 #include <chainparams.h>
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
-#include <util.h>
 #include <pastel_gtest_main.h>
-#include <scope_guard.hpp>
 
 using namespace std;
 

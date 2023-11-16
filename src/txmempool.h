@@ -8,9 +8,9 @@
 #include <limits>
 #include <unordered_map>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
+#include <utils/sync.h>
 #include <coins.h>
-#include <sync.h>
 #include <addressindex.h>
 #include <spentindex.h>
 #include <script/scripttype.h>

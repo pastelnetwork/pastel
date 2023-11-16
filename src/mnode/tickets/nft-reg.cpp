@@ -4,10 +4,10 @@
 #include <cinttypes>
 #include <tuple>
 
-#include <str_utils.h>
+#include <utils/str_utils.h>
+#include <utils/utilstrencodings.h>
 #include <init.h>
 #include <key_io.h>
-#include <utilstrencodings.h>
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/nft-royalty.h>
 #include <mnode/tickets/nft-reg.h>

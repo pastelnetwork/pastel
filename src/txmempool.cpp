@@ -4,6 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <utils/util.h>
 #include <txmempool.h>
 #include <clientversion.h>
 #include <consensus/consensus.h>
@@ -13,7 +14,6 @@
 #include <policy/fees.h>
 #include <streams.h>
 #include <timedata.h>
-#include <util.h>
 #include <utilmoneystr.h>
 #include <version.h>
 

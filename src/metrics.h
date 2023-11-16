@@ -6,7 +6,7 @@
 #include <mutex>
 #include <string>
 
-#include <uint256.h>
+#include <utils/uint256.h>
 
 struct AtomicCounter
 {

@@ -1,25 +1,25 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
 
 #include <univalue.h>
 
+#include <utils/vector_types.h>
+#include <utils/str_utils.h>
+#include <utils/enum_util.h>
+#include <utils/sync.h>
+#include <utils/utilstrencodings.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <main.h>
 #include <httpserver.h>
 #include <rpc/server.h>
 #include <streams.h>
-#include <sync.h>
 #include <txmempool.h>
-#include <utilstrencodings.h>
 #include <version.h>
-#include <str_utils.h>
-#include <enum_util.h>
-#include <vector_types.h>
 
 using namespace std;
 

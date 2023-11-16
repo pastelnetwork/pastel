@@ -2,17 +2,14 @@
 See the Zcash protocol specification for more information.
 https://github.com/zcash/zips/blob/master/protocol/protocol.pdf
 */
-
-#ifndef ZC_NOTE_ENCRYPTION_H_
-#define ZC_NOTE_ENCRYPTION_H_
-
-#include "uint256.h"
-#include "uint252.h"
-
-#include "zcash/Zcash.h"
-#include "zcash/Address.hpp"
-
+#pragma once 
 #include <array>
+
+#include <utils/uint256.h>
+#include <utils/uint252.h>
+
+#include <zcash/Zcash.h>
+#include <zcash/Address.hpp>
 
 namespace libzcash {
 
@@ -197,5 +194,3 @@ typedef libzcash::NoteEncryption<ZC_NOTEPLAINTEXT_SIZE> ZCNoteEncryption;
 typedef libzcash::NoteDecryption<ZC_NOTEPLAINTEXT_SIZE> ZCNoteDecryption;
 
 typedef libzcash::PaymentDisclosureNoteDecryption<ZC_NOTEPLAINTEXT_SIZE> ZCPaymentDisclosureNoteDecryption;
-
-#endif /* ZC_NOTE_ENCRYPTION_H_ */

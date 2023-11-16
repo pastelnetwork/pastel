@@ -3,7 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <util.h>
+#include <utils/util.h>
 #include <protocol.h>
 #include <port_config.h>
 #include <netmsg/nodemanager.h>

@@ -1,19 +1,19 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <string>
 
-#include <tinyformat.h>
 #include <boost/preprocessor/arithmetic/add.hpp>
 #include <boost/preprocessor/arithmetic/sub.hpp>
 #include <boost/preprocessor/comparison/equal.hpp>
 #include <boost/preprocessor/comparison/less.hpp>
 #include <boost/preprocessor/control/if.hpp>
 
+#include <utils/tinyformat.h>
+#include <utils/vector_types.h>
 #include <clientversion.h>
-#include <vector_types.h>
 
 using namespace std;
 

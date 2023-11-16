@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
+#include <utils/enum_util.h>
 #include <script/script_error.h>
 #include <primitives/transaction.h>
-#include <enum_util.h>
 
 class CPubKey;
 class CScript;

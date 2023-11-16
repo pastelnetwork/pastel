@@ -5,11 +5,11 @@
 #include <tuple>
 
 #include <gtest/gtest.h>
-#include <scope_guard.hpp>
 
+#include <utils/fs.h>
+#include <utils/util.h>
+#include <utils/scope_guard.hpp>
 #include <pastelid/pastel_key.h>
-#include <fs.h>
-#include <util.h>
 #include <chainparams.h>
 #include <pastel_gtest_utils.h>
 #include <pastel_gtest_main.h>

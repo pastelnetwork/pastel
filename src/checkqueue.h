@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -9,8 +9,8 @@
 #include <mutex>
 #include <condition_variable>
 
-#include <sync.h>
-#include <svc_thread.h>
+#include <utils/sync.h>
+#include <utils/svc_thread.h>
 
 /** 
  * Queue for verifications that have to be performed.

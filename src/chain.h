@@ -6,12 +6,12 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <atomic>
 
+#include <utils/vector_types.h>
+#include <utils/tinyformat.h>
+#include <utils/uint256.h>
 #include <arith_uint256.h>
 #include <primitives/block.h>
 #include <pow.h>
-#include <tinyformat.h>
-#include <uint256.h>
-#include <vector_types.h>
 
 constexpr int SPROUT_VALUE_VERSION = 1001400;
 constexpr int SAPLING_VALUE_VERSION = 1010100;

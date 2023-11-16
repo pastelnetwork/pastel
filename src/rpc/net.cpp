@@ -5,6 +5,8 @@
 
 #include <univalue.h>
 
+#include <utils/sync.h>
+#include <utils/util.h>
 #include <rpc/server.h>
 #include <clientversion.h>
 #include <main.h>
@@ -12,9 +14,7 @@
 #include <netbase.h>
 #include <chain_options.h>
 #include <protocol.h>
-#include <sync.h>
 #include <timedata.h>
-#include <util.h>
 #include <version.h>
 #include <deprecation.h>
 #include <netmsg/nodemanager.h>

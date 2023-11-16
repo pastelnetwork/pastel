@@ -4,8 +4,9 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
 
+#include <utils/enum_util.h>
+#include <utils/sync.h>
 #include <main.h>
-#include <enum_util.h>
 
 extern CCriticalSection cs_mapSeenMessages;
 extern CCriticalSection cs_mapOurMessages;

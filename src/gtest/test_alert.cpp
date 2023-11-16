@@ -12,19 +12,18 @@
 
 #include <gtest/gtest.h>
 
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
 #include <alert.h>
 #include <chain.h>
 #include <chainparams.h>
 #include <clientversion.h>
 #include <data/alertTests.raw.h>
-
 #include <main.h>
 #include <rpc/protocol.h>
 #include <rpc/server.h>
 #include <serialize.h>
 #include <streams.h>
-#include <util.h>
-#include <utilstrencodings.h>
 #include <key.h>
 #include <alertkeys.h>
 

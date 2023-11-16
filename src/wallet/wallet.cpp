@@ -4,12 +4,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <algorithm>
-#include <assert.h>
+#include <cassert>
 #include <random>
 #include <thread>
 #include <variant>
 #include <cinttypes>
 
+#include <utils/fs.h>
 #include <wallet/wallet.h>
 #include <asyncrpcqueue.h>
 #include <checkpoints.h>
@@ -19,7 +20,6 @@
 #include <consensus/validation.h>
 #include <consensus/consensus.h>
 #include <chain_options.h>
-#include <fs.h>
 #include <init.h>
 #include <key_io.h>
 #include <accept_to_mempool.h>

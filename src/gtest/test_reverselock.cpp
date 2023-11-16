@@ -1,12 +1,12 @@
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <mutex>
 #include <gtest/gtest.h>
 
-#include "reverselock.h"
+#include <utils/reverselock.h>
 
 using namespace std;
 using namespace testing;

@@ -6,14 +6,14 @@
 #include <set>
 #include <array>
 #include <unordered_map>
-#include <stdint.h>
+#include <cstdint>
 
 #include <univalue.h>
 
+#include <utils/util.h>
+#include <utils/str_utils.h>
 #include <rpc/client.h>
 #include <rpc/protocol.h>
-#include <util.h>
-#include <str_utils.h>
 
 using namespace std;
 

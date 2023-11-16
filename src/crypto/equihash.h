@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2016 Jack Grigg
 // Copyright (c) 2016 The Zcash developers
-// Copyright (c) 2021-2022 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -12,10 +12,10 @@
 #include <set>
 
 #include <sodium.h>
-
 #include <crypto/sha256.h>
-#include <utilstrencodings.h>
-#include <vector_types.h>
+
+#include <utils/vector_types.h>
+#include <utils/utilstrencodings.h>
 
 typedef crypto_generichash_blake2b_state eh_HashState;
 typedef uint32_t eh_index;

@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include <utils/util.h>
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <gtest/data/sighash.json.h>
@@ -16,7 +17,6 @@
 #include <script/interpreter.h>
 #include <script/script.h>
 #include <serialize.h>
-#include <util.h>
 #include <version.h>
 #include <sodium.h>
 #include <json_test_vectors.h>

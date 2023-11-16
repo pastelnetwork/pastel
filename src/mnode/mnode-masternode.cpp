@@ -2,14 +2,15 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <inttypes.h>
+#include <cinttypes>
 
-#include <base58.h>
+#include <utils/enum_util.h>
+#include <utils/base58.h>
+#include <utils/util.h>
 #include <init.h>
 #include <netbase.h>
 #include <key_io.h>
 #include <script/standard.h>
-#include <util.h>
 #include <main.h>
 #include <port_config.h>
 

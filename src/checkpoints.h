@@ -1,12 +1,11 @@
 #pragma once
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <map>
 
-#include <uint256.h>
+#include <utils/uint256.h>
 
 class CBlockIndex;
 struct CCheckpointData;

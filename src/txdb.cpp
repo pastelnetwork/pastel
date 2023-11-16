@@ -5,12 +5,12 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
 
+#include <utils/uint256.h>
 #include <txdb.h>
 #include <chainparams.h>
 #include <hash.h>
 #include <main.h>
 #include <pow.h>
-#include <uint256.h>
 #include <script/scripttype.h>
 
 using namespace std;

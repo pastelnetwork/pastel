@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <memory>
 #include <set>
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 #include <string.h>
 #include <utility>
@@ -27,8 +27,8 @@
 #include <optional>
 #include <stdexcept>
 
+#include <utils/enum_util.h>
 #include <prevector.h>
-#include <enum_util.h>
 
 static constexpr uint32_t MAX_DATA_SIZE = 0x02000000;       // 33'554'432
 static constexpr uint32_t MAX_CONTAINER_SIZE = 0x100000;     // 1'048'576

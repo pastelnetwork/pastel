@@ -4,6 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <limits>
 
+#include <utils/util.h>
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <core_io.h>
@@ -12,7 +13,6 @@
 #include <primitives/transaction.h>
 #include <txmempool.h>
 #include <policy/fees.h>
-#include <util.h>
 #include <main.h>
 
 #include <pastel_gtest_main.h>

@@ -9,6 +9,9 @@
 
 #include <univalue.h>
 
+#include <utils/str_utils.h>
+#include <utils/sync.h>
+#include <utils/util.h>
 #include <chain.h>
 #include <key_io.h>
 #include <rpc/server.h>
@@ -17,11 +20,8 @@
 #include <script/script.h>
 #include <script/standard.h>
 #include <zcash/Address.hpp>
-#include <sync.h>
-#include <util.h>
 #include <utiltime.h>
 #include <wallet/wallet.h>
-#include <str_utils.h>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 

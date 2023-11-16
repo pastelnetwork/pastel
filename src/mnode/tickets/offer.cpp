@@ -3,8 +3,8 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
 
+#include <utils/enum_util.h>
 #include <init.h>
-#include <enum_util.h>
 #include <pastelid/common.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/tickets/nft-reg.h>

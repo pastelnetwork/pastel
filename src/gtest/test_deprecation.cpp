@@ -1,16 +1,17 @@
+#include <fstream>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chainparams.h"
-#include "clientversion.h"
-#include "deprecation.h"
-#include "init.h"
-#include "ui_interface.h"
-#include "util.h"
-#include "utilstrencodings.h"
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
+#include <chainparams.h>
+#include <clientversion.h>
+#include <deprecation.h>
+#include <init.h>
+#include <ui_interface.h>
 
 #include <boost/bind/bind.hpp>
-#include <fstream>
 
 using namespace std;
 using namespace testing;

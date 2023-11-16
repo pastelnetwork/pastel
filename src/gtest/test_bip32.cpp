@@ -1,21 +1,18 @@
 // Copyright (c) 2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
 #include <tuple>
-#include <string>
-#include <vector>
 
 #include <gtest/gtest.h>
 
-#include "key.h"
-#include "key_io.h"
-#include "uint256.h"
-#include "util.h"
-#include "utilstrencodings.h"
-#include "vector_types.h"
-#include "clientversion.h"
+#include <utils/vector_types.h>
+#include <utils/uint256.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
+#include <key.h>
+#include <key_io.h>
+#include <clientversion.h>
 
 using namespace std;
 using namespace testing;

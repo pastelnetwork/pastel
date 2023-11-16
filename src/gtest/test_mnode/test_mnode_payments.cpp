@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
-#include <scope_guard.hpp>
 
+#include <utils/scope_guard.hpp>
 #include <mnode/mnode-db.h>
 #include <mnode/mnode-payments.h>
 

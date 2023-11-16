@@ -10,14 +10,14 @@
 #include <fstream>
 #include <unordered_set>
 
-#include <tinyformat.h>
 #include <univalue.h>
 
 #include <gtest/gtest.h>
 
+#include <utils/tinyformat.h>
+#include <utils/fs.h>
 #include <rpc/server.h>
 #include <rpc/client.h>
-#include <fs.h>
 #include <key_io.h>
 #include <accept_to_mempool.h>
 #include <wallet/wallet.h>

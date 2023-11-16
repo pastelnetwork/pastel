@@ -12,9 +12,9 @@
 #include <cstdint>
 #include <string>
 
+#include <utils/uint256.h>
 #include <netbase.h>
 #include <serialize.h>
-#include <uint256.h>
 #include <version.h>
 
 constexpr size_t MESSAGE_START_SIZE = 4;

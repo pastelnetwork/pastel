@@ -1,21 +1,21 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <stdint.h>
+#include <cstdint>
 #include <vector>
 #include <cmath>
 #include <unistd.h>
 
 #include <gtest/gtest.h>
 
-#include <util.h>
+#include <utils/util.h>
+#include <utils/sync.h>
+#include <utils/utilstrencodings.h>
 #include <clientversion.h>
 #include <primitives/transaction.h>
 #include <random.h>
-#include <sync.h>
-#include <utilstrencodings.h>
 #include <utilmoneystr.h>
 
 using namespace std;

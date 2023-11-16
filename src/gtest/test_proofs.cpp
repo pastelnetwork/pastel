@@ -12,8 +12,8 @@
 #include <libsnark/relations/constraint_satisfaction_problems/r1cs/examples/r1cs_examples.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 
+#include <utils/utilstrencodings.h>
 #include <streams.h>
-#include <utilstrencodings.h>
 #include <version.h>
 #include <json_test_vectors.h>
 

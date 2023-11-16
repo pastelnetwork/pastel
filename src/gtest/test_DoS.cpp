@@ -7,9 +7,11 @@
 // Unit tests for denial-of-service detection/prevention code
 //
 
-#include <stdint.h>
+#include <cstdint>
+
 #include <gtest/gtest.h>
 
+#include <utils/util.h>
 #include <consensus/upgrades.h>
 #include <keystore.h>
 #include <main.h>
@@ -17,7 +19,6 @@
 #include <pow.h>
 #include <script/sign.h>
 #include <serialize.h>
-#include <util.h>
 #include <orphan-tx.h>
 
 #include <pastel_gtest_main.h>

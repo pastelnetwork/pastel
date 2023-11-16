@@ -6,7 +6,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 
-#include <svc_thread.h>
+#include <utils/svc_thread.h>
 
 class CScheduler;
 class CWallet;

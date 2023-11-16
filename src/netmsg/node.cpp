@@ -3,9 +3,9 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <atomic>
 
+#include <utils/sync.h>
+#include <utils/utilstrencodings.h>
 #include <random.h>
-#include <sync.h>
-#include <utilstrencodings.h>
 #include <protocol.h>
 #include <hash.h>
 #include <chainparams.h>

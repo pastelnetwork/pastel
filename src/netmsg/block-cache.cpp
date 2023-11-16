@@ -4,9 +4,9 @@
 #include <cinttypes>
 
 #include <consensus/validation.h>
-#include <scope_guard.hpp>
+#include <utils/scope_guard.hpp>
+#include <utils/reverselock.h>
 #include <main.h>
-#include <reverselock.h>
 #include <netmsg/block-cache.h>
 #include <netmsg/nodemanager.h>
 #include <accept_to_mempool.h>

@@ -6,13 +6,13 @@
 #include <unordered_set>
 #include <shared_mutex>
 
+#include <utils/sync.h>
+#include <utils/uint256.h>
+#include <utils/util.h>
 #include <script/sigcache.h>
 #include <memusage.h>
-#include <sync.h>
 #include <pubkey.h>
 #include <random.h>
-#include <uint256.h>
-#include <util.h>
 
 using namespace std;
 

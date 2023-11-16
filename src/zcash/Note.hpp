@@ -1,11 +1,11 @@
 #pragma once
-#include "uint256.h"
+#include <array>
+#include <optional>
+#include <utils/uint256.h>
+
 #include "Zcash.h"
 #include "Address.hpp"
 #include "NoteEncryption.hpp"
-
-#include <array>
-#include <optional>
 
 namespace libzcash {
 

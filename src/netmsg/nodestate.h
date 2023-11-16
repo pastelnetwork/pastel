@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <list>
 
-#include <uint256.h>
+#include <utils/uint256.h>
 #include <netbase.h>
 #include <chain.h>
 #include <net.h>

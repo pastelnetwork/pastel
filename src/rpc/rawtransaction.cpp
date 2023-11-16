@@ -9,6 +9,7 @@
 
 #include <univalue.h>
 
+#include <utils/uint256.h>
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <chain_options.h>
@@ -26,7 +27,6 @@
 #include <script/script_error.h>
 #include <script/sign.h>
 #include <script/standard.h>
-#include <uint256.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif

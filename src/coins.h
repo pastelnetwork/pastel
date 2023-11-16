@@ -8,11 +8,11 @@
 #include <cstdint>
 #include <unordered_map>
 
+#include <utils/uint256.h>
 #include <compressor.h>
 #include <core_memusage.h>
 #include <memusage.h>
 #include <serialize.h>
-#include <uint256.h>
 #include <zcash/IncrementalMerkleTree.hpp>
 
 /** 

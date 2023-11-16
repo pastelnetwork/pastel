@@ -9,7 +9,7 @@
 #include "config/bitcoin-config.h"
 #endif
 
-#include <stdint.h>
+#include <cstdint>
 #include <exception>
 #include <string>
 #include <vector>
@@ -19,6 +19,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include <utils/sync.h>
+#include <utils/tinyformat.h>
+#include <utils/uint256.h>
 #include <amount.h>
 #include <chain.h>
 #include <chainparams.h>
@@ -32,10 +35,7 @@
 #include <script/sigcache.h>
 #include <script/standard.h>
 #include <spentindex.h>
-#include <sync.h>
-#include <tinyformat.h>
 #include <txmempool.h>
-#include <uint256.h>
 #include <script_check.h>
 #include <netmsg/netconsts.h>
 

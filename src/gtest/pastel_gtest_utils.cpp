@@ -3,7 +3,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <pastel_gtest_utils.h>
-#include <fs.h>
+#include <utils/fs.h>
 
 #include <random>
 #include <chainparams.h>

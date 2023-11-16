@@ -1,13 +1,13 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <random>
 
 #include <gtest/gtest.h>
 
-#include <scheduler.h>
-#include <svc_thread.h>
+#include <utils/svc_thread.h>
+#include <utils/scheduler.h>
 
 using namespace std;
 using namespace testing;

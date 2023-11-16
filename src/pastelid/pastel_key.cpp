@@ -1,9 +1,9 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <base58.h>
+#include <utils/str_utils.h>
+#include <utils/base58.h>
 #include <key_io.h>
-#include <str_utils.h>
 #include <pastelid/ed.h>
 #include <pastelid/secure_container.h>
 #include <mnode/mnode-controller.h>

@@ -9,11 +9,11 @@
 
 #include <json/json.hpp>
 
+#include <utils/str_types.h>
+#include <utils/map_types.h>
+#include <utils/numeric_range.h>
 #include <dbwrapper.h>
 #include <chain.h>
-#include <str_types.h>
-#include <map_types.h>
-#include <numeric_range.h>
 #include <primitives/transaction.h>
 #include <txmempool_entry.h>
 #include <datacompressor.h>

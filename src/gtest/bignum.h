@@ -11,7 +11,7 @@
 #include <stdexcept>
 #include <openssl/bn.h>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 
 class bignum_error : public std::runtime_error
 {

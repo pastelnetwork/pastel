@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <utils/sync.h>
 #include <txmempool_entry.h>
-#include <sync.h>
 #include <mnode/tickets/ticket.h>
 #include <mnode/tickets/ticket-types.h>
 

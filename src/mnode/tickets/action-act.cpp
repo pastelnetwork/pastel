@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
-#include <tinyformat.h>
 
+#include <utils/tinyformat.h>
 #include <init.h>
 #include <key_io.h>
 #include <pastelid/common.h>

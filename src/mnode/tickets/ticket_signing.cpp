@@ -3,7 +3,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_map>
 
-#include <str_utils.h>
+#include <utils/str_utils.h>
 #include <serialize.h>
 #include <streams.h>
 #include <pastelid/common.h>

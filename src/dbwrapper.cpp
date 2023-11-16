@@ -1,18 +1,16 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cstdint>
 
-#include <stdint.h>
+#include <utils/util.h>
 
 #include <leveldb/cache.h>
 #include <leveldb/env.h>
 #include <leveldb/filter_policy.h>
 
-#include "dbwrapper.h"
-
-#include "util.h"
-
+#include <dbwrapper.h>
 #include <memenv.h>
 
 using namespace std;

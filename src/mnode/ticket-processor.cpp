@@ -8,7 +8,8 @@
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
-#include <str_utils.h>
+#include <utils/str_utils.h>
+#include <utils/utilstrencodings.h>
 #include <chain.h>
 #include <main.h>
 #include <deprecation.h>
@@ -16,7 +17,6 @@
 #include <core_io.h>
 #include <key_io.h>
 #include <init.h>
-#include <utilstrencodings.h>
 #include <accept_to_mempool.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/tickets-all.h>

@@ -6,14 +6,14 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
-#include <stdint.h>
-#include <stdio.h>
+#include <cstdint>
+#include <cstdio>
 #include <string>
 
 #include <gmock/gmock.h>
 
+#include <utils/uint256.h>
 #include <arith_uint256.h>
-#include <uint256.h>
 #include <serialize.h>
 #include <streams.h>
 #include <version.h>

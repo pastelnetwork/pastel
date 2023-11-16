@@ -18,16 +18,16 @@
 #include <event2/thread.h>
 #include <event2/util.h>
 
+#include <utils/vector_types.h>
+#include <utils/enum_util.h>
+#include <utils/util.h>
+#include <utils/sync.h>
 #include <httpserver.h>
 #include <chainparamsbase.h>
 #include <compat.h>
-#include <util.h>
 #include <netbase.h>
 #include <rpc/protocol.h> // For HTTP status code
-#include <sync.h>
 #include <ui_interface.h>
-#include <vector_types.h>
-#include <enum_util.h>
 
 #ifdef EVENT__HAVE_NETINET_IN_H
 #include <netinet/in.h>

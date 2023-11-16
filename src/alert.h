@@ -7,10 +7,10 @@
 #include <set>
 #include <unordered_map>
 
+#include <utils/vector_types.h>
+#include <utils/sync.h>
+#include <utils/uint256.h>
 #include <serialize.h>
-#include <sync.h>
-#include <vector_types.h>
-#include <uint256.h>
 #include <netmsg/node.h>
 
 class CAlert;

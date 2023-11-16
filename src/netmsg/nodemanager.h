@@ -6,11 +6,11 @@
 #include <set>
 #include <condition_variable>
 
-#include <sync.h>
+#include <utils/vector_types.h>
+#include <utils/svc_thread.h>
+#include <utils/scheduler.h>
+#include <utils/sync.h>
 #include <addrman.h>
-#include <vector_types.h>
-#include <svc_thread.h>
-#include <scheduler.h>
 #include <netmsg/node.h>
 #include <netmsg/netconsts.h>
 

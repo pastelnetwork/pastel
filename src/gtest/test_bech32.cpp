@@ -1,14 +1,14 @@
 // Copyright (c) 2017 Pieter Wuille
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <gtest/gtest.h>
 #include <tuple>
 
-#include <bech32.h>
-#include <str_utils.h>
-#include <vector_types.h>
+#include <gtest/gtest.h>
+
+#include <utils/vector_types.h>
+#include <utils/str_utils.h>
+#include <utils/bech32.h>
 
 using namespace std;
 using namespace testing;

@@ -1,11 +1,11 @@
 #pragma once
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
 #include <txdb.h>
-#include <svc_thread.h>
+#include <utils/svc_thread.h>
 
 void init_zksnark_params();
 

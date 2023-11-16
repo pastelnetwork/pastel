@@ -4,34 +4,34 @@
 #include <thread>
 #include <unistd.h>
 
-#include "coins.h"
-#include "util.h"
-#include "init.h"
-#include "primitives/transaction.h"
-#include "base58.h"
-#include "crypto/equihash.h"
-#include "chain.h"
-#include "chainparams.h"
-#include "consensus/upgrades.h"
-#include "consensus/validation.h"
-#include "main.h"
-#include "miner.h"
-#include "pow.h"
-#include "rpc/server.h"
-#include "script/sign.h"
-#include "sodium.h"
-#include "streams.h"
-#include "txdb.h"
-#include "utiltest.h"
-#include <vector_types.h>
-#include "wallet/wallet.h"
+#include <utils/vector_types.h>
+#include <utils/util.h>
+#include <utils/base58.h>
+#include <coins.h>
+#include <init.h>
+#include <primitives/transaction.h>
+#include <crypto/equihash.h>
+#include <chain.h>
+#include <chainparams.h>
+#include <consensus/upgrades.h>
+#include <consensus/validation.h>
+#include <main.h>
+#include <miner.h>
+#include <pow.h>
+#include <rpc/server.h>
+#include <script/sign.h>
+#include <sodium.h>
+#include <streams.h>
+#include <txdb.h>
+#include <utiltest.h>
+#include <wallet/wallet.h>
 
-#include "zcbenchmarks.h"
+#include <zcbenchmarks.h>
 
-#include "zcash/Zcash.h"
-#include "zcash/IncrementalMerkleTree.hpp"
-#include "zcash/Note.hpp"
-#include "librustzcash.h"
+#include <zcash/Zcash.h>
+#include <zcash/IncrementalMerkleTree.hpp>
+#include <zcash/Note.hpp>
+#include <librustzcash.h>
 
 using namespace libzcash;
 using namespace std;

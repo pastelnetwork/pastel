@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2022 The Pastel Core developers
+// Copyright (c) 2022-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <atomic>
@@ -8,10 +8,9 @@
 #include <condition_variable>
 #include <unordered_map>
 
-#include <scope_guard.hpp>
-
-#include <str_utils.h>
-#include <util.h>
+#include <utils/scope_guard.hpp>
+#include <utils/str_utils.h>
+#include <utils/util.h>
 
 class CServiceThread;
 

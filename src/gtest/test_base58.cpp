@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel Core developers
+// Copyright (c) 2021-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -10,13 +10,14 @@
 #include <gtest/data/base58_keys_valid.json.h>
 #include <gtest/data/base58_keys_invalid.json.h>
 
-#include <base58.h>
+#include <utils/uint256.h>
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
+#include <utils/base58.h>
 #include <key.h>
 #include <key_io.h>
 #include <script/script.h>
-#include <uint256.h>
-#include <util.h>
-#include <utilstrencodings.h>
+
 #include <json_test_vectors.h>
 
 using namespace std;

@@ -10,12 +10,13 @@
 #include <limits>
 #include <stdexcept>
 
-#include <vector_types.h>
-#include <crypto/common.h>
+#include <utils/vector_types.h>
+#include <utils/uint256.h>
 #include <prevector.h>
-#include <uint256.h>
 #include <serialize.h>
 #include <script/scripttype.h>
+
+#include <crypto/common.h>
 
 #ifdef _MSC_VER
 #pragma warning(push)

@@ -4,7 +4,6 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <algorithm>
 #include <atomic>
 #include <sstream>
@@ -13,6 +12,8 @@
 #include <boost/math/distributions/poisson.hpp>
 #include <sodium.h>
 
+#include <utils/enum_util.h>
+#include <utils/util.h>
 #include <main.h>
 #include <addrman.h>
 #include <alert.h>
@@ -36,8 +37,6 @@
 #include <accept_to_mempool.h>
 #include <ui_interface.h>
 #include <undo.h>
-#include <util.h>
-#include <enum_util.h>
 #include <utilmoneystr.h>
 #include <validationinterface.h>
 #include <wallet/asyncrpcoperation_sendmany.h>

@@ -4,12 +4,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
+#include <utils/uint256.h>
 #include <primitives/transaction.h>
 #include <key.h>
 #include <keystore.h>
 #include <script/sign.h>
 #include <script/standard.h>
-#include <uint256.h>
 
 using namespace std;
 

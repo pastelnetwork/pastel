@@ -3,10 +3,10 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unistd.h>
 
+#include <utils/vector_types.h>
 #include <main.h>
 #include <core_io.h>
 #include <key_io.h>
-#include <vector_types.h>
 #include <netmsg/nodemanager.h>
          
 #include <mnode/mnode-controller.h>

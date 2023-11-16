@@ -9,6 +9,7 @@
 #include <string>
 #include <variant>
 
+#include <utils/util.h>
 #include <wallet/asyncrpcoperation_sendmany.h>
 #include <asyncrpcqueue.h>
 #include <amount.h>
@@ -24,7 +25,6 @@
 #include <rpc/server.h>
 #include <rpc/rpc_consts.h>
 #include <timedata.h>
-#include <util.h>
 #include <utilmoneystr.h>
 #include <script/interpreter.h>
 #include <utiltime.h>

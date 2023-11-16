@@ -3,7 +3,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include <util.h>
+#include <utils/util.h>
 #include <main.h>
 
 #include <mnode/mnode-controller.h>

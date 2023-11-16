@@ -32,12 +32,12 @@ Genesis block for RegTest found
 #include <variant>
 #include <vector>
 
+#include <utils/util.h>
+#include <utils/utilstrencodings.h>
 #include <key_io.h>
 #include <main.h>
 #include <crypto/equihash.h>
 #include <port_config.h>
-#include <util.h>
-#include <utilstrencodings.h>
 #include <chainparamsseeds.h>
 
 using namespace std;

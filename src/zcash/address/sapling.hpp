@@ -2,12 +2,11 @@
 // Copyright (c) 2016-2020 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
-#include "serialize.h"
-#include "uint256.h"
-#include "zcash/Zcash.h"
-
 #include <optional>
+
+#include <utils/uint256.h>
+#include <serialize.h>
+#include <zcash/Zcash.h>
 
 namespace libzcash {
 

@@ -29,6 +29,9 @@
 #endif
 #include <librustzcash.h>
 
+#include <utils/str_utils.h>
+#include <utils/scheduler.h>
+#include <utils/util.h>
 #include <init.h>
 #include <chain_options.h>
 #include <crypto/common.h>
@@ -43,7 +46,6 @@
 #include <key.h>
 #include <accept_to_mempool.h>
 #include <main.h>
-#include <str_utils.h>
 #include <metrics.h>
 #include <miner.h>
 #include <net.h>
@@ -52,11 +54,9 @@
 #include <script/standard.h>
 #include <key_io.h>
 #include <script/sigcache.h>
-#include <scheduler.h>
 #include <txdb.h>
 #include <torcontrol.h>
 #include <ui_interface.h>
-#include <util.h>
 #include <utilmoneystr.h>
 #include <validationinterface.h>
 #ifdef ENABLE_WALLET

@@ -11,7 +11,7 @@
 // For more information, see BIP 173.
 #include <cstdint>
 
-#include <vector_types.h>
+#include <utils/vector_types.h>
 
 namespace bech32
 {
