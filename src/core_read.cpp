@@ -9,12 +9,12 @@
 #include <utils/str_utils.h>
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <core_io.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <script/script.h>
-#include <serialize.h>
-#include <streams.h>
 #include <version.h>
 
 using namespace std;

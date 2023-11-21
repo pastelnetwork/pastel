@@ -12,10 +12,9 @@
 
 #include <utils/vector_types.h>
 #include <utils/uint256.h>
-#include <prevector.h>
-#include <serialize.h>
+#include <utils/prevector.h>
+#include <utils/serialize.h>
 #include <script/scripttype.h>
-
 #include <crypto/common.h>
 
 #ifdef _MSC_VER

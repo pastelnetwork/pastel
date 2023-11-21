@@ -3,13 +3,14 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <signal.h>
-#include <stdio.h>
+#include <cstdio>
 #include <cstdlib>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <cinttypes>
 #include <deque>
 #include <thread>
+#include <functional>
 
 #include <event2/buffer.h>
 #include <event2/event.h>
@@ -646,7 +647,7 @@ void HTTPRequest::WriteReply(int nStatus, const string& strReply)
     assert(evb);
     evbuffer_add(evb, strReply.data(), strReply.size());
     HTTPEvent* ev = new HTTPEvent(eventBase, true,
-        boost::bind(evhttp_send_reply, req, nStatus, (const char*)nullptr, (struct evbuffer *)nullptr));
+        bind(evhttp_send_reply, req, nStatus, static_cast<const char*>(nullptr), static_cast<struct evbuffer *>(nullptr)));
     ev->trigger(0);
     replySent = true;
     req = 0; // transferred back to main thread

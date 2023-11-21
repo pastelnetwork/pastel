@@ -10,7 +10,7 @@
 #include <utils/vector_types.h>
 #include <utils/sync.h>
 #include <utils/uint256.h>
-#include <serialize.h>
+#include <utils/serialize.h>
 #include <netmsg/node.h>
 
 class CAlert;

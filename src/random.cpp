@@ -14,7 +14,7 @@
 
 #include <utils/util.h>             // for LogPrint()
 #include <utils/utilstrencodings.h> // for GetTime()
-#include <serialize.h>        // for begin_ptr(vec)
+#include <utils/serialize.h>              // for begin_ptr(vec)
 #include <random.h>
 #include <support/cleanse.h>
 

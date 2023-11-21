@@ -6,15 +6,15 @@
 #include <utils/uint256.h>
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
-
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <netmsg/bloom.h>
 #include <clientversion.h>
 #include <key.h>
 #include <key_io.h>
 #include <merkleblock.h>
 #include <random.h>
-#include <serialize.h>
-#include <streams.h>
+
 #include <pastel_gtest_main.h>
 
 using namespace std;

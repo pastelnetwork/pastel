@@ -243,6 +243,7 @@ UTILS_CPP = \
   utils/ascii85.cpp \
   utils/base58.cpp \
   utils/bech32.cpp \
+  utils/datacompressor.cpp \
   utils/ping_util.cpp \
   utils/scheduler.cpp \
   utils/sync.cpp \
@@ -255,18 +256,23 @@ UTILS_H = \
   utils/ascii85.h \
   utils/base58.h \
   utils/bech32.h \
+  utils/datacompressor.h \
   utils/enum_util.h \
   utils/fs.h \
   utils/map_types.h \
   utils/numeric_range.h \
   utils/ping_util.h \
+  utils/prevector.h \
   utils/reverselock.h \
   utils/scheduler.h \
+  utils/serialize.h \
   utils/set_types.h \
   utils/str_types.h \
   utils/str_utils.h \
+  utils/streams.h \
   utils/svc_thread.h \
   utils/sync.h \
+  utils/threadsafety.h \
   utils/tinyformat.h \
   utils/trimmean.h \
   utils/uint256.h \
@@ -312,7 +318,6 @@ BITCOIN_CORE_H = \
   consensus/validation.h \
   core_io.h \
   core_memusage.h \
-  datacompressor.h\
   deprecation.h \
   ecc_context.h \
   hash.h \
@@ -347,7 +352,6 @@ BITCOIN_CORE_H = \
   policy/fees.h \
   port_config.h \
   pow.h \
-  prevector.h \
   primitives/block.h \
   primitives/transaction.h \
   protocol.h \
@@ -368,14 +372,11 @@ BITCOIN_CORE_H = \
   script/sigcache.h \
   script/sign.h \
   script/standard.h \
-  serialize.h \
-  streams.h \
   support/allocators/secure.h \
   support/allocators/zeroafterfree.h \
   support/cleanse.h \
   support/events.h \
   support/lockedpool.h \
-  threadsafety.h \
   timedata.h \
   torcontrol.h \
   transaction_builder.h \
@@ -550,7 +551,6 @@ libbitcoin_common_a_SOURCES = \
   consensus/upgrades.cpp \
   core_read.cpp \
   core_write.cpp \
-  datacompressor.cpp\
   ecc_context.cpp\
   hash.cpp \
   key.cpp \

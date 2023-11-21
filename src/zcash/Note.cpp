@@ -3,9 +3,9 @@
 #include <crypto/sha256.h>
 
 #include <utils/svc_thread.h>
+#include <utils/streams.h>
 #include <random.h>
 #include <version.h>
-#include <streams.h>
 
 #include <zcash/util.h>
 #include <librustzcash.h>

@@ -3587,6 +3587,63 @@ bool RewindBlockIndexToHeight(const CChainParams& chainparams, bool& bClearWitne
     return true;
 }
 
+bool RewindChainToBlock(string &error, const CChainParams& chainparams, const string& sBlockHash)
+{
+    // validate block hash
+    uint256 block_hash;
+    if (!parse_uint256(error, block_hash, sBlockHash, "block hash"))
+    {
+        error = strprintf("Invalid 'block hash' parameter. %s", error.c_str());
+        return false;
+    }
+
+    LOCK(cs_main);
+
+    constexpr auto REWIND_ERRMSG = "Unable to rewind the chain";
+
+    try
+    {
+        auto it = mapBlockIndex.find(block_hash);
+        if (it == mapBlockIndex.end())
+        {
+            error = strprintf("Block with hash %s is not found in the block chain", sBlockHash);
+            return false;
+        }
+        auto pindex = it->second;
+        if (!chainActive.Contains(pindex))
+        {
+            error = strprintf("Block with hash %s is not on the active chain", sBlockHash);
+            return false;
+        }
+        const uint32_t nOldChainHeight = gl_nChainHeight;
+        LogFnPrintf("Rewinding blockchain to the block height=%d (%s)", pindex->nHeight, sBlockHash);
+
+        CValidationState state(TxOrigin::UNKNOWN);
+        // rewind the chain to the fork point
+        if (!InvalidateBlock(state, chainparams, pindex))
+        {
+            error = strprintf("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, pindex->nHeight);
+            return false;
+        }
+        LogFnPrintf("*** Invalidated %u blocks", nOldChainHeight - pindex->nHeight + 1);
+        if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
+        {
+            error = strprintf("%s: unable to flush the blockchain state to disk", REWIND_ERRMSG);
+            return false;
+        }
+
+        // activate the best chain up to the first invalid block (that can be in a revalidation cache)
+        ActivateBestChain(state, chainparams);
+    }
+    catch (const std::exception& e)
+    {
+		error = strprintf("%s: %s", REWIND_ERRMSG, e.what());
+        return false;
+	}
+
+	return true;
+}
+
 bool RewindBlockIndex(const CChainParams& chainparams, bool& bClearWitnessCaches)
 {
     LOCK(cs_main);

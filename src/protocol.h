@@ -13,8 +13,8 @@
 #include <string>
 
 #include <utils/uint256.h>
+#include <utils/serialize.h>
 #include <netbase.h>
-#include <serialize.h>
 #include <version.h>
 
 constexpr size_t MESSAGE_START_SIZE = 4;

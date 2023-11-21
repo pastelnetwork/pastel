@@ -369,6 +369,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-sysperms", translate("Create new files with system default permissions, instead of umask 077 (only effective with disabled wallet functionality)"));
 #endif
     strUsage += HelpMessageOpt("-txindex", strprintf(translate("Maintain a full transaction index, used by the getrawtransaction rpc call (default: %u)"), 0));
+    strUsage += HelpMessageOpt("-rewindchain=<block_hash>", translate("Rewind chain to specified block hash"));
 
     strUsage += HelpMessageGroup(translate("Connection options:"));
     strUsage += HelpMessageOpt("-addnode=<ip>", translate("Add a node to connect to and attempt to keep the connection open"));
@@ -474,7 +475,7 @@ string HelpMessage(HelpMessageMode mode)
     }
     strUsage += HelpMessageOpt("-minrelaytxfee=<amt>", strprintf(translate("Fees (in %s/kB) smaller than this are considered zero fee for relaying (default: %s)"),
         CURRENCY_UNIT, FormatMoney(gl_ChainOptions.minRelayTxFee.GetFeePerK())));
-    strUsage += HelpMessageOpt("-printtoconsole", translate("Send trace/debug info to console instead of debug.log file"));
+    strUsage += HelpMessageOpt("-printtoconsole=<n>", translate("Set print-to-console mode (0-debug.log file only (default), 1-print only to console, 2-print to both console and debug.log"));
     if (showDebug)
     {
         strUsage += HelpMessageOpt("-printpriority", strprintf("Log transaction priority and fee per kB when mining blocks (default: %u)", 0));
@@ -894,7 +895,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             LogPrintf("%s: parameter interaction: -connect set -> setting -listen=0\n", __func__);
     }
 
-    if (mapArgs.count("-proxy")) {
+    if (mapArgs.count("-proxy"))
+    {
         // to protect privacy, do not listen by default if a default proxy server is specified
         if (SoftSetBoolArg("-listen", false))
             LogPrintf("%s: parameter interaction: -proxy set -> setting -listen=0\n", __func__);
@@ -903,7 +905,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             LogPrintf("%s: parameter interaction: -proxy set -> setting -discover=0\n", __func__);
     }
 
-    if (!GetBoolArg("-listen", DEFAULT_LISTEN)) {
+    if (!GetBoolArg("-listen", DEFAULT_LISTEN))
+    {
         // do not try to retrieve public IP when not listening (pointless)
         if (SoftSetBoolArg("-discover", false))
             LogPrintf("%s: parameter interaction: -listen=0 -> setting -discover=0\n", __func__);
@@ -911,20 +914,23 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             LogPrintf("%s: parameter interaction: -listen=0 -> setting -listenonion=0\n", __func__);
     }
 
-    if (mapArgs.count("-externalip")) {
+    if (mapArgs.count("-externalip"))
+    {
         // if an explicit public IP is specified, do not try to find others
         if (SoftSetBoolArg("-discover", false))
             LogPrintf("%s: parameter interaction: -externalip set -> setting -discover=0\n", __func__);
     }
 
-    if (GetBoolArg("-salvagewallet", false)) {
+    if (GetBoolArg("-salvagewallet", false))
+    {
         // Rewrite just private keys: rescan to find transactions
         if (SoftSetBoolArg("-rescan", true))
             LogPrintf("%s: parameter interaction: -salvagewallet=1 -> setting -rescan=1\n", __func__);
     }
 
     // -zapwallettx implies a rescan
-    if (GetBoolArg("-zapwallettxes", false)) {
+    if (GetBoolArg("-zapwallettxes", false))
+    {
         if (SoftSetBoolArg("-rescan", true))
             LogPrintf("%s: parameter interaction: -zapwallettxes=<mode> -> setting -rescan=1\n", __func__);
     }
@@ -1002,9 +1008,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // block pruning; get the amount of disk space (in MB) to allot for block & undo files
     int64_t nSignedPruneTarget = GetArg("-prune", 0) * 1024 * 1024;
-    if (nSignedPruneTarget < 0) {
+    if (nSignedPruneTarget < 0)
         return InitError(translate("Prune cannot be configured with a negative value."));
-    }
     nPruneTarget = (uint64_t) nSignedPruneTarget;
     if (nPruneTarget)
     {
@@ -1221,7 +1226,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     if (!chainparams.IsRegTest() &&
             GetBoolArg("-showmetrics", isatty(STDOUT_FILENO)) &&
-            !IsPrintToConsole() && !GetBoolArg("-daemon", false)) {
+            !IsPrintToConsole() && !GetBoolArg("-daemon", false))
+    {
         // Start the persistent metrics interface
         ConnectMetricsScreen();
         threadGroup.add_func_thread("metrics", ThreadShowMetricsScreen);
@@ -1251,7 +1257,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // ********************************************************* Step 5: verify wallet database integrity
 #ifdef ENABLE_WALLET
-    if (!fDisableWallet) {
+    if (!fDisableWallet)
+    {
         LogPrintf("Using wallet %s\n", strWalletFile);
         uiInterface.InitMessage(translate("Verifying wallet..."));
 
@@ -1599,7 +1606,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             fLoaded = true;
         } while(false);
 
-        if (!fLoaded) {
+        if (!fLoaded)
+        {
             // first suggest a reindex
             if (!fReset) {
                 bool fRet = uiInterface.ThreadSafeQuestion(
@@ -1802,19 +1810,19 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     }
  #endif // !ENABLE_WALLET
 
-    if (mapArgs.count("-mineraddress")) {
+    if (mapArgs.count("-mineraddress"))
+    {
  #ifdef ENABLE_WALLET
         bool minerAddressInLocalWallet = false;
         if (pwalletMain)
-	{
+	    {
             // Address has alreday been validated
             const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
             CKeyID keyID = get<CKeyID>(addr);
             minerAddressInLocalWallet = pwalletMain->HaveKey(keyID);
         }
-        if (GetBoolArg("-minetolocalwallet", true) && !minerAddressInLocalWallet) {
+        if (GetBoolArg("-minetolocalwallet", true) && !minerAddressInLocalWallet)
             return InitError(translate("-mineraddress is not in the local wallet. Either use a local address, or set -minetolocalwallet=0"));
-        }
  #endif // ENABLE_WALLET
     }
 #endif // ENABLE_MINING
@@ -1823,10 +1831,12 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // if pruning, unset the service bit and perform the initial blockstore prune
     // after any wallet rescanning has taken place.
-    if (fPruneMode) {
+    if (fPruneMode)
+    {
         LogPrintf("Unsetting NODE_NETWORK on prune mode\n");
         nLocalServices &= ~NODE_NETWORK;
-        if (!fReindex) {
+        if (!fReindex)
+        {
             uiInterface.InitMessage(translate("Pruning blockstore..."));
             PruneAndFlush();
         }
@@ -1907,6 +1917,14 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     GenerateBitcoins(GetBoolArg("-gen", false), nProcLimit, chainparams);
  #endif
 #endif
+    string sRewindChainBlockHash = GetArg("-rewindchain", "");
+    if (!sRewindChainBlockHash.empty())
+	{
+        string sErrorMsg;
+        uiInterface.InitMessage(strprintf(translate("Rewinding chain to block %s..."), sRewindChainBlockHash));
+        if (!RewindChainToBlock(sErrorMsg, chainparams, sRewindChainBlockHash))
+            return InitError(sErrorMsg);
+	}
 
     // ********************************************************* Step 13: finished
 

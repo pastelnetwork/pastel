@@ -12,12 +12,12 @@
 #include <utils/enum_util.h>
 #include <utils/sync.h>
 #include <utils/utilstrencodings.h>
+#include <utils/streams.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <main.h>
 #include <httpserver.h>
 #include <rpc/server.h>
-#include <streams.h>
 #include <txmempool.h>
 #include <version.h>
 

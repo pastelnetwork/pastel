@@ -420,19 +420,7 @@
     <ClInclude Include="..\..\..\src\tinyformat.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\threadsafety.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\streams.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\serialize.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\reverselock.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\prevector.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mruset.h">
@@ -531,9 +519,6 @@
     <ClInclude Include="..\..\vs\port\uint128.h">
       <Filter>Source Files\port</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\vector_types.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\legroast.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -556,9 +541,6 @@
       <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\map_types.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\str_types.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-tools.h">
@@ -662,9 +644,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-extra-fees.h">
       <Filter>Source Files\mnode\tickets</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\set_types.h">
-      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\collection-act.h">
       <Filter>Source Files\mnode\tickets</Filter>

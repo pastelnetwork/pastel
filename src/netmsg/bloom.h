@@ -4,7 +4,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <utils/vector_types.h>
-#include <serialize.h>
+#include <utils/serialize.h>
 
 class COutPoint;
 class CTransaction;

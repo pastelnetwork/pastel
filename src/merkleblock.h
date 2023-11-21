@@ -7,7 +7,7 @@
 #include <vector>
 
 #include <utils/uint256.h>
-#include <serialize.h>
+#include <utils/serialize.h>
 #include <primitives/block.h>
 #include <netmsg/bloom.h>
 

@@ -6,7 +6,7 @@
 #include <zstd_errors.h>
 
 #include <utils/str_utils.h>
-#include <datacompressor.h>
+#include <utils/datacompressor.h>
 
 using namespace std;
 

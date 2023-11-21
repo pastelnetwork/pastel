@@ -12,9 +12,9 @@
 
 #include <utils/sync.h>
 #include <utils/uint256.h>
+#include <utils/streams.h>
 #include <compat.h>
 #include <limitedmap.h>
-#include <streams.h>
 #include <netbase.h>
 #include <protocol.h>
 #include <chainparams.h>
@@ -289,8 +289,10 @@ struct CombinerAll
     template<typename I>
     bool operator()(I first, I last) const
     {
-        while (first != last) {
-            if (!(*first)) return false;
+        while (first != last)
+        {
+            if (!(*first))
+                return false;
             ++first;
         }
         return true;

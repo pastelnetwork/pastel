@@ -2,12 +2,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-#include "zcash/address/sapling.hpp"
+#include <zcash/address/sapling.hpp>
 
-#include "hash.h"
-#include "streams.h"
-#include "zcash/NoteEncryption.hpp"
-#include "zcash/prf.h"
+#include <utils/streams.h>
+#include <hash.h>
+#include <zcash/NoteEncryption.hpp>
+#include <zcash/prf.h>
 
 #include <librustzcash.h>
 

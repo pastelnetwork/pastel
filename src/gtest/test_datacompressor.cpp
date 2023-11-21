@@ -7,7 +7,7 @@
 #include <zstd_errors.h>
 
 #include <utils/utilstrencodings.h>
-#include <datacompressor.h>
+#include <utils/datacompressor.h>
 #include <mnode/ticket-processor.h>
 
 using namespace testing;

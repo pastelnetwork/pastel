@@ -13,9 +13,9 @@
 #include <gmock/gmock.h>
 
 #include <utils/uint256.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <arith_uint256.h>
-#include <serialize.h>
-#include <streams.h>
 #include <version.h>
 
 using namespace std;

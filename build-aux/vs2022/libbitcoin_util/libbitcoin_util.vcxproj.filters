@@ -91,6 +91,9 @@
     <ClCompile Include="..\..\..\src\utils\ping_util.cpp">
       <Filter>Source Files\utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\datacompressor.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\clientversion.h">
@@ -214,6 +217,18 @@
       <Filter>Source Files\utils</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\utils\ping_util.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\threadsafety.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\prevector.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\serialize.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\datacompressor.h">
       <Filter>Source Files\utils</Filter>
     </ClInclude>
   </ItemGroup>

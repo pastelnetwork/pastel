@@ -4,10 +4,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <utils/util.h>
+#include <utils/streams.h>
 #include <policy/fees.h>
 #include <amount.h>
 #include <primitives/transaction.h>
-#include <streams.h>
 #include <txmempool.h>
 
 using namespace std;

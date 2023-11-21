@@ -37,9 +37,9 @@
 
 #include <utils/vector_types.h>
 #include <utils/utilstrencodings.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <version.h>
-#include <serialize.h>
-#include <streams.h>
 #include <json_test_vectors.h>
 
 using namespace std;

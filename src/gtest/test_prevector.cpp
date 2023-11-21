@@ -2,15 +2,14 @@
 // Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
 #include <vector>
 
 #include <gtest/gtest.h>
 
-#include <prevector.h>
+#include <utils/prevector.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <random.h>
-#include <serialize.h>
-#include <streams.h>
 
 using namespace std;
 using namespace testing;

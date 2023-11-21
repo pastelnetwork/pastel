@@ -7,8 +7,8 @@
 #include <sstream>
 
 #include <utils/uint256.h>
+#include <utils/serialize.h>
 #include <primitives/transaction.h>
-#include <serialize.h>
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * * and scan through nonce values to make the block's hash satisfy proof-of-work

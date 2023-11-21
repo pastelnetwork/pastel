@@ -10,10 +10,10 @@
 
 #include <utils/scope_guard.hpp>
 #include <utils/util.h>
+#include <utils/streams.h>
 #include <wallet/crypter.h>
 #include <script/script.h>
 #include <script/standard.h>
-#include <streams.h>
 
 bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const v_uint8& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod)
 {

@@ -4,11 +4,11 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
-#include <serialize.h>
+#include <utils/serialize.h>
 
 typedef int64_t CAmount;
 typedef std::vector<CAmount> v_amounts;

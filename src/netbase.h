@@ -7,8 +7,8 @@
 #include <config/bitcoin-config.h>
 #endif
 #include <utils/vector_types.h>
+#include <utils/serialize.h>
 #include <compat.h>
-#include <serialize.h>
 
 extern int nConnectTimeout;
 extern bool fNameLookup;

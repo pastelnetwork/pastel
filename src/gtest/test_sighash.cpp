@@ -1,14 +1,16 @@
 // Copyright (c) 2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <iostream>
 #include <random>
 
 #include <gtest/gtest.h>
+#include <univalue.h>
 
 #include <utils/util.h>
+#include <utils/serialize.h>
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <gtest/data/sighash.json.h>
@@ -16,11 +18,9 @@
 #include <random.h>
 #include <script/interpreter.h>
 #include <script/script.h>
-#include <serialize.h>
 #include <version.h>
 #include <sodium.h>
 #include <json_test_vectors.h>
-#include <univalue.h>
 
 using namespace std;
 using namespace testing;

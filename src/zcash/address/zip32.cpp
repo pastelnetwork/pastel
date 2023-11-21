@@ -2,13 +2,13 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "zip32.h"
+#include <zcash/address/zip32.h>
 
-#include "hash.h"
-#include "random.h"
-#include "streams.h"
-#include "version.h"
-#include "zcash/prf.h"
+#include <utils/streams.h>
+#include <hash.h>
+#include <random.h>
+#include <version.h>
+#include <zcash/prf.h>
 
 #include <librustzcash.h>
 #include <sodium.h>

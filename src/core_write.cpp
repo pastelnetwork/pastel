@@ -6,13 +6,13 @@
 
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <core_io.h>
 #include <key_io.h>
 #include <primitives/transaction.h>
 #include <script/script.h>
 #include <script/standard.h>
-#include <serialize.h>
-#include <streams.h>
 #include <utilmoneystr.h>
 #include <script/interpreter.h>
 
