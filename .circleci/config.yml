@@ -351,6 +351,7 @@ workflows:
                   - circleci_test
             context:
               - Release-testnet
+              - Deploy-Auth
               - weekly-beta-builds
         - build_platform:
             name: Build Pastel for Windows platform (release)
@@ -369,6 +370,7 @@ workflows:
                   - circleci_test
             context:
               - Release-testnet
+              - Deploy-Auth
               - weekly-beta-builds
         - build_platform:
             name: Build Pastel for macOS platform (release)
@@ -386,6 +388,7 @@ workflows:
                   - circleci_test
             context:
               - Release-testnet
+              - Deploy-Auth
               - weekly-beta-builds
         - build_platform:
             name: Build Pastel for Linux platform (release)
@@ -404,6 +407,7 @@ workflows:
                   - circleci_test_mainnet
             context:
               - Release-mainnet
+              - Deploy-Auth
               - weekly-beta-builds
         - build_platform:
             name: Build Pastel for Windows platform (release)
@@ -424,6 +428,7 @@ workflows:
                   - circleci_test_mainnet
             context:
               - Release-mainnet
+              - Deploy-Auth
               - weekly-beta-builds
         - build_platform:
             name: Build Pastel for macOS platform (release)
@@ -443,6 +448,7 @@ workflows:
                   - circleci_test_mainnet
             context:
               - Release-mainnet
+              - Deploy-Auth
               - weekly-beta-builds
         - test_group_rpc_common:
             name: Tests (gtest,RPC common,ext) 
