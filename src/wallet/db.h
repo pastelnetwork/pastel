@@ -11,9 +11,9 @@
 #include <db_cxx.h>
 
 #include <utils/sync.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <clientversion.h>
-#include <serialize.h>
-#include <streams.h>
 #include <version.h>
 
 

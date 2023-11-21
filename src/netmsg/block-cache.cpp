@@ -190,8 +190,21 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
                 LogPrintf("[%s] %sblock %s removed from revalidation cache\n", SAFE_SZ(szFuncName), SAFE_SZ(szDesc), hash.ToString());
         }
 	};
+    const auto& consensusParams = chainparams.GetConsensus();
+    // check if we're in nitial blockchain download (IBD) mode
+    const bool bIsInitialBlockDownload = fnIsInitialBlockDownload(consensusParams);;
+    uint256 tipHash;
+    {
+		LOCK(cs_main);
+        auto chainTip = chainActive.Tip();
+        if (chainTip)
+		    tipHash = chainTip->GetBlockHash();
+	}
+
     unique_lock<mutex> lck(m_CacheMapLock);
     // make sure this function is called only from one thread
+    // also, cs_main lock can be used here only when m_CacheMapLock is unlocked
+    // the correct lock order is: cs_main -> m_CacheMapLock
     if (m_bProcessing)
         return 0;
     m_bProcessing = true;
@@ -255,10 +268,6 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
         return 0;
     }
 
-    const auto& consensusParams = chainparams.GetConsensus();
-    // check if we're in nitial blockchain download (IBD) mode
-    const bool bIsInitialBlockDownload = fnIsInitialBlockDownload(consensusParams);
-
     // try to revalidate blocks
     for (auto& [hash, pfrom, pItem] : vToRevalidate)
     {
@@ -283,11 +292,6 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
 		}
         if (nBlockHeight == nCurrentHeight)
         {
-            uint256 tipHash;
-            {
-				LOCK(cs_main);
-				tipHash = chainActive.Tip()->GetBlockHash();
-			}
             if (tipHash == hash)
             {
                 // block is at the tip of the chain, so it is probably downloaded from another peer
@@ -306,6 +310,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
             }
         }
         {
+            reverse_lock<unique_lock<mutex> > rlock(lck);
             LOCK(cs_main);
 
             auto chainTip = chainActive.Tip();
@@ -396,6 +401,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
             // to unblock chain download (otherwise the peer will stall download)
             if (pItem->bIsInForkedChain)
             {
+                reverse_lock<unique_lock<mutex> > rlock(lck);
                 LOCK(cs_main);
                 // reconsider this block
                 // cs_main should be locked to access to mapBlockIndex

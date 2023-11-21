@@ -10,6 +10,7 @@
 
 #include <utils/sync.h>
 #include <utils/util.h>
+#include <utils/streams.h>
 #include <amount.h>
 #include <chain.h>
 #include <chainparams.h>
@@ -19,7 +20,6 @@
 #include <main.h>
 #include <primitives/transaction.h>
 #include <rpc/server.h>
-#include <streams.h>
 
 using namespace std;
 

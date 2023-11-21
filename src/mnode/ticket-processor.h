@@ -12,11 +12,11 @@
 #include <utils/str_types.h>
 #include <utils/map_types.h>
 #include <utils/numeric_range.h>
+#include <utils/datacompressor.h>
 #include <dbwrapper.h>
 #include <chain.h>
 #include <primitives/transaction.h>
 #include <txmempool_entry.h>
-#include <datacompressor.h>
 #include <consensus/validation.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/mnode-consts.h>

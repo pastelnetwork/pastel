@@ -9,8 +9,8 @@
 
 #include <utils/vector_types.h>
 #include <utils/uint256.h>
+#include <utils/serialize.h>
 #include <hash.h>
-#include <serialize.h>
 
 constexpr size_t BIP32_EXTKEY_SIZE = 74;
 

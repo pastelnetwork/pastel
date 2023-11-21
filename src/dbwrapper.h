@@ -5,9 +5,9 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <utils/util.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <clientversion.h>
-#include <serialize.h>
-#include <streams.h>
 #include <version.h>
 
 #include <leveldb/db.h>

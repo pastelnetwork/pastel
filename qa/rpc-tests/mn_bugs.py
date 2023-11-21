@@ -94,7 +94,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         self.modify_masternode_conf_extP2P(mn_aliases_to_be_modified[1],self.hot_node_num, self.options.tmpdir, mn_ext_add_to_modified_p2p)
         time.sleep(1)
         
-        print("Stoping and re-enabling MN hot node {}...".format(mn_hot_node))
+        print(f"Stopping and reenabling MN hot node {mn_hot_node}...")
         #Stopping hot_node
         stop_node(self.nodes[self.hot_node_num])
 
@@ -193,7 +193,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         res1 = self.nodes[1].governance("ticket", "vote", ticket1_id, "yes")
         assert_equal(res1['result'], 'failed')
         
-        print ("Minig...")
+        print ("Mining...")
         self.slow_mine(2, 10, 2, 0.5)
 
         #Now new blocks are mined and it should not accept the voting again.
@@ -232,7 +232,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         res1 = self.nodes[2].governance("ticket", "vote", ticket1_id, "no")
         assert_equal(res1['result'], 'failed')
 
-        print ("Minig...")
+        print ("Mining...")
         self.slow_mine(2, 10, 2, 0.5)
 
         # Second change it is not allowed

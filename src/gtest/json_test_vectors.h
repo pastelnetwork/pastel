@@ -2,9 +2,9 @@
 #include <univalue.h>
 
 #include <utils/utilstrencodings.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <version.h>
-#include <serialize.h>
-#include <streams.h>
 
 UniValue read_json(const std::string& jsondata);
 UniValue read_json(const char* szJsonData);

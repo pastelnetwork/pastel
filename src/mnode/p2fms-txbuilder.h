@@ -6,7 +6,7 @@
 
 #include <utils/str_types.h>
 #include <utils/vector_types.h>
-#include <streams.h>
+#include <utils/streams.h>
 #include <primitives/transaction.h>
 #include <script/standard.h>
 #ifdef ENABLE_WALLET

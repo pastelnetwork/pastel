@@ -3,11 +3,6 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-//
-// NOTE:
-// boost::thread should be ported to std::thread 
-//
 #include <functional>
 #include <chrono>
 #include <map>
@@ -21,17 +16,19 @@
 //
 // Usage:
 //
-// CScheduler* s = new CScheduler();
-// s->scheduleFromNow(doSomething, 11); // Assuming a: void doSomething() { }
-// s->scheduleFromNow(boost::bind(Class::func, this, argument), 3);
-// boost::thread* t = new boost::thread(boost::bind(CScheduler::serviceQueue, s));
+// unique_ptr<CScheduler> sch = make_unique<CScheduler>();
+// sch->scheduleFromNow(doSomething, 11); // Assuming a: void doSomething() { }
+// sch->scheduleFromNow(std::bind(Class::func, this, argument), 3);
+//   - add worker threads to handle scheduler tasks
+// sch->add_workers(5);
+//   - start scheduler handler
+// sch->serviceQueue();
 //
-// ... then at program shutdown, clean up the thread running serviceQueue:
-// t->interrupt();
-// t->join();
-// delete t;
-// delete s; // Must be done after thread is interrupted/joined.
-//
+// ... then at program shutdown
+//   - signal scheduler worker threads to stop
+// sch->stop_all();
+//   - wait for scheduler worker threads to stop
+// sch->join_all();
 
 class CScheduler
 {

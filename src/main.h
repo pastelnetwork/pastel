@@ -447,6 +447,7 @@ bool AcceptBlockHeader(
  * witness caches should be cleared in order to handle an intended long rewind.
  */
 bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches);
+bool RewindChainToBlock(std::string &sErrorMsg, const CChainParams& chainparams, const std::string& sBlockHash);
 
 class CBlockFileInfo
 {

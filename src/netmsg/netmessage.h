@@ -4,7 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
 
-#include <streams.h>
+#include <utils/streams.h>
 #include <protocol.h>
 
 class CNetMessage

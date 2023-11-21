@@ -5,11 +5,11 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <utils/uint256.h>
 #include <utils/util.h>
+#include <utils/streams.h>
 #include <arith_uint256.h>
 #include <chain.h>
 #include <chainparams.h>
 #include <primitives/block.h>
-#include <streams.h>
 #include <main.h>
 #include <pow.h>
 

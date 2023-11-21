@@ -10,8 +10,8 @@
 #include <utils/vector_types.h>
 #include <utils/enum_util.h>
 #include <utils/utilstrencodings.h>
-#include <serialize.h>
-#include <streams.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <hash.h>
 #include <primitives/transaction.h>
 

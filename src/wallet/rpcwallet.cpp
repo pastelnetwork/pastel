@@ -2212,7 +2212,7 @@ Stores the wallet decryption key in memory for <timeout> seconds.)"
     int64_t nSleepTime = params[1].get_int64();
     LOCK(cs_nWalletUnlockTime);
     nWalletUnlockTime = GetTime() + nSleepTime;
-    RPCRunLater("lockwallet", boost::bind(LockWallet, pwalletMain), nSleepTime);
+    RPCRunLater("lockwallet", bind(LockWallet, pwalletMain), nSleepTime);
 
     return NullUniValue;
 }

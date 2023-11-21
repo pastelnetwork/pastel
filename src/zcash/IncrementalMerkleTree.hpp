@@ -5,7 +5,7 @@
 
 #include <utils/vector_types.h>
 #include <utils/uint256.h>
-#include <serialize.h>
+#include <utils/serialize.h>
 
 #include "Zcash.h"
 #include "zcash/util.h"

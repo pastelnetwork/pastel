@@ -2,14 +2,8 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <string>
-
-#include <boost/preprocessor/arithmetic/add.hpp>
-#include <boost/preprocessor/arithmetic/sub.hpp>
-#include <boost/preprocessor/comparison/equal.hpp>
-#include <boost/preprocessor/comparison/less.hpp>
-#include <boost/preprocessor/control/if.hpp>
+#include <sstream>
 
 #include <utils/tinyformat.h>
 #include <utils/vector_types.h>
@@ -57,41 +51,6 @@ const string CLIENT_NAME("MagicBean");
 #define GIT_COMMIT_DATE "$Format:%cD$"
 #endif
 
-#define RENDER_BETA_STRING(num) "-beta" DO_STRINGIZE(num)
-#define RENDER_RC_STRING(num) "-rc" DO_STRINGIZE(num)
-#define RENDER_DEV_STRING(num) "-" DO_STRINGIZE(num)
-
-#define RENDER_BUILD(build) \
-    BOOST_PP_IF( \
-        BOOST_PP_LESS(build, 25), \
-        RENDER_BETA_STRING(BOOST_PP_ADD(build, 1)), \
-        BOOST_PP_IF( \
-            BOOST_PP_LESS(build, 50), \
-            RENDER_RC_STRING(BOOST_PP_SUB(build, 24)), \
-            BOOST_PP_IF( \
-                BOOST_PP_EQUAL(build, 50), \
-                "", \
-                RENDER_DEV_STRING(BOOST_PP_SUB(build, 50)))))
-
-#define BUILD_DESC_WITH_SUFFIX(maj, min, rev, build, suffix) \
-    "v" DO_STRINGIZE(maj) "." DO_STRINGIZE(min) "." DO_STRINGIZE(rev) RENDER_BUILD(build) "-" DO_STRINGIZE(suffix)
-
-#define BUILD_DESC_FROM_COMMIT(maj, min, rev, build, commit) \
-    "v" DO_STRINGIZE(maj) "." DO_STRINGIZE(min) "." DO_STRINGIZE(rev) RENDER_BUILD(build) "-g" commit
-
-#define BUILD_DESC_FROM_UNKNOWN(maj, min, rev, build) \
-    "v" DO_STRINGIZE(maj) "." DO_STRINGIZE(min) "." DO_STRINGIZE(rev) RENDER_BUILD(build) "-unk"
-
-#ifndef BUILD_DESC
-#ifdef BUILD_SUFFIX
-#define BUILD_DESC BUILD_DESC_WITH_SUFFIX(CLIENT_VERSION_MAJOR, CLIENT_VERSION_MINOR, CLIENT_VERSION_REVISION, CLIENT_VERSION_BUILD, BUILD_SUFFIX)
-#elif defined(GIT_COMMIT_ID)
-#define BUILD_DESC BUILD_DESC_FROM_COMMIT(CLIENT_VERSION_MAJOR, CLIENT_VERSION_MINOR, CLIENT_VERSION_REVISION, CLIENT_VERSION_BUILD, GIT_COMMIT_ID)
-#else
-#define BUILD_DESC BUILD_DESC_FROM_UNKNOWN(CLIENT_VERSION_MAJOR, CLIENT_VERSION_MINOR, CLIENT_VERSION_REVISION, CLIENT_VERSION_BUILD)
-#endif
-#endif
-
 #ifndef BUILD_DATE
 #ifdef GIT_COMMIT_DATE
 #define BUILD_DATE GIT_COMMIT_DATE
@@ -100,8 +59,36 @@ const string CLIENT_NAME("MagicBean");
 #endif
 #endif
 
-const string CLIENT_BUILD(BUILD_DESC CLIENT_VERSION_SUFFIX);
 const string CLIENT_DATE(BUILD_DATE);
+
+string RenderBuildString(const int nBuild)
+{
+    string sBuildString;
+    if (nBuild < 25)
+        sBuildString = strprintf("-beta%d", nBuild + 1);
+    else if (nBuild < 50)
+        sBuildString = strprintf("-rc%d", nBuild - 24);
+    else if (nBuild > 50)
+		sBuildString = strprintf("-%d", nBuild - 50);
+	return sBuildString;
+}
+
+string BuildDescription(const int nMajor, const int nMinor, const int nRevision, const int nBuild)
+{
+	stringstream description;
+    description << "v" << nMajor << "." << nMinor << "." << nRevision << RenderBuildString(nBuild);
+#ifdef BUILD_SUFFIX
+	description << "-" << STRINGIZE(BUILD_SUFFIX);
+#elif defined(GIT_COMMIT_ID)
+    description << "-g" << STRINGIZE(GIT_COMMIT_ID);
+#else
+    description << "-unk";
+#endif
+    description << CLIENT_VERSION_SUFFIX;
+    return description.str();
+}
+
+const string CLIENT_BUILD = BuildDescription(CLIENT_VERSION_MAJOR, CLIENT_VERSION_MINOR, CLIENT_VERSION_REVISION, CLIENT_VERSION_BUILD);
 
 string FormatVersion(int nVersion)
 {

@@ -5,8 +5,6 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdio>
 
-#include <boost/algorithm/string/predicate.hpp>
-
 #include <clientversion.h>
 #include <utils/scope_guard.hpp>
 #include <utils/scheduler.h>
@@ -132,8 +130,10 @@ bool AppInit(int argc, char* argv[])
         // Command-line RPC
         bool fCommandLine = false;
         for (int i = 1; i < argc; i++)
-            if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "pastel:"))
+        {
+            if (!IsSwitchChar(argv[i][0]) && !str_istarts_with(argv[i], "pastel:"))
                 fCommandLine = true;
+        }
 
         if (fCommandLine)
         {

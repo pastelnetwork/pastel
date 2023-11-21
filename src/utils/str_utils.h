@@ -304,6 +304,28 @@ static bool str_starts_with(const std::string& s, const char* strStart)
 }
 
 /**
+ * Check if the string s starts with the given string strStart (case insensitive).
+ * c++20 standard implements starts_with for std::string.
+ * 
+ * \param s - string to check
+ * \param strStart - a null-terminated string to search for
+ * \return true is string s starts with the provided string, false otherwise
+ */
+static bool str_istarts_with(const std::string& s, const char* strStart)
+{
+    if (!strStart || !*strStart || s.empty())
+        return false;
+    const size_t nLength = strlen(strStart);
+    if (s.size() < nLength)
+        return false;
+    return std::equal(strStart, strStart + nLength, s.cbegin(),
+        [](char a, char b)
+        {
+			return std::tolower(a) == std::tolower(b);
+        });
+}
+
+/**
  * Check if the string s ends with the given suffix.
  * c++20 standard implements ends_with for std::string.
  * 

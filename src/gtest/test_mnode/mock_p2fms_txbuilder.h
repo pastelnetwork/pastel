@@ -6,7 +6,7 @@
 
 #include <gmock/gmock.h>
 
-#include <streams.h>
+#include <utils/streams.h>
 #include <primitives/transaction.h>
 #include <mnode/tickets/ticket.h>
 #include <mnode/p2fms-txbuilder.h>
