@@ -6,14 +6,14 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
 
-#include <utils/uint256.h>
-#include <prevector.h>
-#include <serialize.h>
-#include <version.h>
-
 #include <crypto/ripemd160.h>
 #include <crypto/sha256.h>
 #include <sodium.h>
+
+#include <utils/uint256.h>
+#include <utils/prevector.h>
+#include <utils/serialize.h>
+#include <version.h>
 
 typedef uint256 ChainCode;
 

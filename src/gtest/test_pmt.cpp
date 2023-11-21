@@ -7,9 +7,9 @@
 #include <gtest/gtest.h>
 
 #include <utils/uint256.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <merkleblock.h>
-#include <serialize.h>
-#include <streams.h>
 #include <arith_uint256.h>
 #include <version.h>
 #include <random.h>

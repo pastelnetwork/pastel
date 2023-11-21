@@ -7,6 +7,7 @@
 #include <utils/vector_types.h>
 #include <utils/util.h>
 #include <utils/base58.h>
+#include <utils/streams.h>
 #include <coins.h>
 #include <init.h>
 #include <primitives/transaction.h>
@@ -21,7 +22,6 @@
 #include <rpc/server.h>
 #include <script/sign.h>
 #include <sodium.h>
-#include <streams.h>
 #include <txdb.h>
 #include <utiltest.h>
 #include <wallet/wallet.h>

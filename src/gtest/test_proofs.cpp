@@ -13,7 +13,7 @@
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_ppzksnark/r1cs_ppzksnark.hpp>
 
 #include <utils/utilstrencodings.h>
-#include <streams.h>
+#include <utils/streams.h>
 #include <version.h>
 #include <json_test_vectors.h>
 

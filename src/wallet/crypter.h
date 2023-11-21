@@ -6,9 +6,9 @@
 #include <atomic>
 
 #include <utils/vector_types.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <keystore.h>
-#include <serialize.h>
-#include <streams.h>
 #include <support/allocators/secure.h>
 #include <zcash/Address.hpp>
 

@@ -5,6 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <utils/util.h>
+#include <utils/streams.h>
 #include <txmempool.h>
 #include <clientversion.h>
 #include <consensus/consensus.h>
@@ -12,7 +13,6 @@
 #include <accept_to_mempool.h>
 #include <main.h>
 #include <policy/fees.h>
-#include <streams.h>
 #include <timedata.h>
 #include <utilmoneystr.h>
 #include <version.h>

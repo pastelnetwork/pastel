@@ -9,7 +9,7 @@
 #include <shared_mutex>
 #include <string>
 
-#include <threadsafety.h>
+#include <utils/threadsafety.h>
 
 ////////////////////////////////////////////////
 //                                            //
@@ -121,7 +121,7 @@ typedef AnnotatedMixin<std::mutex> CWaitableCriticalSection;
 typedef AnnotatedSharedMixin<std::shared_mutex> CSharedMutex;
 typedef AnnotatedSharedMixin<std::shared_timed_mutex> CSharedTimedMutex;
 
-/** Just a typedef for boost::condition_variable, can be wrapped later if desired */
+/** Just a typedef for std::condition_variable, can be wrapped later if desired */
 typedef std::condition_variable CConditionVariable;
 
 enum class LockType : int

@@ -38,7 +38,8 @@ string static EncodeDumpTime(int64_t nTime) {
     return DateTimeStrFormat("%Y-%m-%dT%H:%M:%SZ", nTime);
 }
 
-int64_t static DecodeDumpTime(const string &str) {
+int64_t static DecodeDumpTime(const string &str)
+{
     static const boost::posix_time::ptime epoch = boost::posix_time::from_time_t(0);
     static const locale loc(locale::classic(),
         new boost::posix_time::time_input_facet("%Y-%m-%dT%H:%M:%SZ"));

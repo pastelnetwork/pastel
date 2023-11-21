@@ -2,7 +2,7 @@
 #include <variant>
 
 #include <utils/uint256.h>
-#include <serialize.h>
+#include <utils/serialize.h>
 
 namespace libzcash {
 

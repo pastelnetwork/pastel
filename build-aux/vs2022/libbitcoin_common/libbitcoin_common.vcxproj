@@ -99,7 +99,6 @@
     <ClCompile Include="..\..\..\src\consensus\upgrades.cpp" />
     <ClCompile Include="..\..\..\src\core_read.cpp" />
     <ClCompile Include="..\..\..\src\core_write.cpp" />
-    <ClCompile Include="..\..\..\src\datacompressor.cpp" />
     <ClCompile Include="..\..\..\src\ecc_context.cpp" />
     <ClCompile Include="..\..\..\src\hash.cpp" />
     <ClCompile Include="..\..\..\src\key.cpp" />
@@ -130,7 +129,6 @@
     <ClInclude Include="..\..\..\src\consensus\params.h" />
     <ClInclude Include="..\..\..\src\consensus\upgrades.h" />
     <ClInclude Include="..\..\..\src\consensus\validation.h" />
-    <ClInclude Include="..\..\..\src\datacompressor.h" />
     <ClInclude Include="..\..\..\src\ecc_context.h" />
     <ClInclude Include="..\..\..\src\hash.h" />
     <ClInclude Include="..\..\..\src\key.h" />

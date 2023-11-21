@@ -37,9 +37,9 @@
 #include <utils/sync.h>
 #include <utils/utilstrencodings.h>
 #include <utils/scope_guard.hpp>
+#include <utils/serialize.h>
 #include <chainparamsbase.h>
 #include <random.h>
-#include <serialize.h>
 #include <utiltime.h>
 #include <clientversion.h>
 
@@ -165,7 +165,7 @@ static list<string> *vMsgsBeforeOpenLog;
 /**
  * Set print-to-console mode gl_nPrintToConsoleMode.
  * Supported modes:
- *   0 - do not print anything to console
+ *   0 - do not print anything to console (default)
  *   1 - print only to console
  *   2 - print to console and debug.log
  * 

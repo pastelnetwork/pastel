@@ -4,7 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdexcept>
 
-#include <streams.h>
+#include <utils/streams.h>
 
 // default zstd compression level
 constexpr int ZSTD_DEFAULT_COMPRESS_LEVEL = 22;

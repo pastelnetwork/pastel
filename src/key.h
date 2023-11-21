@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <utils/uint256.h>
+#include <utils/serialize.h>
 #include <pubkey.h>
-#include <serialize.h>
 #include <support/allocators/secure.h>
 
 /**

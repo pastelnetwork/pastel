@@ -1,10 +1,10 @@
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
-#include "streams.h"
-#include "chainparams.h"
+#include <utils/streams.h>
+#include <chainparams.h>
 #include <test_mnode/mock_ticket.h>
 #include <mnode/ticket-processor.h>
 

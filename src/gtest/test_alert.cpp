@@ -14,6 +14,8 @@
 
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
+#include <utils/serialize.h>
+#include <utils/streams.h>
 #include <alert.h>
 #include <chain.h>
 #include <chainparams.h>
@@ -22,8 +24,6 @@
 #include <main.h>
 #include <rpc/protocol.h>
 #include <rpc/server.h>
-#include <serialize.h>
-#include <streams.h>
 #include <key.h>
 #include <alertkeys.h>
 

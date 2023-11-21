@@ -60,7 +60,7 @@ extern AtomicCounter ehSolverRuns;
 extern AtomicCounter solutionTargetChecks;
 extern AtomicTimer miningTimer;
 
-void TrackMinedBlock(uint256 hash);
+void TrackMinedBlock(const uint256 &hash);
 
 void MarkStartTime();
 double GetLocalSolPS();
