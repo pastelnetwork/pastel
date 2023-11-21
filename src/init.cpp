@@ -29,6 +29,9 @@
 #endif
 #include <librustzcash.h>
 
+#include <str_utils.h>
+#include <scheduler.h>
+#include <util.h>
 #include <init.h>
 #include <chain_options.h>
 #include <crypto/common.h>
@@ -43,7 +46,6 @@
 #include <key.h>
 #include <accept_to_mempool.h>
 #include <main.h>
-#include <str_utils.h>
 #include <metrics.h>
 #include <miner.h>
 #include <net.h>
@@ -52,11 +54,9 @@
 #include <script/standard.h>
 #include <key_io.h>
 #include <script/sigcache.h>
-#include <scheduler.h>
 #include <txdb.h>
 #include <torcontrol.h>
 #include <ui_interface.h>
-#include <util.h>
 #include <utilmoneystr.h>
 #include <validationinterface.h>
 #ifdef ENABLE_WALLET
@@ -342,7 +342,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-alerts", strprintf(translate("Receive and display P2P network alerts (default: %u)"), DEFAULT_ALERTS));
     strUsage += HelpMessageOpt("-alertnotify=<cmd>", translate("Execute command when a relevant alert is received or we see a really long fork (%s in cmd is replaced by message)"));
     strUsage += HelpMessageOpt("-blocknotify=<cmd>", translate("Execute command when the best block changes (%s in cmd is replaced by block hash)"));
-    strUsage += HelpMessageOpt("-checkblocks=<n>", strprintf(translate("How many blocks to check at startup (default: %u, 0 = all)"), 288));
+    strUsage += HelpMessageOpt("-checkblocks=<n>", strprintf(translate("How many blocks to check at startup (default: %u, 0 = all)"), FORK_BLOCK_LIMIT));
     strUsage += HelpMessageOpt("-checklevel=<n>", strprintf(translate("How thorough the block verification of -checkblocks is (0-4, default: %u)"), 3));
     strUsage += HelpMessageOpt("-conf=<file>", strprintf(translate("Specify configuration file (default: %s)"), "pastel.conf"));
     if (mode == HMM_BITCOIND) //-V547
@@ -474,7 +474,7 @@ string HelpMessage(HelpMessageMode mode)
     }
     strUsage += HelpMessageOpt("-minrelaytxfee=<amt>", strprintf(translate("Fees (in %s/kB) smaller than this are considered zero fee for relaying (default: %s)"),
         CURRENCY_UNIT, FormatMoney(gl_ChainOptions.minRelayTxFee.GetFeePerK())));
-    strUsage += HelpMessageOpt("-printtoconsole", translate("Send trace/debug info to console instead of debug.log file"));
+    strUsage += HelpMessageOpt("-printtoconsole=<n>", translate("Set print-to-console mode (0-debug.log file only (default), 1-print only to console, 2-print to both console and debug.log"));
     if (showDebug)
     {
         strUsage += HelpMessageOpt("-printpriority", strprintf("Log transaction priority and fee per kB when mining blocks (default: %u)", 0));
@@ -1504,8 +1504,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     // connect Pastel Ticket txmempool tracker
     mempool.AddTxMemPoolTracker(CPastelTicketProcessor::GetTxMemPoolTracker());
 
-    bool clearWitnessCaches = false;
-
+    bool bClearWitnessCaches = false;
     bool fLoaded = false;
     while (!fLoaded) {
         bool fReset = fReindex;
@@ -1568,21 +1567,22 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                 if (!fReindex)
                 {
                     uiInterface.InitMessage(translate("Rewinding blocks if needed..."));
-                    if (!RewindBlockIndex(chainparams, clearWitnessCaches))
+                    if (!RewindBlockIndex(chainparams, bClearWitnessCaches))
                     {
                         strLoadError = translate("Unable to rewind the database to a pre-upgrade state. You will need to redownload the blockchain");
                         break;
                     }
                 }
 
-                uiInterface.InitMessage(translate("Verifying blocks..."));
-                if (fHavePruned && GetArg("-checkblocks", 288) > MIN_BLOCKS_TO_KEEP)
+                const int64_t nCheckBlocks = GetArg("-checkblocks", FORK_BLOCK_LIMIT);
+                uiInterface.InitMessage(strprintf(translate("Verifying last %" PRId64 " blocks..."), nCheckBlocks));
+                if (fHavePruned && nCheckBlocks > MIN_BLOCKS_TO_KEEP)
                 {
-                    LogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%d may fail\n",
-                        MIN_BLOCKS_TO_KEEP, GetArg("-checkblocks", 288));
+                    LogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%" PRId64 " may fail\n",
+                        MIN_BLOCKS_TO_KEEP, nCheckBlocks);
                 }
                 if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, static_cast<int>(GetArg("-checklevel", 3)),
-                               static_cast<int>(GetArg("-checkblocks", 288))))
+                               static_cast<int>(nCheckBlocks)))
                 {
                     strLoadError = translate("Corrupted block database detected");
                     break;
@@ -1735,7 +1735,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         RegisterValidationInterface(pwalletMain);
 
         CBlockIndex *pindexRescan = chainActive.Tip();
-        if (clearWitnessCaches || GetBoolArg("-rescan", false))
+        if (bClearWitnessCaches || GetBoolArg("-rescan", false))
         {
             pwalletMain->ClearNoteWitnessCache();
             pindexRescan = chainActive.Genesis();

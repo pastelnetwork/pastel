@@ -5,10 +5,11 @@
 
 #include <consensus/validation.h>
 #include <scope_guard.hpp>
-#include <main.h>
 #include <reverselock.h>
+#include <main.h>
 #include <netmsg/block-cache.h>
 #include <netmsg/nodemanager.h>
+#include <accept_to_mempool.h>
 
 using namespace std;
 
@@ -171,9 +172,10 @@ void CBlockCache::CleanupUnlinkedMap(const uint256& hash)
  * Blocks are revalidated only after waiting m_nBlockRevalidationWaitTime secs in a cache.
  * 
  * \param chainparams - chain parameters
+ * \param bForce - if true - force revalidation of all cached blocks, default is false
  * \return number of blocks successfully revalidated
  */
-size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
+size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const bool bForce)
 {
     if (m_bProcessing)
         return 0;
@@ -185,11 +187,24 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
             m_BlockCacheMap.erase(hash);
             CleanupUnlinkedMap(hash);
             if (LogAcceptCategory("net"))
-                LogPrintf("[%s] %sblock %s removed from revalidation cache", SAFE_SZ(szFuncName), SAFE_SZ(szDesc), hash.ToString());
+                LogPrintf("[%s] %sblock %s removed from revalidation cache\n", SAFE_SZ(szFuncName), SAFE_SZ(szDesc), hash.ToString());
         }
 	};
+    const auto& consensusParams = chainparams.GetConsensus();
+    // check if we're in nitial blockchain download (IBD) mode
+    const bool bIsInitialBlockDownload = fnIsInitialBlockDownload(consensusParams);;
+    uint256 tipHash;
+    {
+		LOCK(cs_main);
+        auto chainTip = chainActive.Tip();
+        if (chainTip)
+		    tipHash = chainTip->GetBlockHash();
+	}
+
     unique_lock<mutex> lck(m_CacheMapLock);
     // make sure this function is called only from one thread
+    // also, cs_main lock can be used here only when m_CacheMapLock is unlocked
+    // the correct lock order is: cs_main -> m_CacheMapLock
     if (m_bProcessing)
         return 0;
     m_bProcessing = true;
@@ -217,7 +232,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         // block should be revalidated only after m_nBlockRevalidationWaitTime secs
         // from either last revalidation attempt or time the block was cached
         // this wait time is adjusted dynamically based on the cache size change rate
-        if (difftime(nNow, item.GetLastUpdateTime()) < m_nBlockRevalidationWaitTime)
+        if (!bForce && (difftime(nNow, item.GetLastUpdateTime()) < m_nBlockRevalidationWaitTime))
             continue;
 
         // get the node from which the cached block was downloaded
@@ -265,31 +280,40 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         ++pItem->nValidationCounter;
         // chain can be rolled back and this block become obsolete
         // so check if block height is less than the current chain height
-        if (nBlockHeight < nCurrentHeight)
+        // but keep this block in the cache until IBD is finished and if block exceeds the max fork limit
+        if (!bIsInitialBlockDownload && 
+            (nBlockHeight < nCurrentHeight) && 
+            (nCurrentHeight - nBlockHeight > FORK_BLOCK_LIMIT))
         {
-			LogFnPrintf("block %s height %u is less than current chain height %u",
-				sHash, nBlockHeight, nCurrentHeight);
-			vToDelete.push_back(hash);
-			continue;
+            LogFnPrintf("block %s height %u is less than current chain height %u, exceeds fork limit of %d blocks",
+                sHash, nBlockHeight, nCurrentHeight, FORK_BLOCK_LIMIT);
+            vToDelete.push_back(hash);
+            continue;
 		}
         if (nBlockHeight == nCurrentHeight)
         {
-            // block is at the tip of the chain, so it is probably downloaded from another peer
-            // and we should not revalidate it
-            LogFnPrintf("block %s (height=%u) is at the tip of the chain, skip revalidation", sHash, nBlockHeight);
-            vToDelete.push_back(hash);
-            // process next potential blocks to be included into blockchain
-            // blocks with prevBlockHash==hash are added to the multimap cache
-            if (ProcessNextBlock(hash))
+            if (tipHash == hash)
             {
-                reverse_lock<unique_lock<mutex> > rlock(lck);
-                CValidationState state1(state.getTxOrigin());
-                ActivateBestChain(state1, chainparams);
+                // block is at the tip of the chain, so it is probably downloaded from another peer
+                // and we should not revalidate it
+                LogFnPrintf("block %s (height=%u) is at the tip of the chain, skip revalidation", sHash, nBlockHeight);
+                vToDelete.push_back(hash);
+                // process next potential blocks to be included into blockchain
+                // blocks with prevBlockHash==hash are added to the multimap cache
+                if (ProcessNextBlock(hash))
+                {
+                    reverse_lock<unique_lock<mutex> > rlock(lck);
+                    CValidationState state1(state.getTxOrigin());
+                    ActivateBestChain(state1, chainparams);
+                }
+                continue;
             }
-            continue;
         }
         {
+            reverse_lock<unique_lock<mutex> > rlock(lck);
             LOCK(cs_main);
+
+            auto chainTip = chainActive.Tip();
             // reconsider this block
             // cs_main should be locked to access to mapBlockIndex
             auto itBlock = mapBlockIndex.find(hash);
@@ -303,6 +327,58 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
                 }
                 LogFnPrintf("revalidating block %s from peer=%d at height=%u, attempt #%u",
                     sHash, pItem->nodeId, nBlockHeight, pItem->nValidationCounter);
+                CBlockIndex* pLastCommonAncestorBlockIndex = nullptr;
+                if (!pItem->bIsInForkedChain)
+                {
+                    // find last common ancestor of the block and the current chain tip
+                    pLastCommonAncestorBlockIndex = FindLastCommonAncestorBlockIndex(chainTip, pindex);
+                    if (pLastCommonAncestorBlockIndex && static_cast<uint32_t>(pLastCommonAncestorBlockIndex->nHeight) < nCurrentHeight)
+                    {
+                        LogFnPrintf("last common ancestor for the block %s from peer=%d is at height=%u (%s)",
+                            sHash, pItem->nodeId, pLastCommonAncestorBlockIndex->nHeight, pLastCommonAncestorBlockIndex->GetBlockHashString());
+                        // this block is in a forked chain
+                        pItem->bIsInForkedChain = true;
+                    }
+                }
+                // set valid fork detected flag only if:
+                //   - we don't have a valid fork detected yet
+                //   - current block being validates is in the same forked chain as best header
+                //   - best header is higher than current chain tip by at least 6 blocks
+                //   - we have a valid fork with a much higher chain work
+                if (!m_bValidForkDetected && 
+                    pItem->bIsInForkedChain && 
+                    pindexBestHeader && 
+                    pindexBestHeader->nHeight > chainTip->nHeight + 6 &&
+                    (pindexBestHeader->GetAncestor(nBlockHeight) == pindex) &&
+                    (pindexBestHeader->nChainWork > chainTip->nChainWork + (GetBlockProof(*chainTip) * 6)))
+                {
+                    // we have a valid fork with a much higher chain work
+                    // check that we have all block data for the forked chain up to the 6 blocks after the current chain tip height
+                    // some blocks we may have in the revalidation cache
+                    if (!pLastCommonAncestorBlockIndex)
+                        pLastCommonAncestorBlockIndex = FindLastCommonAncestorBlockIndex(chainTip, pindexBestHeader);
+                    if (pLastCommonAncestorBlockIndex)
+                    {
+                        auto pindexWalk = pindexBestHeader->GetAncestor(chainTip->nHeight + 7);
+                        bool bHaveAllBlocksData = true;
+                        while (pindexWalk && pindexWalk != pLastCommonAncestorBlockIndex)
+                        {
+                            if (!(pindexWalk->nStatus & BLOCK_HAVE_DATA) && 
+                                (m_BlockCacheMap.find(pindexWalk->GetBlockHash()) == m_BlockCacheMap.cend()))
+                            {
+                                bHaveAllBlocksData = false;
+                                break;
+                            }
+                            pindexWalk = pindexWalk->pprev;
+                        }
+                        if (bHaveAllBlocksData)
+                        {
+                            m_bValidForkDetected = true;
+                            LogFnPrintf("*** VALID FORK DETECTED, best block height=%u (%s)",
+                                pindexBestHeader->nHeight, pindexBestHeader->GetBlockHashString());
+                        }
+                    }
+                }
                 // remove invalidity status from a block and its descendants
                 ReconsiderBlock(state, pindex);
             }
@@ -320,6 +396,24 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         const bool bIsMissingInputs = state.IsRejectCode(REJECT_MISSING_INPUTS);
         if (bIsMissingInputs) // block failed revalidation
         {
+            // block failed revalidation due to missing inputs
+            // but if the block is in a forked chain, we should call ReconsiderBlock
+            // to unblock chain download (otherwise the peer will stall download)
+            if (pItem->bIsInForkedChain)
+            {
+                reverse_lock<unique_lock<mutex> > rlock(lck);
+                LOCK(cs_main);
+                // reconsider this block
+                // cs_main should be locked to access to mapBlockIndex
+                auto itBlock = mapBlockIndex.find(hash);
+                if (itBlock != mapBlockIndex.end())
+                {
+                    CBlockIndex* pindex = itBlock->second;
+                    // remove invalidity status from a block and its descendants
+                    if (pindex)
+                        ReconsiderBlock(state, pindex);
+                }
+            }
             // update time of the last revalidation attempt
             pItem->nTimeValidated = time(nullptr);
             // clear revalidating flag for this item to be processed again
@@ -382,8 +476,11 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams)
         } 
     }
 
-    fnDeleteCacheItems(__METHOD_NAME__, vToDelete);  // delete processed blocks
-    fnDeleteCacheItems(__METHOD_NAME__, vRejected, "rejected "); // delete rejected blocks
+    // delete processed blocks
+    fnDeleteCacheItems(__METHOD_NAME__, vToDelete);
+
+    // delete rejected blocks
+    fnDeleteCacheItems(__METHOD_NAME__, vRejected, "rejected ");
     return nCount;
 }
 

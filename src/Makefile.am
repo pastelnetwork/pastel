@@ -233,11 +233,17 @@ PASTELID_CPP =\
   pastelid/secure_container.cpp\
   pastelid/pastel_key.cpp
 
-PASTELID_H =\
+PASTELID_H = \
   pastelid/secure_container.h\
   pastelid/pastel_key.h\
   pastelid/common.h\
   pastelid/ed.h
+
+UTILS_CPP = \
+  utils/ping_util.cpp
+
+UTILS_H = \
+  utils/ping_util.h
 
 .PHONY: FORCE collate-libsnark check-symbols check-security
 # bitcoin core #
@@ -387,7 +393,7 @@ BITCOIN_CORE_H = \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
   zmq/zmqpublishnotifier.h \
-  $(MNODE_H)\
+  $(MNODE_H) \
   $(PASTELID_H)
 
 obj/build.h: FORCE
@@ -555,7 +561,8 @@ libbitcoin_common_a_SOURCES = \
   script/standard.cpp \
   transaction_builder.cpp \
   utiltest.cpp \
-  $(BITCOIN_CORE_H)\
+  $(UTILS_H) \
+  $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 
 # util: shared between all executables.
@@ -582,6 +589,8 @@ libbitcoin_util_a_SOURCES =\
   utilmoneystr.cpp \
   utilstrencodings.cpp \
   utiltime.cpp \
+  $(UTILS_CPP) \
+  $(UTILS_H) \
   $(BITCOIN_CORE_H) \
   $(LIBZCASH_H)
 

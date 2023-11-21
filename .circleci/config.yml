@@ -41,11 +41,11 @@ commands:
           aws-secret-access-key: AWS_SECRET_ACCESS_KEY
       - aws-s3/copy:
           from: << parameters.root_directory >>/<< parameters.platform >>-release/pastel-<< parameters.platform_suffix >>-amd64.zip
-          to: s3://$ROOT_BUCKET_NAME/pasteld/pastel-<< parameters.platform_suffix >>-amd64.zip
+          to: s3://$S3_ROOT_BUCKET_NAME/pasteld/pastel-<< parameters.platform_suffix >>-amd64.zip
           arguments: |
             --acl public-read \
             --cache-control "max-age=86400"
-      - run: aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths /$ROOT_BUCKET_NAME/\* 
+      - run: aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths /$S3_ROOT_BUCKET_NAME/\* 
 
   github-create-release:
     parameters:
@@ -219,7 +219,7 @@ jobs:
             - gh/install
             - github-create-release:
                 release_title: ${PASTEL_RELEASE} - $CIRCLE_TAG
-                release_notes: Pastel Utility Release - $CIRCLE_TAG
+                release_notes: ${PASTEL_RELEASE_DESC} - $CIRCLE_TAG
             - github-upload:
                 binaryName: pasteld
                 ext: << parameters.ext >>
@@ -350,7 +350,7 @@ workflows:
                   - /^v.*/
                   - circleci_test
             context:
-              - Release
+              - Release-testnet
               - weekly-beta-builds
         - build_platform:
             name: Build Pastel for Windows platform (release)
@@ -368,7 +368,7 @@ workflows:
                   - /^v.*/
                   - circleci_test
             context:
-              - Release
+              - Release-testnet
               - weekly-beta-builds
         - build_platform:
             name: Build Pastel for macOS platform (release)
@@ -385,7 +385,64 @@ workflows:
                   - /^v.*/
                   - circleci_test
             context:
-              - Release
+              - Release-testnet
+              - weekly-beta-builds
+        - build_platform:
+            name: Build Pastel for Linux platform (release)
+            platform: linux
+            platform_suffix: linux
+            debug_mode: false
+            deploy: true
+            filters:
+              branches:
+                ignore: /.*/
+                only:
+                  - Monet
+              tags:
+                only:
+                  - /^v.*/
+                  - circleci_test_mainnet
+            context:
+              - Release-mainnet
+              - weekly-beta-builds
+        - build_platform:
+            name: Build Pastel for Windows platform (release)
+            platform: windows
+            platform_suffix: win
+            host: x86_64-w64-mingw32
+            ext: .exe
+            debug_mode: false
+            deploy: true
+            filters:
+              branches:
+                ignore: /.*/
+                only:
+                  - Monet
+              tags:
+                only:
+                  - /^v.*/
+                  - circleci_test_mainnet
+            context:
+              - Release-mainnet
+              - weekly-beta-builds
+        - build_platform:
+            name: Build Pastel for macOS platform (release)
+            platform: darwin
+            platform_suffix: darwin
+            host: x86_64-apple-darwin14
+            debug_mode: false
+            deploy: true
+            filters:
+              branches:
+                ignore: /.*/
+                only:
+                  - Monet
+              tags:
+                only:
+                  - /^v.*/
+                  - circleci_test_mainnet
+            context:
+              - Release-mainnet
               - weekly-beta-builds
         - test_group_rpc_common:
             name: Tests (gtest,RPC common,ext) 

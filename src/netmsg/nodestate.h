@@ -87,11 +87,15 @@ using node_state_t = std::shared_ptr<CNodeState>;
 
 int64_t GetBlockTimeout(const int64_t nTime, const uint32_t nValidatedQueuedBefore, const Consensus::Params& consensusParams);
 
+/**
+ * Chain work tracker for the nodes.
+ */
 class CChainWorkTracker
 {
 public:
     CChainWorkTracker() noexcept {}
 
+    // update max chain work from the new node state
     bool update(const CNodeState& state) noexcept;
 
     const NodeId get() const noexcept
@@ -117,9 +121,13 @@ public:
 	}
 
 private:
+    // current node with the highest chain work
     NodeId m_nodeId = -1;
+    // highest chain work
     arith_uint256 m_nMaxChainWork;
 
+    // previous node with the highest chain work
     NodeId m_prevNodeId = -1;
+    // previous highest chain work
     arith_uint256 m_prevMaxChainWork;
 };

@@ -9,7 +9,7 @@
 #include "config/bitcoin-config.h"
 #endif
 
-#include <stdint.h>
+#include <cstdint>
 #include <exception>
 #include <string>
 #include <vector>
@@ -19,6 +19,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include <sync.h>
+#include <tinyformat.h>
+#include <uint256.h>
 #include <amount.h>
 #include <chain.h>
 #include <chainparams.h>
@@ -32,10 +35,7 @@
 #include <script/sigcache.h>
 #include <script/standard.h>
 #include <spentindex.h>
-#include <sync.h>
-#include <tinyformat.h>
 #include <txmempool.h>
-#include <uint256.h>
 #include <script_check.h>
 #include <netmsg/netconsts.h>
 
@@ -249,7 +249,7 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
  * Pruning functions are called from FlushStateToDisk when the global fCheckForPruning flag has been set.
  * Block and undo files are deleted in lock-step (when blk00003.dat is deleted, so is rev00003.dat.)
  * Pruning cannot take place until the longest chain is at least a certain length (100000 on mainnet, 1000 on testnet, 10 on regtest).
- * Pruning will never delete a block within a defined distance (currently 288) from the active chain's tip.
+ * Pruning will never delete a block within a defined distance (FORK_BLOCK_LIMIT, currently 288) from the active chain's tip.
  * The block index is updated by unsetting HAVE_DATA and HAVE_UNDO for any blocks that were stored in the deleted files.
  * A db flag records the fact that at least some block files have been pruned.
  *
@@ -447,6 +447,7 @@ bool AcceptBlockHeader(
  * witness caches should be cleared in order to handle an intended long rewind.
  */
 bool RewindBlockIndex(const CChainParams& chainparams, bool& clearWitnessCaches);
+bool RewindChainToBlock(std::string &sErrorMsg, const CChainParams& chainparams, const std::string& sBlockHash);
 
 class CBlockFileInfo
 {

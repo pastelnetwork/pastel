@@ -3,12 +3,14 @@
 // Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <stdint.h>
+#include <cstdint>
 #include <regex>
 
 #include <univalue.h>
 
+#include <sync.h>
+#include <util.h>
+#include <streams.h>
 #include <amount.h>
 #include <chain.h>
 #include <chainparams.h>
@@ -18,9 +20,6 @@
 #include <main.h>
 #include <primitives/transaction.h>
 #include <rpc/server.h>
-#include <streams.h>
-#include <sync.h>
-#include <util.h>
 
 using namespace std;
 
@@ -692,7 +691,7 @@ Examples:
     LOCK(cs_main);
 
     int nCheckLevel = static_cast<int>(GetArg("-checklevel", 3));
-    int nCheckDepth = static_cast<int>(GetArg("-checkblocks", 288));
+    int nCheckDepth = static_cast<int>(GetArg("-checkblocks", FORK_BLOCK_LIMIT));
     if (params.size() > 0)
         nCheckLevel = params[0].get_int();
     if (params.size() > 1)

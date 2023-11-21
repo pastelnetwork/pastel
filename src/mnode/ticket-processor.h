@@ -9,14 +9,14 @@
 
 #include <json/json.hpp>
 
-#include <dbwrapper.h>
-#include <chain.h>
 #include <str_types.h>
 #include <map_types.h>
 #include <numeric_range.h>
+#include <datacompressor.h>
+#include <dbwrapper.h>
+#include <chain.h>
 #include <primitives/transaction.h>
 #include <txmempool_entry.h>
-#include <datacompressor.h>
 #include <consensus/validation.h>
 #include <pastelid/pastel_key.h>
 #include <mnode/mnode-consts.h>
@@ -108,6 +108,8 @@ public:
     bool CheckTicketExist(const CPastelTicket& ticket) const;
     bool FindTicket(CPastelTicket& ticket) const;
     bool EraseTicketFromDB(const CPastelTicket& ticket) const;
+    bool EraseIfTicketTransaction(const uint256& txid, std::string &error);
+    size_t EraseTicketsFromDbByList(const block_index_cvector_t& vBlockIndex);
 
     // Check whether ticket exists (use keyTwo as a key).
     bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket) const;
