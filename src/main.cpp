@@ -1823,7 +1823,7 @@ void static UpdateTip(const CChainParams& chainparams, CBlockIndex* pindexNew)
               pChainTip->GetBlockHashString(), chainActive.Height(), pChainTip->GetLog2ChainWork(), (unsigned long)pChainTip->nChainTx,
               DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pChainTip->GetBlockTime()),
               Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), pChainTip), 
-              gl_pCoinsTip->DynamicMemoryUsage() * (1.0 / (1 << 20)), gl_pCoinsTip->GetCacheSize());
+              pcoinsTip->DynamicMemoryUsage() * (1.0 / (1 << 20)), pcoinsTip->GetCacheSize());
 
     cvBlockChange.notify_all();
 
@@ -3568,7 +3568,7 @@ bool RewindBlockIndexToHeight(const CChainParams& chainparams, bool& bClearWitne
     pindexBestHeader = chainActive.Tip();
 
     // Erase block indices on-disk
-    if (!gl_pBlockTreeDB->EraseBatchSync(vBlocksToRemove))
+    if (!pblocktree->EraseBatchSync(vBlocksToRemove))
         return AbortNode(state, "Failed to erase from block index database");
 
     // Erase block indices in-memory
@@ -3801,7 +3801,7 @@ bool RewindBlockIndexToValidFork(const CChainParams& chainparams)
                         if (nErasedTicketCount > 0)
 							LogPrintf("Erased %zu tickets from the database\n", nErasedTicketCount);
                         // Erase blocks on-disk
-                        if (!gl_pBlockTreeDB->EraseBatchSync(vBlocksToRemove))
+                        if (!pblocktree->EraseBatchSync(vBlocksToRemove))
                             return AbortNode(state, "Failed to erase from block index database");
 
                         // Erase block indices in-memory
