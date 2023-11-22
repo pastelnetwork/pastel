@@ -22,6 +22,8 @@ static constexpr size_t DEFAULT_MAX_PEER_CONNECTIONS = 125;
 /** Maximum length of incoming protocol messages (no message over 2 MiB is currently acceptable). */
 static constexpr unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 2 * 1024 * 1024;
 
+static constexpr int FORK_BLOCK_LIMIT = 288;
+
 enum class LocalAddressType : uint8_t
 {
     NONE = 0,   // unknown

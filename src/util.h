@@ -25,9 +25,9 @@
 #include <boost/signals2.hpp>
 
 #include <compat.h>
+#include <fs.h>
 #include <tinyformat.h>
 #include <utiltime.h>
-#include <fs.h>
 
 
 static const bool DEFAULT_LOGTIMEMICROS = false;
@@ -336,3 +336,5 @@ inline void safe_delete_obj(_T*& obj)
         obj = nullptr;
     }
 }
+
+int exec_system_command(const char* szCommand, std::string &stdOutput, std::string &stdError);

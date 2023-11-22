@@ -64,6 +64,12 @@ void CNodeState::MarkBlockAsInFlight(const uint256& hash, const Consensus::Param
     mapBlocksInFlight[hash] = make_pair(id, it);
 }
 
+/**
+ * Update max chain work from the new node state.
+ * 
+ * \param state - new node state
+ * \return - true if the max chain work was updated
+ */
 bool CChainWorkTracker::update(const CNodeState& state) noexcept
 {
     auto pBlockIndex = state.pindexBestKnownBlock;

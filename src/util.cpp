@@ -11,9 +11,15 @@
 #include <fstream>
 #include <mutex>
 #include <cstdint>
-#include <stdarg.h>
-#include <stdio.h>
+#include <cstdio>
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
 #include <thread>
+#include <stdexcept>
+#include <array>
+#include <memory>
+#include <iostream>
 #include <errno.h>
 
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
@@ -25,16 +31,17 @@
 #include <sys/sysinfo.h>
 #endif
 
-#include <util.h>
-#include <chainparamsbase.h>
-#include <random.h>
-#include <serialize.h>
-#include <sync.h>
-#include <utilstrencodings.h>
-#include <utiltime.h>
-#include <clientversion.h>
 #include <str_utils.h>
 #include <map_types.h>
+#include <util.h>
+#include <sync.h>
+#include <utilstrencodings.h>
+#include <scope_guard.hpp>
+#include <serialize.h>
+#include <chainparamsbase.h>
+#include <random.h>
+#include <utiltime.h>
+#include <clientversion.h>
 
 
 #ifndef WIN32
@@ -78,9 +85,12 @@
 #define NOMINMAX
 #endif
 
+#define popen _popen
+#define pclose _pclose
+
 #include <io.h> /* for _commit */
 #include <shlobj.h>
-#endif
+#endif // WIN32
 
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -90,6 +100,7 @@
 #include <boost/program_options/parsers.hpp>
 
 using namespace std;
+
 
 m_strings mapArgs;
 map<string, v_strings> mapMultiArgs;
@@ -154,7 +165,7 @@ static list<string> *vMsgsBeforeOpenLog;
 /**
  * Set print-to-console mode gl_nPrintToConsoleMode.
  * Supported modes:
- *   0 - do not print anything to console
+ *   0 - do not print anything to console (default)
  *   1 - print only to console
  *   2 - print to console and debug.log
  * 
@@ -1136,3 +1147,44 @@ InsecureRand::InsecureRand(bool _fDeterministic) :
     } while (nTmp == 0 || nTmp == 0x464fffffU);
     nRw = nTmp;
 }
+int exec_system_command(const char* szCommand, string& stdOutput, string& stdError)
+{
+    if (!szCommand || !*szCommand)
+    {
+        stdError = "Empty command!";
+        return -1;
+    }
+    stdOutput.clear();
+    stdError.clear();
+    
+    // Command to get both stdout and stderr
+    string sFullCommand = string(szCommand);
+    if (sFullCommand.find("2>&1") == string::npos)
+        sFullCommand += " 2>&1";
+
+    array<char, 128> buffer;
+    FILE* pipe = popen(sFullCommand.c_str(), "r");
+    if (!pipe)
+    {
+        stdError = "popen() failed!";
+        return -1;
+    }
+    auto pipe_guard = sg::make_scope_guard([&]() noexcept
+    {
+        if (pipe)
+			pclose(pipe);
+    });
+
+    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr)
+    {
+        stdOutput += buffer.data();
+    }
+
+    int nExitStatus = pclose(pipe);
+    pipe_guard.dismiss();
+    if (nExitStatus != 0)
+        stdError = stdOutput;  // In this case, the output is considered as an error.
+
+    return nExitStatus;
+}
+

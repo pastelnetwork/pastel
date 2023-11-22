@@ -646,7 +646,7 @@ void HTTPRequest::WriteReply(int nStatus, const string& strReply)
     assert(evb);
     evbuffer_add(evb, strReply.data(), strReply.size());
     HTTPEvent* ev = new HTTPEvent(eventBase, true,
-        boost::bind(evhttp_send_reply, req, nStatus, (const char*)nullptr, (struct evbuffer *)nullptr));
+        bind(evhttp_send_reply, req, nStatus, static_cast<const char*>(nullptr), static_cast<struct evbuffer *>(nullptr)));
     ev->trigger(0);
     replySent = true;
     req = 0; // transferred back to main thread

@@ -7,7 +7,7 @@ version: 2.1
 executors:
   pastel-builder:
     docker:
-      - image: akobrin/pastel:0.0.4
+      - image: akobrin/pastel:0.0.5
 commands:
   upload-s3:
     parameters:
@@ -131,10 +131,14 @@ jobs:
         default: false
         type: boolean
         description: Execute tests
-      deploy:
+      deploy_github:
         default: false
         type: boolean
-        description: If true - deploy release to GitHub and AWS
+        description: If true - deploy release to GitHub
+      deploy_aws:
+        default: false
+        type: boolean
+        description: If true - deploy release to AWS
       source_directory:
         type: string
         default: /pastel/src/
@@ -214,7 +218,7 @@ jobs:
                   - src
                   - qa
       - when:
-          condition: << parameters.deploy >>
+          condition: << parameters.deploy_github >>
           steps:
             - gh/install
             - github-create-release:
@@ -228,6 +232,9 @@ jobs:
                 binaryName: pastel-cli
                 ext: << parameters.ext >>
                 platform: << parameters.platform >>
+      - when:
+          condition: << parameters.deploy_aws >>
+          steps:
             - upload-s3:
                 ext: << parameters.ext >>
                 platform: << parameters.platform >>
@@ -305,7 +312,7 @@ jobs:
             ./rpc-tests.sh --name=mn_tickets.py
 workflows:
     version: 2
-    PastelBuild:
+    Pastel-cNode-Build:
       jobs:
         - build_platform:
             name: Build Pastel for Linux platform (debug)
@@ -341,7 +348,8 @@ workflows:
             platform: linux
             platform_suffix: linux
             debug_mode: false
-            deploy: true
+            deploy_github: true
+            deploy_aws: false
             filters:
               branches:
                 ignore: /.*/
@@ -359,7 +367,8 @@ workflows:
             host: x86_64-w64-mingw32
             ext: .exe
             debug_mode: false
-            deploy: true
+            deploy_github: true
+            deploy_aws: false
             filters:
               branches:
                 ignore: /.*/
@@ -376,7 +385,8 @@ workflows:
             platform_suffix: darwin
             host: x86_64-apple-darwin14
             debug_mode: false
-            deploy: true
+            deploy_github: true
+            deploy_aws: false
             filters:
               branches:
                 ignore: /.*/

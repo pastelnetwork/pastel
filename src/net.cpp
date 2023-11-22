@@ -24,21 +24,20 @@
 #endif
 
 #include <scope_guard.hpp>
-
 #include <vector_types.h>
+#include <svc_thread.h>
+#include <util.h>
+#include <utils/ping_util.h>
+#include <scheduler.h>
 #include <main.h>
 #include <net.h>
 #include <net_manager.h>
-#include <util.h>
 #include <addrman.h>
 #include <chainparams.h>
 #include <clientversion.h>
 #include <primitives/transaction.h>
-#include <scheduler.h>
 #include <ui_interface.h>
 #include <crypto/common.h>
-#include <svc_thread.h>
-#include <util.h>
 #include <netmsg/nodestate.h>
 #include <netmsg/nodemanager.h>
 #include <netmsg/node.h>
@@ -1044,18 +1043,10 @@ bool hasActiveNetworkInterface()
     return false;
 }
 
-bool pingHost(const string& sHostName)
-{
-#ifdef WIN32
-    string sPingCommand = strprintf("ping -n 1 %s > nul 2>&1", sHostName);
-#else
-    string sPingCommand = strprintf("ping -c 1 %s >/dev/null 2>&1", sHostName);
-#endif
-    return system(sPingCommand.c_str()) == 0;
-}
-
 bool hasInternetConnectivity(function<bool()> shouldStop)
 {
+    static CPingUtility pingUtility;
+
     const v_strings vHosts = { "google.com", "microsoft.com", "amazon.com", "8.8.8.8", "1.1.1.1" };
     v_sizet vIndexes(vHosts.size());
     iota(vIndexes.begin(), vIndexes.end(), 0);
@@ -1066,7 +1057,10 @@ bool hasInternetConnectivity(function<bool()> shouldStop)
     for (const auto& nHostIndex: vIndexes)
     {
         const string& sHost = vHosts[nHostIndex];
-        if (pingHost(sHost))
+        const auto pingResult = pingUtility.pingHost(sHost);
+        if (pingResult == CPingUtility::PingResult::UtilityNotAvailable)
+			return true;
+        if (pingResult == CPingUtility::PingResult::Success)
             return true;
         if (shouldStop())
             break;

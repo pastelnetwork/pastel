@@ -6,6 +6,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <limits>
 #include <cinttypes>
+#include <atomic>
 
 #include <accept_to_mempool.h>
 #include <chain_options.h>
@@ -22,7 +23,7 @@ using namespace std;
 bool IsInitialBlockDownload(const Consensus::Params& consensusParams)
 {
     // Once this function has returned false, it must remain false.
-    static atomic<bool> latchToFalse{false};
+    static atomic_bool latchToFalse{false};
     // Optimization: pre-test latch before taking the lock.
     if (latchToFalse.load(memory_order_relaxed))
         return false;

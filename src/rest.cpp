@@ -154,7 +154,7 @@ static bool rest_headers(HTTPRequest* req, const string& strURIPart)
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTPStatusCode::BAD_REQUEST, "Invalid hash: " + hashStr);
 
-    vector<const CBlockIndex *> vHeaders;
+    block_index_cvector_t vHeaders;
     vHeaders.reserve(count);
     {
         LOCK(cs_main);
