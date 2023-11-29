@@ -46,6 +46,7 @@
 #include <netmsg/nodestate.h>
 #include <netmsg/node.h>
 #include <netmsg/nodemanager.h>
+#include <netmsg/fork-switch-tracker.h>
 
 //MasterNode
 #include <mnode/mnode-controller.h>
@@ -3459,42 +3460,42 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     return true;
 }
 
-bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nInvalidBlockHeight, const uint256& invalidBlockHash)
+bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nForkBlockHeight, const uint256& forkBlockHash)
 {
-    //(chainparams.IsTestNet() && nInvalidBlockHeight == 252500 && invalidBlockHash ==
+    //(chainparams.IsTestNet() && nForkBlockHeight == 252500 && forkBlockHash ==
     //    uint256S("0018bd16a9c6f15795a754c498d2b2083ab78f14dae44a66a8d0e90ba8464d9c"));
     return false;
 }
 
-bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlockHeight, 
+bool ValidateRewindLength(const CChainParams& chainparams, const int nForkBlockHeight, 
     const char *szRewindBlockDesc, bool& bClearWitnessCaches)
 {
     AssertLockHeld(cs_main);
 
-    const int nRewindLength = chainActive.Height() - nInvalidBlockHeight;
+    const int nRewindLength = chainActive.Height() - nForkBlockHeight;
     if (nRewindLength > 0)
     {
-        const uint256 *phashInvalidBlock = chainActive[nInvalidBlockHeight]->phashBlock;
+        const uint256 *phashForkBlock = chainActive[nForkBlockHeight]->phashBlock;
         LogPrintf("*** First %s block at height=%d (%s), rewind length %d\n", 
-            SAFE_SZ(szRewindBlockDesc), nInvalidBlockHeight, phashInvalidBlock->GetHex(), nRewindLength);
+            SAFE_SZ(szRewindBlockDesc), nForkBlockHeight, phashForkBlock->GetHex(), nRewindLength);
         const auto networkID = chainparams.NetworkIDString();
 
         // This is true when we intend to do a long rewind.
-        bool bIntendedRewind = IsIntendedChainRewind(chainparams, nInvalidBlockHeight, *phashInvalidBlock);
+        bool bIntendedRewind = IsIntendedChainRewind(chainparams, nForkBlockHeight, *phashForkBlock);
 
         bClearWitnessCaches = (nRewindLength > MAX_REORG_LENGTH && bIntendedRewind);
         if (bClearWitnessCaches)
         {
             auto msg = strprintf(translate(
                 "An intended block chain rewind has been detected: network %s, hash %s, height %d"
-                ), networkID, phashInvalidBlock->GetHex(), nInvalidBlockHeight);
+                ), networkID, phashForkBlock->GetHex(), nForkBlockHeight);
             LogPrintf("*** %s\n", msg);
         }
 
         if (nRewindLength > MAX_REORG_LENGTH && !bIntendedRewind)
         {
             auto pindexOldTip = chainActive.Tip();
-            auto pindexRewind = chainActive[nInvalidBlockHeight - 1];
+            auto pindexRewind = chainActive[nForkBlockHeight - 1];
             string msg = strprintf(translate(
                 "A block chain rewind has been detected that would roll back %d blocks! "
                 "This is larger than the maximum of %d blocks, and so the node is shutting down for your safety."
@@ -3679,6 +3680,16 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& bClearWitnessCaches
         "insufficiently validated", fnIsSufficientlyValidated);
 }
 
+CBlockIndex* FindBlockIndex(const uint256& hash)
+{
+    AssertLockHeld(cs_main);
+
+	auto mi = mapBlockIndex.find(hash);
+	if (mi != mapBlockIndex.end())
+		return mi->second;
+	return nullptr;
+}
+
 /**
  * Rewind active chain to the valid fork if all the required conditions are met:
  *  - the forked chain is longer than the active chain by 6 blocks
@@ -3694,8 +3705,9 @@ bool RewindBlockIndexToValidFork(const CChainParams& chainparams)
     constexpr auto REWIND_ERRMSG = "Unable to rewind the chain";
 
     int nInvalidBlockHeight = -1;
-    uint32_t nOldChainHeight = gl_nChainHeight;
+    const uint32_t nOldChainHeight = gl_nChainHeight;
     uint256 hashOldChainTip;
+    string sMsg;
     {
         LOCK(cs_main);
 
@@ -3720,122 +3732,200 @@ bool RewindBlockIndexToValidFork(const CChainParams& chainparams)
         auto pLastCommonBlock = FindLastCommonAncestorBlockIndex(pindexOldTip, pindexBestHeader);
         if (!pLastCommonBlock)
             return error("%s: last common block for the current active chain and the forked chain not found", REWIND_ERRMSG);
+        LogFnPrintf("Fork block %s (%d)", pLastCommonBlock->GetBlockHashString(), pLastCommonBlock->nHeight);
 
         bool bClearWitnessCaches = false;
         nInvalidBlockHeight = pLastCommonBlock->nHeight + 1;
         if (!ValidateRewindLength(chainparams, nInvalidBlockHeight, "invalid active chain", bClearWitnessCaches))
             return false;
 
-        string sMsg = strprintf(translate(
-            "\n*** Valid forked chain with higher chain work has been detected! ***\n"
-            "Current active block chain will be rewound for %d blocks."), nOldChainHeight - nInvalidBlockHeight);
-        sMsg += "\n" + translate("Rewind details") + ":\n" +
-            "  - " + strprintf(translate("Current tip:  %s, height %d, log2 chain work - " SPEC_CHAIN_WORK),
-                pindexOldTip->phashBlock->GetHex(), nOldChainHeight, pindexOldTip->GetLog2ChainWork()) + "\n" +
-            "  - " + strprintf(translate("Rewinding to: %s, height %d"),
-                pLastCommonBlock->phashBlock->GetHex(), pLastCommonBlock->nHeight) + "\n" +
-            "  - " + strprintf(translate("Forked chain: %s, height %d, log2 chain work - " SPEC_CHAIN_WORK),
+        sMsg = "\n\n *** " + translate("Valid forked chain with higher chain work has been detected") + "! ***";
+        const bool bNeedRewind = (nInvalidBlockHeight > 0) && (static_cast<uint32_t>(nInvalidBlockHeight) < nOldChainHeight);
+        if (bNeedRewind)
+            sMsg += strprintf(
+                "\n" + translate("Current active block chain will be rewound for %d blocks."), nOldChainHeight - nInvalidBlockHeight);
+        sMsg += "\n" + translate("Chain details") + ":" +
+                    "\n  - " + strprintf(translate("Current tip:  %s, height %d, log2 chain work - " SPEC_CHAIN_WORK),
+                pindexOldTip->GetBlockHashString(), nOldChainHeight, pindexOldTip->GetLog2ChainWork());
+        if (bNeedRewind)
+        {
+            sMsg += "\n  - " + strprintf(translate("Rewinding to: %s, height %d"),
+                pLastCommonBlock->GetBlockHashString(), pLastCommonBlock->nHeight);
+            uiInterface.InitMessage(strprintf(translate("Rewinding to height %d..."), pLastCommonBlock->nHeight));
+        }
+        sMsg +=     "\n  - " + strprintf(translate("Forked chain: %s, height %d, log2 chain work - " SPEC_CHAIN_WORK),
                 forkedChainBlockHash.ToString(), pindexBestHeader->nHeight, pindexBestHeader->GetLog2ChainWork()) + "\n";
         LogPrintf("%s\n", sMsg);
     }
 
     bool bSwitchedToForkedChain = false;
-    try
+    bool bRevalidationMode = false;
+    do
     {
-        uint256 hashInvalidBlock;
-        CValidationState state(TxOrigin::UNKNOWN);
+        try
         {
-            LOCK(cs_main);
+            CValidationState state(TxOrigin::UNKNOWN);
+            int nCurrentChainHeight = static_cast<int>(gl_nChainHeight);
+            uint256 hashInvalidBlock;
 
-            hashInvalidBlock = chainActive[nInvalidBlockHeight]->GetBlockHash();
-            // rewind the chain to the fork point
-            if (!InvalidateBlock(state, chainparams, chainActive[nInvalidBlockHeight]))
-                return error("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, nInvalidBlockHeight);
-            LogFnPrintf("*** Invalidated %u blocks", nOldChainHeight - nInvalidBlockHeight + 1);
-            // clear invalidity status from all blocks in that forked chain
-            ReconsiderBlock(state, pindexBestHeader);
-            if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
-                return error("%s: unable to flush the blockchain state to disk", REWIND_ERRMSG);
-        }
-
-        // activate the best chain up to the first invalid block (that can be in a revalidation cache)
-        ActivateBestChain(state, chainparams);
-
-        // some blocks from that valid forked chain may be in a block cache, try to revalidate them
-        // force revalidation of all blocks in the cache
-        const size_t nRevalidated = gl_BlockCache.revalidate_blocks(chainparams, true);
-        if (nRevalidated)
-            LogFnPrintf("Revalidated %zu blocks from the block cache", nRevalidated);
-
-        ActivateBestChain(state, chainparams);
-
-        {
-            LOCK(cs_main);
-            auto pCheckForkedBlockHeader = pindexBestHeader->GetAncestor(nOldChainHeight + 7);
-            if (chainActive.Contains(pCheckForkedBlockHeader))
             {
-                bSwitchedToForkedChain = true;
-                LogPrintf("*** SUCCESSFULLY SWITCHED TO THE VALID FORKED CHAIN: %s, height %u\n",
-                    chainActive.Tip()->GetBlockHashString(), gl_nChainHeight.load());
-                // cleaning up the old chain starting with the old tip block
-                auto it = mapBlockIndex.find(hashOldChainTip);
-                if ((nInvalidBlockHeight != -1) && (it != mapBlockIndex.end()))
+                LOCK(cs_main);
+                if (nCurrentChainHeight >= nInvalidBlockHeight)
+                    hashInvalidBlock = chainActive[nInvalidBlockHeight]->GetBlockHash();
+
+                if (!bRevalidationMode && (nCurrentChainHeight > nInvalidBlockHeight))
                 {
-                    auto pindexToRemove = it->second;
-                    LogPrintf("Cleaning up the old chain %d..%d, starting from %s\n",
-                        nInvalidBlockHeight, pindexToRemove->nHeight, hashOldChainTip.ToString());
-                    block_index_cvector_t vBlocksToRemove;
-                    vBlocksToRemove.reserve(pindexToRemove->nHeight - nInvalidBlockHeight);
-                    while (pindexToRemove && pindexToRemove->nHeight >= nInvalidBlockHeight)
-                    {
-						auto pindexPrev = pindexToRemove->pprev;
-                        vBlocksToRemove.push_back(pindexToRemove);
-                        if (pindexToRemove == pindexBestInvalid)
-                            pindexBestInvalid = nullptr; // Reset invalid block marker if it was pointing to this block
-                        setBlockIndexCandidates.erase(pindexToRemove);
-                        EraseUnlinkedBlocksTo(pindexToRemove);
-                        pindexToRemove = pindexPrev;
-					}
-
-                    if (!vBlocksToRemove.empty())
-                    {
-                        LogPrintf("Erasing %zu blocks from the block database\n", vBlocksToRemove.size());
-
-                        const size_t nErasedTicketCount = masterNodeCtrl.masternodeTickets.EraseTicketsFromDbByList(vBlocksToRemove);
-                        if (nErasedTicketCount > 0)
-							LogPrintf("Erased %zu tickets from the database\n", nErasedTicketCount);
-                        // Erase blocks on-disk
-                        if (!gl_pBlockTreeDB->EraseBatchSync(vBlocksToRemove))
-                            return AbortNode(state, "Failed to erase from block index database");
-
-                        // Erase block indices in-memory
-                        EraseBlockIndices(vBlocksToRemove);
-                    }
+                    // rewind the chain to the fork point
+                    if (!InvalidateBlock(state, chainparams, chainActive[nInvalidBlockHeight]))
+                        return error("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, nInvalidBlockHeight);
+                    LogFnPrintf("*** Invalidated %u blocks", nOldChainHeight - nInvalidBlockHeight);
+                    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
+                        return error("%s: unable to flush the blockchain state to disk", REWIND_ERRMSG);
                 }
             }
-            else
+            // try to activate best chain
+            uint32_t nOldCurrentChainHeight;
+            v_uint256 vPrevBlockHashes;
+            do
             {
-                LogPrintf("*** FAILED TO SWITCH TO THE VALID FORKED CHAIN."
-                    " Block height=%d (%s) not found in the active chain. Restoring old chain...\n",
-                    pCheckForkedBlockHeader->nHeight, pCheckForkedBlockHeader->GetBlockHashString());
-                // restore the old chain
-                if (!InvalidateBlock(state, chainparams, chainActive[nInvalidBlockHeight]))
-                    return error("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, nInvalidBlockHeight);
-                auto itOldInvalidBlock = mapBlockIndex.find(hashInvalidBlock);
-                if (itOldInvalidBlock != mapBlockIndex.end())
-                    ReconsiderBlock(state, itOldInvalidBlock->second);
-            }
-            PruneBlockIndexCandidates();
-            CheckBlockIndex(chainparams.GetConsensus());
+                nOldCurrentChainHeight = gl_nChainHeight;
+                {
+                    LOCK(cs_main);
+                    if (pindexBestHeader)
+                        pindexBestHeader->GetPrevBlockHashes(gl_nChainHeight, vPrevBlockHashes);
+                }
 
-            if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
-                return false;
+                uint256 hashBlockToRevalidate;
+                if (gl_BlockCache.find_next_block(vPrevBlockHashes, hashBlockToRevalidate))
+                {
+                    LOCK(cs_main);
+                    auto pindexToRevalidate = FindBlockIndex(hashBlockToRevalidate);
+                    CBlockIndex *pindexToReconsider = pindexToRevalidate ? pindexToRevalidate->pprev : nullptr;
+                    if (pindexToReconsider && (static_cast<uint32_t>(pindexToReconsider->nHeight) > gl_nChainHeight))
+                    {
+                        LogFnPrintf("Reconsider block %s (%d)", pindexToReconsider->GetBlockHashString(), pindexToReconsider->nHeight);
+                        // clear invalidity status from all blocks in that forked chain
+                        ReconsiderBlock(state, pindexToReconsider);
+                    }
+                }
+                // activate the best chain up to the first invalid block (that can be in a revalidation cache)
+                LogFnPrintf("Activating best chain (#1)");
+                ActivateBestChain(state, chainparams);
+
+                // some blocks from that valid forked chain may be in a block cache, try to revalidate them
+                // force revalidation of all blocks in the cache
+                const size_t nRevalidated = gl_BlockCache.revalidate_blocks(chainparams, true);
+                if (nRevalidated)
+                    LogFnPrintf("Revalidated %zu blocks from the block cache", nRevalidated);
+
+                LogFnPrintf("Activating best chain (#2)");
+                ActivateBestChain(state, chainparams);
+            } while (gl_nChainHeight > nOldCurrentChainHeight);
+
+            {
+                LOCK(cs_main);
+                auto pCheckForkedBlockHeader = pindexBestHeader->GetAncestor(nOldChainHeight + 7);
+                auto checkForkedBlockHash = pCheckForkedBlockHeader->GetBlockHash();
+                if (chainActive.Contains(pCheckForkedBlockHeader))
+                {
+                    bSwitchedToForkedChain = true;
+                    bRevalidationMode = false;
+                    sMsg = strprintf("\n\n*** SUCCESSFULLY SWITCHED TO THE VALID FORKED CHAIN WITH MOST WORK: %s, height %u\n",
+                        chainActive.Tip()->GetBlockHashString(), gl_nChainHeight.load());
+                    LogPrintf("%s\n", sMsg);
+                    // cleaning up the old chain starting with the old tip block
+                    auto pindexToRemove = FindBlockIndex(hashOldChainTip);
+                    if ((nInvalidBlockHeight != -1) && pindexToRemove && nInvalidBlockHeight < pindexToRemove->nHeight)
+                    {
+                        LogPrintf("Cleaning up the old chain %d..%d, starting from %s\n",
+                            nInvalidBlockHeight, pindexToRemove->nHeight, hashOldChainTip.ToString());
+                        block_index_cvector_t vBlocksToRemove;
+                        vBlocksToRemove.reserve(pindexToRemove->nHeight - nInvalidBlockHeight);
+                        while (pindexToRemove && pindexToRemove->nHeight >= nInvalidBlockHeight)
+                        {
+						    auto pindexPrev = pindexToRemove->pprev;
+                            vBlocksToRemove.push_back(pindexToRemove);
+                            if (pindexToRemove == pindexBestInvalid)
+                                pindexBestInvalid = nullptr; // Reset invalid block marker if it was pointing to this block
+                            setBlockIndexCandidates.erase(pindexToRemove);
+                            EraseUnlinkedBlocksTo(pindexToRemove);
+                            pindexToRemove = pindexPrev;
+					    }
+
+                        if (!vBlocksToRemove.empty())
+                        {
+                            LogPrintf("Erasing %zu blocks from the block database\n", vBlocksToRemove.size());
+
+                            const size_t nErasedTicketCount = masterNodeCtrl.masternodeTickets.EraseTicketsFromDbByList(vBlocksToRemove);
+                            if (nErasedTicketCount > 0)
+							    LogPrintf("Erased %zu tickets from the database\n", nErasedTicketCount);
+                            // Erase blocks on-disk
+                            if (!gl_pBlockTreeDB->EraseBatchSync(vBlocksToRemove))
+                                return AbortNode(state, "Failed to erase from block index database");
+
+                            // Erase block indices in-memory
+                            EraseBlockIndices(vBlocksToRemove);
+                        }
+                    }
+                }
+                else
+                {
+                    static CForkSwitchTracker forkSwitchTracker;
+                    if (forkSwitchTracker.ChainSwitchFailedNotify(checkForkedBlockHash) >= MAX_FAILED_FORK_SWITCHES)
+                    {
+                        if (bRevalidationMode)
+                            forkSwitchTracker.Reset();
+                        else
+                        {
+                            masterNodeCtrl.masternodeTickets.RepairTicketDB(true);
+                            LogFnPrintf("Revalidation mode: activating best chain");
+                            bRevalidationMode = true;
+                            continue;
+                        }
+                    }
+
+                    sMsg = "\n\n*** " + translate("FAILED TO SWITCH TO THE VALID FORKED CHAIN") + "! ***" +
+                        strprintf("\n" + translate("Block %s(%d) not found in the active chain."), 
+                            checkForkedBlockHash.ToString(), pCheckForkedBlockHeader->nHeight) +
+                        strprintf("\n" + translate("Current active chain tip: %s, height %d"),
+                            chainActive.Tip()->GetBlockHashString(), gl_nChainHeight.load());
+                    const bool bNeedRewind = (gl_nChainHeight > static_cast<uint32_t>(nInvalidBlockHeight));
+                    if (bNeedRewind)
+                        sMsg += "\n" + translate("Invalidating blockchain to the fork point...");
+                    sMsg += "\n";
+                    LogPrintf("%s\n", sMsg);
+                    if (bNeedRewind)
+                    {
+                        // invalidate the chain starting from the fork point
+                        if (!InvalidateBlock(state, chainparams, chainActive[nInvalidBlockHeight]))
+                            return error("%s: unable to invalidate blockchain starting at height %d",
+                                REWIND_ERRMSG, nInvalidBlockHeight);
+                    }
+                    auto itOldInvalidBlock = mapBlockIndex.find(hashInvalidBlock);
+                    if (itOldInvalidBlock != mapBlockIndex.end())
+                        ReconsiderBlock(state, itOldInvalidBlock->second);
+                }
+                PruneBlockIndexCandidates();
+                CheckBlockIndex(chainparams.GetConsensus());
+
+                if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
+                    return false;
+                if (bRevalidationMode)
+                {
+                    sMsg = strprintf(translate("\nCould not switch to the valid forked chain in %zu attempts and after ticket database repair. Shutting down Pastel node..."),
+                        MAX_FAILED_FORK_SWITCHES);
+                    LogFnPrintf(sMsg);
+                    uiInterface.ThreadSafeMessageBox(sMsg + "\n", "", CClientUIInterface::MSG_ERROR);
+                    StartShutdown();
+                    break;
+                }
+            }
         }
-    }
-    catch (const std::exception& e)
-    {
-		return error("%s: %s", REWIND_ERRMSG, e.what());
-	}
+        catch (const std::exception& e)
+        {
+		    return error("%s: %s", REWIND_ERRMSG, e.what());
+	    }
+    } while (bRevalidationMode);
     return bSwitchedToForkedChain;
 }
 

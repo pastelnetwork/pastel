@@ -339,6 +339,7 @@ BITCOIN_CORE_H = \
   mruset.h \
   netmsg/bloom.h \
   netmsg/block-cache.h \
+  netmsg/fork-switch-tracker.h \
   netmsg/netconsts.h \
   netmsg/netmessage.h \
   netmsg/node.h \
@@ -438,6 +439,7 @@ libbitcoin_server_a_SOURCES = \
   miner.cpp \
   netmsg/bloom.cpp \
   netmsg/block-cache.cpp \
+  netmsg/fork-switch-tracker.cpp \
   netmsg/netmessage.cpp \
   netmsg/node.cpp \
   netmsg/nodestate.cpp \
