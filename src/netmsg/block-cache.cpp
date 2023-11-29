@@ -484,6 +484,46 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
     return nCount;
 }
 
+v_uint256 CBlockCache::find_next_blocks(const uint32_t nMinHeight) const noexcept
+{
+    v_uint256 vNextBlocks;
+
+    unique_lock<mutex> lck(m_CacheMapLock);
+    uint32_t nCurrentMinHeight = numeric_limits<uint32_t>::max();
+    // first find target height 
+    for (auto& [hash, item] : m_BlockCacheMap)
+    {
+        if (item.nBlockHeight < nCurrentMinHeight && item.nBlockHeight > nMinHeight)
+            nCurrentMinHeight = item.nBlockHeight;
+    }
+    if (nCurrentMinHeight != numeric_limits<uint32_t>::max())
+    {
+		// now find all blocks with the same height
+        for (auto& [hash, item] : m_BlockCacheMap)
+        {
+			if (item.nBlockHeight == nCurrentMinHeight)
+				vNextBlocks.push_back(hash);
+		}
+	}
+    return vNextBlocks;
+}
+
+bool CBlockCache::find_next_block(const v_uint256& vHashes, uint256 &hashNextBlock) const noexcept
+{
+    unique_lock<mutex> lck(m_CacheMapLock);
+    // search from the end
+    for (auto it = vHashes.crbegin(); it != vHashes.crend(); ++it)
+    {
+		const auto itBlock = m_BlockCacheMap.find(*it);
+        if (itBlock != m_BlockCacheMap.cend())
+        {
+			hashNextBlock = itBlock->first;
+			return true;
+		}
+	}
+	return false;
+}
+
 size_t CBlockCache::size() const noexcept
 {
     unique_lock<mutex> lck(m_CacheMapLock);

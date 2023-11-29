@@ -334,6 +334,9 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-perfcheck.cpp">
       <Filter>Source Files\mnode</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\fork-switch-tracker.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -692,6 +695,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h">
       <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\fork-switch-tracker.h">
+      <Filter>Source Files\netmsg</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
