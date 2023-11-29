@@ -4,7 +4,7 @@
 // Copyright (c) 2018-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <assert.h>
+#include <cassert>
 #include <cstring>
 #include <stdexcept>
 #include <cstdint>
@@ -248,11 +248,12 @@ public:
 };
 
 /** 256-bit unsigned big integer. */
-class arith_uint256 : public base_uint<256> {
+class arith_uint256 : public base_uint<256>
+{
 public:
-    arith_uint256() {}
-    arith_uint256(const base_uint<256>& b) : base_uint<256>(b) {}
-    arith_uint256(uint64_t b) : base_uint<256>(b) {}
+    arith_uint256() noexcept {}
+    arith_uint256(const base_uint<256>& b) noexcept : base_uint<256>(b) {}
+    arith_uint256(uint64_t b) noexcept : base_uint<256>(b) {}
     explicit arith_uint256(const std::string& str) : base_uint<256>(str) {}
 
     /**

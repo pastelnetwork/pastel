@@ -164,6 +164,7 @@
     <ClCompile Include="..\..\..\src\netmsg\node.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\nodemanager.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\nodestate.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\fork-switch-tracker.cpp" />
     <ClCompile Include="..\..\..\src\net_manager.cpp" />
     <ClCompile Include="..\..\..\src\noui.cpp" />
     <ClCompile Include="..\..\..\src\orphan-tx.cpp" />
@@ -289,6 +290,7 @@
     <ClInclude Include="..\..\..\src\netmsg\node.h" />
     <ClInclude Include="..\..\..\src\netmsg\nodemanager.h" />
     <ClInclude Include="..\..\..\src\netmsg\nodestate.h" />
+    <ClInclude Include="..\..\..\src\netmsg\fork-switch-tracker.h" />
     <ClInclude Include="..\..\..\src\net_manager.h" />
     <ClInclude Include="..\..\..\src\noui.h" />
     <ClInclude Include="..\..\..\src\orphan-tx.h" />

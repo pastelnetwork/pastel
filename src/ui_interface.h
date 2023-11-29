@@ -1,12 +1,10 @@
+#pragma once
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2012 The Bitcoin Core developers
+// Copyright (c) 2018-2023 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_UI_INTERFACE_H
-#define BITCOIN_UI_INTERFACE_H
-
-#include <stdint.h>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cstdint>
 #include <string>
 
 #include <boost/signals2/last_value.hpp>
@@ -101,5 +99,3 @@ public:
 };
 
 extern CClientUIInterface uiInterface;
-
-#endif // BITCOIN_UI_INTERFACE_H

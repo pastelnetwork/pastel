@@ -201,14 +201,14 @@ public:
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
 
-    void SetNull();
+    void SetNull() noexcept;
 
-    CBlockIndex()
+    CBlockIndex() noexcept
     {
         SetNull();
     }
 
-    CBlockIndex(const CBlockHeader& block);
+    CBlockIndex(const CBlockHeader& block) noexcept;
 
     CDiskBlockPos GetBlockPos() const noexcept;
     CDiskBlockPos GetUndoPos() const noexcept;
@@ -280,6 +280,8 @@ public:
 
     // get log2_work - chain work for this block
     double GetLog2ChainWork() const noexcept;
+
+    void GetPrevBlockHashes(const uint32_t nMinHeight, v_uint256 &vPrevBlockHashes) const noexcept;
 };
 
 /** Used to marshal pointers into hashes for db storage. */

@@ -1580,7 +1580,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         strLoadError = translate("Unable to rewind the database to a pre-upgrade state. You will need to redownload the blockchain");
                         break;
                     }
-                }   
+                }
 
                 const int64_t nCheckBlocks = GetArg("-checkblocks", FORK_BLOCK_LIMIT);
                 uiInterface.InitMessage(strprintf(translate("Verifying last %" PRId64 " blocks..."), nCheckBlocks));
@@ -1617,7 +1617,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                     fReindex = true;
                     fRequestShutdown = false;
                 } else {
-                    LogPrintf("Aborted block database rebuild. Exiting.\n");
+                    LogPrintf("%s. Aborted block database rebuild. Exiting.\n", strLoadError);
                     return false;
                 }
             } else {
