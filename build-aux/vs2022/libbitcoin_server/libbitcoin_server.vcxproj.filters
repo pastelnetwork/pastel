@@ -32,6 +32,9 @@
     <Filter Include="Source Files\netmsg">
       <UniqueIdentifier>{5a2fc04c-c719-47a3-bb25-58c62f94375b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{0c4059c8-4c4b-425c-b0fa-f81c2fb3f8bc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -333,6 +336,12 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\mnode-perfcheck.cpp">
       <Filter>Source Files\mnode</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\netmsg\fork-switch-tracker.cpp">
+      <Filter>Source Files\netmsg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\ping_util.cpp">
+      <Filter>Source Files\utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -713,6 +722,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h">
       <Filter>Source Files\mnode</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\netmsg\fork-switch-tracker.h">
+      <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\ping_util.h">
+      <Filter>Source Files\utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

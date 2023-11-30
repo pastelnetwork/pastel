@@ -830,6 +830,39 @@ size_t CPastelTicketProcessor::EraseTicketsFromDbByList(const block_index_cvecto
     return nErasedCount;
 }
 
+void CPastelTicketProcessor::RepairTicketDB(const bool bUpdateUI)
+{
+    AssertLockHeld(cs_main);
+
+    string sMsg = translate("Repairing ticket Database...");
+    LogFnPrintf(sMsg);
+    if (bUpdateUI)
+        uiInterface.ShowProgress(sMsg, 0);
+    auto pindex = chainActive.Tip();
+    int nCount = 0;
+    int nTotal = pindex->nHeight;
+    int nLastPercentage = 0;
+    while (pindex && pindex != chainActive.Genesis())
+    {
+        if (pindex->nStatus & BLOCK_HAVE_DATA)
+        {
+            UpdatedBlockTip(pindex, false);
+
+            int nCurrentPercentage = (nCount * 100) / nTotal;
+            if (bUpdateUI && (nCurrentPercentage != nLastPercentage))
+            {
+                uiInterface.ShowProgress(sMsg, nCurrentPercentage);
+                nLastPercentage = nCurrentPercentage;
+            }
+        }
+        pindex = pindex->pprev;
+        ++nCount;
+    }
+    LogFnPrintf("Ticket database has been repaired");
+    if (bUpdateUI)
+		uiInterface.ShowProgress(translate("Repaired Ticket Database..."), 100);
+}
+
 /**
  * Find ticket in TicketDB by secondary key.
  * If ticket height returned by DB is higher than active chain height - ticket is considered invalid.
@@ -2032,6 +2065,7 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
     }
     return bFound;
 }
+
 void CPastelTicketProcessor::RemoveTicketFromMempool(const string& txid)
 {
     try {

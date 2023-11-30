@@ -160,6 +160,7 @@
     <ClCompile Include="..\..\..\src\net.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\block-cache.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\bloom.cpp" />
+    <ClCompile Include="..\..\..\src\netmsg\fork-switch-tracker.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\netmessage.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\node.cpp" />
     <ClCompile Include="..\..\..\src\netmsg\nodemanager.cpp" />
@@ -189,6 +190,7 @@
     <ClCompile Include="..\..\..\src\torcontrol.cpp" />
     <ClCompile Include="..\..\..\src\txdb.cpp" />
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
+    <ClCompile Include="..\..\..\src\utils\ping_util.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
     <ClCompile Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.cpp" />
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
@@ -283,6 +285,7 @@
     <ClInclude Include="..\..\..\src\net.h" />
     <ClInclude Include="..\..\..\src\netmsg\block-cache.h" />
     <ClInclude Include="..\..\..\src\netmsg\bloom.h" />
+    <ClInclude Include="..\..\..\src\netmsg\fork-switch-tracker.h" />
     <ClInclude Include="..\..\..\src\netmsg\mruset.h" />
     <ClInclude Include="..\..\..\src\netmsg\netconsts.h" />
     <ClInclude Include="..\..\..\src\netmsg\netmessage.h" />
@@ -316,6 +319,7 @@
     <ClInclude Include="..\..\..\src\txmempool_entry.h" />
     <ClInclude Include="..\..\..\src\ui_interface.h" />
     <ClInclude Include="..\..\..\src\undo.h" />
+    <ClInclude Include="..\..\..\src\utils\ping_util.h" />
     <ClInclude Include="..\..\..\src\validationinterface.h" />
     <ClInclude Include="..\..\..\src\vector_types.h" />
     <ClInclude Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.hpp" />

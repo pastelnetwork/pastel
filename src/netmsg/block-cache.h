@@ -29,6 +29,9 @@ public:
     void add_block(const uint256& hash, const NodeId& nodeId, const TxOrigin txOrigin, CBlock && block) noexcept;
     // try to revalidate cached blocks
     size_t revalidate_blocks(const CChainParams& chainparams, const bool bForce = false);
+    // find next blocks to revalidate in the cache (starting from the given height)
+    v_uint256 find_next_blocks(const uint32_t nMinHeight) const noexcept;
+    bool find_next_block(const v_uint256 &vHashes, uint256 &hashNextBlock) const noexcept;
     // get number of blocks in a cache
     size_t size() const noexcept;
     // check whether block with the given hash exists in the cache

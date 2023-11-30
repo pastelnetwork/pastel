@@ -110,6 +110,7 @@ public:
     bool EraseTicketFromDB(const CPastelTicket& ticket) const;
     bool EraseIfTicketTransaction(const uint256& txid, std::string &error);
     size_t EraseTicketsFromDbByList(const block_index_cvector_t& vBlockIndex);
+    void RepairTicketDB(const bool bUpdateUI);
 
     // Check whether ticket exists (use keyTwo as a key).
     bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket) const;
