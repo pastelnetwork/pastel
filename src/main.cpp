@@ -1193,10 +1193,10 @@ bool AbortNode(CValidationState& state, const string& strMessage, const string& 
 
 /**
  * Apply the undo operation of a CTxInUndo to the given chain state.
- * @param undo The undo object.
- * @param view The coins view to which to apply the changes.
- * @param out The out point that corresponds to the tx input.
- * @return True on success.
+ * \param undo The undo object.
+ * \param view The coins view to which to apply the changes.
+ * \param out The out point that corresponds to the tx input.
+ * \return True on success.
  */
 static bool ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const COutPoint& out)
 {
@@ -1927,8 +1927,15 @@ static int64_t nTimePostConnect = 0;
  * Connect a new block to chainActive. pblock is either nullptr or a pointer to a CBlock
  * corresponding to pindexNew, to bypass loading it again from disk.
  * You probably want to call mempool.removeWithoutBranchId after this, with cs_main held.
+ * 
+ * \param state - the validation state
+ * \param chainparams - the chain parameters
+ * \param pindexNew - the new block's index
+ * \param pblock - the new block that pindexNew is pointing to, or nullptr if it's already loaded from disk
+ * \param bValidateBlock - whether to call CheckBlock & ContextualCheckBlock to validate the block
  */
-static bool ConnectTip(CValidationState& state, const CChainParams& chainparams, CBlockIndex* pindexNew, const CBlock* pblock)
+static bool ConnectTip(CValidationState& state, const CChainParams& chainparams, 
+    CBlockIndex* pindexNew, const CBlock* pblock, const bool bValidateBlock)
 {
     assert(pindexNew->pprev == chainActive.Tip());
     // Read block from disk.
@@ -1941,6 +1948,21 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
             return AbortNode(state, "Failed to read block");
         pblock = &block;
     }
+    if (bValidateBlock)
+    {
+        auto verifier = libzcash::ProofVerifier::Disabled();
+        if (!CheckBlock(block, state, chainparams, verifier) || 
+            !ContextualCheckBlock(block, state, chainparams, pindexNew->pprev))
+        {
+            if (state.IsInvalid() && !state.CorruptionPossible())
+            {
+                pindexNew->SetStatusFlag(BLOCK_FAILED_VALID);
+                setDirtyBlockIndex.insert(pindexNew);
+            }
+            return false;
+        }
+
+	}
     // Get the current commitment tree
     SaplingMerkleTree oldSaplingTree;
     assert(gl_pCoinsTip->GetSaplingAnchorAt(gl_pCoinsTip->GetBestAnchor(SAPLING), oldSaplingTree));
@@ -1952,10 +1974,11 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
         CCoinsViewCache view(gl_pCoinsTip.get());
         bool rv = ConnectBlock(*pblock, state, chainparams, pindexNew, view);
         GetMainSignals().BlockChecked(*pblock, state);
-        if (!rv) {
+        if (!rv)
+        {
             if (state.IsInvalid())
                 InvalidBlockFound(pindexNew, state, chainparams);
-            return error("ConnectTip(): ConnectBlock %s failed", pindexNew->GetBlockHashString());
+            return error("ConnectTip(): failed to connect block %s", pindexNew->GetBlockHashString());
         }
         mapBlockSource.erase(pindexNew->GetBlockHash());
         nTime3 = GetTimeMicros(); nTimeConnectTotal += nTime3 - nTime2;
@@ -2140,7 +2163,7 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
         for (auto it = vpindexToConnect.rbegin(); it != vpindexToConnect.rend(); ++it)
         {
             auto pindexConnect = *it;
-            if (!ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : nullptr))
+            if (!ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : nullptr, fBlocksDisconnected))
             {
                 if (state.IsInvalid())
                 {
@@ -2215,29 +2238,31 @@ static void NotifyHeaderTip(const Consensus::Params &consensusParams)
 
 /**
  * Make the best chain active, in multiple steps. The result is either failure
- * or an activated best chain. pblock is either nullptr or a pointer to a block
- * that is already loaded (to avoid loading it again from disk).
+ * or an activated best chain. 
  * 
  * \param state - chain validation state
  * \param chainparams - chain parameters
- * \param pblock 
+ * \param pblock - pointer to a block that is already loaded (to avoid loading it again from disk)
  */
 bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams, const CBlock *pblock)
 {
     CBlockIndex *pindexNewTip = nullptr;
     CBlockIndex *pindexMostWork = nullptr;
     const auto& consensusParams = chainparams.GetConsensus();
+    block_index_cvector_t vNotifyBlockIndexes;
     do
     {
         func_thread_interrupt_point();
 
+        uint32_t nNewBlocksConnected = 0;
         bool fInitialDownload;
         {
             LOCK(cs_main);
+            auto pindexOldTip = chainActive.Tip();
             pindexMostWork = FindMostWorkChain();
 
             // Whether we have anything to do at all.
-            if (!pindexMostWork || pindexMostWork == chainActive.Tip())
+            if (!pindexMostWork || pindexMostWork == pindexOldTip)
                 return true;
 
             if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : nullptr))
@@ -2245,6 +2270,13 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
 
             pindexNewTip = chainActive.Tip();
             fInitialDownload = fnIsInitialBlockDownload(consensusParams);
+            if (pindexOldTip)
+            {
+                const auto pLastCommonBlock = FindLastCommonAncestorBlockIndex(pindexOldTip, pindexNewTip);
+                if (pLastCommonBlock)
+                    nNewBlocksConnected = pindexNewTip->nHeight - pLastCommonBlock->nHeight;
+            } else
+                nNewBlocksConnected = pindexNewTip->nHeight + 1;
         }
         // When we reach this point, we switched to a new tip (stored in pindexNewTip).
 
@@ -2267,16 +2299,27 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
             uiInterface.NotifyBlockTip(hashNewTip);
         }
 
-        // Notify external listeners about the new tip.
-        GetMainSignals().UpdatedBlockTip(pindexNewTip, fInitialDownload);
+        // Notify external listeners about the new tip for all new blocks that were connected.
+        vNotifyBlockIndexes.clear();
+        vNotifyBlockIndexes.reserve(nNewBlocksConnected);
+        {
+			LOCK(cs_main);
+            auto pindex = pindexNewTip;
+			for (uint32_t i = 0; i < nNewBlocksConnected; ++i)
+			{
+				vNotifyBlockIndexes.emplace_back(pindex);
+				pindex = pindex->pprev;
+			}
+		}
+        for (auto it = vNotifyBlockIndexes.rbegin(); it != vNotifyBlockIndexes.rend(); ++it)
+            GetMainSignals().UpdatedBlockTip(*it, fInitialDownload);
         
     } while(pindexMostWork != chainActive.Tip());
     CheckBlockIndex(consensusParams);
 
     // Write changes periodically to disk, after relay.
-    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC)) {
+    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC))
         return false;
-    }
 
     return true;
 }
@@ -2884,11 +2927,11 @@ bool AcceptBlock(
     if (!fRequested)
     {  // If we didn't ask for it:
         if (pindex->nTx != 0)
-            return true;  // This is a previously-processed block that was pruned
+            return true;    // This is a previously-processed block that was pruned
         if (!fHasMoreWork)
-            return true;     // Don't process less-work chains
+            return true;    // Don't process less-work chains
         if (fTooFarAhead)
-            return true;      // Block height is too high
+            return true;    // Block height is too high
     }
 
     // See method docstring for why this is always disabled
@@ -3460,42 +3503,42 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     return true;
 }
 
-bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nForkBlockHeight, const uint256& forkBlockHash)
+bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nInvalidBlockHeight, const uint256& invalidBlockHash)
 {
-    //(chainparams.IsTestNet() && nForkBlockHeight == 252500 && forkBlockHash ==
+    //(chainparams.IsTestNet() && nInvalidBlockHeight == 252500 && invalidBlockHash ==
     //    uint256S("0018bd16a9c6f15795a754c498d2b2083ab78f14dae44a66a8d0e90ba8464d9c"));
     return false;
 }
 
-bool ValidateRewindLength(const CChainParams& chainparams, const int nForkBlockHeight, 
+bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlockHeight, 
     const char *szRewindBlockDesc, bool& bClearWitnessCaches)
 {
     AssertLockHeld(cs_main);
 
-    const int nRewindLength = chainActive.Height() - nForkBlockHeight;
+    const int nRewindLength = chainActive.Height() - nInvalidBlockHeight;
     if (nRewindLength > 0)
     {
-        const uint256 *phashForkBlock = chainActive[nForkBlockHeight]->phashBlock;
+        const uint256 *phashInvalidBlock = chainActive[nInvalidBlockHeight]->phashBlock;
         LogPrintf("*** First %s block at height=%d (%s), rewind length %d\n", 
-            SAFE_SZ(szRewindBlockDesc), nForkBlockHeight, phashForkBlock->GetHex(), nRewindLength);
+            SAFE_SZ(szRewindBlockDesc), nInvalidBlockHeight, phashInvalidBlock->GetHex(), nRewindLength);
         const auto networkID = chainparams.NetworkIDString();
 
         // This is true when we intend to do a long rewind.
-        bool bIntendedRewind = IsIntendedChainRewind(chainparams, nForkBlockHeight, *phashForkBlock);
+        bool bIntendedRewind = IsIntendedChainRewind(chainparams, nInvalidBlockHeight, *phashInvalidBlock);
 
         bClearWitnessCaches = (nRewindLength > MAX_REORG_LENGTH && bIntendedRewind);
         if (bClearWitnessCaches)
         {
             auto msg = strprintf(translate(
                 "An intended block chain rewind has been detected: network %s, hash %s, height %d"
-                ), networkID, phashForkBlock->GetHex(), nForkBlockHeight);
+                ), networkID, phashInvalidBlock->GetHex(), nInvalidBlockHeight);
             LogPrintf("*** %s\n", msg);
         }
 
         if (nRewindLength > MAX_REORG_LENGTH && !bIntendedRewind)
         {
             auto pindexOldTip = chainActive.Tip();
-            auto pindexRewind = chainActive[nForkBlockHeight - 1];
+            auto pindexRewind = chainActive[nInvalidBlockHeight - 1];
             string msg = strprintf(translate(
                 "A block chain rewind has been detected that would roll back %d blocks! "
                 "This is larger than the maximum of %d blocks, and so the node is shutting down for your safety."

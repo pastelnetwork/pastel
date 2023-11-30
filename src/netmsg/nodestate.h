@@ -23,9 +23,9 @@ struct QueuedBlock
 {
     uint256 hash;
     const CBlockIndex *pindex;  //! Optional.
-    int64_t nTime;  //! Time of "getdata" request in microseconds.
-    bool fValidatedHeaders;  //! Whether this block has validated headers at the time of request.
-    int64_t nTimeDisconnect; //! The timeout in microseconds for this block request (for disconnecting a slow peer)
+    int64_t nTime;              //! Time of "getdata" request in microseconds.
+    bool fValidatedHeaders;     //! Whether this block has validated headers at the time of request.
+    int64_t nTimeDisconnect;    //! The timeout in microseconds for this block request (for disconnecting a slow peer)
 };
 
 // hash -> (nodeid, queud-block-list-iterator)
