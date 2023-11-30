@@ -843,7 +843,7 @@ void CPastelTicketProcessor::RepairTicketDB(const bool bUpdateUI)
     int nLastPercentage = 0;
     while (pindex && pindex != chainActive.Genesis())
     {
-        if (pindex->nStatus & BLOCK_HAVE_DATA && pindex->nHeight == 571767)
+        if (pindex->nStatus & BLOCK_HAVE_DATA)
         {
             UpdatedBlockTip(pindex, false);
 

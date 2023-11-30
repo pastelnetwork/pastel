@@ -373,7 +373,9 @@ bool DisconnectBlock(
     CCoinsViewCache& coins,
     bool* pfClean = nullptr);
 
-/** Apply the effects of this block (with given index) on the UTXO set represented by coins */
+/** Apply the effects of this block (with given index) on the UTXO set represented by coins.
+ *  Validity checks that depend on the UTXO set are also done; ConnectBlock()
+ *  can fail if those validity checks fail (among other reasons). */
 bool ConnectBlock(
     const CBlock& block,
     CValidationState& state,
@@ -395,7 +397,9 @@ bool CheckBlock(
     libzcash::ProofVerifier& verifier,
     bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
-/** Context-dependent validity checks */
+/** Context-dependent validity checks.
+ *  By "context", we mean only the previous block headers, but not the UTXO set;
+ *  UTXO-related validity checks are done in ConnectBlock(). */
 bool ContextualCheckBlockHeader(
     const CBlockHeader& block,
     CValidationState& state,
@@ -457,8 +461,8 @@ public:
     unsigned int nUndoSize;    //! number of used bytes in the undo file
     unsigned int nHeightFirst; //! lowest height of block in file
     unsigned int nHeightLast;  //! highest height of block in file
-    uint64_t nTimeFirst;         //! earliest time of block in file
-    uint64_t nTimeLast;          //! latest time of block in file
+    uint64_t nTimeFirst;       //! earliest time of block in file
+    uint64_t nTimeLast;        //! latest time of block in file
 
     ADD_SERIALIZE_METHODS;
 

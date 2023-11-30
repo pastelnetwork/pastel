@@ -97,7 +97,7 @@ public:
     std::string ToStr() const noexcept override;
     ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
 
-    // get ticket price in PSL (2% of the NFT's asked price)
+    // get ticket price in PSL (2% of the item's asked price)
     CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return std::max<CAmount>(10, m_nAskedPricePSL / 50); }
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
     // sign the ticket with the PastelID's private key - creates signature
