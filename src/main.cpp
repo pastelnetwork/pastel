@@ -1952,9 +1952,10 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
     }
     if (bValidateBlock)
     {
+        LogFnPrintf("checking block %s (%d)", pindexNew->GetBlockHashString(), pindexNew->nHeight);
         auto verifier = libzcash::ProofVerifier::Disabled();
-        if (!CheckBlock(block, state, chainparams, verifier) || 
-            !ContextualCheckBlock(block, state, chainparams, pindexNew->pprev))
+        if (!CheckBlock(*pblock, state, chainparams, verifier) || 
+            !ContextualCheckBlock(*pblock, state, chainparams, pindexNew->pprev))
         {
             if (state.IsInvalid() && !state.CorruptionPossible())
             {
@@ -1971,7 +1972,7 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
     // Apply the block atomically to the chain state.
     int64_t nTime2 = GetTimeMicros(); nTimeReadFromDisk += nTime2 - nTime1;
     int64_t nTime3;
-    LogPrint("bench", "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * 0.001, nTimeReadFromDisk * 0.000001);
+    LogFnPrint("bench", "  - Load block from disk: %.2fms [%.2fs]\n", (nTime2 - nTime1) * 0.001, nTimeReadFromDisk * 0.000001);
     {
         CCoinsViewCache view(pcoinsTip);
         bool rv = ConnectBlock(*pblock, state, chainparams, pindexNew, view);
@@ -1984,7 +1985,7 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
         }
         mapBlockSource.erase(pindexNew->GetBlockHash());
         nTime3 = GetTimeMicros(); nTimeConnectTotal += nTime3 - nTime2;
-        LogPrint("bench", "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
+        LogFnPrint("bench", "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
         assert(view.Flush());
     }
     int64_t nTime4 = GetTimeMicros(); nTimeFlush += nTime4 - nTime3;
@@ -1993,7 +1994,7 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
     if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_IF_NEEDED))
         return false;
     int64_t nTime5 = GetTimeMicros(); nTimeChainState += nTime5 - nTime4;
-    LogPrint("bench", "  - Writing chainstate: %.2fms [%.2fs]\n", (nTime5 - nTime4) * 0.001, nTimeChainState * 0.000001);
+    LogFnPrint("bench", "  - Writing chainstate: %.2fms [%.2fs]\n", (nTime5 - nTime4) * 0.001, nTimeChainState * 0.000001);
     // Remove conflicting transactions from the mempool.
     list<CTransaction> txConflicted;
     mempool.removeForBlock(pblock->vtx, pindexNew->nHeight, txConflicted, !fnIsInitialBlockDownload(consensusParams));
@@ -2016,8 +2017,8 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
     EnforceNodeDeprecation(pindexNew->nHeight);
 
     int64_t nTime6 = GetTimeMicros(); nTimePostConnect += nTime6 - nTime5; nTimeTotal += nTime6 - nTime1;
-    LogPrint("bench", "  - Connect postprocess: %.2fms [%.2fs]\n", (nTime6 - nTime5) * 0.001, nTimePostConnect * 0.000001);
-    LogPrint("bench", "- Connect block: %.2fms [%.2fs]\n", (nTime6 - nTime1) * 0.001, nTimeTotal * 0.000001);
+    LogFnPrint("bench", "  - Connect postprocess: %.2fms [%.2fs]\n", (nTime6 - nTime5) * 0.001, nTimePostConnect * 0.000001);
+    LogFnPrint("bench", "- Connect block: %.2fms [%.2fs]\n", (nTime6 - nTime1) * 0.001, nTimeTotal * 0.000001);
     return true;
 }
 
@@ -2306,10 +2307,11 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
         vNotifyBlockIndexes.reserve(nNewBlocksConnected);
         {
 			LOCK(cs_main);
+            auto pindex = pindexNewTip;
 			for (uint32_t i = 0; i < nNewBlocksConnected; ++i)
 			{
-				vNotifyBlockIndexes.emplace_back(pindexNewTip);
-				pindexNewTip = pindexNewTip->pprev;
+				vNotifyBlockIndexes.emplace_back(pindex);
+				pindex = pindex->pprev;
 			}
 		}
         for (auto it = vNotifyBlockIndexes.rbegin(); it != vNotifyBlockIndexes.rend(); ++it)
@@ -2758,8 +2760,31 @@ bool CheckBlock(
     // because we receive the wrong transactions for it.
 
     // Size limits
-    if (block.vtx.empty() || block.vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
-        return state.DoS(100, error("CheckBlock(): size limits failed"),
+    string sErrorDetails;
+    bool bSizeLimitsCheck = false;
+    do
+    {
+        if (block.vtx.empty())
+        {
+            sErrorDetails = "no transactions found";
+            break;
+        }
+        if (block.vtx.size() > MAX_TX_SIZE_AFTER_SAPLING)
+        {
+            sErrorDetails = strprintf("too many transactions (%zu)", block.vtx.size());
+            break;
+        }
+        const size_t nBlockSize = ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION);
+        if (nBlockSize > MAX_BLOCK_SIZE)
+        {
+            sErrorDetails = strprintf("block size exceeded (actual size = %zu, max size = %u)", nBlockSize, MAX_BLOCK_SIZE);
+            break;
+        }
+        bSizeLimitsCheck = true;
+    } while (false);
+    
+    if (!bSizeLimitsCheck)
+        return state.DoS(100, error("CheckBlock(): size limits failed, %s", sErrorDetails),
                          REJECT_INVALID, "bad-blk-length");
 
     // First transaction must be coinbase, the rest must not be
