@@ -654,9 +654,8 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
                         data.nTicketHeight = pindex->nHeight;
                 }
             }
-        } else {
+        } else
             data.nTicketHeight = numeric_limits<uint32_t>::max();
-        }
 
         // create Pastel ticket by id
         ticket = CreateTicket(data.ticket_id);
