@@ -188,7 +188,8 @@ bool AsyncRPCOperation_sendmany::main_impl() {
     // and if there are multiple zaddrs, we don't know where to send it.
     if (isfromtaddr_)
     {
-        const bool b = find_utxos(isSingleZaddrOutput);
+        const bool bAcceptCoinbase = isPureTaddrOnlyTx || isSingleZaddrOutput;
+        const bool b = find_utxos(bAcceptCoinbase);
         if (isSingleZaddrOutput)
         {
             if (!b)

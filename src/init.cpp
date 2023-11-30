@@ -1597,7 +1597,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             fLoaded = true;
         } while(false);
 
-        if (!fLoaded) {
+        if (!fLoaded)
+        {
             // first suggest a reindex
             if (!fReset) {
                 bool fRet = uiInterface.ThreadSafeQuestion(
@@ -1608,7 +1609,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                     fReindex = true;
                     fRequestShutdown = false;
                 } else {
-                    LogPrintf("Aborted block database rebuild. Exiting.\n");
+                    LogPrintf("%s. Aborted block database rebuild. Exiting.\n", strLoadError);
                     return false;
                 }
             } else {
@@ -1800,19 +1801,19 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     }
  #endif // !ENABLE_WALLET
 
-    if (mapArgs.count("-mineraddress")) {
+    if (mapArgs.count("-mineraddress"))
+    {
  #ifdef ENABLE_WALLET
         bool minerAddressInLocalWallet = false;
         if (pwalletMain)
-	{
+	    {
             // Address has alreday been validated
             const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
             CKeyID keyID = get<CKeyID>(addr);
             minerAddressInLocalWallet = pwalletMain->HaveKey(keyID);
         }
-        if (GetBoolArg("-minetolocalwallet", true) && !minerAddressInLocalWallet) {
+        if (GetBoolArg("-minetolocalwallet", true) && !minerAddressInLocalWallet)
             return InitError(translate("-mineraddress is not in the local wallet. Either use a local address, or set -minetolocalwallet=0"));
-        }
  #endif // ENABLE_WALLET
     }
 #endif // ENABLE_MINING
@@ -1821,10 +1822,12 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // if pruning, unset the service bit and perform the initial blockstore prune
     // after any wallet rescanning has taken place.
-    if (fPruneMode) {
+    if (fPruneMode)
+    {
         LogPrintf("Unsetting NODE_NETWORK on prune mode\n");
         nLocalServices &= ~NODE_NETWORK;
-        if (!fReindex) {
+        if (!fReindex)
+        {
             uiInterface.InitMessage(translate("Pruning blockstore..."));
             PruneAndFlush();
         }

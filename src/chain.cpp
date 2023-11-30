@@ -210,12 +210,26 @@ double CBlockIndex::GetLog2ChainWork() const noexcept
 	return log(nChainWork.getdouble()) / log(2.0);
 }
 
+void CBlockIndex::GetPrevBlockHashes(const uint32_t nMinHeight, v_uint256 &vPrevBlockHashes) const noexcept
+{
+    vPrevBlockHashes.clear();
+    if (static_cast<uint32_t>(nHeight) <= nMinHeight)
+		return;
+    vPrevBlockHashes.reserve(nHeight - nMinHeight);
+	const CBlockIndex* pindex = this;
+    while (pindex && static_cast<uint32_t>(pindex->nHeight) > nMinHeight)
+    {
+		vPrevBlockHashes.push_back(pindex->GetBlockHash());
+		pindex = pindex->pprev;
+	}
+}
+
 CBlockIndex* CBlockIndex::GetAncestor(const int height) noexcept
 {
     return const_cast<CBlockIndex*>(static_cast<const CBlockIndex*>(this)->GetAncestor(height));
 }
 
-void CBlockIndex::SetNull()
+void CBlockIndex::SetNull() noexcept
 {
     phashBlock = nullptr;
     pprev = nullptr;
@@ -246,7 +260,7 @@ void CBlockIndex::SetNull()
     nSolution.clear();
 }
 
-CBlockIndex::CBlockIndex(const CBlockHeader& block)
+CBlockIndex::CBlockIndex(const CBlockHeader& block) noexcept
 {
     SetNull();
 

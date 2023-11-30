@@ -84,18 +84,25 @@ AtomicCounter solutionTargetChecks;
 static AtomicCounter minedBlocks;
 AtomicTimer miningTimer;
 
-static boost::synchronized_value<list<uint256>> trackedBlocks;
-static boost::synchronized_value<list<string>> messageBox;
-static boost::synchronized_value<string> initMessage;
+static list<uint256> gl_TrackedBlocks;
+static list<string> gl_MessageBox;
+static string gl_sInitMessage;
+static mutex gl_mtxTrackedBlocks;
+static mutex gl_mtxMessageBox;
+static mutex gl_mtxInitMessage;
+
 static bool loaded = false;
 
 extern int64_t GetNetworkHashPS(int lookup, int height);
 
-void TrackMinedBlock(uint256 hash)
+void TrackMinedBlock(const uint256 &hash)
 {
     LOCK(cs_metrics);
     minedBlocks.increment();
-    trackedBlocks->push_back(hash);
+    {
+        lock_guard<mutex> lock(gl_mtxTrackedBlocks);
+        gl_TrackedBlocks.push_back(hash);
+    }
 }
 
 void MarkStartTime()
@@ -176,10 +183,11 @@ static bool metrics_ThreadSafeMessageBox(const string& message,
         strCaption += caption; // Use supplied caption (can be empty)
     }
 
-    boost::strict_lock_ptr<list<string>> u = messageBox.synchronize();
-    u->push_back(strCaption + ": " + message);
-    if (u->size() > 5) {
-        u->pop_back();
+    {
+        lock_guard<mutex> lock(gl_mtxMessageBox);
+        gl_MessageBox.push_back(strCaption + ": " + message);
+        if (gl_MessageBox.size() > 5)
+			gl_MessageBox.pop_front();
     }
 
     TriggerRefresh();
@@ -191,9 +199,10 @@ static bool metrics_ThreadSafeQuestion(const string& /* ignored interactive mess
     return metrics_ThreadSafeMessageBox(message, caption, style);
 }
 
-static void metrics_InitMessage(const string& message)
+static void metrics_InitMessage(const string& sMessage)
 {
-    *initMessage = message;
+    lock_guard<mutex> lock(gl_mtxInitMessage);
+    gl_sInitMessage = sMessage;
 }
 
 void ConnectMetricsScreen()
@@ -326,31 +335,30 @@ int printMetrics(size_t cols, bool mining)
         CAmount mature {0};
         {
             LOCK2(cs_main, cs_metrics);
-            boost::strict_lock_ptr<list<uint256>> u = trackedBlocks.synchronize();
+            lock_guard<mutex> lock(gl_mtxTrackedBlocks);
             const auto &consensusParams = Params().GetConsensus();
             auto tipHeight = chainActive.Height();
 
             // Update orphans and calculate subsidies
-            auto it = u->begin();
-            while (it != u->end())
+            for (auto it = gl_TrackedBlocks.begin(); it != gl_TrackedBlocks.end(); )
             {
                 auto hash = *it;
                 if (mapBlockIndex.count(hash) > 0 &&
                         chainActive.Contains(mapBlockIndex[hash]))
                 {
-                    int height = mapBlockIndex[hash]->nHeight;
-                    CAmount subsidy = GetBlockSubsidy(height, consensusParams);
-                    if (max(0, COINBASE_MATURITY - (tipHeight - height)) > 0)
-                        immature += subsidy;
-                    else
-                        mature += subsidy;
-                    it++;
-                } else
-                    it = u->erase(it);
+					int height = mapBlockIndex[hash]->nHeight;
+					CAmount subsidy = GetBlockSubsidy(height, consensusParams);
+					if (max(0, COINBASE_MATURITY - (tipHeight - height)) > 0)
+						immature += subsidy;
+					else
+						mature += subsidy;
+					it++;
+				} else
+					it = gl_TrackedBlocks.erase(it);
             }
 
             mined = minedBlocks.get();
-            orphaned = mined - u->size();
+            orphaned = mined - gl_TrackedBlocks.size();
         }
 
         if (mined > 0)
@@ -373,25 +381,24 @@ int printMetrics(size_t cols, bool mining)
 
 int printMessageBox(size_t cols)
 {
-    boost::strict_lock_ptr<list<string>> u = messageBox.synchronize();
-
-    if (u->size() == 0)
+    lock_guard<mutex> lock(gl_mtxMessageBox);
+    if (gl_MessageBox.empty())
         return 0;
 
-    int lines = static_cast<int>(2 + u->size());
+    int lines = static_cast<int>(2 + gl_MessageBox.size());
     cout << translate("Messages:") << endl;
-    for (auto it = u->cbegin(); it != u->cend(); ++it)
+    for (const auto& msg : gl_MessageBox)
     {
-        auto msg = FormatParagraph(*it, cols, 2);
-        cout << "- " << msg << endl;
+        auto sMsg = FormatParagraph(msg, cols, 2);
+        cout << "- " << sMsg << endl;
         // Handle newlines and wrapped lines
         size_t i = 0;
         size_t j = 0;
-        while (j < msg.size())
+        while (j < sMsg.size())
         {
-            i = msg.find('\n', j);
+            i = sMsg.find('\n', j);
             if (i == string::npos)
-                i = msg.size();
+                i = sMsg.size();
             else // Newline
                 lines++;
             j = i + 1;
@@ -403,17 +410,19 @@ int printMessageBox(size_t cols)
 
 int printInitMessage()
 {
-    if (loaded) {
+    if (loaded)
         return 0;
-    }
 
-    string msg = *initMessage;
-    cout << translate("Init message:") << " " << msg << endl;
+    string sMsg;
+    {
+        lock_guard<mutex> lock(gl_mtxInitMessage);
+        sMsg = gl_sInitMessage;
+    }
+    cout << translate("Init message:") << " " << sMsg << endl;
     cout << endl;
 
-    if (msg == translate("Done loading")) {
+    if (sMsg == translate("Done loading"))
         loaded = true;
-    }
 
     return 2;
 }

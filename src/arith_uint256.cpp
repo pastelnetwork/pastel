@@ -3,12 +3,12 @@
 // Copyright (c) 2018-2023 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <string>
 
-#include <arith_uint256.h>
 #include <uint256.h>
 #include <utilstrencodings.h>
+#include <arith_uint256.h>
 #include <crypto/common.h>
 
 using namespace std;

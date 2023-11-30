@@ -23,6 +23,9 @@ static constexpr size_t DEFAULT_MAX_PEER_CONNECTIONS = 125;
 static constexpr unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 2 * 1024 * 1024;
 
 static constexpr int FORK_BLOCK_LIMIT = 288;
+// expiration time in secs for the fork switch entry in the fork-switch-tracker
+static constexpr time_t FORK_SWITCH_TRACKER_EXPIRATION_TIME_SECS = 5 * 60;
+static constexpr size_t MAX_FAILED_FORK_SWITCHES = 3;
 
 enum class LocalAddressType : uint8_t
 {
