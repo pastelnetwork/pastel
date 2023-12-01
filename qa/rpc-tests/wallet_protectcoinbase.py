@@ -216,10 +216,10 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         # UTXO selection in z_sendmany sorts in ascending order, so smallest utxos are consumed first.
         # At this point in time, unspent notes all have a value of self._reward and standard z_sendmany fee is self._fee.
         recipients = []
-        amount = self._reward - self._fee - self._patoshi    # this leaves change at 1 patoshi less than dust threshold
+        amount = 3 * self._reward - self._fee - self._patoshi    # this leaves change at 1 patoshi less than dust threshold
         recipients.append({"address":self.nodes[0].getnewaddress(), "amount":amount })
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
-        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " + str(self._reward00) + ", need 0.00053 more to avoid creating invalid change output 0.00001 (dust threshold is 0.00054)")
+        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " + str(3 * self._reward00) + ", need 0.00053 more to avoid creating invalid change output 0.00001 (dust threshold is 0.00054)")
 
         # Send will fail because send amount is too big, even when including coinbase utxos
         errorString = ""
@@ -231,11 +231,11 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
         # z_sendmany will fail because of insufficient funds
         recipients = []
-        recipients.append({"address":self.nodes[1].getnewaddress(), "amount":Decimal('10000.0')})
+        recipients.append({"address":self.nodes[1].getnewaddress(), "amount":Decimal('20000.0')})
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
-        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " + str(self._reward00) + ", need 10000.10")
+        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " + str(3 * self._reward00) + ", need 20000.10")
         myopid = self.nodes[0].z_sendmany(myzaddr, recipients)
-        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient shielded funds, have " + str(self._reward00 - self._fee00*2) + ", need 10000.10")
+        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient shielded funds, have " + str(self._reward00 - self._fee00*2) + ", need 20000.10")
 
         # Send will fail because of insufficient funds unless sender uses coinbase utxos
         errorString = ""

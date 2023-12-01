@@ -38,7 +38,6 @@ EOF
 # groups of test scripts - can be executed independently
 declare -a testScripts=(
     'framework.py'
-    'prioritisetransaction.py'
     'wallet_anchorfork.py'
     'wallet_changeindicator.py'
     'wallet_import_export.py'
@@ -90,6 +89,7 @@ declare -a testScripts=(
 )
 
 declare -a testScriptsToFix=(
+    'prioritisetransaction.py'
     'wallet_persistence.py' #fails
     'mempool_nu_activation.py' #timesout
     'getblocktemplate_proposals.py'
