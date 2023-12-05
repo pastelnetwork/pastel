@@ -369,6 +369,7 @@ string HelpMessage(HelpMessageMode mode)
 #endif
     strUsage += HelpMessageOpt("-txindex", strprintf(translate("Maintain a full transaction index, used by the getrawtransaction rpc call (default: %u)"), 0));
     strUsage += HelpMessageOpt("-rewindchain=<block_hash>", translate("Rewind chain to specified block hash"));
+    strUsage += HelpMessageOpt("-repairticketdb", translate("Repair ticket database from the blockchain"));
 
     strUsage += HelpMessageGroup(translate("Connection options:"));
     strUsage += HelpMessageOpt("-addnode=<ip>", translate("Add a node to connect to and attempt to keep the connection open"));
@@ -1923,7 +1924,12 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         if (!RewindChainToBlock(sErrorMsg, chainparams, sRewindChainBlockHash))
             return InitError(sErrorMsg);
 	}
-
+    if (mapArgs.count("-repairticketdb"))
+    {
+        LOCK(cs_main);
+        masterNodeCtrl.masternodeTickets.RepairTicketDB(true);
+    }
+		
     // ********************************************************* Step 13: finished
 
     SetRPCWarmupFinished();

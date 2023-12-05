@@ -833,10 +833,10 @@ void CPastelTicketProcessor::RepairTicketDB(const bool bUpdateUI)
 {
     AssertLockHeld(cs_main);
 
-    string sMsg = translate("Repairing ticket Database...");
+    string sMsg = translate("Repairing ticket database...");
     LogFnPrintf(sMsg);
     if (bUpdateUI)
-        uiInterface.ShowProgress(sMsg, 0);
+        uiInterface.InitMessage(sMsg);
     auto pindex = chainActive.Tip();
     int nCount = 0;
     int nTotal = pindex->nHeight;
@@ -850,7 +850,7 @@ void CPastelTicketProcessor::RepairTicketDB(const bool bUpdateUI)
             int nCurrentPercentage = (nCount * 100) / nTotal;
             if (bUpdateUI && (nCurrentPercentage != nLastPercentage))
             {
-                uiInterface.ShowProgress(sMsg, nCurrentPercentage);
+                uiInterface.InitMessage(strprintf("Repairing ticket database %d%% ...", nCurrentPercentage));
                 nLastPercentage = nCurrentPercentage;
             }
         }
