@@ -1920,7 +1920,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (!sRewindChainBlockHash.empty())
 	{
         string sErrorMsg;
-        uiInterface.InitMessage(strprintf(translate("Rewinding chain to block %s..."), sRewindChainBlockHash));
         if (!RewindChainToBlock(sErrorMsg, chainparams, sRewindChainBlockHash))
             return InitError(sErrorMsg);
 	}

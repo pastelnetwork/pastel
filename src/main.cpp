@@ -3683,17 +3683,40 @@ bool RewindChainToBlock(string &error, const CChainParams& chainparams, const st
             error = strprintf("Block with hash %s is not on the active chain", sBlockHash);
             return false;
         }
+        if (pindex == chainActive.Tip())
+        {
+			error = strprintf("Block with hash %s (%d) is already the active tip", sBlockHash, pindex->nHeight);
+			return false;
+		}
         const uint32_t nOldChainHeight = gl_nChainHeight;
+        if (static_cast<uint32_t>(pindex->nHeight) > nOldChainHeight)
+        {
+            error = strprintf("Block with hash %s (%d) is ahead of the active tip (%u)", sBlockHash, pindex->nHeight, nOldChainHeight);
+			return false;
+        }
+
+        uiInterface.InitMessage(strprintf(translate("Rewinding chain to block %s (%d)..."), sBlockHash, pindex->nHeight));
         LogFnPrintf("Rewinding blockchain to the block height=%d (%s)", pindex->nHeight, sBlockHash);
+
+        const uint32_t nRewindLength = nOldChainHeight - static_cast<uint32_t>(pindex->nHeight);
+#ifdef ENABLE_WALLET
+        if (nRewindLength > MAX_REORG_LENGTH)
+            pwalletMain->ClearNoteWitnessCache();
+#endif // ENABLE_WALLET
+        auto pindexToInvalidate = chainActive[pindex->nHeight + 1];
 
         CValidationState state(TxOrigin::UNKNOWN);
         // rewind the chain to the fork point
-        if (!InvalidateBlock(state, chainparams, pindex))
+        if (!InvalidateBlock(state, chainparams, pindexToInvalidate))
         {
-            error = strprintf("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, pindex->nHeight);
+            error = strprintf("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, pindexToInvalidate->nHeight);
             return false;
         }
-        LogFnPrintf("*** Invalidated %u blocks", nOldChainHeight - pindex->nHeight + 1);
+        LogFnPrintf("*** Invalidated %u blocks", nRewindLength);
+        uiInterface.InitMessage("Activating best chain...");
+
+        ReconsiderBlock(state, pindexToInvalidate);
+
         if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
         {
             error = strprintf("%s: unable to flush the blockchain state to disk", REWIND_ERRMSG);

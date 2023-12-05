@@ -22,9 +22,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\src\clientversion.cpp">
-      <Filter>Source Files\support</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\compat\glibcxx_sanity.cpp">
       <Filter>Source Files\compat</Filter>
     </ClCompile>
@@ -94,11 +91,11 @@
     <ClCompile Include="..\..\..\src\utils\datacompressor.cpp">
       <Filter>Source Files\utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\clientversion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\src\clientversion.h">
-      <Filter>Source Files\support</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\compat\byteswap.h">
       <Filter>Source Files\compat</Filter>
     </ClInclude>
@@ -230,6 +227,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\utils\datacompressor.h">
       <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\clientversion.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
