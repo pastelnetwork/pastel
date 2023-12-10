@@ -186,7 +186,6 @@ public:
     {
         SerializationOp(s, SERIALIZE_ACTION::Read);
     }
-    virtual void Serialize(CSizeComputer& s) const {}
 
     // key management
     virtual bool HasKeyTwo() const noexcept { return false; }
