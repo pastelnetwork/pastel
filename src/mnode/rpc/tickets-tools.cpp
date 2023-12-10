@@ -144,7 +144,7 @@ UniValue tickets_tools_estimatenftstoragefee(const UniValue& params)
 {
     if (params.size() < 3)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-R"(tickets tools estimatenftstoragefee "imageSizeInMB"
+R"(tickets tools estimatenftstoragefee <imageSizeInMB>
 Estimate storage fee for the NFT registration. If successful, method returns estimated 
 fee in PSL for the current chain height.
 
