@@ -216,7 +216,7 @@ void CActionRegTicket::parse_action_ticket()
         {
             const auto& [prop, bRequired] = propInfo;
             if (bRequired && !m_props.count(prop))
-                    str_append_field(sMissingProps, sPropName.c_str(), ",");
+                str_append_field(sMissingProps, sPropName.c_str(), ",");
         }
         if (pBasePropMap)
         {

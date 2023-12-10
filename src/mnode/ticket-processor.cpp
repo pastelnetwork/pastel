@@ -1051,6 +1051,46 @@ string CPastelTicketProcessor::filterTickets(F f, const uint32_t nMinHeight, con
     return jArray.dump();
 }
 
+template <class _TicketType>
+tuple<size_t, size_t, size_t, size_t> CPastelTicketProcessor::calculateTicketSizes(
+    const uint32_t nMinHeight, 
+    const size_t nTicketsToCheckSize, 
+    const size_t nTicketsToUseForEstimation) const
+{
+    set<pair<uint32_t, size_t>> ticketInfo;
+    size_t nCount = 0;
+
+    listTickets<_TicketType>([&](const _TicketType& ticket) -> bool
+    {
+        if (nCount >= nTicketsToCheckSize)
+            return false;
+
+        const size_t nTicketStreamSize = ticket.GetSerializedSize();
+        ticketInfo.emplace(ticket.GetBlock(), nTicketStreamSize);
+        nCount++;
+        return true;
+    }, nMinHeight);
+
+    if (ticketInfo.empty())
+        return {0, 0, 0, 0};
+
+    v_sizet lastTicketSizes;
+    auto it = ticketInfo.rbegin();
+    for (size_t i = 0; i < nTicketsToUseForEstimation && it != ticketInfo.rend(); ++i, ++it)
+        lastTicketSizes.push_back(it->second);
+
+    auto minMaxIt = minmax_element(lastTicketSizes.begin(), lastTicketSizes.end());
+    size_t nMinSize = *minMaxIt.first;
+    size_t nMaxSize = *minMaxIt.second;
+    size_t nAvgSize = accumulate(lastTicketSizes.cbegin(), lastTicketSizes.cend(), static_cast<size_t>(0)) / lastTicketSizes.size();
+
+    return {nCount, nMinSize, nMaxSize, nAvgSize};
+}
+
+template tuple<size_t, size_t, size_t, size_t> CPastelTicketProcessor::calculateTicketSizes<CNFTRegTicket>(
+    const uint32_t nMinHeight, const size_t nTicketsToCheckSize,
+    const size_t nTicketsToUseForEstimation) const;
+
 /**
  * List Pastel NFT registration tickets using filter.
  *
