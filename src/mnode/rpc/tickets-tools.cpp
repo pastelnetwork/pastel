@@ -163,7 +163,7 @@ As json rpc
     const CAmount nImageDataSizeInMB = get_long_number(params[2]);
     auto [nCount, nMinSize, nMaxSize, nAvgSize] = masterNodeCtrl.masternodeTickets.calculateTicketSizes<CNFTRegTicket>(1, 1000, 100);
     if (nCount == 0)
-        nAvgSize = 2000;
+        nAvgSize = DEFAULT_NFT_TICKET_SIZE;
 
     UniValue mnObj(UniValue::VOBJ);
     mnObj.pushKV("estimatedNftStorageFeeMin", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nMinSize / 1024));

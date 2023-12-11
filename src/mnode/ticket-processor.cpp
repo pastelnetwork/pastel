@@ -1051,6 +1051,20 @@ string CPastelTicketProcessor::filterTickets(F f, const uint32_t nMinHeight, con
     return jArray.dump();
 }
 
+/**
+ * Calculates statistics about specific ticket types serialization.
+ * 
+ * \param nMinHeight - minimal block height to start searching tickets from
+ * \param nTicketsToCheckSize - number of tickets to check serialized size
+ * \param nTicketsToUseForEstimation - number of tickets to use for estimation
+ * \return - tuple with the following values:
+ *    1) number of tickets checked, 1 - if no tickets found
+ *    2) min ticket serialized size
+ *    3) max ticket serialized size
+ *    4) average ticket serialized size
+ * If no tickets found - default serialized size is returned (for now only for the
+ * NFT Registration ticket).
+ */
 template <class _TicketType>
 tuple<size_t, size_t, size_t, size_t> CPastelTicketProcessor::calculateTicketSizes(
     const uint32_t nMinHeight, 
@@ -1072,7 +1086,7 @@ tuple<size_t, size_t, size_t, size_t> CPastelTicketProcessor::calculateTicketSiz
     }, nMinHeight);
 
     if (ticketInfo.empty())
-        return {0, 0, 0, 0};
+        return { 1, DEFAULT_NFT_TICKET_SIZE, DEFAULT_NFT_TICKET_SIZE, DEFAULT_NFT_TICKET_SIZE };
 
     v_sizet lastTicketSizes;
     auto it = ticketInfo.rbegin();
@@ -1080,11 +1094,11 @@ tuple<size_t, size_t, size_t, size_t> CPastelTicketProcessor::calculateTicketSiz
         lastTicketSizes.push_back(it->second);
 
     auto minMaxIt = minmax_element(lastTicketSizes.begin(), lastTicketSizes.end());
-    size_t nMinSize = *minMaxIt.first;
-    size_t nMaxSize = *minMaxIt.second;
-    size_t nAvgSize = accumulate(lastTicketSizes.cbegin(), lastTicketSizes.cend(), static_cast<size_t>(0)) / lastTicketSizes.size();
+    size_t nMinSizeInBytes = *minMaxIt.first;
+    size_t nMaxSizeInBytes = *minMaxIt.second;
+    size_t nAvgSizeInBytes = accumulate(lastTicketSizes.cbegin(), lastTicketSizes.cend(), static_cast<size_t>(0)) / lastTicketSizes.size();
 
-    return {nCount, nMinSize, nMaxSize, nAvgSize};
+    return { nCount, nMinSizeInBytes, nMaxSizeInBytes, nAvgSizeInBytes };
 }
 
 template tuple<size_t, size_t, size_t, size_t> CPastelTicketProcessor::calculateTicketSizes<CNFTRegTicket>(
