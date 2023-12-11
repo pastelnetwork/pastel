@@ -140,6 +140,43 @@ As json rpc
     return mnObj;
 }
 
+UniValue tickets_tools_estimatenftstoragefee(const UniValue& params)
+{
+    if (params.size() < 3)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets tools estimatenftstoragefee <imageSizeInMB>
+Estimate storage fee for the NFT registration. If successful, method returns estimated 
+fee in PSL for the current chain height.
+
+Arguments:
+1. "imagesize"  (int, required) estimated size of image in MB
+
+Estimate Total Storage Fee for NFT Ticket
+)" + HelpExampleCli("tickets tools estimatenftstoragefee", "3") +
+R"(
+As json rpc
+)" + HelpExampleRpc("tickets", R"("tools", "estimatenftstoragefee", 3)"));
+
+    if (fImporting || fReindex)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
+
+    const CAmount nImageDataSizeInMB = get_long_number(params[2]);
+    auto [nCount, nMinSizeInBytes, nMaxSizeInBytes, nAvgSizeInBytes] = masterNodeCtrl.masternodeTickets.calculateTicketSizes<CNFTRegTicket>(1, 1000, 100);
+    if (nCount == 0)
+    {
+        nMinSizeInBytes = DEFAULT_NFT_TICKET_SIZE;
+        nAvgSizeInBytes = DEFAULT_NFT_TICKET_SIZE;
+        nMaxSizeInBytes = DEFAULT_NFT_TICKET_SIZE;
+    }
+
+    UniValue mnObj(UniValue::VOBJ);
+    mnObj.pushKV("estimatedNftStorageFeeMin", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nMinSizeInBytes));
+    mnObj.pushKV("estimatedNftStorageFeeAverage", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nAvgSizeInBytes));
+    mnObj.pushKV("estimatedNftStorageFeeMax", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nMaxSizeInBytes));
+
+    return mnObj;
+}
+
 UniValue tickets_tools_validateusername(const UniValue& params)
 {
     string username;
@@ -431,7 +468,7 @@ UniValue tickets_tools_decoderawtransaction(const UniValue& params)
 {
     if (params.size() < 3)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-            R"(tickets tools decoderawtransaction "hex_transaction"
+R"(tickets tools decoderawtransaction "hex_transaction"
 Decode ticket from raw P2FMS transaction presented by hex string.
 
 Arguments:
@@ -472,8 +509,8 @@ As json rpc
 UniValue tickets_tools(const UniValue& params)
 {
     RPC_CMD_PARSER2(TOOLS, params, printtradingchain, getregbytrade, getregbytransfer,
-        gettotalstoragefee, validateusername, validateethereumaddress, validateownership,
-        searchthumbids, decoderawtransaction);
+        gettotalstoragefee, estimatenftstoragefee, validateusername, validateethereumaddress,
+        validateownership, searchthumbids, decoderawtransaction);
 
     if (!TOOLS.IsCmdSupported() || params.size() < 2)
         throw runtime_error(
@@ -487,6 +524,7 @@ Available commands:
   printtradingchain       ... show ticket register-transfer chain
   getregbytransfer        ... get registration ticket by transfer txid
   gettotalstoragefee      ... get full storage fee for the NFT registration
+  estimatenftstoragefee   ... estimate storage fee for the NFT registration
   validateusername        ... validate username for username-change ticket
   validateethereumaddress ... validate ethereum address for ethereum-address-change ticket
   validateownership       ... validate item ownership by Pastel ID
@@ -513,6 +551,10 @@ Examples:
 
         case RPC_CMD_TOOLS::gettotalstoragefee:
             result = tickets_tools_gettotalstoragefee(params);
+            break;
+
+        case RPC_CMD_TOOLS::estimatenftstoragefee:
+            result = tickets_tools_estimatenftstoragefee(params);
             break;
 
         case RPC_CMD_TOOLS::validateusername:

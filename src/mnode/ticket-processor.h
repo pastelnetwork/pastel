@@ -153,6 +153,12 @@ public:
     template <class _TicketType>
     std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey);
 
+    template <class _TicketType>
+    std::tuple<size_t, size_t, size_t, size_t> calculateTicketSizes(
+        const uint32_t nMinHeight,
+        const size_t nTicketsToCheckSize,
+        const size_t nTicketsToUseForEstimation) const;
+
     v_strings GetAllKeys(const TicketID id) const;
 
     std::string getValueBySecondaryKey(const CPastelTicket& ticket) const;
