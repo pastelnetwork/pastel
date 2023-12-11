@@ -121,6 +121,8 @@ constexpr uint32_t AVERAGE_SENSE_DUPE_DATA_SIZE_MB = 10;
 // discount in % for NFT tickets registration fee
 constexpr double NFT_DISCOUNT_MULTIPLIER = 0.45;
 
+constexpr size_t DEFAULT_NFT_TICKET_SIZE = 15 * 1024;
+
 constexpr float MAX_ROYALTY = 0.2f;
 constexpr uint16_t MAX_ROYALTY_PERCENT = 20;
 // length of the random string generated as a primary key of the ticket
