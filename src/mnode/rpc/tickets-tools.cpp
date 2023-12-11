@@ -161,14 +161,18 @@ As json rpc
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
 
     const CAmount nImageDataSizeInMB = get_long_number(params[2]);
-    auto [nCount, nMinSize, nMaxSize, nAvgSize] = masterNodeCtrl.masternodeTickets.calculateTicketSizes<CNFTRegTicket>(1, 1000, 100);
+    auto [nCount, nMinSizeInBytes, nMaxSizeInBytes, nAvgSizeInBytes] = masterNodeCtrl.masternodeTickets.calculateTicketSizes<CNFTRegTicket>(1, 1000, 100);
     if (nCount == 0)
-        nAvgSize = DEFAULT_NFT_TICKET_SIZE;
+    {
+        nMinSizeInBytes = DEFAULT_NFT_TICKET_SIZE;
+        nAvgSizeInBytes = DEFAULT_NFT_TICKET_SIZE;
+        nMaxSizeInBytes = DEFAULT_NFT_TICKET_SIZE;
+    }
 
     UniValue mnObj(UniValue::VOBJ);
-    mnObj.pushKV("estimatedNftStorageFeeMin", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nMinSize / 1024));
-    mnObj.pushKV("estimatedNftStorageFeeAverage", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nAvgSize / 1024));
-    mnObj.pushKV("estimatedNftStorageFeeMax", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nMaxSize / 1024));
+    mnObj.pushKV("estimatedNftStorageFeeMin", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nMinSizeInBytes));
+    mnObj.pushKV("estimatedNftStorageFeeAverage", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nAvgSizeInBytes));
+    mnObj.pushKV("estimatedNftStorageFeeMax", CNFTRegTicket::GetNftFee(nImageDataSizeInMB, nMaxSizeInBytes));
 
     return mnObj;
 }
