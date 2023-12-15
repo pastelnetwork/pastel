@@ -36,3 +36,9 @@ string CFeeRate::ToString() const
 {
     return strprintf("%d.%05d %s per 1000 bytes", m_nPatoshisPerK / COIN, m_nPatoshisPerK % COIN, CURRENCY_UNIT);
 }
+
+double GetTruncatedPSLAmount(const CAmount& nAmountInPat) noexcept
+{
+    const double nAmountInPSL = static_cast<double>(nAmountInPat) / COIN;
+    return trunc(nAmountInPSL * COIN_DECIMALS_FACTOR) / COIN_DECIMALS_FACTOR;
+}

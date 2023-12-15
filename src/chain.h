@@ -16,7 +16,7 @@
 constexpr int SPROUT_VALUE_VERSION = 1001400;
 constexpr int SAPLING_VALUE_VERSION = 1010100;
 
-
+// log template for chain work values
 #define SPEC_CHAIN_WORK "%.8g"
 
 // cached current blockchain height - reflects chainActive.Height()
