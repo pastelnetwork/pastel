@@ -5,6 +5,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdlib>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -23,6 +24,7 @@ static constexpr CAmount COIN = 100'000;
 // B: ParseFixedPoint(..., COIN_DECIMALS, ...)
 static constexpr CAmount COIN_DECIMALS = 5;
 static constexpr CAmount CENT = 1'000;
+constexpr double COIN_DECIMALS_FACTOR = 100000.0;
 
 extern const std::string CURRENCY_UNIT;
 extern const std::string MINOR_CURRENCY_UNIT;
@@ -75,3 +77,5 @@ public:
         READWRITE(m_nPatoshisPerK);
     }
 };
+
+double GetTruncatedPSLAmount(const CAmount& nAmountInPat) noexcept;

@@ -25,6 +25,8 @@
 
 constexpr uint8_t TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
 constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
+constexpr auto TICKET_KEYTWO_PREFIX = "@2@";
+constexpr auto TICKET_MVKEY_PREFIX = "@M@";
 
 // tuple <item id, item registration txid, transfer ticket txid>
 using reg_transfer_txid_t = std::tuple<TicketID, std::string, std::string>;
@@ -57,6 +59,8 @@ typedef struct _search_thumbids_t
     // fuzzy search map
     mu_strings fuzzySearchMap;
 } search_thumbids_t;
+
+using process_ticket_data_func_t = std::function<bool(std::string &&sKey, const std::unique_ptr<CPastelTicket>&)>;
 
 // Check if json value passes fuzzy search filter
 bool isValuePassFuzzyFilter(const nlohmann::json& jProp, const std::string& sPropFilterValue) noexcept;
@@ -98,8 +102,8 @@ public:
     void UpdatedBlockTip(const CBlockIndex* cBlockIndex, bool fInitialDownload);
     bool ParseTicketAndUpdateDB(CMutableTransaction& tx, const unsigned int nBlockHeight);
 
-    static std::string RealKeyTwo(const std::string& key) noexcept { return "@2@" + key; }
-    static std::string RealMVKey(const std::string& key) noexcept { return "@M@" + key; }
+    static std::string RealKeyTwo(const std::string& key) noexcept { return TICKET_KEYTWO_PREFIX + key; }
+    static std::string RealMVKey(const std::string& key) noexcept { return TICKET_MVKEY_PREFIX + key; }
 
     bool UpdateDB(CPastelTicket& ticket, std::string& txid, const unsigned int nBlockHeight);
     void UpdateDB_MVK(const CPastelTicket& ticket, const std::string& mvKey);
@@ -152,6 +156,9 @@ public:
     // find all tickets by mvKey
     template <class _TicketType>
     std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey);
+
+     // Process all tickets from the database of the given type.
+    bool ProcessAllTickets(TicketID id, process_ticket_data_func_t ticketFunctor) const;
 
     template <class _TicketType>
     std::tuple<size_t, size_t, size_t, size_t> calculateTicketSizes(

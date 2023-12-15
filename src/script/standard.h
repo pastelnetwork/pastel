@@ -6,6 +6,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
 #include <variant>
+#include <vector>
 
 #include <utils/uint256.h>
 #include <script/interpreter.h>
@@ -95,6 +96,8 @@ bool IsScriptDestination(const CTxDestination& dest) noexcept;
 /** Get the name of a txnouttype as a C string, or nullptr if unknown. */
 const char* GetTxnOutputType(txnouttype t);
 
+using txdest_vector_t = std::vector<CTxDestination>;
+
 /**
  * Parse a scriptPubKey and identify script type for standard scripts. If
  * successful, returns script type and parsed pubkeys or hashes, depending on 
@@ -124,7 +127,7 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
  * addressRet is populated with a single value and nRequiredRet is set to 1.
  * Returns true if successful.
  */
-bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CTxDestination>& addressRet, int& nRequiredRet);
+bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, txdest_vector_t& addressRet, int& nRequiredRet);
 
 /**
  * Generate a Bitcoin scriptPubKey for the given CTxDestination. Returns a P2PKH
