@@ -337,6 +337,12 @@
     <ClCompile Include="..\..\..\src\netmsg\fork-switch-tracker.cpp">
       <Filter>Source Files\netmsg</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\rpt-fees-burn.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\rpc\generate-report.cpp">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -698,6 +704,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\netmsg\fork-switch-tracker.h">
       <Filter>Source Files\netmsg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\rpt-fees-burn.h">
+      <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\rpc\generate-report.h">
+      <Filter>Source Files\mnode\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

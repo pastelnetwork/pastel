@@ -510,7 +510,7 @@ UniValue tickets_tools(const UniValue& params)
 {
     RPC_CMD_PARSER2(TOOLS, params, printtradingchain, getregbytrade, getregbytransfer,
         gettotalstoragefee, estimatenftstoragefee, validateusername, validateethereumaddress,
-        validateownership, searchthumbids, decoderawtransaction);
+        validateownership, searchthumbids, decoderawtransaction, feeandburnreport);
 
     if (!TOOLS.IsCmdSupported() || params.size() < 2)
         throw runtime_error(

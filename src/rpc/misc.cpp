@@ -138,8 +138,9 @@ public:
         UniValue obj(UniValue::VOBJ);
         CScript subscript;
         obj.pushKV("isscript", true);
-        if (pwalletMain && pwalletMain->GetCScript(scriptID, subscript)) {
-            vector<CTxDestination> addresses;
+        if (pwalletMain && pwalletMain->GetCScript(scriptID, subscript))
+        {
+            txdest_vector_t addresses;
             txnouttype whichType;
             int nRequired;
             ExtractDestinations(subscript, whichType, addresses, nRequired);

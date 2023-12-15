@@ -235,17 +235,15 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
     return bRet;
 }
 
-bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, vector<CTxDestination>& addressRet, int& nRequiredRet)
+bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, txdest_vector_t& addressRet, int& nRequiredRet)
 {
     addressRet.clear();
     typeRet = TX_NONSTANDARD;
     vector<v_uint8> vSolutions;
     if (!Solver(scriptPubKey, typeRet, vSolutions))
         return false;
-    if (typeRet == TX_NULL_DATA){
-        // This is data, not addresses
-        return false;
-    }
+    if (typeRet == TX_NULL_DATA)
+        return false; // This is data, not addresses
 
     if (typeRet == TX_MULTISIG)
     {

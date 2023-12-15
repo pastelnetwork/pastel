@@ -310,7 +310,7 @@ TEST(PTest_Multisig, multisig_Solver1)
         s << OP_1 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
         EXPECT_TRUE(Solver(s, whichType, solutions));
         EXPECT_EQ(solutions.size(), 4U);
-        vector<CTxDestination> addrs;
+        txdest_vector_t addrs;
         int nRequired;
         EXPECT_TRUE(ExtractDestinations(s, whichType, addrs, nRequired));
         EXPECT_EQ(addrs[0] , keyaddr[0]);

@@ -25,6 +25,7 @@
 #include <mnode/rpc/mnode-rpc-utils.h>
 #include <mnode/rpc/pastelid-rpc.h>
 #include <mnode/rpc/ingest.h>
+#include <mnode/rpc/generate-report.h>
 
 using namespace std;
 
@@ -263,9 +264,9 @@ static const CRPCCommand commands[] =
     { "mnode",               "getfeeschedule",         &getfeeschedule,         true  },
     { "mnode",               "chaindata",              &chaindata,              true  },
     { "mnode",               "tickets",                &tickets,                true  },
+    { "mnode",               "generate-report",        &generate_report,        true  },
     { "mnode",               "ingest",                 &ingest,                 true  },
 };
-
 
 void RegisterMasternodeRPCCommands(CRPCTable &tableRPC)
 {

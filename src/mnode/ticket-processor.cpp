@@ -960,7 +960,6 @@ template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVK
 template ActionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionRegTicket>(const string&);
 template ActionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionActivateTicket>(const string&);
 
-
 v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
     v_strings vResults;
@@ -979,6 +978,200 @@ v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
         }
     }
     return vResults;
+}
+
+template <TicketID>
+struct TicketTypeMapper;
+
+template <> struct TicketTypeMapper<TicketID::PastelID>
+{
+	using TicketType = CPastelIDRegTicket;
+};
+template <> struct TicketTypeMapper<TicketID::NFT>
+{
+	using TicketType = CNFTRegTicket;
+};
+template <> struct TicketTypeMapper<TicketID::Activate>
+{
+	using TicketType = CNFTActivateTicket;
+};
+template <> struct TicketTypeMapper<TicketID::Offer>
+{
+	using TicketType = COfferTicket;
+};
+template <> struct TicketTypeMapper<TicketID::Accept>
+{
+	using TicketType = CAcceptTicket;
+};
+template <> struct TicketTypeMapper<TicketID::Transfer>
+{
+	using TicketType = CTransferTicket;
+};
+template <> struct TicketTypeMapper<TicketID::Down>
+{
+	using TicketType = CTakeDownTicket;
+};
+template <> struct TicketTypeMapper<TicketID::Royalty>
+{
+	using TicketType = CNFTRoyaltyTicket;
+};
+template <> struct TicketTypeMapper<TicketID::Username>
+{
+	using TicketType = CChangeUsernameTicket;
+};
+template <> struct TicketTypeMapper<TicketID::EthereumAddress>
+{
+	using TicketType = CChangeEthereumAddressTicket;
+};
+template <> struct TicketTypeMapper<TicketID::ActionReg>
+{
+	using TicketType = CActionRegTicket;
+};
+template <> struct TicketTypeMapper<TicketID::ActionActivate>
+{
+	using TicketType = CActionActivateTicket;
+};
+template <> struct TicketTypeMapper<TicketID::CollectionReg>
+{
+	using TicketType = CollectionRegTicket;
+};
+template <> struct TicketTypeMapper<TicketID::CollectionAct>
+{
+	using TicketType = CollectionActivateTicket;
+};
+
+template <TicketID ID>
+bool ReadTicketFromDB(unique_ptr<CDBIterator>& pcursor, string& sKey, unique_ptr<CPastelTicket> &ticket)
+{
+    sKey.clear();
+    typename TicketTypeMapper<ID>::TicketType dbTicket;
+    if (pcursor->GetKey(sKey))
+    {
+        if (str_starts_with(sKey, TICKET_KEYTWO_PREFIX) || str_starts_with(sKey, TICKET_MVKEY_PREFIX))
+        {
+            sKey.clear();
+            return false;
+        }
+        if (pcursor->GetValue(dbTicket))
+        {
+            ticket = make_unique<typename TicketTypeMapper<ID>::TicketType>(move(dbTicket));
+            return true;
+        }
+	}
+    return false;
+}
+
+/**
+* Process all tickets from the database of the given type.
+* 
+* \param id - ticket type
+* \param ticketFunctor - functor to apply for each ticket, should accept key and ticket parameters
+* \return true if database for the given ticket type was found, false otherwise
+*/
+bool CPastelTicketProcessor::ProcessAllTickets(TicketID id, process_ticket_data_func_t ticketFunctor) const
+{
+    const auto itDB = dbs.find(id);
+    if (itDB == dbs.cend())
+        return false;
+
+	unique_ptr<CDBIterator> pcursor(itDB->second->NewIterator());
+	pcursor->SeekToFirst();
+
+	string sKey;
+	while (pcursor->Valid())
+	{
+		sKey.clear();
+        unique_ptr<CPastelTicket> ticket;
+
+        switch (id)
+        {
+            case TicketID::PastelID:
+			{
+				if (ReadTicketFromDB<TicketID::PastelID>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+            case TicketID::NFT:
+            {
+                if (ReadTicketFromDB<TicketID::NFT>(pcursor, sKey, ticket))
+                    ticketFunctor(move(sKey), ticket);
+            } break;
+
+            case TicketID::Activate:
+			{
+				if (ReadTicketFromDB<TicketID::Activate>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+            case TicketID::Offer:
+            {
+                if (ReadTicketFromDB<TicketID::Offer>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+            case TicketID::Accept:
+			{
+				if (ReadTicketFromDB<TicketID::Accept>(pcursor, sKey, ticket))
+                    ticketFunctor(move(sKey), ticket);
+            } break;
+
+            case TicketID::Transfer:
+            {
+                if (ReadTicketFromDB<TicketID::Transfer>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+            case TicketID::Down:
+			{
+				if (ReadTicketFromDB<TicketID::Down>(pcursor, sKey, ticket))
+                    ticketFunctor(move(sKey), ticket);
+            } break;
+
+            case TicketID::Royalty:
+			{
+				if (ReadTicketFromDB<TicketID::Royalty>(pcursor, sKey, ticket))
+                    ticketFunctor(move(sKey), ticket);
+			} break;
+
+			case TicketID::Username:
+			{
+				if (ReadTicketFromDB<TicketID::Username>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+			case TicketID::EthereumAddress:
+			{
+				if (ReadTicketFromDB<TicketID::EthereumAddress>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+			case TicketID::ActionReg:
+			{
+				if (ReadTicketFromDB<TicketID::ActionReg>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+			case TicketID::ActionActivate:
+			{
+				if (ReadTicketFromDB<TicketID::ActionActivate>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+			case TicketID::CollectionReg:
+			{
+				if (ReadTicketFromDB<TicketID::CollectionReg>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+
+			case TicketID::CollectionAct:
+			{
+				if (ReadTicketFromDB<TicketID::CollectionAct>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
+		}
+		pcursor->Next();
+	}
+    return true;
 }
 
 /**

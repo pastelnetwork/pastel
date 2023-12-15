@@ -118,6 +118,7 @@
     <ClCompile Include="..\..\..\src\mnode\mnode-perfcheck.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-requesttracker.cpp" />
     <ClCompile Include="..\..\..\src\mnode\p2fms-txbuilder.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\rpc\generate-report.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\masternode.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\ingest.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\masternodebroadcast.cpp" />
@@ -127,6 +128,7 @@
     <ClCompile Include="..\..\..\src\mnode\rpc\mnode-rpc-utils.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\pastelid-rpc.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\governance-rpc.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\rpc\rpt-fees-burn.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\storage-fee.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-activate.cpp" />
     <ClCompile Include="..\..\..\src\mnode\rpc\tickets-fake.cpp" />
@@ -222,12 +224,14 @@
     <ClInclude Include="..\..\..\src\miner.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h" />
     <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h" />
+    <ClInclude Include="..\..\..\src\mnode\rpc\generate-report.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\ingest.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\masternode.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\masternodebroadcast.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\mnode-rpc-utils.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\pastelid-rpc.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\governance-rpc.h" />
+    <ClInclude Include="..\..\..\src\mnode\rpc\rpt-fees-burn.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\storage-fee.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-activate.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\tickets-fake.h" />

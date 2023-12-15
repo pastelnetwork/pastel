@@ -3755,9 +3755,10 @@ private:
 public:
     CAffectedKeysVisitor(const CKeyStore &keystoreIn, vector<CKeyID> &vKeysIn) : keystore(keystoreIn), vKeys(vKeysIn) {}
 
-    void Process(const CScript &script) {
+    void Process(const CScript &script)
+    {
         txnouttype type;
-        vector<CTxDestination> vDest;
+        txdest_vector_t vDest;
         int nRequired;
         if (ExtractDestinations(script, type, vDest, nRequired))
         {
@@ -3766,12 +3767,14 @@ public:
         }
     }
 
-    void operator()(const CKeyID &keyId) {
+    void operator()(const CKeyID &keyId)
+    {
         if (keystore.HaveKey(keyId))
             vKeys.push_back(keyId);
     }
 
-    void operator()(const CScriptID &scriptId) {
+    void operator()(const CScriptID &scriptId)
+    {
         CScript script;
         if (keystore.GetCScript(scriptId, script))
             Process(script);
@@ -3780,7 +3783,8 @@ public:
     void operator()(const CNoDestination &none) {}
 };
 
-void CWallet::GetKeyBirthTimes(map<CKeyID, int64_t> &mapKeyBirth) const {
+void CWallet::GetKeyBirthTimes(map<CKeyID, int64_t> &mapKeyBirth) const
+{
     AssertLockHeld(cs_wallet); // mapKeyMetadata
     mapKeyBirth.clear();
 

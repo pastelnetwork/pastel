@@ -213,11 +213,12 @@ double CBlockIndex::GetLog2ChainWork() const noexcept
 void CBlockIndex::GetPrevBlockHashes(const uint32_t nMinHeight, v_uint256 &vPrevBlockHashes) const noexcept
 {
     vPrevBlockHashes.clear();
-    if (nHeight <= nMinHeight)
+    auto nUHeight = static_cast<uint32_t>(nHeight);
+    if (nUHeight <= nMinHeight)
 		return;
-    vPrevBlockHashes.reserve(nHeight - nMinHeight);
+    vPrevBlockHashes.reserve(nUHeight - nMinHeight);
 	const CBlockIndex* pindex = this;
-    while (pindex && pindex->nHeight > nMinHeight)
+    while (pindex && static_cast<uint32_t>(pindex->nHeight) > nMinHeight)
     {
 		vPrevBlockHashes.push_back(pindex->GetBlockHash());
 		pindex = pindex->pprev;
