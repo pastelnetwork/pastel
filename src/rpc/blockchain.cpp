@@ -20,6 +20,7 @@
 #include <main.h>
 #include <primitives/transaction.h>
 #include <rpc/server.h>
+#include <rpc/coin-supply.h>
 
 using namespace std;
 
@@ -1301,6 +1302,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "gettxout",               &gettxout,               true  },
     { "blockchain",         "gettxoutsetinfo",        &gettxoutsetinfo,        true  },
     { "blockchain",         "verifychain",            &verifychain,            true  },
+    { "blockchain",         "get-total-coin-supply",  &getTotalCoinSupply,     true  },
 
     // insightexplorer
     { "blockchain",         "getblockdeltas",         &getblockdeltas,         false },    

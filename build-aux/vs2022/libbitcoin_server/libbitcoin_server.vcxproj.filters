@@ -343,6 +343,9 @@
     <ClCompile Include="..\..\..\src\mnode\rpc\generate-report.cpp">
       <Filter>Source Files\mnode\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\rpc\coin-supply.cpp">
+      <Filter>Source Files\rpc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -710,6 +713,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\rpc\generate-report.h">
       <Filter>Source Files\mnode\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\rpc\coin-supply.h">
+      <Filter>Source Files\rpc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
