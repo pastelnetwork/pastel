@@ -45,7 +45,7 @@ void CChain::SetTip(CBlockIndex *pindex)
     gl_nChainHeight = static_cast<uint32_t>(vChain.size()) - 1;
 }
 
-CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const
+CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const noexcept
 {
     int nStep = 1;
     v_uint256 vHave;
@@ -76,7 +76,7 @@ CBlockLocator CChain::GetLocator(const CBlockIndex *pindex) const
     return CBlockLocator(vHave);
 }
 
-const CBlockIndex *CChain::FindFork(const CBlockIndex *pindex) const
+const CBlockIndex *CChain::FindFork(const CBlockIndex *pindex) const noexcept
 {
     if (pindex->nHeight > Height())
         pindex = pindex->GetAncestor(Height());
@@ -210,6 +210,22 @@ double CBlockIndex::GetLog2ChainWork() const noexcept
 	return log(nChainWork.getdouble()) / log(2.0);
 }
 
+/**
+ * Check if this block header contains Pastel ID and signature of the 
+ * previous block merkle root.
+ * 
+ * \return true if this block header contains Pastel ID and signature of the
+ *      previous block merkle root, false otherwise
+ */
+bool CBlockIndex::HasPrevBlockSignature() const noexcept
+{
+    if (nVersion < CBlockHeader::VERSION_SIGNED_BLOCK)
+        return false;
+    if (!sPastelID.has_value() || !prevMerkleRootSignature.has_value())
+		return false;
+    return !sPastelID->empty() && !prevMerkleRootSignature->empty();
+}
+
 void CBlockIndex::GetPrevBlockHashes(const uint32_t nMinHeight, v_uint256 &vPrevBlockHashes) const noexcept
 {
     vPrevBlockHashes.clear();
@@ -261,17 +277,51 @@ void CBlockIndex::SetNull() noexcept
     nSolution.clear();
 }
 
-CBlockIndex::CBlockIndex(const CBlockHeader& block) noexcept
+CBlockIndex::CBlockIndex(const CBlockHeader& blockHeader) noexcept
 {
     SetNull();
 
-    nVersion = block.nVersion;
-    hashMerkleRoot = block.hashMerkleRoot;
-    hashFinalSaplingRoot = block.hashFinalSaplingRoot;
-    nTime = block.nTime;
-    nBits = block.nBits;
-    nNonce = block.nNonce;
-    nSolution = block.nSolution;
+    assign(blockHeader);
+}
+
+void CBlockIndex::assign(const CBlockHeader& blockHeader) noexcept
+{
+    nVersion = blockHeader.nVersion;
+    hashMerkleRoot = blockHeader.hashMerkleRoot;
+    hashFinalSaplingRoot = blockHeader.hashFinalSaplingRoot;
+    nTime = blockHeader.nTime;
+    nBits = blockHeader.nBits;
+    nNonce = blockHeader.nNonce;
+    nSolution = blockHeader.nSolution;
+    sPastelID = blockHeader.sPastelID;
+    prevMerkleRootSignature = blockHeader.prevMerkleRootSignature;
+}
+
+void CBlockIndex::assign(const CBlockIndex& blockIndex) noexcept
+{
+    // block header fields
+    nVersion         = blockIndex.nVersion;
+    hashMerkleRoot   = blockIndex.hashMerkleRoot;
+    hashFinalSaplingRoot = blockIndex.hashFinalSaplingRoot;
+    nTime            = blockIndex.nTime;
+    nBits            = blockIndex.nBits;
+    nNonce           = blockIndex.nNonce;
+    nSolution        = blockIndex.nSolution;
+
+    nHeight          = blockIndex.nHeight;
+    nFile            = blockIndex.nFile;
+    nDataPos         = blockIndex.nDataPos;
+    nUndoPos         = blockIndex.nUndoPos;
+    nStatus          = blockIndex.nStatus;
+    hashSproutAnchor = blockIndex.hashSproutAnchor;
+    nTx              = blockIndex.nTx;
+
+    // optional fields
+    nCachedBranchId  = blockIndex.nCachedBranchId;
+    nSproutValue     = blockIndex.nSproutValue;
+    nSaplingValue    = blockIndex.nSaplingValue;
+    sPastelID		 = blockIndex.sPastelID;
+    prevMerkleRootSignature = blockIndex.prevMerkleRootSignature;
 }
 
 CDiskBlockPos CBlockIndex::GetBlockPos() const noexcept
@@ -298,17 +348,17 @@ CDiskBlockPos CBlockIndex::GetUndoPos() const noexcept
 
 CBlockHeader CBlockIndex::GetBlockHeader() const noexcept
 {
-    CBlockHeader block;
-    block.nVersion = nVersion;
+    CBlockHeader blockHeader;
+    blockHeader.nVersion = nVersion;
     if (pprev)
-        block.hashPrevBlock = pprev->GetBlockHash();
-    block.hashMerkleRoot = hashMerkleRoot;
-    block.hashFinalSaplingRoot = hashFinalSaplingRoot;
-    block.nTime = nTime;
-    block.nBits = nBits;
-    block.nNonce = nNonce;
-    block.nSolution = nSolution;
-    return block;
+        blockHeader.hashPrevBlock = pprev->GetBlockHash();
+    blockHeader.hashMerkleRoot = hashMerkleRoot;
+    blockHeader.hashFinalSaplingRoot = hashFinalSaplingRoot;
+    blockHeader.nTime = nTime;
+    blockHeader.nBits = nBits;
+    blockHeader.nNonce = nNonce;
+    blockHeader.nSolution = nSolution;
+    return blockHeader;
 }
 
 /**
@@ -394,4 +444,18 @@ CBlockIndex* FindLastCommonAncestorBlockIndex(CBlockIndex* pa, CBlockIndex* pb)
     // Eventually all chain branches meet at the genesis block.
     assert(pa == pb);
     return pa;
+}
+
+int64_t CBlockIndex::GetMedianTimePast() const noexcept
+{
+    int64_t pmedian[nMedianTimeSpan];
+    int64_t* pbegin = &pmedian[nMedianTimeSpan];
+    int64_t* pend = &pmedian[nMedianTimeSpan];
+
+    const CBlockIndex* pindex = this;
+    for (int i = 0; i < nMedianTimeSpan && pindex; i++, pindex = pindex->pprev)
+        *(--pbegin) = pindex->GetBlockTime();
+
+    std::sort(pbegin, pend);
+    return pbegin[(pend - pbegin)/2];
 }

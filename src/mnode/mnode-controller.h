@@ -109,7 +109,7 @@ public:
 
     fs::path GetMasternodeConfigFile();
 
-    bool IsSynced() const noexcept {return masternodeSync.IsSynced();}
+    bool IsSynced() const noexcept { return masternodeSync.IsSynced(); }
 
     bool ProcessMessage(node_t& pfrom, std::string& strCommand, CDataStream& vRecv);
     bool AlreadyHave(const CInv& inv);

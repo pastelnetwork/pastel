@@ -331,57 +331,33 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams)
     {
         func_thread_interrupt_point();
         pair<char, uint256> key;
-        if (pcursor->GetKey(key) && key.first == DB_BLOCK_INDEX)
-        {
-            CDiskBlockIndex diskindex;
-            if (pcursor->GetValue(diskindex))
-            {
-                // Construct block index object
-                CBlockIndex* pindexNew = InsertBlockIndex(diskindex.GetBlockHash());
-                pindexNew->pprev          = InsertBlockIndex(diskindex.hashPrev);
-                pindexNew->nHeight        = diskindex.nHeight;
-                pindexNew->nFile          = diskindex.nFile;
-                pindexNew->nDataPos       = diskindex.nDataPos;
-                pindexNew->nUndoPos       = diskindex.nUndoPos;
-                pindexNew->hashSproutAnchor     = diskindex.hashSproutAnchor;
-                pindexNew->nVersion       = diskindex.nVersion;
-                pindexNew->hashMerkleRoot = diskindex.hashMerkleRoot;
-                pindexNew->hashFinalSaplingRoot   = diskindex.hashFinalSaplingRoot;
-                pindexNew->nTime          = diskindex.nTime;
-                pindexNew->nBits          = diskindex.nBits;
-                pindexNew->nNonce         = diskindex.nNonce;
-                pindexNew->nSolution      = diskindex.nSolution;
-                pindexNew->nStatus        = diskindex.nStatus;
-                pindexNew->nCachedBranchId = diskindex.nCachedBranchId;
-                pindexNew->nTx            = diskindex.nTx;
-                pindexNew->nSproutValue   = diskindex.nSproutValue;
-                pindexNew->nSaplingValue  = diskindex.nSaplingValue;
-
-                // Consistency checks
-                auto header = pindexNew->GetBlockHeader();
-                if (header.GetHash() != pindexNew->GetBlockHash())
-                    return error("LoadBlockIndex(): block header inconsistency detected: on-disk = %s, in-memory = %s",
-                       diskindex.ToString(),  pindexNew->ToString());
-    
-                //INGEST->!!!
-                if (chainparams.IsRegTest() ||
-                    pindexNew->nHeight > TOP_INGEST_BLOCK) {
-                //<-INGEST!!!
-    
-                    if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, chainparams.GetConsensus()))
-                        return error("LoadBlockIndex(): CheckProofOfWork failed: %s", pindexNew->ToString());
-    
-                //INGEST->!!!
-                }
-                //<-INGEST!!!
-
-                pcursor->Next();
-            } else {
-                return error("LoadBlockIndex() : failed to read value");
-            }
-        } else {
+        if (!pcursor->GetKey(key) || key.first != DB_BLOCK_INDEX)
             break;
+
+        CDiskBlockIndex diskBlockIndex;
+        if (!pcursor->GetValue(diskBlockIndex))
+            return error("LoadBlockIndex(): failed to read block index value with key '%s'", key.second.ToString());
+
+        // Construct block index object
+        CBlockIndex* pindexNew = InsertBlockIndex(diskBlockIndex.GetBlockHash());
+        pindexNew->pprev       = InsertBlockIndex(diskBlockIndex.hashPrev);
+        pindexNew->assign(diskBlockIndex);
+
+        // Consistency checks
+        const auto header = pindexNew->GetBlockHeader();
+        if (header.GetHash() != pindexNew->GetBlockHash())
+            return error("LoadBlockIndex(): block header inconsistency detected: on-disk = %s, in-memory = %s",
+                diskBlockIndex.ToString(),  pindexNew->ToString());
+    
+        //INGEST->!!!
+        if (chainparams.IsRegTest() || pindexNew->nHeight > TOP_INGEST_BLOCK)
+        {
+            if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, chainparams.GetConsensus()))
+                return error("LoadBlockIndex(): CheckProofOfWork failed: %s", pindexNew->ToString());
         }
+        //<-INGEST!!!
+
+        pcursor->Next();
     }
 
     return true;

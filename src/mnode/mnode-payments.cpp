@@ -168,7 +168,7 @@ void CMasternodePayments::ProcessMessage(node_t &pfrom, string& strCommand, CDat
         }
 
         masternode_info_t mnInfo;
-        if (!masterNodeCtrl.masternodeManager.GetMasternodeInfo(vote.vinMasternode.prevout, mnInfo))
+        if (!masterNodeCtrl.masternodeManager.GetMasternodeInfo(true, vote.vinMasternode.prevout, mnInfo))
         {
             // mn was not found, so we can't check vote, some info is probably missing
             LogFnPrintf("MASTERNODEPAYMENTVOTE -- masternode is missing %s", vote.vinMasternode.prevout.ToStringShort());
@@ -511,7 +511,7 @@ bool CMasternodePaymentVote::IsValid(const node_t& pnode, int nValidationHeight,
 {
     masternode_info_t mnInfo;
 
-    if (!masterNodeCtrl.masternodeManager.GetMasternodeInfo(vinMasternode.prevout, mnInfo))
+    if (!masterNodeCtrl.masternodeManager.GetMasternodeInfo(true, vinMasternode.prevout, mnInfo))
     {
         strError = strprintf("Unknown Masternode: prevout=%s", vinMasternode.prevout.ToStringShort());
         // Only ask if we are already synced and still have no idea about that Masternode

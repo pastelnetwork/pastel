@@ -88,7 +88,7 @@ UniValue TxShieldedOutputsToJSON(const CTransaction& tx) {
     return vdesc;
 }
 
-void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry)
+void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 {
     const uint256 &txid = tx.GetHash();
     entry.pushKV("txid", txid.GetHex());

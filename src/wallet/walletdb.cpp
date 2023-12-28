@@ -55,13 +55,13 @@ bool CWalletDB::ErasePurpose(const string& strPurpose)
     return Erase(make_pair(string("purpose"), strPurpose));
 }
 
-bool CWalletDB::WriteTx(uint256 hash, const CWalletTx& wtx)
+bool CWalletDB::WriteTx(const uint256& hash, const CWalletTx& wtx)
 {
     nWalletDBUpdateCounter++;
     return Write(make_pair(string("tx"), hash), wtx);
 }
 
-bool CWalletDB::EraseTx(uint256 hash)
+bool CWalletDB::EraseTx(const uint256& hash)
 {
     nWalletDBUpdateCounter++;
     return Erase(make_pair(string("tx"), hash));

@@ -37,34 +37,38 @@ struct CDiskBlockPos
         READWRITE(VARINT(nPos));
     }
 
-    CDiskBlockPos() {
+    CDiskBlockPos() noexcept
+    {
         SetNull();
     }
 
-    CDiskBlockPos(int nFileIn, unsigned int nPosIn) {
+    CDiskBlockPos(int nFileIn, unsigned int nPosIn) noexcept
+    {
         nFile = nFileIn;
         nPos = nPosIn;
     }
 
-    friend bool operator==(const CDiskBlockPos &a, const CDiskBlockPos &b) {
+    friend bool operator==(const CDiskBlockPos &a, const CDiskBlockPos &b) noexcept
+    {
         return (a.nFile == b.nFile && a.nPos == b.nPos);
     }
 
-    friend bool operator!=(const CDiskBlockPos &a, const CDiskBlockPos &b) {
+    friend bool operator!=(const CDiskBlockPos &a, const CDiskBlockPos &b) noexcept
+    {
         return !(a == b);
     }
 
-    void SetNull() { nFile = -1; nPos = 0; }
-    bool IsNull() const { return (nFile == -1); }
+    void SetNull() noexcept { nFile = -1; nPos = 0; }
+    bool IsNull() const noexcept { return (nFile == -1); }
 
     std::string ToString() const
     {
         return strprintf("CBlockDiskPos(nFile=%i, nPos=%i)", nFile, nPos);
     }
-
 };
 
-enum BlockStatus: uint32_t {
+enum BlockStatus: uint32_t
+{
     //! Unused.
     BLOCK_VALID_UNKNOWN      =    0,
 
@@ -150,7 +154,7 @@ public:
     unsigned int nChainTx;
 
     // Verification status of this block. See enum BlockStatus
-    unsigned int nStatus;
+    uint32_t nStatus;
 
     //! Branch ID corresponding to the consensus rules used to validate this block.
     //! Only cached if block validity is BLOCK_VALID_CONSENSUS.
@@ -189,27 +193,31 @@ public:
     //!   once a block has been connected to the main chain, and will be null otherwise.
     uint256 hashFinalSaplingRoot;
 
-    //! block header
+    //! block header fields
     int nVersion;
     uint256 hashMerkleRoot;
-
-    unsigned int nTime;
-    unsigned int nBits;
+    uint32_t nTime;
+    uint32_t nBits;
     uint256 nNonce;
     v_uint8 nSolution;
+    // only for v5 block version
+    std::optional<std::string> sPastelID;
+    std::optional<v_uint8> prevMerkleRootSignature;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     uint32_t nSequenceId;
-
-    void SetNull() noexcept;
 
     CBlockIndex() noexcept
     {
         SetNull();
     }
 
-    CBlockIndex(const CBlockHeader& block) noexcept;
+    CBlockIndex(const CBlockHeader& blockHeader) noexcept;
 
+    void assign(const CBlockHeader& blockHeader) noexcept;
+    void assign(const CBlockIndex& blockIndex) noexcept;
+
+    void SetNull() noexcept;
     CDiskBlockPos GetBlockPos() const noexcept;
     CDiskBlockPos GetUndoPos() const noexcept;
     CBlockHeader GetBlockHeader() const noexcept;
@@ -231,19 +239,7 @@ public:
 
     enum { nMedianTimeSpan=11 };
 
-    int64_t GetMedianTimePast() const
-    {
-        int64_t pmedian[nMedianTimeSpan];
-        int64_t* pbegin = &pmedian[nMedianTimeSpan];
-        int64_t* pend = &pmedian[nMedianTimeSpan];
-
-        const CBlockIndex* pindex = this;
-        for (int i = 0; i < nMedianTimeSpan && pindex; i++, pindex = pindex->pprev)
-            *(--pbegin) = pindex->GetBlockTime();
-
-        std::sort(pbegin, pend);
-        return pbegin[(pend - pbegin)/2];
-    }
+    int64_t GetMedianTimePast() const noexcept;
 
     std::string ToString() const
     {
@@ -281,6 +277,10 @@ public:
     // get log2_work - chain work for this block
     double GetLog2ChainWork() const noexcept;
 
+    // check if this block header contains Pastel ID and signature of the 
+    // previous block merkle root
+    bool HasPrevBlockSignature() const noexcept;
+
     void GetPrevBlockHashes(const uint32_t nMinHeight, v_uint256 &vPrevBlockHashes) const noexcept;
 };
 
@@ -290,12 +290,13 @@ class CDiskBlockIndex : public CBlockIndex
 public:
     uint256 hashPrev;
 
-    CDiskBlockIndex() {
-        hashPrev = uint256();
-    }
+    CDiskBlockIndex() noexcept {}
 
-    explicit CDiskBlockIndex(const CBlockIndex* pindex) : CBlockIndex(*pindex) {
-        hashPrev = (pprev ? pprev->GetBlockHash() : uint256());
+    explicit CDiskBlockIndex(const CBlockIndex* pindex) noexcept :
+        CBlockIndex(*pindex)
+    {
+        if (pprev)
+            hashPrev = pprev->GetBlockHash();
     }
 
     ADD_SERIALIZE_METHODS;
@@ -316,7 +317,8 @@ public:
             READWRITE(VARINT(nDataPos));
         if (nStatus & BLOCK_HAVE_UNDO)
             READWRITE(VARINT(nUndoPos));
-        if (nStatus & BLOCK_ACTIVATES_UPGRADE) {
+        if (nStatus & BLOCK_ACTIVATES_UPGRADE)
+        {
             if (ser_action == SERIALIZE_ACTION::Read)
             {
                 uint32_t branchId;
@@ -343,34 +345,31 @@ public:
 
         // Only read/write nSproutValue if the client version used to create
         // this index was storing them.
-        if ((s.GetType() & SER_DISK) && (nVersion >= SPROUT_VALUE_VERSION)) {
+        if ((s.GetType() & SER_DISK) && (nVersion >= SPROUT_VALUE_VERSION))
+        {
             READWRITE(nSproutValue);
         }
 
         // Only read/write nSaplingValue if the client version used to create
         // this index was storing them.
-        if ((s.GetType() & SER_DISK) && (nVersion >= SAPLING_VALUE_VERSION)) {
+        if ((s.GetType() & SER_DISK) && (nVersion >= SAPLING_VALUE_VERSION))
+        {
             READWRITE(nSaplingValue);
         }
 
-        // If you have just added new serialized fields above, remember to add
-        // them to CBlockTreeDB::LoadBlockIndexGuts() in txdb.cpp :)
+        if (this->nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
+        {
+			READWRITE(sPastelID);
+			READWRITE(prevMerkleRootSignature);
+		}
     }
 
-    uint256 GetBlockHash() const
+    uint256 GetBlockHash() const noexcept
     {
-        CBlockHeader block;
-        block.nVersion        = nVersion;
-        block.hashPrevBlock   = hashPrev;
-        block.hashMerkleRoot  = hashMerkleRoot;
-        block.hashFinalSaplingRoot    = hashFinalSaplingRoot;
-        block.nTime           = nTime;
-        block.nBits           = nBits;
-        block.nNonce          = nNonce;
-        block.nSolution       = nSolution;
-        return block.GetHash();
+        CBlockHeader blockHeader = GetBlockHeader();
+        blockHeader.hashPrevBlock = hashPrev;
+        return blockHeader.GetHash();
     }
-
 
     std::string ToString() const
     {
@@ -395,17 +394,19 @@ public:
     CChain();
 
     /** Returns the index entry for the genesis block of this chain, or NULL if none. */
-    CBlockIndex *Genesis() const {
+    CBlockIndex *Genesis() const noexcept
+    {
         return vChain.size() > 0 ? vChain[0] : nullptr;
     }
 
     /** Returns the index entry for the tip of this chain, or NULL if none. */
-    CBlockIndex *Tip() const {
+    CBlockIndex *Tip() const noexcept
+    {
         return vChain.size() > 0 ? vChain[vChain.size() - 1] : nullptr;
     }
 
     /** Returns the index entry at a particular height in this chain, or NULL if no such height exists. */
-    CBlockIndex *operator[](int nHeight) const
+    CBlockIndex *operator[](int nHeight) const noexcept
     {
         if (nHeight < 0 || nHeight >= (int)vChain.size())
             return nullptr;
@@ -413,18 +414,21 @@ public:
     }
 
     /** Compare two chains efficiently. */
-    friend bool operator==(const CChain &a, const CChain &b) {
+    friend bool operator==(const CChain &a, const CChain &b)
+    {
         return a.vChain.size() == b.vChain.size() &&
                a.vChain[a.vChain.size() - 1] == b.vChain[b.vChain.size() - 1];
     }
 
     /** Efficiently check whether a block is present in this chain. */
-    bool Contains(const CBlockIndex *pindex) const {
+    bool Contains(const CBlockIndex *pindex) const noexcept
+    {
         return (*this)[pindex->nHeight] == pindex;
     }
 
-    /** Find the successor of a block in this chain, or NULL if the given index is not found or is the tip. */
-    CBlockIndex *Next(const CBlockIndex *pindex) const {
+    /** Find the successor of a block in this chain, or nullptr if the given index is not found or is the tip. */
+    CBlockIndex *Next(const CBlockIndex *pindex) const noexcept
+    {
         if (Contains(pindex))
             return (*this)[pindex->nHeight + 1];
         else
@@ -441,10 +445,10 @@ public:
     void SetTip(CBlockIndex *pindex);
 
     /** Return a CBlockLocator that refers to a block in this chain (by default the tip). */
-    CBlockLocator GetLocator(const CBlockIndex *pindex = nullptr) const;
+    CBlockLocator GetLocator(const CBlockIndex *pindex = nullptr) const noexcept;
 
     /** Find the last common block between this chain and a block index entry. */
-    const CBlockIndex *FindFork(const CBlockIndex *pindex) const;
+    const CBlockIndex *FindFork(const CBlockIndex *pindex) const noexcept;
 };
 
 // Find the last common ancestor two blocks have.

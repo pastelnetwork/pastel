@@ -47,7 +47,7 @@ public:
     MOCK_METHOD(bool, TxnCommit, (), ());
     MOCK_METHOD(bool, TxnAbort, (), ());
 
-    MOCK_METHOD(bool, WriteTx, (uint256 hash, const CWalletTx& wtx), ());
+    MOCK_METHOD(bool, WriteTx, (const uint256& hash, const CWalletTx& wtx), ());
     MOCK_METHOD(bool, WriteWitnessCacheSize, (const uint64_t nWitnessCacheSize), ());
     MOCK_METHOD(bool, WriteBestBlock, (const CBlockLocator& loc), ());
 };

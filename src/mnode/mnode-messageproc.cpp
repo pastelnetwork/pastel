@@ -194,7 +194,8 @@ void CMasternodeMessageProcessor::ProcessMessage(node_t& pFrom, string& strComma
 //        if no vinMasternodeFrom - we only accept messages encrypted with our public key!!!!
 
         masternode_info_t mnInfo; //Node that sent the message
-        if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(message.vinMasternodeFrom.prevout, mnInfo)) {
+        if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(true, message.vinMasternodeFrom.prevout, mnInfo))
+        {
             // mn was not found, so we can't check message, some info is probably missing
             LogFnPrintf("MASTERNODEMESSAGE -- masternode is missing %s", message.vinMasternodeFrom.prevout.ToStringShort());
             masterNodeCtrl.masternodeManager.AskForMN(pFrom, message.vinMasternodeFrom.prevout);

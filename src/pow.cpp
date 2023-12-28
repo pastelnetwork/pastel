@@ -130,7 +130,7 @@ bool CheckEquihashSolution(const CBlockHeader* pblock, const Consensus::Params& 
     return true;
 }
 
-bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params& params)
+bool CheckProofOfWork(const uint256& hash, unsigned int nBits, const Consensus::Params& params)
 {
     bool fNegative;
     bool fOverflow;

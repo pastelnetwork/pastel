@@ -350,15 +350,15 @@ namespace ed_crypto {
         static bool verify(const unsigned char* message, std::size_t msglen, const unsigned char* signature, std::size_t siglen, const key<type>& public_key)
         {
             unique_md_ctx_ptr ctx(EVP_MD_CTX_create());
-            if (!ctx) throw (crypto_exception("MD context is NULL!", std::string(), "EVP_MD_CTX_create"));
+            if (!ctx)
+                throw crypto_exception("MD context is NULL!", std::string(), "EVP_MD_CTX_create");
     
             EVP_MD_CTX *mdctx = ctx.get();
             EVP_PKEY *pkey = public_key.get();
     
             // Initialise the DigestVerify operation - EdDSA has builtin digest function
-            if (OK != EVP_DigestVerifyInit(mdctx, nullptr, nullptr, nullptr, pkey)) {
-                throw (crypto_exception("", std::string(), "EVP_DigestVerifyInit"));
-            }
+            if (OK != EVP_DigestVerifyInit(mdctx, nullptr, nullptr, nullptr, pkey))
+                throw crypto_exception("", std::string(), "EVP_DigestVerifyInit");
     
             // Verify the signature
             return (OK == EVP_DigestVerify(mdctx, signature, siglen, message, msglen));

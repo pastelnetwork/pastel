@@ -10,12 +10,27 @@
 #include <primitives/block.h>
 #include <hash.h>
 #include <crypto/common.h>
+#include <pastelid/pastel_key.h>
 
 using namespace std;
 
 uint256 CBlockHeader::GetHash() const noexcept
 {
     return SerializeHash(*this);
+}
+
+/**
+ * Check if the block header contains Pastel ID and signature of the
+ * previous block merkle root.
+ * 
+ * \param pbMutated
+ * \return 
+ */
+bool CBlockHeader::HasPrevBlockSignature() const noexcept
+{
+    if (nVersion < CBlockHeader::VERSION_SIGNED_BLOCK)
+        return false;
+    return !sPastelID.empty() && !prevMerkleRootSignature.empty();
 }
 
 uint256 CBlock::BuildMerkleTree(bool* pbMutated) const
@@ -96,19 +111,20 @@ v_uint256 CBlock::GetMerkleBranch(const size_t nIndex) const noexcept
     return vMerkleBranch;
 }
 
-uint256 CBlock::CheckMerkleBranch(uint256 hash, const v_uint256& vMerkleBranch, int nIndex) noexcept
+uint256 CBlock::CheckMerkleBranch(const uint256& hash, const v_uint256& vMerkleBranch, int nIndex) noexcept
 {
     if (nIndex == -1)
         return uint256();
+    uint256 hashMerkle = hash;
     for (const auto &hashBranchItem : vMerkleBranch)
     {
         if (nIndex & 1)
-            hash = Hash(BEGIN(hashBranchItem), END(hashBranchItem), BEGIN(hash), END(hash));
+            hashMerkle = Hash(BEGIN(hashBranchItem), END(hashBranchItem), BEGIN(hashMerkle), END(hashMerkle));
         else
-            hash = Hash(BEGIN(hash), END(hash), BEGIN(hashBranchItem), END(hashBranchItem));
+            hashMerkle = Hash(BEGIN(hashMerkle), END(hashMerkle), BEGIN(hashBranchItem), END(hashBranchItem));
         nIndex >>= 1;
     }
-    return hash;
+    return hashMerkle;
 }
 
 string CBlock::ToString() const

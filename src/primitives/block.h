@@ -11,9 +11,9 @@
 #include <primitives/transaction.h>
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
- * * and scan through nonce values to make the block's hash satisfy proof-of-work
+ * and scan through nonce values to make the block's hash satisfy proof-of-work (PoW)
  * requirements.  When they solve the proof-of-work, they broadcast the block
- * to everyone and the block is added to the block chain.  The first transaction
+ * to everyone and the block is added to the block chain. The first transaction
  * in the block is a special one that creates a new coin owned by the creator
  * of the block.
  */
@@ -21,39 +21,49 @@ class CBlockHeader
 {
 public:
     // block header
-    int32_t nVersion;
+    int32_t nVersion;             // version of the block
     uint256 hashPrevBlock;        // hash of the previous block
     uint256 hashMerkleRoot;       // merkle root
-    uint256 hashFinalSaplingRoot;
-    uint32_t nTime;
-    uint32_t nBits;
-    uint256 nNonce;
-    v_uint8 nSolution;            // Equihash solution
+    uint256 hashFinalSaplingRoot; // final sapling root (hash representing a state of the Sapling shielded transactions)
+    uint32_t nTime;			      // Unix timestamp of the block (when the miner started hashing the header)
+    uint32_t nBits;			      // difficulty of the proof of work (target threshold for the block's hash)
+    uint256 nNonce;			      // 256-bit number that miners change to modify the header hash 
+    // in order to produce a hash below the target threshold (nBits)
+    v_uint8 nSolution;            // Equihash solution - can be empty vector
+    // v5
+    std::string sPastelID;        // mnid of the SN that mined the block (public key to verify signature)
+    v_uint8 prevMerkleRootSignature; // signature for the merkle root hash of the previous block signed with the SN private key
 
-    // excluding Equihash solution
+    // block header size excluding Equihash solution & empty v5 fields
     static constexpr size_t EMPTY_HEADER_SIZE =
         sizeof(nVersion) +
-        sizeof(hashPrevBlock) + 
-        sizeof(hashMerkleRoot) + 
+        sizeof(hashPrevBlock) +
+        sizeof(hashMerkleRoot) +
         sizeof(hashFinalSaplingRoot) +
         sizeof(nTime) +
         sizeof(nBits) +
-        sizeof(nNonce);
-    static constexpr size_t HEADER_SIZE = 
+        sizeof(nNonce) + 
+        1 + // 0-size Pastel ID
+        1;  // 0-size prev merkle root signature
+
+    static constexpr size_t HEADER_SIZE =
         EMPTY_HEADER_SIZE +
         (32 + 4) * 3; /* nSolution - can be empty vector */
+
     // current version of the block header
-    static constexpr int32_t CURRENT_VERSION = 4;
+    static constexpr int32_t CURRENT_VERSION = 5;
+    static constexpr int32_t VERSION_SIGNED_BLOCK = 5;
 
     CBlockHeader() noexcept
     {
         Clear();
     }
 
-    CBlockHeader(CBlockHeader && hdr) noexcept
+    CBlockHeader(CBlockHeader&& hdr) noexcept
     {
         move_from(std::move(hdr));
     }
+
     CBlockHeader& operator=(CBlockHeader&& hdr) noexcept
     {
         if (this != &hdr)
@@ -63,10 +73,12 @@ public:
         }
         return *this;
     }
+
     CBlockHeader(const CBlockHeader& hdr) noexcept
     {
         copy_from(hdr);
     }
+
     CBlockHeader& operator=(const CBlockHeader& hdr) noexcept
     {
         if (this != &hdr)
@@ -84,6 +96,8 @@ public:
         nBits = hdr.nBits;
         nNonce = hdr.nNonce;
         nSolution = hdr.nSolution;
+        sPastelID = hdr.sPastelID;
+        prevMerkleRootSignature = hdr.prevMerkleRootSignature;
         return *this;
     }
 
@@ -97,6 +111,8 @@ public:
         nBits = hdr.nBits;
         nNonce = std::move(hdr.nNonce);
         nSolution = std::move(hdr.nSolution);
+        sPastelID = std::move(hdr.sPastelID);
+        prevMerkleRootSignature = std::move(hdr.prevMerkleRootSignature);
         return *this;
     }
 
@@ -105,6 +121,7 @@ public:
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         READWRITE(this->nVersion);
         READWRITE(hashPrevBlock);
         READWRITE(hashMerkleRoot);
@@ -113,6 +130,11 @@ public:
         READWRITE(nBits);
         READWRITE(nNonce);
         READWRITE(nSolution);
+        if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
+        {
+            READWRITE(sPastelID);
+            READWRITE(prevMerkleRootSignature);
+        }
     }
 
     void Clear() noexcept
@@ -125,12 +147,17 @@ public:
         nBits = 0;
         nNonce.SetNull();
         nSolution.clear();
+        sPastelID.clear();
+        prevMerkleRootSignature.clear();
     }
 
     bool IsNull() const noexcept { return (nBits == 0); }
 
     uint256 GetHash() const noexcept;
     int64_t GetBlockTime() const noexcept { return static_cast<int64_t>(nTime); }
+    // check if the block header contains Pastel ID and signature of the 
+    // previous block merkle root
+    bool HasPrevBlockSignature() const noexcept;
 };
 
 /**
@@ -144,7 +171,7 @@ public:
     // network and disk, vector of transactions
     std::vector<CTransaction> vtx;
 
-    // memory only
+    // memory only fields
     mutable CTxOut txoutMasternode; // masternode payment
     mutable CTxOut txoutGovernance; // governance payment
     mutable v_uint256 vMerkleTree;
@@ -211,7 +238,7 @@ public:
     uint256 BuildMerkleTree(bool* pbMutated = nullptr) const;
 
     v_uint256 GetMerkleBranch(const size_t nIndex) const noexcept;
-    static uint256 CheckMerkleBranch(uint256 hash, const v_uint256& vMerkleBranch, int nIndex) noexcept;
+    static uint256 CheckMerkleBranch(const uint256& hash, const v_uint256& vMerkleBranch, int nIndex) noexcept;
     std::string ToString() const;
 };
 
@@ -252,9 +279,9 @@ struct CBlockLocator
 {
     v_uint256 vHave;
 
-    CBlockLocator() {}
+    CBlockLocator() noexcept {}
 
-    CBlockLocator(const v_uint256& vHaveIn)
+    CBlockLocator(const v_uint256& vHaveIn) noexcept
     {
         vHave = vHaveIn;
     }
@@ -270,17 +297,18 @@ struct CBlockLocator
         READWRITE(vHave);
     }
 
-    void SetNull()
+    void SetNull() noexcept
     {
         vHave.clear();
     }
 
-    bool IsNull() const
+    bool IsNull() const noexcept
     {
         return vHave.empty();
     }
 
-    friend bool operator==(const CBlockLocator& a, const CBlockLocator& b) {
+    friend bool operator==(const CBlockLocator& a, const CBlockLocator& b) noexcept
+    {
         return (a.vHave == b.vHave);
     }
 };

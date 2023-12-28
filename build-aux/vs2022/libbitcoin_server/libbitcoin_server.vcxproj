@@ -218,7 +218,6 @@
     <ClInclude Include="..\..\..\src\legroast.h" />
     <ClInclude Include="..\..\..\src\limitedmap.h" />
     <ClInclude Include="..\..\..\src\main.h" />
-    <ClInclude Include="..\..\..\src\map_types.h" />
     <ClInclude Include="..\..\..\src\memusage.h" />
     <ClInclude Include="..\..\..\src\merkleblock.h" />
     <ClInclude Include="..\..\..\src\metrics.h" />

@@ -92,6 +92,10 @@ private:
     std::map<COutPoint, std::map<CNetAddr, int64_t> > mWeAskedForMasternodeListEntry;
     // who we asked for the masternode verification
     std::map<CNetAddr, CMasternodeVerification> mWeAskedForVerification;
+    // cache of masternode payees
+    std::map<CScript, COutPoint> mapMasternodePayeeCache;
+    // cache of masternode mnids
+    std::unordered_map<std::string, COutPoint> mapMasternodeMnIdCache;
 
     // these maps are used for masternode recovery from MASTERNODE_STATE::NEW_START_REQUIRED
     std::map<uint256, std::pair< int64_t, std::set<CNetAddr> > > mMnbRecoveryRequests;
@@ -227,10 +231,13 @@ public:
     /// Versions of Find that are safe to use from outside the class
     masternode_t Get(const COutPoint& outpoint);
     bool Has(const COutPoint& outpoint);
+    bool HasPayee(const bool bLock, const CScript& payee) noexcept;
+    bool IsTxHasMNOutputs(const CTransaction& tx) noexcept;
 
-    bool GetMasternodeInfo(const COutPoint& outpoint, masternode_info_t& mnInfoRet) const noexcept;
+    bool GetMasternodeInfo(const bool bLock, const COutPoint& outpoint, masternode_info_t& mnInfoRet) const noexcept;
     bool GetMasternodeInfo(const CPubKey& pubKeyMasternode, masternode_info_t& mnInfoRet) const noexcept;
-    bool GetMasternodeInfo(const CScript& payee, masternode_info_t& mnInfoRet) const noexcept;
+    bool GetMasternodeInfo(const bool bLock, const CScript& payee, masternode_info_t& mnInfoRet) const noexcept;
+    bool GetAndCacheMasternodeInfo(const std::string &sPastelID, masternode_info_t& mnInfoRet) noexcept;
 
     /// Find an entry in the masternode list that is next to be paid
     bool GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, uint32_t& nCountRet, masternode_info_t& mnInfoRet);

@@ -93,6 +93,7 @@ static constexpr unsigned int DATABASE_FLUSH_INTERVAL = 24 * 60 * 60;
 /** Maximum length of reject messages. */
 static constexpr unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
 static constexpr int64_t DEFAULT_MAX_TIP_AGE = 24 * 60 * 60;
+static constexpr int64_t BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS = 30 * 60;
 
 // Sanity check the magic numbers when we change them
 static_assert(DEFAULT_BLOCK_MAX_SIZE <= MAX_BLOCK_SIZE);
@@ -263,7 +264,7 @@ void FindFilesToPrune(std::set<int>& setFilesToPrune);
 void UnlinkPrunedFiles(std::set<int>& setFilesToPrune);
 
 /** Create a new block index entry for a given block hash */
-CBlockIndex * InsertBlockIndex(uint256 hash);
+CBlockIndex * InsertBlockIndex(const uint256 &hash);
 /** Get statistics from node state */
 bool GetNodeStateStats(const NodeId nodeid, CNodeStateStats &stats);
 /** Increase a node's misbehavior score. */
@@ -395,7 +396,9 @@ bool CheckBlock(
     CValidationState& state,
     const CChainParams& chainparams,
     libzcash::ProofVerifier& verifier,
-    bool fCheckPOW = true, bool fCheckMerkleRoot = true);
+    const bool fCheckPOW = true,
+    const bool fCheckMerkleRoot = true,
+    const CBlockIndex* pindex = nullptr);
 
 /** Context-dependent validity checks.
  *  By "context", we mean only the previous block headers, but not the UTXO set;
@@ -404,6 +407,7 @@ bool ContextualCheckBlockHeader(
     const CBlockHeader& block,
     CValidationState& state,
     const CChainParams& chainparams,
+    const bool bGenesisBlock,
     CBlockIndex *pindexPrev);
 bool ContextualCheckBlock(
     const CBlock& block,
