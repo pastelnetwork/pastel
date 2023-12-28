@@ -1080,8 +1080,6 @@ const unsigned char ZCASH_SEQUENCE_HASH_PERSONALIZATION[crypto_generichash_blake
     {'Z','c','a','s','h','S','e','q','u','e','n','c','H','a','s','h'};
 const unsigned char ZCASH_OUTPUTS_HASH_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] =
     {'Z','c','a','s','h','O','u','t','p','u','t','s','H','a','s','h'};
-const unsigned char ZCASH_JOINSPLITS_HASH_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] =
-    {'Z','c','a','s','h','J','S','p','l','i','t','s','H','a','s','h'};
 const unsigned char ZCASH_SHIELDED_SPENDS_HASH_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] =
     {'Z','c','a','s','h','S','S','p','e','n','d','s','H','a','s','h'};
 const unsigned char ZCASH_SHIELDED_OUTPUTS_HASH_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] =

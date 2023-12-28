@@ -51,6 +51,7 @@
 //MasterNode
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-validation.h>
+#include <mnode/tickets/pastelid-reg.h>
 
 using namespace std;
 
@@ -808,14 +809,14 @@ void CheckForkWarningConditions(const Consensus::Params& consensusParams)
         if (!fLargeWorkForkFound && pindexBestForkBase)
         {
             string warning = string("'Warning: Large-work fork detected, forking after block ") +
-                pindexBestForkBase->phashBlock->ToString() + string("'");
+                pindexBestForkBase->GetBlockHashString() + string("'");
             CAlert::Notify(warning, true);
         }
         if (pindexBestForkTip && pindexBestForkBase)
         {
             LogPrintf("%s: Warning: Large valid fork found\n  forking the chain at height %d (%s)\n  lasting to height %d (%s).\nChain state database corruption likely.\n", __func__,
-                   pindexBestForkBase->nHeight, pindexBestForkBase->phashBlock->ToString(),
-                   pindexBestForkTip->nHeight, pindexBestForkTip->phashBlock->ToString());
+                   pindexBestForkBase->nHeight, pindexBestForkBase->GetBlockHashString(),
+                   pindexBestForkTip->nHeight, pindexBestForkTip->GetBlockHashString());
             fLargeWorkForkFound = true;
         }
         else
@@ -1440,19 +1441,20 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     AssertLockHeld(cs_main);
 
     bool fExpensiveChecks = true;
-    if (fCheckpointsEnabled) {
+    if (fCheckpointsEnabled)
+    {
         CBlockIndex *pindexLastCheckpoint = Checkpoints::GetLastCheckpoint(chainparams.Checkpoints());
-        if (pindexLastCheckpoint && pindexLastCheckpoint->GetAncestor(pindex->nHeight) == pindex) {
-            // This block is an ancestor of a checkpoint: disable script checks
+        // If this block is an ancestor of a checkpoint -> disable script checks
+        if (pindexLastCheckpoint && pindexLastCheckpoint->GetAncestor(pindex->nHeight) == pindex)
             fExpensiveChecks = false;
-        }
     }
 
     auto verifier = libzcash::ProofVerifier::Strict();
     auto disabledVerifier = libzcash::ProofVerifier::Disabled();
 
     // Check it again to verify transactions, and in case a previous version let a bad block in
-    if (!CheckBlock(block, state, chainparams, fExpensiveChecks ? verifier : disabledVerifier, !fJustCheck, !fJustCheck))
+    if (!CheckBlock(block, state, chainparams, fExpensiveChecks ? verifier : disabledVerifier, 
+        !fJustCheck, !fJustCheck, pindex))
         return false;
 
     // verify that the view's current state corresponds to the previous block
@@ -1503,8 +1505,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     vPos.reserve(block.vtx.size());
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
 
-    // Construct the incremental merkle tree at the current
-    // block position,
+    // Construct the incremental merkle tree at the current block position
     auto old_sprout_tree_root = view.GetBestAnchor(SPROUT);
     // saving the top anchor in the block index as we go.
     if (!fJustCheck) {
@@ -1952,7 +1953,7 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
     {
         LogFnPrintf("checking block %s (%d)", pindexNew->GetBlockHashString(), pindexNew->nHeight);
         auto verifier = libzcash::ProofVerifier::Disabled();
-        if (!CheckBlock(*pblock, state, chainparams, verifier) || 
+        if (!CheckBlock(*pblock, state, chainparams, verifier, true, true, pindexNew) || 
             !ContextualCheckBlock(*pblock, state, chainparams, pindexNew->pprev))
         {
             if (state.IsInvalid() && !state.CorruptionPossible())
@@ -2121,11 +2122,11 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
             ), nReorgLength, MAX_REORG_LENGTH) + "\n\n" +
             translate("Reorganization details") + ":\n" +
             "- " + strprintf(translate("Current tip: %s, height %d, work %s"),
-                pindexOldTip->phashBlock->GetHex(), pindexOldTip->nHeight, pindexOldTip->nChainWork.GetHex()) + "\n" +
+                pindexOldTip->GetBlockHashString(), pindexOldTip->nHeight, pindexOldTip->nChainWork.GetHex()) + "\n" +
             "- " + strprintf(translate("New tip:     %s, height %d, work %s"),
-                pindexMostWork->phashBlock->GetHex(), pindexMostWork->nHeight, pindexMostWork->nChainWork.GetHex()) + "\n" +
+                pindexMostWork->GetBlockHashString(), pindexMostWork->nHeight, pindexMostWork->nChainWork.GetHex()) + "\n" +
             "- " + strprintf(translate("Fork point:  %s, height %d"),
-                pindexFork->phashBlock->GetHex(), pindexFork->nHeight) + "\n\n" +
+                pindexFork->GetBlockHashString(), pindexFork->nHeight) + "\n\n" +
             translate("Please help, human!");
         LogPrintf("*** %s\n", msg);
         uiInterface.ThreadSafeMessageBox(msg, "", CClientUIInterface::MSG_ERROR);
@@ -2671,7 +2672,7 @@ bool CheckBlockHeader(
     bool fCheckPOW)
 {
     // Check block version
-    if (block.nVersion < MIN_BLOCK_VERSION)
+    if (block.nVersion < MIN_ALLOWED_BLOCK_VERSION)
         return state.DoS(100, error("CheckBlockHeader(): block version too low"),
                          REJECT_INVALID, "version-too-low");
     
@@ -2720,8 +2721,9 @@ bool CheckBlock(
     CValidationState& state,
     const CChainParams& chainparams,
     libzcash::ProofVerifier& verifier,
-    bool fCheckPOW,
-    bool fCheckMerkleRoot)
+    const bool fCheckPOW,
+    const bool fCheckMerkleRoot,
+    const CBlockIndex* pindex)
 {
     // These are checks that are independent of context.
 
@@ -2793,6 +2795,8 @@ bool CheckBlock(
     // Check transactions
     size_t nCoinBaseTransactions = 0;
     unsigned int nSigOps = 0;
+    bool bHasMnPaymentInCoinbase = false;
+    const bool bIsMnSynced = masterNodeCtrl.IsSynced();
     for (const auto& tx : block.vtx)
     {
         if (tx.IsCoinBase())
@@ -2800,6 +2804,8 @@ bool CheckBlock(
             if (++nCoinBaseTransactions > 1)
                 return state.DoS(100, error("CheckBlock(): more than one coinbase"),
                                  REJECT_INVALID, "bad-cb-multiple");
+            if (bIsMnSynced && block.HasPrevBlockSignature())
+                bHasMnPaymentInCoinbase = masterNodeCtrl.masternodeManager.IsTxHasMNOutputs(tx);
         }
         if (!CheckTransaction(tx, state, verifier))
             return error("CheckBlock(): CheckTransaction failed");
@@ -2810,17 +2816,111 @@ bool CheckBlock(
         return state.DoS(100, error("CheckBlock(): out-of-bounds SigOpCount"),
                          REJECT_INVALID, "bad-blk-sigops", true);
 
+    // check only blocks that were mined/generated recently within last 30 mins
+    if (bHasMnPaymentInCoinbase && 
+        (block.GetBlockTime() > (GetTime() - BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS)) &&
+        is_enum_any_of(state.getTxOrigin(), TxOrigin::MINED_BLOCK, TxOrigin::MSG_BLOCK, TxOrigin::GENERATED))
+    {
+        // basic validation is already done in CheckBlockHeader:
+        //   1) Pastel ID (mnid) is registered
+        //   2) signature of the previous block's merkle root is valid
+        masternode_info_t mnInfo;
+        if (!masterNodeCtrl.masternodeManager.GetAndCacheMasternodeInfo(block.sPastelID, mnInfo))
+        {
+            return state.DoS(100, error("CheckBlock(): MasterNode with mnid='%s' is not registered", block.sPastelID),
+                REJECT_INVALID, "mnid-not-registered");
+        }
+
+        if (!mnInfo.IsEnabled())
+        {
+            return state.DoS(100, error("CheckBlock(): MasterNode '%s' is not enabled (%s)", 
+                mnInfo.GetDesc(), mnInfo.GetStateString()),
+                REJECT_INVALID, "mnid-not-enabled");
+        }
+        // check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
+        // to mine this block and receive rewards
+        const size_t nEnabledMnCount = masterNodeCtrl.masternodeManager.CountEnabled();
+        unordered_map<string, uint32_t> mapMnids;
+        mapMnids.reserve(nEnabledMnCount);
+        auto pCurIndex = pindex;
+        size_t nProcessed = 0;
+        while (pCurIndex && (nProcessed + 1 < nEnabledMnCount))
+        {
+            pCurIndex = pCurIndex->pprev;
+            if (!pCurIndex)
+                break;
+            if (pCurIndex->nStatus && BlockStatus::BLOCK_ACTIVATES_UPGRADE)
+                break;
+            if (pCurIndex->sPastelID.has_value())
+                mapMnids.emplace(pCurIndex->sPastelID.value(), static_cast<uint32_t>(pCurIndex->nHeight));
+            ++nProcessed;
+        }
+        const auto mnidIt = mapMnids.find(block.sPastelID);
+        if (mnidIt != mapMnids.cend())
+        {
+            return state.DoS(100, error("CheckBlock(): MasterNode %s "),
+                REJECT_INVALID, "no-masternodes");
+        }
+	}
+
     return true;
 }
 
+bool CheckBlockSignature(const CBlockHeader& blockHeader, const CBlockIndex* pindexPrev, CValidationState& state)
+{
+    if (!blockHeader.HasPrevBlockSignature())
+        return true;
+
+    try
+    {
+        if (!pindexPrev)
+            return state.DoS(100, error("%s: previous block is not defined", __func__),
+                				REJECT_INVALID, "prev-block-not-defined");
+        // check that this Pastel ID is registered by MasterNode (mnid)
+        CPastelIDRegTicket mnidTicket;
+        string sPastelID = blockHeader.sPastelID;
+        mnidTicket.SetKeyOne(move(sPastelID));
+        if (!masterNodeCtrl.masternodeTickets.FindTicket(mnidTicket))
+            return state.DoS(100, error("%s: Pastel ID %s is not registered by MasterNode", __func__, blockHeader.sPastelID),
+                REJECT_INVALID, "mnid-not-registered");
+        if (mnidTicket.isPersonal())
+            return state.DoS(100, error("%s: Pastel ID %s is personal", __func__, blockHeader.sPastelID),
+                REJECT_INVALID, "personal-pastel-id");
+        if (!CPastelID::Verify(pindexPrev->hashMerkleRoot.ToString(),
+            vector_to_string(blockHeader.prevMerkleRootSignature), blockHeader.sPastelID,
+            CPastelID::SIGN_ALGORITHM::ed448, false))
+        {
+            return state.DoS(100, error("%s: block signature verification failed", __func__),
+                REJECT_SIGNATURE_ERROR, "bad-signature");
+        }
+    }
+    catch (const exception& e)
+    {
+		return state.DoS(100, error("%s: block signature verification failed. %s", __func__, e.what()),
+            REJECT_SIGNATURE_ERROR, "bad-signature");
+	}
+
+	return true;
+}
+
+/**
+ * Contextual check of the block header.
+ * 
+ * \param block - block header to check
+ * \param state - chain state
+ * \param chainparams - chain parameters
+ * \param pindexPrev - pointer to the previous block index
+ * \return true if the contextual check passed, false otherwise
+ */
 bool ContextualCheckBlockHeader(
-    const CBlockHeader& block,
+    const CBlockHeader& blockHeader,
     CValidationState& state,
     const CChainParams& chainparams,
+    const bool bGenesisBlock,
     CBlockIndex * const pindexPrev)
 {
     const auto& consensusParams = chainparams.GetConsensus();
-    uint256 hash = block.GetHash();
+    uint256 hash = blockHeader.GetHash();
     if (hash == consensusParams.hashGenesisBlock)
         return true;
 
@@ -2829,31 +2929,45 @@ bool ContextualCheckBlockHeader(
     const int nHeight = pindexPrev->nHeight + 1;
 
     // Check proof of work
-    if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+    if (blockHeader.nBits != GetNextWorkRequired(pindexPrev, &blockHeader, consensusParams))
         return state.DoS(100, error("%s: incorrect proof of work", __func__),
                          REJECT_INVALID, "bad-diffbits");
 
     // Check timestamp against prev
-    if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
+    if (blockHeader.GetBlockTime() <= pindexPrev->GetMedianTimePast())
         return state.Invalid(error("%s: block's timestamp is too early", __func__),
                              REJECT_INVALID, "time-too-old");
 
     if (fCheckpointsEnabled)
     {
         // Don't accept any forks from the main chain prior to last checkpoint
-        CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(chainparams.Checkpoints());
+        auto pcheckpoint = Checkpoints::GetLastCheckpoint(chainparams.Checkpoints());
         if (pcheckpoint && nHeight < pcheckpoint->nHeight)
             return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d)", __func__, nHeight));
     }
 
     // Reject by invalid block version
-    if (block.nVersion < 4)
-        return state.Invalid(error("%s : rejected block by version (min supported: 4)", __func__),
+    if (blockHeader.nVersion < MIN_ALLOWED_BLOCK_VERSION)
+        return state.Invalid(error("%s : rejected block by version (min supported: %d)", __func__, MIN_ALLOWED_BLOCK_VERSION),
                              REJECT_OBSOLETE, "bad-version");
+
+    // Check that the signature of the previous block's merkle root is valid
+    if (!bGenesisBlock && !CheckBlockSignature(blockHeader, pindexPrev, state))
+		return false;
 
     return true;
 }
 
+/**
+ * Check if the block can be accepted to the blockchain.
+ * 
+ * \param block - block to check
+ * \param state - chain state
+ * \param chainparams - chain parameters
+ * \param ppindex - pointer to the block index
+ * 
+ * \return true if the block can be accepted, false otherwise
+ */
 bool AcceptBlockHeader(
     const CBlockHeader& block,
     CValidationState& state,
@@ -2861,6 +2975,7 @@ bool AcceptBlockHeader(
     CBlockIndex** ppindex)
 {
     AssertLockHeld(cs_main);
+
     // Check for duplicate
     const uint256 hash = block.GetHash();
     CBlockIndex* pindex = nullptr;
@@ -2885,7 +3000,8 @@ bool AcceptBlockHeader(
     // Get prev block index
     CBlockIndex* pindexPrev = nullptr;
     const auto &consensusParams = chainparams.GetConsensus();
-    if (hash != consensusParams.hashGenesisBlock)
+    const bool bGenesisBlock = hash == consensusParams.hashGenesisBlock;
+    if (!bGenesisBlock)
     {
         const auto mi = mapBlockIndex.find(block.hashPrevBlock);
         if (mi == mapBlockIndex.cend())
@@ -2895,7 +3011,7 @@ bool AcceptBlockHeader(
             return state.DoS(100, error("%s: prev block (height=%d) invalid", __func__, pindexPrev->nHeight), REJECT_INVALID, "bad-prevblk");
     }
 
-    if (!ContextualCheckBlockHeader(block, state, chainparams, pindexPrev))
+    if (!ContextualCheckBlockHeader(block, state, chainparams, bGenesisBlock, pindexPrev))
         return false;
 
     if (!pindex)
@@ -2960,7 +3076,7 @@ bool AcceptBlock(
 
     // See method docstring for why this is always disabled
     auto verifier = libzcash::ProofVerifier::Disabled();
-    if (!CheckBlock(block, state, chainparams, verifier) || 
+    if (!CheckBlock(block, state, chainparams, verifier, true, true, pindex) || 
         !ContextualCheckBlock(block, state, chainparams, pindex->pprev))
     {
         if (state.IsInvalid() && !state.CorruptionPossible())
@@ -3045,7 +3161,8 @@ bool MarkBlockAsReceived(const uint256& hash)
  * \param chainparams - chain parameters
  * \param pfrom - node that sent us the block
  * \param pblock - block to process
- * \param fForceProcessing - whether to force processing of the block
+ * \param fForceProcessing - whether to force processing of the block,
+ *   node is whitelisted and not in IBD mode
  * \param dbp - block position on disk
  * \return a bool indicating whether the block was processed successfully
  */
@@ -3062,7 +3179,12 @@ bool ProcessNewBlock(CValidationState &state, const CChainParams& chainparams,
         bool fRequested = MarkBlockAsReceived(pblock->GetHash());
         fRequested |= fForceProcessing;
         if (!bChecked)
+        {
+            if (!state.GetRejectReason().empty())
+                return error("%s: CheckBlock FAILED, reject reason: %s", __func__, state.GetRejectReason());
+
             return error("%s: CheckBlock FAILED", __func__);
+        }
 
         // Store to disk
         CBlockIndex* pindex = nullptr;
@@ -3075,6 +3197,9 @@ bool ProcessNewBlock(CValidationState &state, const CChainParams& chainparams,
         {
             if (state.IsRejectCode(REJECT_MISSING_INPUTS))
                 return false;
+            if (!state.GetRejectReason().empty())
+                return error("%s: AcceptBlock FAILED, reject reason: %s", __func__, state.GetRejectReason());
+
             return error("%s: AcceptBlock FAILED", __func__);
         }
     }
@@ -3110,7 +3235,7 @@ bool TestBlockValidity(
     auto verifier = libzcash::ProofVerifier::Disabled();
 
     // NOTE: CheckBlockHeader is called by CheckBlock
-    if (!ContextualCheckBlockHeader(block, state, chainparams, pindexPrev))
+    if (!ContextualCheckBlockHeader(block, state, chainparams, false, pindexPrev))
         return false;
     if (!CheckBlock(block, state, chainparams, verifier, fCheckPOW, fCheckMerkleRoot))
         return false;
@@ -3284,7 +3409,7 @@ fs::path GetBlockPosFilename(const CDiskBlockPos &pos, const char *prefix)
     return GetDataDir() / "blocks" / strprintf("%s%05u.dat", prefix, pos.nFile);
 }
 
-CBlockIndex * InsertBlockIndex(uint256 hash)
+CBlockIndex* InsertBlockIndex(const uint256 &hash)
 {
     if (hash.IsNull())
         return nullptr;
@@ -3298,8 +3423,8 @@ CBlockIndex * InsertBlockIndex(uint256 hash)
     CBlockIndex* pindexNew = new CBlockIndex();
     if (!pindexNew)
         throw runtime_error("LoadBlockIndex(): new CBlockIndex failed");
-    mi = mapBlockIndex.insert(make_pair(hash, pindexNew)).first;
-    pindexNew->phashBlock = &((*mi).first);
+    mi = mapBlockIndex.emplace(hash, pindexNew).first;
+    pindexNew->phashBlock = &(mi->first);
 
     return pindexNew;
 }
@@ -3569,9 +3694,9 @@ bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlo
                 ), nRewindLength, MAX_REORG_LENGTH) + "\n\n" +
                 translate("Rewind details") + ":\n" +
                 "- " + strprintf(translate("Current tip:   %s, height %d"),
-                    pindexOldTip->phashBlock->GetHex(), pindexOldTip->nHeight) + "\n" +
+                    pindexOldTip->GetBlockHashString(), pindexOldTip->nHeight) + "\n" +
                 "- " + strprintf(translate("Rewinding to:  %s, height %d"),
-                    pindexRewind->phashBlock->GetHex(), pindexRewind->nHeight) + "\n\n" +
+                    pindexRewind->GetBlockHashString(), pindexRewind->nHeight) + "\n\n" +
                 translate("Please help, human!");
             LogPrintf("*** %s\n", msg);
             uiInterface.ThreadSafeMessageBox(msg, "", CClientUIInterface::MSG_ERROR);
@@ -3726,7 +3851,7 @@ bool RewindChainToBlock(string &error, const CChainParams& chainparams, const st
         // activate the best chain up to the first invalid block (that can be in a revalidation cache)
         ActivateBestChain(state, chainparams);
     }
-    catch (const std::exception& e)
+    catch (const exception& e)
     {
 		error = strprintf("%s: %s", REWIND_ERRMSG, e.what());
         return false;
@@ -4011,7 +4136,7 @@ bool RewindBlockIndexToValidFork(const CChainParams& chainparams)
                 }
             }
         }
-        catch (const std::exception& e)
+        catch (const exception& e)
         {
 		    return error("%s: %s", REWIND_ERRMSG, e.what());
 	    }
@@ -4600,7 +4725,7 @@ void static ProcessGetData(node_t &pfrom, const Consensus::Params& consensusPara
                         if (!ReadBlockFromDisk(block, pBlockIndex, consensusParams))
                             assert(!"cannot load block from disk");
                         // add to vBlockMsgs to send later
-                        vBlockMsgs.emplace_back(inv.type, make_unique<CBlock>(std::move(block)));
+                        vBlockMsgs.emplace_back(inv.type, make_unique<CBlock>(move(block)));
 
                         // Trigger the peer node to send a getblocks request for the next batch of inventory
                         if (inv.hash == pfrom->hashContinue)

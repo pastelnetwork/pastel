@@ -546,9 +546,9 @@ masternode_t CMasternodeMan::Get(const COutPoint& outpoint)
     return it->second;
 }
 
-bool CMasternodeMan::GetMasternodeInfo(const COutPoint& outpoint, masternode_info_t& mnInfoRet) const noexcept
+bool CMasternodeMan::GetMasternodeInfo(const bool bLock, const COutPoint& outpoint, masternode_info_t& mnInfoRet) const noexcept
 {
-    LOCK(cs_mnMgr);
+    LOCK_COND(bLock, cs_mnMgr);
 
     const auto it = mapMasternodes.find(outpoint);
     if (it == mapMasternodes.cend())
@@ -576,14 +576,14 @@ bool CMasternodeMan::GetMasternodeInfo(const CPubKey& pubKeyMasternode, masterno
     return false;
 }
 
-bool CMasternodeMan::GetMasternodeInfo(const CScript& payee, masternode_info_t& mnInfoRet) const noexcept
+bool CMasternodeMan::GetMasternodeInfo(const bool bLock, const CScript& payee, masternode_info_t& mnInfoRet) const noexcept
 {
-    LOCK(cs_mnMgr);
+    LOCK_COND(bLock, cs_mnMgr);
     for (const auto& [outpoint, pmn]: mapMasternodes)
     {
         if (!pmn)
             continue;
-        CScript scriptCollateralAddress = GetScriptForDestination(pmn->pubKeyCollateralAddress.GetID());
+        const CScript scriptCollateralAddress = GetScriptForDestination(pmn->pubKeyCollateralAddress.GetID());
         if (scriptCollateralAddress == payee)
         {
             mnInfoRet = pmn->GetInfo();
@@ -593,10 +593,63 @@ bool CMasternodeMan::GetMasternodeInfo(const CScript& payee, masternode_info_t& 
     return false;
 }
 
+bool CMasternodeMan::GetAndCacheMasternodeInfo(const std::string& sPastelID, masternode_info_t& mnInfoRet) noexcept
+{
+    LOCK(cs_mnMgr);
+
+    string sLowercasedPasteID = lowercase(sPastelID);
+    const auto it = mapMasternodeMnIdCache.find(sLowercasedPasteID);
+    if (it != mapMasternodeMnIdCache.cend())
+    {
+		const auto &outpoint = it->second;
+        if (GetMasternodeInfo(false, outpoint, mnInfoRet))
+            return true;
+	}
+    
+    for (const auto& [outpoint, pmn] : mapMasternodes)
+    {
+		if (!pmn)
+			continue;
+        if (str_icmp(pmn->getMNPastelID(), sPastelID))
+        {
+			mnInfoRet = pmn->GetInfo();
+			mapMasternodeMnIdCache.emplace(sLowercasedPasteID, outpoint);
+			return true;
+		}
+	}
+	return false;
+}
+
 bool CMasternodeMan::Has(const COutPoint& outpoint)
 {
     LOCK(cs_mnMgr);
     return mapMasternodes.find(outpoint) != mapMasternodes.end();
+}
+
+bool CMasternodeMan::HasPayee(const bool bLock, const CScript& payee) noexcept
+{
+    LOCK_COND(bLock, cs_mnMgr);
+    if (mapMasternodePayeeCache.find(payee) != mapMasternodePayeeCache.cend())
+        return true;
+
+    masternode_info_t mnInfoRet;
+    if (!GetMasternodeInfo(false, payee, mnInfoRet))
+        return false;
+
+    // update cache
+    mapMasternodePayeeCache[payee] = mnInfoRet.getOutPoint();
+    return true;
+}
+
+bool CMasternodeMan::IsTxHasMNOutputs(const CTransaction& tx) noexcept
+{
+    LOCK(cs_mnMgr);
+    for (const auto& txOut : tx.vout)
+    {
+		if (HasPayee(false, txOut.scriptPubKey))
+			return true;
+	}
+	return false;
 }
 
 //

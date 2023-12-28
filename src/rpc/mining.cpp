@@ -7,6 +7,8 @@
 
 #include <univalue.h>
 
+#include <utils/scope_guard.hpp>
+#include <utils/util.h>
 #include <amount.h>
 #include <chainparams.h>
 #include <consensus/consensus.h>
@@ -16,7 +18,6 @@
 #ifdef ENABLE_MINING
 #include <crypto/equihash.h>
 #endif
-#include <utils/util.h>
 #include <init.h>
 #include <key_io.h>
 #include <main.h>
@@ -64,8 +65,8 @@ int64_t GetNetworkHashPS(int lookup, int height)
     for (int i = 0; i < lookup; i++) {
         pb0 = pb0->pprev;
         int64_t time = pb0->GetBlockTime();
-        minTime = std::min(time, minTime);
-        maxTime = std::max(time, maxTime);
+        minTime = min(time, minTime);
+        maxTime = max(time, maxTime);
     }
 
     // In case there's a situation where minTime == maxTime, we don't want a divide by zero exception.
@@ -223,9 +224,9 @@ Generate 11 blocks
     while (nHeight < nHeightEnd)
     {
 #ifdef ENABLE_WALLET
-        std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams));
+        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams));
 #else
-        std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams));
+        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams));
 #endif
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Wallet keypool empty");
@@ -261,7 +262,7 @@ Generate 11 blocks
                                               pblock->nNonce.size());
 
             // (x_1, x_2, ...) = A(I, V, n, k)
-            std::function<bool(v_uint8)> validBlock = [&pblock](v_uint8 soln)
+            function<bool(v_uint8)> validBlock = [&pblock](v_uint8 soln)
             {
                 pblock->nSolution = soln;
                 solutionTargetChecks.increment();
@@ -434,7 +435,7 @@ static UniValue BIP22ValidationResult(const CValidationState& state)
     if (state.IsValid())
         return NullUniValue;
 
-    std::string strRejectReason = state.GetRejectReason();
+    string strRejectReason = state.GetRejectReason();
     if (state.IsError())
         throw JSONRPCError(RPC_VERIFY_ERROR, strRejectReason);
     if (state.IsInvalid())
@@ -529,7 +530,8 @@ Examples:
     }
 
     const auto& chainparams = Params();
-    std::string strMode = "template";
+    const auto& consensusParams = chainparams.GetConsensus();
+    string strMode = "template";
     UniValue lpval = NullUniValue;
     // TODO: Re-enable coinbasevalue once a specification has been written
     bool coinbasetxn = true;
@@ -558,9 +560,10 @@ Examples:
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
             uint256 hash = block.GetHash();
-            BlockMap::iterator mi = mapBlockIndex.find(hash);
-            if (mi != mapBlockIndex.end()) {
-                CBlockIndex *pindex = mi->second;
+            const auto mi = mapBlockIndex.find(hash);
+            if (mi != mapBlockIndex.cend())
+            {
+                const auto pindex = mi->second;
                 if (pindex->IsValid(BLOCK_VALID_SCRIPTS))
                     return "duplicate";
                 if (pindex->nStatus & BLOCK_FAILED_MASK)
@@ -585,7 +588,7 @@ Examples:
     if (!chainparams.IsRegTest() && (gl_NodeManager.GetNodeCount() == 0))
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Pastel is not connected!");
 
-    if (fnIsInitialBlockDownload(chainparams.GetConsensus()))
+    if (fnIsInitialBlockDownload(consensusParams))
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Pastel is downloading blocks...");
 
 //PASTEL
@@ -606,7 +609,7 @@ Examples:
         if (lpval.isStr())
         {
             // Format: <hashBestChain><nTransactionsUpdatedLast>
-            std::string lpstr = lpval.get_str();
+            string lpstr = lpval.get_str();
 
             hashWatchedChain.SetHex(lpstr.substr(0, 64));
             nTransactionsUpdatedLastLP = strtoul(lpstr.substr(64).c_str(), nullptr, 10);
@@ -658,11 +661,7 @@ Examples:
         nStart = GetTime();
 
         // Create new block
-        if(pblocktemplate)
-        {
-            delete pblocktemplate;
-            pblocktemplate = nullptr;
-        }
+        safe_delete_obj(pblocktemplate);
 #ifdef ENABLE_WALLET
         CReserveKey reservekey(pwalletMain);
         pblocktemplate = CreateNewBlockWithKey(reservekey, chainparams);
@@ -678,7 +677,7 @@ Examples:
     CBlock* pblock = &pblocktemplate->block; // pointer for convenience
 
     // Update nTime
-    UpdateTime(pblock, Params().GetConsensus(), pindexPrev);
+    UpdateTime(pblock, consensusParams, pindexPrev);
     pblock->nNonce = uint256();
 
     UniValue aCaps(UniValue::VARR); aCaps.push_back("proposal");
@@ -698,7 +697,6 @@ Examples:
         UniValue entry(UniValue::VOBJ);
 
         entry.pushKV("data", EncodeHexTx(tx));
-
         entry.pushKV("hash", txHash.GetHex());
 
         UniValue deps(UniValue::VARR);
@@ -716,9 +714,8 @@ Examples:
         if (tx.IsCoinBase()) {
             entry.pushKV("required", true);
             txCoinbase = entry;
-        } else {
+        } else
             transactions.push_back(entry);
-        }
     }
 
     UniValue aux(UniValue::VOBJ);
@@ -760,12 +757,13 @@ Examples:
 
     //PASTEL-->
     //MN payment
-    KeyIO keyIO(Params());
+    KeyIO keyIO(chainparams);
     UniValue masternodeObj(UniValue::VOBJ);
-    if(pblock->txoutMasternode != CTxOut()) {
+    if (pblock->txoutMasternode != CTxOut())
+    {
         CTxDestination dest;
         ExtractDestination(pblock->txoutMasternode.scriptPubKey, dest);
-        std::string address = keyIO.EncodeDestination(dest);
+        string address = keyIO.EncodeDestination(dest);
         masternodeObj.pushKV("payee", address);
         masternodeObj.pushKV("script", HexStr(pblock->txoutMasternode.scriptPubKey.begin(), pblock->txoutMasternode.scriptPubKey.end()));
         masternodeObj.pushKV("amount", pblock->txoutMasternode.nValue);
@@ -773,10 +771,11 @@ Examples:
     result.pushKV("masternodeinfo", masternodeObj);
     //Governance payment
     UniValue governanceObj(UniValue::VOBJ);
-    if(pblock->txoutGovernance != CTxOut()) {
+    if (pblock->txoutGovernance != CTxOut())
+    {
         CTxDestination dest;
         ExtractDestination(pblock->txoutGovernance.scriptPubKey, dest);
-        std::string address = keyIO.EncodeDestination(dest);
+        string address = keyIO.EncodeDestination(dest);
         governanceObj.pushKV("payee", address);
         governanceObj.pushKV("script", HexStr(pblock->txoutGovernance.scriptPubKey.begin(), pblock->txoutGovernance.scriptPubKey.end()));
         governanceObj.pushKV("amount", pblock->txoutGovernance.nValue);
@@ -791,19 +790,23 @@ class submitblock_StateCatcher : public CValidationInterface
 {
 public:
     uint256 hash;
-    bool found;
+    bool bFound;
     CValidationState state;
 
-    submitblock_StateCatcher(const uint256 &hashIn) : hash(hashIn), found(false), state(TxOrigin::MINED_BLOCK) {};
+    submitblock_StateCatcher(const uint256 &hashIn) :
+        hash(hashIn),
+        bFound(false),
+        state(TxOrigin::MINED_BLOCK)
+    {}
 
 protected:
     void BlockChecked(const CBlock& block, const CValidationState& stateIn) override
     {
         if (block.GetHash() != hash)
             return;
-        found = true;
+        bFound = true;
         state = stateIn;
-    };
+    }
 };
 
 UniValue submitblock(const UniValue& params, bool fHelp)
@@ -860,18 +863,21 @@ Examples:
 
     CValidationState state(TxOrigin::MINED_BLOCK);
     submitblock_StateCatcher sc(block.GetHash());
+    bool fAccepted = false;
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(state, Params(), nullptr, &block, true, nullptr);
-    UnregisterValidationInterface(&sc);
+    {
+        auto guard = sg::make_scope_guard([&]() noexcept { UnregisterValidationInterface(&sc); });
+        fAccepted = ProcessNewBlock(state, Params(), nullptr, &block, true, nullptr);
+    }
     if (fBlockPresent)
     {
-        if (fAccepted && !sc.found)
+        if (fAccepted && !sc.bFound)
             return "duplicate-inconclusive";
         return "duplicate";
     }
     if (fAccepted)
     {
-        if (!sc.found)
+        if (!sc.bFound)
             return "inconclusive";
         state = sc.state;
     }

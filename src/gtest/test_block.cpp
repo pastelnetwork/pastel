@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 
-#include "primitives/block.h"
-#include "version.h"
+#include <primitives/block.h>
+#include <version.h>
 
 
-TEST(block_tests, header_size_is_expected) {
+TEST(block_tests, header_size_is_expected)
+{
     // Dummy header with an empty Equihash solution.
     CBlockHeader header;
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);

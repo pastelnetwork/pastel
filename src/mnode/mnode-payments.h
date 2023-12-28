@@ -30,7 +30,7 @@ public:
         scriptPubKey()
     {}
 
-    CMasternodePayee(CScript payee, uint256 hashIn) noexcept :
+    CMasternodePayee(CScript payee, const uint256& hashIn) noexcept :
         scriptPubKey(payee)
     {
         vecVoteHashes.push_back(hashIn);
@@ -47,7 +47,7 @@ public:
 
     CScript GetPayee() const noexcept { return scriptPubKey; }
 
-    void AddVoteHash(const uint256 hashIn) { vecVoteHashes.push_back(hashIn); }
+    void AddVoteHash(const uint256& hashIn) { vecVoteHashes.push_back(hashIn); }
     v_uint256 GetVoteHashes() const noexcept { return vecVoteHashes; }
     size_t GetVoteCount() const noexcept { return vecVoteHashes.size(); }
 };

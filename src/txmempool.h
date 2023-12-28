@@ -162,9 +162,9 @@ public:
     bool HasNoInputsOf(const CTransaction& tx) const;
 
     /** Affect CreateNewBlock prioritisation of transactions */
-    void PrioritiseTransaction(const uint256 hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);
-    void ApplyDeltas(const uint256 hash, double &dPriorityDelta, CAmount &nFeeDelta);
-    void ClearPrioritisation(const uint256 hash);
+    void PrioritiseTransaction(const uint256& hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);
+    void ApplyDeltas(const uint256& hash, double &dPriorityDelta, CAmount &nFeeDelta);
+    void ClearPrioritisation(const uint256& hash);
 
     bool nullifierExists(const uint256& nullifier, ShieldedType type) const;
     // add object to track all add/remove events for transactions in mempool

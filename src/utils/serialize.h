@@ -204,9 +204,9 @@ class CSizeComputer;
 enum
 {
     // primary actions
-    SER_NETWORK         = (1 << 0),
-    SER_DISK            = (1 << 1),
-    SER_GETHASH         = (1 << 2),
+    SER_NETWORK         = (1 << 0), // for communication between nodes
+    SER_DISK            = (1 << 1), // for disk storage
+    SER_GETHASH         = (1 << 2), // to get hash of object
 };
 
 #define READWRITE(obj)              (::SerReadWrite(s, (obj), ser_action))
@@ -373,7 +373,8 @@ void WriteVarInt(Stream& os, I n)
 {
     unsigned char tmp[(sizeof(n)*8+6)/7];
     int len=0;
-    while(true) {
+    while (true)
+    {
         tmp[len] = (n & 0x7F) | (len ? 0x80 : 0x00);
         if (n <= 0x7F)
             break;
@@ -389,7 +390,8 @@ template<typename Stream, typename I>
 I ReadVarInt(Stream& is)
 {
     I n = 0;
-    while(true) {
+    while (true)
+    {
         unsigned char chData = ser_readdata8(is);
         n = (n << 7) | (chData & 0x7F);
         if (chData & 0x80)
@@ -450,15 +452,19 @@ class CVarInt
 protected:
     I &n;
 public:
-    CVarInt(I& nIn) : n(nIn) { }
+    CVarInt(I& nIn) :
+        n(nIn)
+    {}
 
     template<typename Stream>
-    void Serialize(Stream &s) const {
+    void Serialize(Stream &s) const
+    {
         WriteVarInt<Stream,I>(s, n);
     }
 
     template<typename Stream>
-    void Unserialize(Stream& s) {
+    void Unserialize(Stream& s)
+    {
         n = ReadVarInt<Stream,I>(s);
     }
 };
