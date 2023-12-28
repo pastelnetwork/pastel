@@ -82,12 +82,23 @@ HOST=x86_64-apple-darwin ./pcutil/build.sh -j$(nproc)
 make clean && make -C src/univalue clean
 ```
 
-### Testing
+### Test
+```shell
+qa/test-suite/full-test-suite.sh
+```
+
+or
+```shell
+qa/pull-tester/rpc-tests.sh
+```
+
 [See here](https://github.com/pastelnetwork/pastel/blob/master/doc/unit-tests.md)
 
 
-### Command line help
+## More info
+[Pastel Network Docs](https://docs.pastel.network/introduction/pastel-overview)
 
+### Command line help
 [paslted](https://github.com/pastelnetwork/pastel/blob/master/doc/pasteld-help.md)
 [Pastel RPC](https://github.com/pastelnetwork/pastel/blob/master/doc/pastel-rpc.md)
 
