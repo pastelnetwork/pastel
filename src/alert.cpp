@@ -245,7 +245,8 @@ bool CAlert::ProcessAlert(const v_uint8 & alertKey, bool fThread)
 void CAlert::Notify(const string& strMessage, bool fThread)
 {
     string strCmd = GetArg("-alertnotify", "");
-    if (strCmd.empty()) return;
+    if (strCmd.empty())
+        return;
 
     // Alert text should be plain ascii coming from a trusted source, but to
     // be safe we first strip anything not in safeChars, then add single quotes around

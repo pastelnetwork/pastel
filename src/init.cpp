@@ -497,7 +497,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-blockmaxsize=<n>", strprintf(translate("Set maximum block size in bytes (default: %d)"), DEFAULT_BLOCK_MAX_SIZE));
     strUsage += HelpMessageOpt("-blockprioritysize=<n>", strprintf(translate("Set maximum size of high-priority/low-fee transactions in bytes (default: %d)"), DEFAULT_BLOCK_PRIORITY_SIZE));
     if (GetBoolArg("-help-debug", false))
-        strUsage += HelpMessageOpt("-blockversion=<n>", strprintf("Override block version to test forking scenarios (default: %d)", (int)CBlock::CURRENT_VERSION));
+        strUsage += HelpMessageOpt("-blockversion=<n>", strprintf("Override block version to test forking scenarios (default: %d)", CBlock::CURRENT_VERSION));
 
 #ifdef ENABLE_MINING
     strUsage += HelpMessageGroup(translate("Mining options:"));
@@ -1813,12 +1813,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     }
  #endif // !ENABLE_WALLET
 
-    if (bMiningEnabled)
-    {
-        string strError;
-        if (!gl_MinerSettings.initialize(chainparams, strError))
-            return InitError(strprintf(translate("Could not initialize PastelMiner settings. %s"), strError));
-    }
+    string strError;
+    if (!gl_MinerSettings.initialize(chainparams, strError))
+        return InitError(strprintf(translate("Could not initialize PastelMiner settings. %s"), strError));
 
     if (mapArgs.count("-mineraddress"))
     {

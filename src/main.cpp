@@ -1840,7 +1840,7 @@ void static UpdateTip(const CChainParams& chainparams, CBlockIndex* pindexNew)
             pindex = pindex->pprev;
         }
         if (nUpgraded > 0)
-            LogPrintf("%s: %d of last 100 blocks above version %d\n", __func__, nUpgraded, (int)CBlock::CURRENT_VERSION);
+            LogFnPrintf("%d of last 100 blocks above version %d\n", nUpgraded, CBlock::CURRENT_VERSION);
         if (nUpgraded > 100/2)
         {
             // strMiscWarning is read by GetWarnings(), called by the JSON-RPC code to warn the user:
