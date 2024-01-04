@@ -17,7 +17,7 @@
 #include <consensus/upgrades.h>
 #include <consensus/validation.h>
 #include <main.h>
-#include <miner.h>
+#include <mining/miner.h>
 #include <pow.h>
 #include <rpc/server.h>
 #include <script/sign.h>

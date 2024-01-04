@@ -319,11 +319,11 @@ void CMasternodeSync::ProcessTick()
                 masterNodeCtrl.masternodeManager.DsegUpdate(pnode);
             } else if(nRequestedMasternodeAttempt < 6) {
                 syncState = MasternodeSyncState::Winners;
-                const uint32_t nMnCount = masterNodeCtrl.masternodeManager.CountMasternodes();
+                const uint32_t nMnCount = masterNodeCtrl.masternodeManager.CountByProtocol();
                 pnode->PushMessage(NetMsgType::MASTERNODEPAYMENTSYNC, nMnCount);
             } else if(nRequestedMasternodeAttempt < 10) {
                 syncState = MasternodeSyncState::Governance;
-                const uint32_t nMnCount = masterNodeCtrl.masternodeManager.CountMasternodes();
+                const uint32_t nMnCount = masterNodeCtrl.masternodeManager.CountByProtocol();
                 pnode->PushMessage(NetMsgType::GOVERNANCESYNC, nMnCount);
             } else {
                 syncState = MasternodeSyncState::Finished;

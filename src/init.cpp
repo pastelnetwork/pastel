@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -47,7 +47,8 @@
 #include <accept_to_mempool.h>
 #include <main.h>
 #include <metrics.h>
-#include <miner.h>
+#include <mining/miner.h>
+#include <mining/mining-settings.h>
 #include <net.h>
 #include <rpc/server.h>
 #include <rpc/register.h>
@@ -1802,14 +1803,22 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 #endif // !ENABLE_WALLET
 
 #ifdef ENABLE_MINING
+    const bool bMiningEnabled = GetBoolArg("-gen", false);
  #ifndef ENABLE_WALLET
     if (GetBoolArg("-minetolocalwallet", false)) {
         return InitError(translate("Pastel was not built with wallet support. Set -minetolocalwallet=0 to use -mineraddress, or rebuild Pastel with wallet support."));
     }
-    if (GetArg("-mineraddress", "").empty() && GetBoolArg("-gen", false)) {
+    if (GetArg("-mineraddress", "").empty() && bMiningEnabled) {
         return InitError(translate("Pastel was not built with wallet support. Set -mineraddress, or rebuild Pastel with wallet support."));
     }
  #endif // !ENABLE_WALLET
+
+    if (bMiningEnabled)
+    {
+        string strError;
+        if (!gl_MinerSettings.initialize(chainparams, strError))
+            return InitError(strprintf(translate("Could not initialize PastelMiner settings. %s"), strError));
+    }
 
     if (mapArgs.count("-mineraddress"))
     {
@@ -1913,9 +1922,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     const int nProcLimit = static_cast<int>(GetArg("-genproclimit", 1));
  #ifdef ENABLE_WALLET
     if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, nProcLimit, chainparams);
+        GenerateBitcoins(bMiningEnabled, pwalletMain, nProcLimit, chainparams);
  #else
-    GenerateBitcoins(GetBoolArg("-gen", false), nProcLimit, chainparams);
+    GenerateBitcoins(bMiningEnabled, nProcLimit, chainparams);
  #endif
 #endif
     string sRewindChainBlockHash = GetArg("-rewindchain", "");

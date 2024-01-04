@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <memory>
@@ -11,12 +11,15 @@
 #include <utils/scope_guard.hpp>
 #include <utils/vector_types.h>
 #include <utils/map_types.h>
+#include <utils/set_types.h>
+#include <utils/str_types.h>
 #include <utils/sync.h>
 #include <net.h>
 #include <mnode/mnode-masternode.h>
 
 constexpr auto MNCACHE_FILENAME = "mncache.dat";
 constexpr auto MNCACHE_CACHE_MAGIC_STR = "magicMasternodeCache";
+constexpr int SN_ELIGIBILITY_LAST_SEEN_TIME_SECS = 150;
 
 enum class GetTopMasterNodeStatus: int
 {
@@ -111,6 +114,7 @@ private:
     masternode_t Find(const COutPoint& outpoint);
 
     bool GetMasternodeScores(std::string &error, const uint256& blockHash, score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol = 0);
+    std::unordered_map<std::string, uint32_t> GetLastMnIdsWithBlockReward(const CBlockIndex *pindex) noexcept;
 
 public:
     // Keep track of all broadcasts I've seen
@@ -213,18 +217,21 @@ public:
     /// Clear Masternode vector
     void Clear();
 
-    /// Count Masternodes filtered by nProtocolVersion.
-    /// Masternode nProtocolVersion should match or be above the one specified in param here.
-    uint32_t CountMasternodes(const int nProtocolVersion = -1) const noexcept;
-    /// Count enabled Masternodes filtered by nProtocolVersion.
-    /// Masternode nProtocolVersion should match or be above the one specified in param here.
+    uint32_t CountMasternodes(const std::function<bool(const masternode_t&)> &fnMnFilter,
+        const int nProtocolVersion = -1) const noexcept;
+    // Count Masternodes filtered by nProtocolVersion.
+    // Masternode nProtocolVersion should match or be above the one specified in param here.
+    uint32_t CountByProtocol(const int nProtocolVersion = -1) const noexcept;
+    // Count enabled Masternodes filtered by nProtocolVersion.
+    // Masternode nProtocolVersion should match or be above the one specified in param here.
     size_t CountEnabled(const int nProtocolVersion = -1) const noexcept;
-    uint32_t GetCachedBlockHeight() const noexcept { return nCachedBlockHeight; }
-
     size_t CountCurrent(const int nProtocolVersion = -1) const noexcept;
-
-    /// Count Masternodes by network type - NET_IPV4, NET_IPV6, NET_TOR
+    size_t CountEnabledByLastSeenTime(const int nProtocolVersion = -1, 
+        const int nTimeDeltaSecs = SN_ELIGIBILITY_LAST_SEEN_TIME_SECS) const noexcept;
+    // Count Masternodes by network type - NET_IPV4, NET_IPV6, NET_TOR
     // int CountByIP(int nNetworkType);
+
+    uint32_t GetCachedBlockHeight() const noexcept { return nCachedBlockHeight; }
 
     void DsegUpdate(node_t& pnode);
 
@@ -233,6 +240,9 @@ public:
     bool Has(const COutPoint& outpoint);
     bool HasPayee(const bool bLock, const CScript& payee) noexcept;
     bool IsTxHasMNOutputs(const CTransaction& tx) noexcept;
+    bool IsMnEligibleForBlockReward(const CBlockIndex *pindex, const std::string &sPastelID,
+        uint32_t *pnHeight = nullptr) noexcept;
+    opt_string_t FindMnEligibleForBlockReward(const CBlockIndex *pindex, const s_strings &setMnIds) noexcept;
 
     bool GetMasternodeInfo(const bool bLock, const COutPoint& outpoint, masternode_info_t& mnInfoRet) const noexcept;
     bool GetMasternodeInfo(const CPubKey& pubKeyMasternode, masternode_info_t& mnInfoRet) const noexcept;

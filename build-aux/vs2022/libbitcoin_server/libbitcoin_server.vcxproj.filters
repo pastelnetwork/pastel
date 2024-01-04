@@ -32,6 +32,9 @@
     <Filter Include="Source Files\netmsg">
       <UniqueIdentifier>{5a2fc04c-c719-47a3-bb25-58c62f94375b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\mining">
+      <UniqueIdentifier>{e316a9c8-ccb8-42cb-85aa-33762d86a239}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -77,9 +80,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\metrics.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\miner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\net.cpp">
@@ -346,6 +346,12 @@
     <ClCompile Include="..\..\..\src\rpc\coin-supply.cpp">
       <Filter>Source Files\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mining\miner.cpp">
+      <Filter>Source Files\mining</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mining\mining-settings.cpp">
+      <Filter>Source Files\mining</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -388,9 +394,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\metrics.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\miner.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\net.h">
@@ -713,6 +716,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\rpc\coin-supply.h">
       <Filter>Source Files\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mining\miner.h">
+      <Filter>Source Files\mining</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mining\mining-settings.h">
+      <Filter>Source Files\mining</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

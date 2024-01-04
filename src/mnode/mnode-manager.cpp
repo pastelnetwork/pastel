@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -405,27 +405,6 @@ void CMasternodeMan::ClearCache(const std::set<MNCacheItem> &setCacheItems)
     }
 }
 
-size_t CMasternodeMan::CountCurrent(const int nProtocolVersion) const noexcept
-{
-    LOCK(cs_mnMgr);
-
-    const int nMNProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.GetSupportedProtocolVersion() : nProtocolVersion;
-
-    size_t nCount = 0;
-    for (const auto& [outpoint, pmn] : mapMasternodes)
-    {
-        if (!pmn)
-            continue;
-        if (pmn->nProtocolVersion < nMNProtocolVersion)
-            continue;
-        if (pmn->IsNewStartRequired() &&  !pmn->IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime))
-            continue;
-        nCount++;
-    }
-
-    return nCount;
-}
-
 void CMasternodeMan::Clear()
 {
     LOCK(cs_mnMgr);
@@ -438,13 +417,8 @@ void CMasternodeMan::Clear()
     nLastWatchdogVoteTime = 0;
 }
 
-/**
-* Get number of masternodes with supported protocol version.
-* 
-* \param nProtocolVersion - supported MN protocol version
-* \return number of MNs that satisfies protocol filter
-*/
-uint32_t CMasternodeMan::CountMasternodes(const int nProtocolVersion) const noexcept
+uint32_t CMasternodeMan::CountMasternodes(const function<bool(const masternode_t&)>& fnMnFilter,
+    const int nProtocolVersion) const noexcept
 {
     LOCK(cs_mnMgr);
 
@@ -456,10 +430,23 @@ uint32_t CMasternodeMan::CountMasternodes(const int nProtocolVersion) const noex
             continue;
         if (pmn->nProtocolVersion < nMNProtocolVersion)
             continue;
+        if (!fnMnFilter(pmn))
+            continue;
         ++nCount;
     }
 
     return nCount;
+}
+
+/**
+* Get number of masternodes with supported protocol version.
+* 
+* \param nProtocolVersion - supported MN protocol version
+* \return number of MNs that satisfies protocol filter
+*/
+uint32_t CMasternodeMan::CountByProtocol(const int nProtocolVersion) const noexcept
+{
+    return CountMasternodes([](const masternode_t& pmn) { return true; }, nProtocolVersion);
 }
 
 /**
@@ -470,19 +457,29 @@ uint32_t CMasternodeMan::CountMasternodes(const int nProtocolVersion) const noex
  */
 size_t CMasternodeMan::CountEnabled(const int nProtocolVersion) const noexcept
 {
-    LOCK(cs_mnMgr);
+    return CountMasternodes([](const masternode_t& pmn) { return pmn->IsEnabled(); }, nProtocolVersion);
+}
 
-    const int nMNProtocolVersion = nProtocolVersion == -1 ? masterNodeCtrl.GetSupportedProtocolVersion() : nProtocolVersion;
-    size_t nCount = 0;
-    for (const auto& [outpoint, pmn] : mapMasternodes)
+size_t CMasternodeMan::CountCurrent(const int nProtocolVersion) const noexcept
+{
+    return CountMasternodes([](const masternode_t& pmn)
     {
-        if (!pmn)
-			continue;
-        if (pmn->nProtocolVersion < nMNProtocolVersion || !pmn->IsEnabled())
-            continue;
-        ++nCount;
-    }
-    return nCount;
+        if (pmn->IsNewStartRequired() && !pmn->IsPingedWithin(masterNodeCtrl.MNStartRequiredExpirationTime))
+            return false;
+        return true;
+    }, nProtocolVersion);
+}
+
+size_t CMasternodeMan::CountEnabledByLastSeenTime(const int nProtocolVersion, const int nTimeDeltaSecs) const noexcept
+{
+    return CountMasternodes([&](const masternode_t& pmn)
+    {
+		if (!pmn->IsEnabled())
+			return false;
+		if (!pmn->IsPingedWithin(nTimeDeltaSecs))
+			return false;
+		return true;
+	}, nProtocolVersion);
 }
 
 /* Only IPv4 masternodes are allowed in 12.1, saving this for later
@@ -652,6 +649,60 @@ bool CMasternodeMan::IsTxHasMNOutputs(const CTransaction& tx) noexcept
 	return false;
 }
 
+unordered_map<string, uint32_t> CMasternodeMan::GetLastMnIdsWithBlockReward(const CBlockIndex* pindex) noexcept
+{
+    const size_t nEnabledMnCount = masterNodeCtrl.masternodeManager.CountEnabledByLastSeenTime(-1, 
+        SN_ELIGIBILITY_LAST_SEEN_TIME_SECS);
+    unordered_map<string, uint32_t> mapMnids;
+    mapMnids.reserve(nEnabledMnCount);
+    size_t nProcessed = 0;
+    auto pCurIndex = pindex;
+    while (pCurIndex && (nProcessed + 1 < nEnabledMnCount))
+    {
+        if (pCurIndex->nStatus && BlockStatus::BLOCK_ACTIVATES_UPGRADE)
+            break;
+        if (pCurIndex->sPastelID.has_value())
+            mapMnids.emplace(pCurIndex->sPastelID.value(), static_cast<uint32_t>(pCurIndex->nHeight));
+        ++nProcessed;
+        pCurIndex = pCurIndex->pprev;
+    }
+    return mapMnids;
+}
+
+/**
+ * Check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
+ * to mine a new block and receive reward.
+ * 
+ * \param pindex - block index to start search from
+ * \param sPastelID - Pastel ID of the MasterNode (mnid)
+ * \param pnHeight - height of the block where MasterNode was found
+ * 
+ * \return true if MasterNode is eligible to mine a new block and receive reward
+ */
+bool CMasternodeMan::IsMnEligibleForBlockReward(const CBlockIndex* pindex, const string& sPastelID,
+    uint32_t *pnHeight) noexcept
+{
+    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
+    const auto mnidIt = mapMnids.find(sPastelID);
+    if (mnidIt == mapMnids.cend())
+        return true;
+	if (pnHeight)
+        *pnHeight = mnidIt->second;
+    return false;   
+}
+
+opt_string_t CMasternodeMan::FindMnEligibleForBlockReward(const CBlockIndex* pindex, const s_strings& setMnIds) noexcept
+{
+    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
+    for (const auto& sPastelID : setMnIds)
+    {
+		const auto mnidIt = mapMnids.find(sPastelID);
+		if (mnidIt == mapMnids.cend())
+			return make_optional<string>(sPastelID);
+	}
+    return nullopt;
+}
+
 //
 // Deterministically select the oldest/best masternode to pay on the network
 //
@@ -673,7 +724,7 @@ bool CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool f
 
     // Make a vector with all of the last paid times
     std::vector<std::pair<int, masternode_t> > vecMasternodeLastPaid;
-    const uint32_t nMnCount = CountMasternodes();
+    const uint32_t nMnCount = CountByProtocol();
     for (auto& [outpoint, pmn] : mapMasternodes)
     {
         if (!pmn || !pmn->IsValidForPayment())
@@ -1660,7 +1711,7 @@ string CMasternodeMan::ToJSON() const
         };
         jsonObj["Masternodes"].push_back(mnJson);
     }
-    for ( const auto& mnb : mapSeenMasternodeBroadcast)
+    for (const auto& mnb : mapSeenMasternodeBroadcast)
     {
         json mnJson {
                 { "Hash", mnb.first.ToString() },
@@ -1673,7 +1724,7 @@ string CMasternodeMan::ToJSON() const
         };
         jsonObj["SeenMasternodeBroadcast"].push_back(mnJson);
     }
-    for ( const auto& mnp : mapSeenMasternodePing)
+    for (const auto& mnp : mapSeenMasternodePing)
     {
         json mnJson {
                 { "Hash", mnp.first.ToString() },
@@ -1683,7 +1734,7 @@ string CMasternodeMan::ToJSON() const
         };
         jsonObj["SeenMasternodePing"].push_back(mnJson);
     }
-    for ( const auto& asked : mAskedUsForMasternodeList)
+    for (const auto& asked : mAskedUsForMasternodeList)
     {
         json mnJson {
                 { "IP", asked.first.ToString() },

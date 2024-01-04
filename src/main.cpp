@@ -1454,7 +1454,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
     // Check it again to verify transactions, and in case a previous version let a bad block in
     if (!CheckBlock(block, state, chainparams, fExpensiveChecks ? verifier : disabledVerifier, 
-        !fJustCheck, !fJustCheck, pindex))
+        !fJustCheck, !fJustCheck, false, pindex->pprev))
         return false;
 
     // verify that the view's current state corresponds to the previous block
@@ -1953,7 +1953,7 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
     {
         LogFnPrintf("checking block %s (%d)", pindexNew->GetBlockHashString(), pindexNew->nHeight);
         auto verifier = libzcash::ProofVerifier::Disabled();
-        if (!CheckBlock(*pblock, state, chainparams, verifier, true, true, pindexNew) || 
+        if (!CheckBlock(*pblock, state, chainparams, verifier, true, true, false, pindexNew->pprev) || 
             !ContextualCheckBlock(*pblock, state, chainparams, pindexNew->pprev))
         {
             if (state.IsInvalid() && !state.CorruptionPossible())
@@ -2723,7 +2723,8 @@ bool CheckBlock(
     libzcash::ProofVerifier& verifier,
     const bool fCheckPOW,
     const bool fCheckMerkleRoot,
-    const CBlockIndex* pindex)
+    const bool fSkipSnEligibilityChecks,
+    const CBlockIndex* pindexPrev)
 {
     // These are checks that are independent of context.
 
@@ -2804,7 +2805,7 @@ bool CheckBlock(
             if (++nCoinBaseTransactions > 1)
                 return state.DoS(100, error("CheckBlock(): more than one coinbase"),
                                  REJECT_INVALID, "bad-cb-multiple");
-            if (bIsMnSynced && block.HasPrevBlockSignature())
+            if (bIsMnSynced && !fSkipSnEligibilityChecks && block.HasPrevBlockSignature())
                 bHasMnPaymentInCoinbase = masterNodeCtrl.masternodeManager.IsTxHasMNOutputs(tx);
         }
         if (!CheckTransaction(tx, state, verifier))
@@ -2817,7 +2818,7 @@ bool CheckBlock(
                          REJECT_INVALID, "bad-blk-sigops", true);
 
     // check only blocks that were mined/generated recently within last 30 mins
-    if (bHasMnPaymentInCoinbase && 
+    if (bHasMnPaymentInCoinbase && !fSkipSnEligibilityChecks &&
         (block.GetBlockTime() > (GetTime() - BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS)) &&
         is_enum_any_of(state.getTxOrigin(), TxOrigin::MINED_BLOCK, TxOrigin::MSG_BLOCK, TxOrigin::GENERATED))
     {
@@ -2837,30 +2838,20 @@ bool CheckBlock(
                 mnInfo.GetDesc(), mnInfo.GetStateString()),
                 REJECT_INVALID, "mnid-not-enabled");
         }
+        if (!pindexPrev)
+        {
+            return state.DoS(100, error("CheckBlock(): previous block index is not defined"),
+                            	REJECT_INVALID, "block-index-not-defined");
+        }
         // check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
         // to mine this block and receive rewards
-        const size_t nEnabledMnCount = masterNodeCtrl.masternodeManager.CountEnabled();
-        unordered_map<string, uint32_t> mapMnids;
-        mapMnids.reserve(nEnabledMnCount);
-        auto pCurIndex = pindex;
-        size_t nProcessed = 0;
-        while (pCurIndex && (nProcessed + 1 < nEnabledMnCount))
-        {
-            pCurIndex = pCurIndex->pprev;
-            if (!pCurIndex)
-                break;
-            if (pCurIndex->nStatus && BlockStatus::BLOCK_ACTIVATES_UPGRADE)
-                break;
-            if (pCurIndex->sPastelID.has_value())
-                mapMnids.emplace(pCurIndex->sPastelID.value(), static_cast<uint32_t>(pCurIndex->nHeight));
-            ++nProcessed;
-        }
-        const auto mnidIt = mapMnids.find(block.sPastelID);
-        if (mnidIt != mapMnids.cend())
-        {
-            return state.DoS(100, error("CheckBlock(): MasterNode %s "),
-                REJECT_INVALID, "no-masternodes");
-        }
+        uint32_t nHeightNotEligible = 0;
+        if (!masterNodeCtrl.masternodeManager.IsMnEligibleForBlockReward(pindexPrev, block.sPastelID, &nHeightNotEligible))
+		{
+			return state.DoS(100, error("CheckBlock(): MasterNode '%s' is not eligible to mine this block (found mined block height=%d)", 
+                				mnInfo.GetDesc(), nHeightNotEligible),
+                				REJECT_INVALID, "mnid-not-eligible");
+		}
 	}
 
     return true;
@@ -2886,18 +2877,18 @@ bool CheckBlockSignature(const CBlockHeader& blockHeader, const CBlockIndex* pin
         if (mnidTicket.isPersonal())
             return state.DoS(100, error("%s: Pastel ID %s is personal", __func__, blockHeader.sPastelID),
                 REJECT_INVALID, "personal-pastel-id");
-        if (!CPastelID::Verify(pindexPrev->hashMerkleRoot.ToString(),
-            vector_to_string(blockHeader.prevMerkleRootSignature), blockHeader.sPastelID,
+        string sPrevMerkleRoot(pindexPrev->hashMerkleRoot.cbegin(), pindexPrev->hashMerkleRoot.cend());
+        if (!CPastelID::Verify(sPrevMerkleRoot, vector_to_string(blockHeader.prevMerkleRootSignature), blockHeader.sPastelID,
             CPastelID::SIGN_ALGORITHM::ed448, false))
         {
             return state.DoS(100, error("%s: block signature verification failed", __func__),
-                REJECT_SIGNATURE_ERROR, "bad-signature");
+                REJECT_SIGNATURE_ERROR, "bad-merkleroot-signature");
         }
     }
     catch (const exception& e)
     {
 		return state.DoS(100, error("%s: block signature verification failed. %s", __func__, e.what()),
-            REJECT_SIGNATURE_ERROR, "bad-signature");
+            REJECT_SIGNATURE_ERROR, "verify-merkleroot-signature");
 	}
 
 	return true;
@@ -3076,7 +3067,7 @@ bool AcceptBlock(
 
     // See method docstring for why this is always disabled
     auto verifier = libzcash::ProofVerifier::Disabled();
-    if (!CheckBlock(block, state, chainparams, verifier, true, true, pindex) || 
+    if (!CheckBlock(block, state, chainparams, verifier, true, true, false, pindex->pprev) || 
         !ContextualCheckBlock(block, state, chainparams, pindex->pprev))
     {
         if (state.IsInvalid() && !state.CorruptionPossible())
@@ -3167,11 +3158,12 @@ bool MarkBlockAsReceived(const uint256& hash)
  * \return a bool indicating whether the block was processed successfully
  */
 bool ProcessNewBlock(CValidationState &state, const CChainParams& chainparams, 
-    const node_t &pfrom, const CBlock* pblock, const bool fForceProcessing, CDiskBlockPos *dbp)
+    const node_t &pfrom, const CBlock* pblock, const bool fForceProcessing,
+    CDiskBlockPos *dbp)
 {
     // Preliminary checks
     auto verifier = libzcash::ProofVerifier::Disabled();
-    const bool bChecked = CheckBlock(*pblock, state, chainparams, verifier);
+    const bool bChecked = CheckBlock(*pblock, state, chainparams, verifier, true, true, true);
 
     const auto &consensusParams = chainparams.GetConsensus();
     {
@@ -3237,7 +3229,7 @@ bool TestBlockValidity(
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, chainparams, false, pindexPrev))
         return false;
-    if (!CheckBlock(block, state, chainparams, verifier, fCheckPOW, fCheckMerkleRoot))
+    if (!CheckBlock(block, state, chainparams, verifier, fCheckPOW, fCheckMerkleRoot, false, pindexPrev))
         return false;
     if (!ContextualCheckBlock(block, state, chainparams, pindexPrev))
         return false;
@@ -3597,7 +3589,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         if (!ReadBlockFromDisk(block, pindex, consensusParams))
             return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
         // check level 1: verify block validity
-        if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams, verifier))
+        if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams, verifier, true, true, false, pindex->pprev))
             return errorFn(__METHOD_NAME__, "*** found bad block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex)

@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <cstdint>
@@ -22,10 +22,12 @@
 #include <key_io.h>
 #include <main.h>
 #include <metrics.h>
-#include <miner.h>
+#include <mining/miner.h>
+#include <mining/mining-settings.h>
 #include <net.h>
 #include <pow.h>
 #include <rpc/server.h>
+#include <rpc/rpc-utils.h>
 #include <txmempool.h>
 #include <validationinterface.h>
 #include <netmsg/nodemanager.h>
@@ -152,9 +154,27 @@ Examples:
 }
 
 #ifdef ENABLE_MINING
+UniValue refresh_mining_mnid_info(const UniValue& params, bool fHelp)
+{
+    if (fHelp || !params.empty())
+        throw runtime_error(
+R"(refreshminingmnidinfo
+
+Refreshes the mining information (mnids) from pastel.conf file.
+)");
+    string error;
+    if (!gl_MinerSettings.refreshMnIdInfo(error, true))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, error);
+    const auto setMnIds = gl_MinerSettings.getMnIdsAndRotate();
+    UniValue retObj(UniValue::VARR);
+    for (const auto& mnid : setMnIds)
+		retObj.push_back(mnid);
+	return retObj;
+}
+
 UniValue getgenerate(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() != 0)
+    if (fHelp || !params.empty())
         throw runtime_error(
 R"(getgenerate
 
@@ -175,9 +195,9 @@ Examples:
 
 UniValue generate(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() < 1 || params.size() > 1)
+    if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-R"(generate numblocks
+R"(generate numblocks ( "PastelID" )
 
 Mine blocks immediately (before the RPC call returns)
 
@@ -185,6 +205,7 @@ Note: this function can only be used on the regtest network
 
 Arguments:
 1. numblocks    (numeric) How many blocks are generated immediately.
+2. PastelID     (string, optional) The Pastel ID (mnid) eligible to mine the block
 
 Result:
 [ blockhashes ] (array) hashes of blocks generated
@@ -204,10 +225,15 @@ Generate 11 blocks
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "pasteld compiled without wallet and -mineraddress not set");
 #endif
     }
-    if (!Params().MineBlocksOnDemand())
+    const auto& chainparams = Params();
+    const auto& consensusParams = chainparams.GetConsensus();
+    if (!chainparams.MineBlocksOnDemand())
         throw JSONRPCError(RPC_METHOD_NOT_FOUND, "This method can only be used on regtest");
 
     int nGenerate = params[0].get_int();
+    string sEligiblePastelID;
+    if (params.size() > 1)
+		sEligiblePastelID = params[1].get_str();
 #ifdef ENABLE_WALLET
     CReserveKey reservekey(pwalletMain);
 #endif
@@ -217,16 +243,14 @@ Generate 11 blocks
     uint32_t nHeight = nHeightStart;
     unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
-    const auto& chainparams = Params();
-    const auto& consensusParams = chainparams.GetConsensus();
     unsigned int n = consensusParams.nEquihashN;
     unsigned int k = consensusParams.nEquihashK;
     while (nHeight < nHeightEnd)
     {
 #ifdef ENABLE_WALLET
-        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams));
+        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams, sEligiblePastelID));
 #else
-        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams));
+        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams, sEligiblePastelID));
 #endif
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Wallet keypool empty");
@@ -322,7 +346,7 @@ Using json rpc
 
     bool fGenerate = true;
     if (params.size() > 0)
-        fGenerate = params[0].get_bool();
+        fGenerate = get_bool_value(params[0]);
 
     int nGenProcLimit = -1;
     if (params.size() > 1)
@@ -664,9 +688,9 @@ Examples:
         safe_delete_obj(pblocktemplate);
 #ifdef ENABLE_WALLET
         CReserveKey reservekey(pwalletMain);
-        pblocktemplate = CreateNewBlockWithKey(reservekey, chainparams);
+        pblocktemplate = CreateNewBlockWithKey(reservekey, chainparams, "");
 #else
-        pblocktemplate = CreateNewBlockWithKey(chainparams);
+        pblocktemplate = CreateNewBlockWithKey(chainparams, "");
 #endif
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
@@ -1065,6 +1089,7 @@ static const CRPCCommand commands[] =
     { "generating",         "getgenerate",            &getgenerate,            true  },
     { "generating",         "setgenerate",            &setgenerate,            true  },
     { "generating",         "generate",               &generate,               true  },
+    { "generating",         "refreshminingmnidinfo", &refresh_mining_mnid_info, true  },
 #endif
 
     { "util",               "estimatefee",            &estimatefee,            true  },

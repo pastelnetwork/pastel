@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -16,9 +16,6 @@
 #include <atomic>
 #include <exception>
 #include <map>
-#include <cstdint>
-#include <string>
-#include <vector>
 #include <optional>
 #include <thread>
 
@@ -26,6 +23,9 @@
 
 #include <compat.h>
 #include <utils/fs.h>
+#include <utils/map_types.h>
+#include <utils/str_types.h>
+#include <utils/vector_types.h>
 #include <utils/tinyformat.h>
 #include <utiltime.h>
 
@@ -200,7 +200,8 @@ class missing_pastel_conf : public std::runtime_error {
 public:
     missing_pastel_conf() : std::runtime_error("Missing pastel.conf") { }
 };
-void ReadConfigFile(std::map<std::string, std::string>& mapSettingsRet, std::map<std::string, std::vector<std::string> >& mapMultiSettingsRet);
+void ReadConfigFile(m_strings& mapSettingsRet, std::map<std::string, v_strings>& mapMultiSettingsRet,
+    const opt_string_t &sOptionFilter = std::nullopt);
 #ifdef WIN32
 fs::path GetSpecialFolderPath(int nFolder, bool fCreate = true);
 #endif
@@ -235,13 +236,22 @@ inline bool IsSwitchChar(char c)
 std::string GetArg(const std::string& strArg, const std::string& strDefault);
 
 /**
- * Return integer argument or default value
+ * Return integer argument (int64_t) or default value
  *
  * @param strArg Argument to get (e.g. "-foo")
  * @param default (e.g. 1)
  * @return command-line argument (0 if invalid number) or default value
  */
 int64_t GetArg(const std::string& strArg, int64_t nDefault);
+
+/**
+ * Return integer argument (int32_t) or default value
+ * *
+ * @param strArg Argument to get (e.g. "-foo")
+ * * @param default (e.g. 1)
+ * * @return command-line argument (0 if invalid number) or default value
+ */
+int32_t GetIntArg(const std::string& strArg, const int32_t nDefaultValue);
 
 /**
  * Return boolean argument or default value
@@ -251,6 +261,14 @@ int64_t GetArg(const std::string& strArg, int64_t nDefault);
  * @return command-line argument or default value
  */
 bool GetBoolArg(const std::string& strArg, bool fDefault);
+
+/**
+ * Check if the given parameter is defined in config file
+ *
+ * \param strArg Argument to check (e.g. "-foo")
+ * \return true if the parameter is defined in config file
+ */
+bool IsParamDefined(const std::string& strArg) noexcept;
 
 /**
  * Set an argument if it doesn't already have a value

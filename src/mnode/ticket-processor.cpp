@@ -450,7 +450,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
  /**
  * Called for contextual validation of ticket transactions in the blocks (new or not).
  *                   
- *  CPU BitcoinMiner -> TestBlockValidity --------------------------------+
+ *  CPU PastelMiner -> TestBlockValidity --------------------------------+
  *      |                                                                 |
  *      +-- ProcessBlockFound --+                                         |
  *                              |                                         |

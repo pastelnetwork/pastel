@@ -27,7 +27,7 @@
 #include <utiltime.h>
 #include <zcash/IncrementalMerkleTree.hpp>
 #include <sodium.h>
-#include <miner.h>
+#include <mining/miner.h>
 
 #include <wallet/asyncrpcoperation_shieldcoinbase.h>
 

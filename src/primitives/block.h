@@ -6,8 +6,8 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <sstream>
 
-#include <utils/uint256.h>
 #include <utils/serialize.h>
+#include <utils/uint256.h>
 #include <primitives/transaction.h>
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,

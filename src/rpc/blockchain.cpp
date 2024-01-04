@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
@@ -21,6 +21,7 @@
 #include <primitives/transaction.h>
 #include <rpc/server.h>
 #include <rpc/coin-supply.h>
+#include <rpc/rpc-utils.h>
 
 using namespace std;
 
@@ -398,6 +399,8 @@ Result (for verbose = true):
   "difficulty" : x.xxx,  (numeric) The difficulty
   "previousblockhash" : "hash",  (string) The hash of the previous block
   "nextblockhash" : "hash"       (string) The hash of the next block
+  "pastelid" : "xxxx",   (string) The Pastel ID (mnid) of the block signer (for v5 block version only)
+  "prevMerkleRootSignature" : "xxxx", (string) The signature of the previous block's merkle root (for v5 block version only)
 }
 
 Result (for verbose=false):
@@ -459,6 +462,8 @@ Result (for verbosity = 1):
   "version" : n,         (numeric) The block version
   "merkleroot" : "xxxx", (string) The merkle root
   "finalsaplingroot" : "xxxx", (string) The root of the Sapling commitment tree after applying this block
+  "pastelid" : "xxxx",   (string) The Pastel ID (mnid) of the block signer (for v5 block version only)
+  "prevMerkleRootSignature" : "xxxx", (string) The signature of the previous block's merkle root (for v5 block version only)
   "tx" : [               (array of string) The transaction ids
      "transactionid"     (string) The transaction id
      ,...
@@ -517,17 +522,16 @@ Examples:
     uint256 hash(uint256S(strHash));
 
     int verbosity = 1;
-    if (params.size() > 1) {
-        if(params[1].isNum()) {
+    if (params.size() > 1)
+    {
+        if (params[1].isNum())
             verbosity = params[1].get_int();
-        } else {
-            verbosity = params[1].get_bool() ? 1 : 0;
-        }
+        else
+            verbosity = get_bool_value(params[1]) ? 1 : 0;
     }
 
-    if (verbosity < 0 || verbosity > 2) {
+    if (verbosity < 0 || verbosity > 2)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Verbosity must be in range from 0 to 2");
-    }
 
     if (mapBlockIndex.count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
@@ -538,7 +542,7 @@ Examples:
     if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
 
-    if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+    if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     if (verbosity == 0)
