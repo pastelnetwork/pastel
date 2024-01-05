@@ -50,10 +50,10 @@ struct PrecomputedTransactionData;
 struct CNodeStateStats;
 
 /** Default for -blockmaxsize and -blockminsize, which control the range of sizes the mining code will create **/
-static constexpr unsigned int DEFAULT_BLOCK_MAX_SIZE = MAX_BLOCK_SIZE;
-static constexpr unsigned int DEFAULT_BLOCK_MIN_SIZE = 0;
+static constexpr uint32_t DEFAULT_BLOCK_MAX_SIZE = MAX_BLOCK_SIZE;
+static constexpr uint32_t DEFAULT_BLOCK_MIN_SIZE = 0;
 /** Default for -blockprioritysize, maximum space for zero/low-fee transactions **/
-static constexpr unsigned int DEFAULT_BLOCK_PRIORITY_SIZE = DEFAULT_BLOCK_MAX_SIZE / 2;
+static constexpr uint32_t DEFAULT_BLOCK_PRIORITY_SIZE = DEFAULT_BLOCK_MAX_SIZE / 2;
 /** Default for accepting alerts from the P2P network. */
 static const bool DEFAULT_ALERTS = true;
 /** Minimum alert priority for enabling safe mode. */
@@ -398,7 +398,8 @@ bool CheckBlock(
     libzcash::ProofVerifier& verifier,
     const bool fCheckPOW = true,
     const bool fCheckMerkleRoot = true,
-    const CBlockIndex* pindex = nullptr);
+    const bool fSkipSnEligibilityChecks = false,
+    const CBlockIndex* pindexPrev = nullptr);
 
 /** Context-dependent validity checks.
  *  By "context", we mean only the previous block headers, but not the UTXO set;

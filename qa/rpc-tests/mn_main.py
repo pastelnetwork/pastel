@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -26,7 +26,6 @@ import test_framework.rpc_consts as rpc
 getcontext().prec = 16
 
 class MasterNodeMainTest (MasterNodeCommon):
-
     def __init__(self):
         super().__init__()
 
@@ -36,6 +35,7 @@ class MasterNodeMainTest (MasterNodeCommon):
         self.cold_node_num = 0       # master node
         self.mining_node_num = 1     # mining node
         self.hot_node_num = 2        # keeps all collateral for MNs
+        self.is_network_split = False
 
     def setup_chain(self):
         print(f"Initializing test directory {self.options.tmpdir}")
@@ -44,7 +44,6 @@ class MasterNodeMainTest (MasterNodeCommon):
 
     def setup_network(self, split=False):
         self.nodes = []
-        self.is_network_split = False
         self.setup_masternodes_network()
 
 

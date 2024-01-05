@@ -30,7 +30,7 @@
 #include <utiltime.h>
 #include <zcash/IncrementalMerkleTree.hpp>
 #include <sodium.h>
-#include <miner.h>
+#include <mining/miner.h>
 
 using namespace libzcash;
 using namespace std;

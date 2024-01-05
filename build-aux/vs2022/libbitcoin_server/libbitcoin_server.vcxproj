@@ -102,7 +102,8 @@
     <ClCompile Include="..\..\..\src\main.cpp" />
     <ClCompile Include="..\..\..\src\merkleblock.cpp" />
     <ClCompile Include="..\..\..\src\metrics.cpp" />
-    <ClCompile Include="..\..\..\src\miner.cpp" />
+    <ClCompile Include="..\..\..\src\mining\miner.cpp" />
+    <ClCompile Include="..\..\..\src\mining\mining-settings.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-active.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-config.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-controller.cpp" />
@@ -221,7 +222,8 @@
     <ClInclude Include="..\..\..\src\memusage.h" />
     <ClInclude Include="..\..\..\src\merkleblock.h" />
     <ClInclude Include="..\..\..\src\metrics.h" />
-    <ClInclude Include="..\..\..\src\miner.h" />
+    <ClInclude Include="..\..\..\src\mining\miner.h" />
+    <ClInclude Include="..\..\..\src\mining\mining-settings.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h" />
     <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\generate-report.h" />

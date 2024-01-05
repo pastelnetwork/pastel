@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -21,6 +21,7 @@
 #include <memory>
 #include <iostream>
 #include <errno.h>
+#include <regex>
 
 #if (defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__))
 #include <pthread.h>
@@ -32,7 +33,7 @@
 #endif
 
 #include <utils/str_utils.h>
-#include <utils/map_types.h>
+#include <utils/set_types.h>
 #include <utils/util.h>
 #include <utils/sync.h>
 #include <utils/utilstrencodings.h>
@@ -100,7 +101,6 @@
 #include <boost/program_options/parsers.hpp>
 
 using namespace std;
-
 
 m_strings mapArgs;
 map<string, v_strings> mapMultiArgs;
@@ -474,12 +474,21 @@ string GetArg(const string& strArg, const string& strDefault)
     return strDefault;
 }
 
+int32_t GetIntArg(const string& strArg, const int32_t nDefaultValue)
+{
+    if (mapArgs.count(strArg))
+        return atoi(mapArgs[strArg]);
+    return nDefaultValue;
+}
+
+
 int64_t GetArg(const string& strArg, int64_t nDefault)
 {
     if (mapArgs.count(strArg))
         return atoi64(mapArgs[strArg]);
     return nDefault;
 }
+
 
 bool GetBoolArg(const string& strArg, bool fDefault)
 {
@@ -490,6 +499,11 @@ bool GetBoolArg(const string& strArg, bool fDefault)
         return (atoi(mapArgs[strArg]) != 0);
     }
     return fDefault;
+}
+
+bool IsParamDefined(const std::string& strArg) noexcept
+{
+    return mapArgs.count(strArg) > 0;
 }
 
 bool SoftSetArg(const string& strArg, const string& strValue)
@@ -721,27 +735,38 @@ fs::path GetConfigFile()
     return pathConfigFile;
 }
 
-void ReadConfigFile(map<string, string>& mapSettingsRet,
-                    map<string, vector<string> >& mapMultiSettingsRet)
+void ReadConfigFile(m_strings& mapSettingsRet, map<string, v_strings>& mapMultiSettingsRet,
+    const opt_string_t &sOptionFilter)
 {
     fs::ifstream streamConfig(GetConfigFile());
     if (!streamConfig.good())
         throw missing_pastel_conf();
 
-    set<string> setOptions;
+    s_strings setOptions;
     setOptions.insert("*");
+
+    // Convert the wildcard pattern to regex pattern
+    string regexPattern;
+    if (sOptionFilter.has_value())
+        regexPattern = regex_replace(sOptionFilter.value(), regex("\\*"), ".*");
+    regex filterRegex(regexPattern);
 
     for (boost::program_options::detail::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it)
     {
         // Don't overwrite existing settings so command line settings override pastel.conf
         string strKey = string("-") + it->string_key;
-        if (mapSettingsRet.count(strKey) == 0)
+
+        // Process only if the key matches the regex filter
+        if (!sOptionFilter.has_value() || regex_match(strKey, filterRegex))
         {
-            mapSettingsRet[strKey] = it->value[0];
-            // interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set)
-            InterpretNegativeSetting(strKey, mapSettingsRet);
+            if (mapSettingsRet.count(strKey) == 0)
+            {
+                mapSettingsRet[strKey] = it->value[0];
+                // interpret nofoo=1 as foo=0 (and nofoo=0 as foo=1) as long as foo not set)
+                InterpretNegativeSetting(strKey, mapSettingsRet);
+            }
+            mapMultiSettingsRet[strKey].push_back(it->value[0]);
         }
-        mapMultiSettingsRet[strKey].push_back(it->value[0]);
     }
     // If datadir is changed in .conf file:
     ClearDatadirCache();

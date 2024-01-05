@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 from typing import Dict
@@ -180,11 +180,27 @@ class MasterNodeCommon (PastelTestFramework):
             return f'mn{self.index}'
 
 
+        def add_mnid_conf(self, dirname: str):
+            """ add mnid configuration for mining to pastel.conf
+            
+            Args:
+                dirname (str): node base directory
+            """
+            datadir = Path(dirname, f"node{self.index}")
+            if not datadir.is_dir():
+                datadir.mkdir()
+            conf_file = Path(datadir, "pastel.conf")
+            with conf_file.open('a') as f:
+                f.write(f"gen-pastelid={self.mnid}\n")
+                f.write(f"gen-passphrase={self.passphrase}\n")
+        
+
         def create_masternode_conf(self, dirname: str, node_index: int):
             """create masternode.conf for this masternode
 
             Args:
                 dirname (str): node base directory
+                node_index (int): node index in self.nodes
 
             Returns:
                 str: node data directory
@@ -394,6 +410,7 @@ class MasterNodeCommon (PastelTestFramework):
                 mn.mnid_reg_address = self.nodes[mn.index].getnewaddress()
                 self.nodes[self.mining_node_num].sendtoaddress(mn.mnid_reg_address, 100, "", "", False)
                 mn.create_masternode_conf(self.options.tmpdir, self.hot_node_num)
+                mn.add_mnid_conf(self.options.tmpdir)
             self.generate_and_sync_inc(1, self.mining_node_num)
 
             # send "masternode start-alias <alias>" for all cold nodes
@@ -429,7 +446,7 @@ class MasterNodeCommon (PastelTestFramework):
                 self.generate_and_sync_inc(1, self.mining_node_num)
             # wait for ticket transactions
             time.sleep(10)
-            for _ in range(5):
+            for _ in range(MIN_TICKET_CONFIRMATIONS):
                 self.generate_and_sync_inc(1, self.mining_node_num)
                 self.sync_all(10, 3)
             self.sync_all(10, 30)
@@ -449,6 +466,12 @@ class MasterNodeCommon (PastelTestFramework):
 
         self.reconnect_all_nodes()
         self.sync_all()
+        for mn in self.mn_nodes:
+            if mn.index >= self.number_of_cold_nodes:
+                continue
+            mnid_info = self.nodes[mn.index].refreshminingmnidinfo()
+            assert_true(mnid_info, "Failed to refresh mining mnid info")
+            assert_equal(1, len(mnid_info))
         timer.stop()
         print(f"<<<< MasterNode network INITIALIZED in {timer.elapsed_time} secs >>>>")
         self.list_masternode_info()

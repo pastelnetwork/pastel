@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 # Base class for RPC testing
-
+from typing import List
 import logging
 import os
 import sys
@@ -125,27 +125,43 @@ class BitcoinTestFramework(object):
         wait_pastelds()
         self.setup_network(False)
 
-    # generate blocks up to new_height on node #node_id, sync all nodes
-    def generate_and_sync(self, new_height, node_id = 0):
+    def generate_and_sync(self, new_height, node_id = 0) -> List[str]:
+        """ Generate blocks up to new_height on node #node_id, sync all nodes.
+        
+        Args:
+            new_height (int): height to generate blocks up to
+            node_id (int, optional): node number to generate blocks on. Defaults to 0.
+            
+        Returns:
+            List[str]: list of hashes for generated blocks
+        """
         current_height = self.nodes[node_id].getblockcount()
         assert(new_height > current_height)
-        self.nodes[node_id].generate(new_height - current_height)
+        list_of_block_hashes = self.nodes[node_id].generate(new_height - current_height)
         self.sync_all()
         assert_equal(new_height, self.nodes[node_id].getblockcount())
+        return list_of_block_hashes
 
 
-    def generate_and_sync_inc(self, nblocks = 1, node_id = 0):
+    def generate_and_sync_inc(self, nblocks = 1, node_id = 0, mnid: str = None) -> List[str]:
         """Generate nblocks on node #node_id, sync all nodes.
 
         Args:
             nblocks (int, optional): number of blocks to generate. Defaults to 1.
             node_id (int, optional): node number to generate blocks on. Defaults to 0.
+            
+        Returns:
+            List[str]: list of hashes for generated blocks
         """
         current_height = self.nodes[node_id].getblockcount()
         self.sync_all()
-        self.nodes[node_id].generate(nblocks)
+        if mnid:
+            list_of_block_hashes = self.nodes[node_id].generate(nblocks, mnid)
+        else:
+            list_of_block_hashes = self.nodes[node_id].generate(nblocks)
         self.sync_all()
         assert_equal(current_height + nblocks, self.nodes[node_id].getblockcount())
+        return list_of_block_hashes
 
 
     def main(self):

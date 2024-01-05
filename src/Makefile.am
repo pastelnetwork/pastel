@@ -339,7 +339,8 @@ BITCOIN_CORE_H = \
   memusage.h \
   merkleblock.h \
   metrics.h \
-  miner.h \
+  mining/miner.h \
+  mining/mining-settings.h \
   mruset.h \
   netmsg/bloom.h \
   netmsg/block-cache.h \
@@ -441,7 +442,8 @@ libbitcoin_server_a_SOURCES = \
   main.cpp \
   merkleblock.cpp \
   metrics.cpp \
-  miner.cpp \
+  mining/miner.cpp \
+  mining/mining-settings.cpp \
   netmsg/bloom.cpp \
   netmsg/block-cache.cpp \
   netmsg/fork-switch-tracker.cpp \
