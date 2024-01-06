@@ -693,7 +693,9 @@ void static PastelMiner(const int nThreadNo)
                     // Found a solution
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     LogPrintf("PastelMiner:\n");
-                    LogPrintf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", pblock->GetHash().GetHex(), hashTarget.GetHex());
+                    LogPrintf("proof-of-work found\n    hash: %s\n  target: %s\n%s", 
+                        pblock->GetHash().GetHex(), hashTarget.GetHex(),
+                        pblock->sPastelID.empty() ? "" : strprintf("   mnid: %s\n", pblock->sPastelID));
 #ifdef ENABLE_WALLET
                     if (ProcessBlockFound(pblock, chainparams, *pwallet, reservekey))
 #else
