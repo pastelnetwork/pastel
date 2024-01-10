@@ -54,6 +54,12 @@ constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 158'530;
 constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 370'000;
 
+// devnet upgrades activation heights
+constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
+constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
+constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 30;
+constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 40;
+
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
                                  uint32_t nTime, 
@@ -556,11 +562,36 @@ public:
 class CDevNetParams : public CTestNetParams
 {
 public:
-    CDevNetParams() : CTestNetParams()
+    CDevNetParams() :
+        CChainParams(ChainNetwork::DEVNET)
     {
-        consensus = ChainNetwork::DEVNET;
         strNetworkID = "devnet";
         strCurrencyUnits = "DEV";
+        bip44CoinType = 1;
+        consensus.nSubsidyHalvingInterval = 840'000;
+        consensus.nMajorityEnforceBlockUpgrade = 51;
+        consensus.nMajorityRejectBlockOutdated = 75;
+        consensus.nMajorityWindow = 400;
+        consensus.powLimit = uint256S("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.nPowAveragingWindow = 17;
+        assert(maxUint/UintToArith256(consensus.powLimit) >= consensus.nPowAveragingWindow);
+        consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
+        consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
+        consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
+        consensus.nPowAllowMinDifficultyBlocksAfterHeight = 299'187;
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::BASE_SPROUT, 170002, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY, 170002, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, DEVNET_OVERWINTER_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170007, DEVNET_SAPLING_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, DEVNET_CEZANNE_UPGRADE_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, DEVNET_MONET_UPGRADE_STARTING_BLOCK);
+        // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
+        consensus.nNetworkUpgradePeerPreferenceBlockPeriod = DEVNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
+        consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
+        consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
+
+        // The best chain should have at least this much work.
+        consensus.nMinimumChainWork = uint256S("0x00");
 
         /**
          * The message start string
@@ -571,6 +602,12 @@ public:
         pchMessageStart[3] = 0xD2;
         vAlertPubKey = ParseHex("0429aff40718031ed61f0166f3e33b5dfb256c78cdbfa916bf6cc9869a40ce1d66ca35b92fe874bd18b69457ecef27bc3a0f089b737b03fb889dc1420b6a6e70cb");
         nDefaultPort = DEVNET_DEFAULT_PORT;
+        m_nPruneAfterHeight = 1000;
+        m_nOfferReplacementAllowedBlocks = 2'880;
+        const size_t N = 200, K = 9;
+        static_assert(equihash_parameters_acceptable(N, K));
+        consensus.nEquihashN = N;
+        consensus.nEquihashK = K;
 
         genesis = CreateDevnetGenesisBlock();
         consensus.hashGenesisBlock = genesis.GetHash();
@@ -604,6 +641,12 @@ public:
         m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-dev";
         m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_FVK)] = "pxviewdevsapling";
 
+        fMiningRequiresPeers = true;
+        fDefaultConsistencyChecks = false;
+        fRequireStandard = true;
+        fMineBlocksOnDemand = false;
+        fTestnetToBeDeprecatedFieldRPC = true;
+`
         checkpointData.mapCheckpoints = {
             {0, consensus.hashGenesisBlock},
         };
