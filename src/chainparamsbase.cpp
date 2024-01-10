@@ -101,7 +101,7 @@ std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const ChainNetwork netwo
         break;
 
     case ChainNetwork::DEVNET:
-        BaseChainParams = std::make_unique<CBaseTestNetParams>();
+        BaseChainParams = std::make_unique<CBaseDevNetParams>();
         break;
 
     case ChainNetwork::REGTEST:
