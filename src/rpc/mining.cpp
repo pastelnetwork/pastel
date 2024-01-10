@@ -353,18 +353,17 @@ Returns a json object containing mining-related information.
 
 Result:
 {
-  "blocks": nnn,             (numeric) The current block
-  "currentblocksize": nnn,   (numeric) The last block size
-  "currentblocktx": nnn,     (numeric) The last block transaction
-  "difficulty": xxx.xxxxx    (numeric) The current difficulty
-  "errors": "..."            (string) Current errors
-  "generate": true|false     (boolean) If the generation is on or off (see getgenerate or setgenerate calls)
-  "genproclimit": n          (numeric) The processor limit for generation. -1 if no generation. (see getgenerate or setgenerate calls)
-  "localsolps": xxx.xxxxx    (numeric) The average local solution rate in Sol/s since this node was started
-  "networksolps": x          (numeric) The estimated network solution rate in Sol/s
-  "pooledtx": n              (numeric) The size of the mem pool
-  "testnet": true|false      (boolean) If using testnet or not
-  "chain": "xxxx",          (string) current network name as defined in BIP70 (main, test, regtest)
+  "blocks": nnn,            (numeric) The current block
+  "currentblocksize": nnn,  (numeric) The last block size
+  "currentblocktx": nnn,    (numeric) The last block transaction
+  "difficulty": xxx.xxxxx   (numeric) The current difficulty
+  "errors": "..."           (string) Current errors
+  "generate": true|false    (boolean) If the generation is on or off (see getgenerate or setgenerate calls)
+  "genproclimit": n         (numeric) The processor limit for generation. -1 if no generation. (see getgenerate or setgenerate calls)
+  "localsolps": xxx.xxxxx   (numeric) The average local solution rate in Sol/s since this node was started
+  "networksolps": x         (numeric) The estimated network solution rate in Sol/s
+  "pooledtx": n             (numeric) The size of the mem pool
+  "chain": "xxxx",          (string) current network name (mainnet, testnet, devnet, regtest)
 }
 
 Examples:
@@ -383,8 +382,7 @@ Examples:
     obj.pushKV("genproclimit",     (int)GetArg("-genproclimit", -1));
     obj.pushKV("localsolps"  ,     getlocalsolps(params, false));
     obj.pushKV("networksolps",     getnetworksolps(params, false));
-    obj.pushKV("networkhashps", getnetworksolps(params, false));
-    obj.pushKV("testnet",          Params().TestnetToBeDeprecatedFieldRPC());
+    obj.pushKV("networkhashps",    getnetworksolps(params, false));
     obj.pushKV("chain",            Params().NetworkIDString());
 #ifdef ENABLE_MINING
     obj.pushKV("generate",         getgenerate(params, false));
