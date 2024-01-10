@@ -298,7 +298,7 @@ static CBlock CreateRegtestGenesisBlock()
 #endif
 
     return block;
-}
+}`
 
 /**
  * Main network
@@ -527,6 +527,60 @@ public:
     }
 };
 
+class CDevNetParams : public CTestNetParams
+{
+public:
+    CDevNetParams() : CTestNetParams()
+    {
+        network = ChainNetwork::DEVNET;
+        strNetworkID = "devnet";
+        strCurrencyUnits = "DEV";
+
+        /**
+         * The message start string
+         */
+        pchMessageStart[0] = 0x8F;
+        pchMessageStart[1] = 0xAB;
+        pchMessageStart[2] = 0xC1;
+        pchMessageStart[3] = 0xD2;
+        vAlertPubKey = ParseHex("0429aff40718031ed61f0166f3e33b5dfb256c78cdbfa916bf6cc9869a40ce1d66ca35b92fe874bd18b69457ecef27bc3a0f089b737b03fb889dc1420b6a6e70cb");
+        nDefaultPort = DEVNET_DEFAULT_PORT;
+
+        vFixedSeeds.clear();
+        vSeeds.clear();
+        vSeeds.push_back(CDNSSeedData("pastel.network", "dnsseed.devnet.pastel.network"));
+
+        // guarantees the first 2 characters, when base58 encoded, are "DN"
+        m_base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x64, 0x1c};
+        // guarantees the first 2 characters, when base58 encoded, are "dn"
+        m_base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x64, 0x09};
+        // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
+        m_base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0xEF};
+        // do not rely on these BIP32 prefixes; they are not specified and may change
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x35, 0x87, 0xCF};
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x35, 0x83, 0x94};
+        // guarantees the first 2 characters, when base58 encoded, are "dZ"
+        m_base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRESS)] = {0x63, 0x6d};
+        // guarantees the first 4 characters, when base58 encoded, are "dX"
+        m_base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x63, 0x55};
+        // guarantees the first 2 characters, when base58 encoded, are "dQ"
+        m_base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x63, 0x01};
+
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "pdevsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviewdevsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivkdevsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-dev";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_FVK)] = "pxviewdevsapling";
+
+        checkpointData.mapCheckpoints = {
+            {0, consensus.hashGenesisBlock},
+        };
+        checkpointData.nTimeLastCheckpoint = genesis.nTime;     // * UNIX timestamp of last checkpoint block
+        checkpointData.nTransactionsLastCheckpoint = 0;
+        checkpointData.fTransactionsPerDay = 0;
+    }
+};
+
 /**
  * Regression test
  */
@@ -652,6 +706,10 @@ std::unique_ptr<const CChainParams> CreateChainParams(const ChainNetwork network
 
         case ChainNetwork::TESTNET:
             ChainParams = std::make_unique<CTestNetParams>();
+            break;
+
+        case ChainNetwork::DEVNET:
+            ChainParams = std::make_unique<CDevNetParams>();
             break;
 
         case ChainNetwork::REGTEST:

@@ -35,6 +35,19 @@ public:
     }
 };
 
+/**
+ * Devnet
+ */
+class CBaseDevNetParams : public CBaseChainParams
+{
+public:
+    CBaseDevNetParams()
+    {
+        nRPCPort = DEVNET_DEFAULT_RPC_PORT;
+        strDataDir = "devnet";
+    }
+};
+
 /*
  * Regression test
  */
@@ -87,6 +100,10 @@ std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const ChainNetwork netwo
         BaseChainParams = std::make_unique<CBaseTestNetParams>();
         break;
 
+    case ChainNetwork::DEVNET:
+        BaseChainParams = std::make_unique<CBaseTestNetParams>();
+        break;
+
     case ChainNetwork::REGTEST:
         BaseChainParams = std::make_unique<CBaseRegTestParams>();
         break;
@@ -109,13 +126,16 @@ ChainNetwork NetworkIdFromCommandLine()
 {
     const bool fRegTest = GetBoolArg("-regtest", false);
     const bool fTestNet = GetBoolArg("-testnet", false);
+    const bool fDevNet = GetBoolArg("-devnet", false);
 
-    if (fTestNet && fRegTest)
+    if (fTestNet && fRegTest || fTestNet && fDevNet || fDevNet && fRegTest)
         return ChainNetwork::MAX_NETWORK_TYPES;
     if (fRegTest)
         return ChainNetwork::REGTEST;
     if (fTestNet)
         return ChainNetwork::TESTNET;
+    if (fDevNet)
+        return ChainNetwork::DEVNET;
     return ChainNetwork::MAIN;
 }
 

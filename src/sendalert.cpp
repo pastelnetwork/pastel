@@ -116,6 +116,8 @@ void ThreadSendAlert()
         szPrivKey = pszPrivKey;
     else if (chainparams.IsTestNet())
         szPrivKey = pszTestNetPrivKey;
+    else if (chainparams.IsDevNet())
+        szPrivKey = pszDevNetPrivKey;
     else if (chainparams.IsRegTest())
         szPrivKey = pszRegTestPrivKey;
     else

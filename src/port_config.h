@@ -13,6 +13,10 @@ constexpr unsigned short MAINNET_DEFAULT_PORT     = 9933;
 constexpr unsigned short TESTNET_DEFAULT_RPC_PORT = 19932;
 constexpr unsigned short TESTNET_DEFAULT_PORT     = 19933;
 
+// ---------------- DEVNET --------------------------
+constexpr unsigned short DEVNET_DEFAULT_RPC_PORT = 29932;
+constexpr unsigned short DEVNET_DEFAULT_PORT     = 29933;
+
 // ---------------- REGTEST --------------------------
 constexpr unsigned short REGTEST_DEFAULT_RPC_PORT = 18232;
 constexpr unsigned short REGTEST_DEFAULT_PORT     = 18344;

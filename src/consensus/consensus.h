@@ -10,6 +10,7 @@ enum class ChainNetwork
     MAIN = 0,
     TESTNET,
     REGTEST,
+    DEVNET,
 
     MAX_NETWORK_TYPES
 };
