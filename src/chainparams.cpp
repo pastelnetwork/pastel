@@ -55,10 +55,10 @@ constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 158'530;
 constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 370'000;
 
 // devnet upgrades activation heights
-constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
-constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
-constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 30;
-constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 40;
+constexpr uint32_t DEVNET_OVERWINTER_STARTING_BLOCK = 10;
+constexpr uint32_t DEVNET_SAPLING_STARTING_BLOCK = 20;
+constexpr uint32_t DEVNET_CEZANNE_UPGRADE_STARTING_BLOCK = 30;
+constexpr uint32_t DEVNET_MONET_UPGRADE_STARTING_BLOCK = 40;
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
@@ -559,7 +559,7 @@ public:
     }
 };
 
-class CDevNetParams : public CTestNetParams
+class CDevNetParams : public CChainParams
 {
 public:
     CDevNetParams() :
@@ -646,7 +646,7 @@ public:
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = true;
-`
+
         checkpointData.mapCheckpoints = {
             {0, consensus.hashGenesisBlock},
         };
