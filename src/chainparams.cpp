@@ -298,7 +298,7 @@ static CBlock CreateRegtestGenesisBlock()
 #endif
 
     return block;
-}`
+}
 
 /**
  * Main network
@@ -530,9 +530,9 @@ public:
 class CDevNetParams : public CTestNetParams
 {
 public:
-    CDevNetParams() : CTestNetParams()
+    CDevNetParams() : CTestNetParams() 
     {
-        network = ChainNetwork::DEVNET;
+	consensus = ChainNetwork::DEVNET;
         strNetworkID = "devnet";
         strCurrencyUnits = "DEV";
 
