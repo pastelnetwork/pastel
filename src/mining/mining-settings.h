@@ -33,6 +33,7 @@ public:
     uint32_t getBlockMinSize() const noexcept { return m_nBlockMinSize; }
     EquihashSolver getEquihashSolver() const noexcept { return m_equihashSolver; }
     std::string getEquihashSolverName() const noexcept;
+    bool isEligibleForMining() const noexcept { return m_bEligibleForMining; }
 
     size_t GenIdsCount() const noexcept { return m_mapGenIds.size(); }
     s_strings getMnIdsAndRotate() noexcept;
@@ -47,6 +48,7 @@ private:
     uint32_t m_nBlockPrioritySize;
     uint32_t m_nBlockMinSize;
     EquihashSolver m_equihashSolver;
+    bool m_bEligibleForMining; // gen-enable-mining option
 
     std::mutex m_mutexGenIds;
     gen_mnids_t m_mapGenIds; // map of <PastelID> -> <passphrase>

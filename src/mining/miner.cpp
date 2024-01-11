@@ -405,8 +405,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                 sStateMsg += ")";
             else
                 sStateMsg += ", reason: " + state.GetRejectReason() + ")";
-			LogFnPrintf("ERROR: TestBlockValidity failed %s", sStateMsg);
-            throw runtime_error("CreateNewBlock(): TestBlockValidity failed");
+			LogFnPrintf("WARNING: TestBlockValidity failed %s", sStateMsg);
         }
     }
 
@@ -542,6 +541,7 @@ void static PastelMiner(const int nThreadNo)
     const auto& consensusParams = chainparams.GetConsensus();
     unsigned int n = consensusParams.nEquihashN;
     unsigned int k = consensusParams.nEquihashK;
+    const float nMiningEligibilityThreshold = consensusParams.nMiningEligibilityThreshold;
 
     LogPrint("pow", "Using Equihash solver \"%s\" with n = %u, k = %u\n", 
         gl_MinerSettings.getEquihashSolverName(), n, k);

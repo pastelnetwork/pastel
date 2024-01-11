@@ -15,6 +15,7 @@ CMinerSettings::CMinerSettings() noexcept
 	m_nBlockPrioritySize = DEFAULT_BLOCK_PRIORITY_SIZE;
 	m_nBlockMinSize = DEFAULT_BLOCK_MIN_SIZE;
     m_equihashSolver = EquihashSolver::Default;
+    m_bEligibleForMining = false;
     m_nGenIdIndex = 0;
     m_bInitialized = false;
 }
@@ -70,6 +71,19 @@ bool CMinerSettings::refreshMnIdInfo(string &error, const bool bRefreshConfig)
         m_mapGenIds.emplace(move(sPastelID), move(sPassphrase));
         ++nSuffix;
     } while (false);
+    m_bEligibleForMining = GetBoolArg("-gen-enable-mn-mining", false);
+    if (m_bEligibleForMining)
+    {
+        if (m_mapGenIds.empty())
+        {
+			error = "No MasterNode Pastel ID (gen-pastelid) or passphrase (gen-passphrase) defined in the config file";
+			return false;
+		}
+	}
+    else
+    {
+		m_mapGenIds.clear();
+	}
     return true;
 }
 
