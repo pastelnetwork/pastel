@@ -152,7 +152,7 @@ class MasterNodeCommon (PastelTestFramework):
         collateral_txid: str = None
         collateral_index: int = None
         mnid_reg_address: str = None # address for mnid registration
-        mnid_reg_txid: str = None    # txid for mnid registration   
+        mnid_reg_txid: str = None    # txid for mnid registration
 
         def __init__(self, index, passphrase):
             self.index = index
@@ -193,6 +193,7 @@ class MasterNodeCommon (PastelTestFramework):
             with conf_file.open('a') as f:
                 f.write(f"gen-pastelid={self.mnid}\n")
                 f.write(f"gen-passphrase={self.passphrase}\n")
+                f.write("gen-enable-mn-mining=1\n")
         
 
         def create_masternode_conf(self, dirname: str, node_index: int):

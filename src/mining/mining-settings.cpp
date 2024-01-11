@@ -82,6 +82,7 @@ bool CMinerSettings::refreshMnIdInfo(string &error, const bool bRefreshConfig)
 	}
     else
     {
+        LogPrintf("MasterNode mining is not enabled (gen-enable-mn-mining option), -gen-* options are ignored\n");
 		m_mapGenIds.clear();
 	}
     return true;
