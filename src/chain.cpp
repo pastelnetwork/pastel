@@ -275,6 +275,8 @@ void CBlockIndex::SetNull() noexcept
     nBits = 0;
     nNonce = uint256();
     nSolution.clear();
+    sPastelID.reset();
+    prevMerkleRootSignature.reset();
 }
 
 CBlockIndex::CBlockIndex(const CBlockHeader& blockHeader) noexcept
@@ -358,6 +360,10 @@ CBlockHeader CBlockIndex::GetBlockHeader() const noexcept
     blockHeader.nBits = nBits;
     blockHeader.nNonce = nNonce;
     blockHeader.nSolution = nSolution;
+    if (sPastelID.has_value())
+        blockHeader.sPastelID = sPastelID.value();
+    if (prevMerkleRootSignature.has_value())
+        blockHeader.prevMerkleRootSignature = prevMerkleRootSignature.value();
     return blockHeader;
 }
 

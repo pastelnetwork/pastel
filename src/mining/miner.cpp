@@ -405,8 +405,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                 sStateMsg += ")";
             else
                 sStateMsg += ", reason: " + state.GetRejectReason() + ")";
-			LogFnPrintf("ERROR: TestBlockValidity failed %s", sStateMsg);
-            throw runtime_error("CreateNewBlock(): TestBlockValidity failed");
+			LogFnPrintf("WARNING: TestBlockValidity failed %s", sStateMsg);
         }
     }
 
@@ -542,6 +541,7 @@ void static PastelMiner(const int nThreadNo)
     const auto& consensusParams = chainparams.GetConsensus();
     unsigned int n = consensusParams.nEquihashN;
     unsigned int k = consensusParams.nEquihashK;
+    const float nMiningEligibilityThreshold = consensusParams.nMiningEligibilityThreshold;
 
     LogPrint("pow", "Using Equihash solver \"%s\" with n = %u, k = %u\n", 
         gl_MinerSettings.getEquihashSolverName(), n, k);
@@ -693,7 +693,9 @@ void static PastelMiner(const int nThreadNo)
                     // Found a solution
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     LogPrintf("PastelMiner:\n");
-                    LogPrintf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", pblock->GetHash().GetHex(), hashTarget.GetHex());
+                    LogPrintf("proof-of-work found\n    hash: %s\n  target: %s\n%s", 
+                        pblock->GetHash().GetHex(), hashTarget.GetHex(),
+                        pblock->sPastelID.empty() ? "" : strprintf("   mnid: %s\n", pblock->sPastelID));
 #ifdef ENABLE_WALLET
                     if (ProcessBlockFound(pblock, chainparams, *pwallet, reservekey))
 #else

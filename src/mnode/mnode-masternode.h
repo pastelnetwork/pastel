@@ -170,6 +170,7 @@ public:
     bool IsUpdateRequired() const noexcept { return m_ActiveState == MASTERNODE_STATE::UPDATE_REQUIRED; }
     bool IsWatchdogExpired() const noexcept { return m_ActiveState == MASTERNODE_STATE::WATCHDOG_EXPIRED; }
     bool IsNewStartRequired() const noexcept { return m_ActiveState == MASTERNODE_STATE::NEW_START_REQUIRED; }
+    bool IsEligibleForMining() const noexcept { return m_bEligibleForMining; }
 
     int nProtocolVersion = 0;
     int64_t sigTime = 0; //mnb message time
@@ -191,6 +192,7 @@ public:
 protected:
     MASTERNODE_STATE m_ActiveState = MASTERNODE_STATE::PRE_ENABLED;
     std::string m_sMNPastelID; // Masternode's Pastel ID
+    bool m_bEligibleForMining = false;
     CTxIn m_vin{}; // input collateral transaction
     CService m_addr{};
 };
@@ -202,7 +204,7 @@ protected:
 class CMasternode : public masternode_info_t
 {
 public:
-    constexpr static int64_t MASTERNODE_VERSION = 1;
+    constexpr static int64_t MASTERNODE_VERSION = 2;
     static bool fCompatibilityReadMode;
 
     enum class CollateralStatus
@@ -294,11 +296,16 @@ public:
         {
 			READWRITE(m_nSenseComputeFee);
             READWRITE(m_nSenseProcessingFeePerMB);
+            if (m_nVersion >= 2)
+            {
+                READWRITE(m_bEligibleForMining);
+            }
         }
         else
         {
             m_nSenseComputeFee = 0;
             m_nSenseProcessingFeePerMB = 0;
+            m_bEligibleForMining = false;
         }
     }
 

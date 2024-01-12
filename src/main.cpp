@@ -5403,7 +5403,10 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
                 if (pindexLast && header.hashPrevBlock != pindexLast->GetBlockHash())
                 {
                     Misbehaving(pfrom->GetId(), 20);
-                    return error("non-continuous headers sequence");
+                    return error("non-continuous headers sequence (height=%d):\n"
+                        "  hash received in block header: %s\n"
+                        "  hash calculated: %s", pindexLast->nHeight, 
+                        header.hashPrevBlock.ToString(), pindexLast->GetBlockHashString());
                 }
                 if (!AcceptBlockHeader(header, state, chainparams, & pindexLast))
                 {

@@ -72,7 +72,7 @@ private:
     static constexpr int MAX_POSE_RANK              = 10;
     static constexpr int MAX_POSE_BLOCKS            = 10;
 
-    static constexpr size_t MNB_RECOVERY_QUORUM_TOTAL      = 10;
+    static constexpr size_t MNB_RECOVERY_QUORUM_TOTAL   = 10;
     static constexpr int MNB_RECOVERY_QUORUM_REQUIRED   = 6;
     static constexpr int MNB_RECOVERY_MAX_ASK_ENTRIES   = 10;
     static constexpr int MNB_RECOVERY_WAIT_SECONDS      = 60;
@@ -226,8 +226,7 @@ public:
     // Masternode nProtocolVersion should match or be above the one specified in param here.
     size_t CountEnabled(const int nProtocolVersion = -1) const noexcept;
     size_t CountCurrent(const int nProtocolVersion = -1) const noexcept;
-    size_t CountEnabledByLastSeenTime(const int nProtocolVersion = -1, 
-        const int nTimeDeltaSecs = SN_ELIGIBILITY_LAST_SEEN_TIME_SECS) const noexcept;
+    size_t CountEligibleForMining() const noexcept;
     // Count Masternodes by network type - NET_IPV4, NET_IPV6, NET_TOR
     // int CountByIP(int nNetworkType);
 

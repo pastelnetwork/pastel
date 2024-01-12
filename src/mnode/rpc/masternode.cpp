@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <iomanip>
@@ -50,6 +50,7 @@ UniValue formatMnsInfo(const masternode_vector_t& topBlockMNs)
         objItem.pushKV("extP2P", pmn->strExtraLayerP2P);
         objItem.pushKV("extKey", pmn->getMNPastelID());
         objItem.pushKV("extCfg", pmn->strExtraLayerCfg);
+        objItem.pushKV("eligibleForMining", pmn->IsEligibleForMining());
 
         mnArray.push_back(move(objItem));
     }
@@ -173,7 +174,7 @@ Examples:
                     string strAddress = pmn->get_address();
                     if (!strFilter.empty() && strAddress.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
-                        continue; //-V1051
+                        continue;
                     obj.pushKV(strOutpoint, move(strAddress));
                 } break;
 
@@ -193,7 +194,7 @@ Examples:
                     string strFull = streamFull.str();
                     if (!strFilter.empty() && strFull.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
-                        continue; //-V1051
+                        continue;
                     obj.pushKV(strOutpoint, move(strFull));
                 } break;
 
@@ -264,7 +265,7 @@ Examples:
                     string strStatus = pmn->GetStatus();
                     if (!strFilter.empty() && strStatus.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
-                        continue; //-V1051
+                        continue;
                     obj.pushKV(strOutpoint, move(strStatus));
                 } break;
 
@@ -275,6 +276,7 @@ Examples:
                     objItem.pushKV("extP2P", pmn->strExtraLayerP2P);
                     objItem.pushKV("extKey", pmn->getMNPastelID());
                     objItem.pushKV("extCfg", pmn->strExtraLayerCfg);
+                    objItem.pushKV("eligibleForMining", pmn->IsEligibleForMining());
 
                     obj.pushKV(strOutpoint, move(objItem));
                 } break;

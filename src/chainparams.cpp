@@ -343,6 +343,7 @@ public:
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
+        consensus.nMiningEligibilityThreshold = 0.75;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("000000000000000000000000000000000000000000000000000000000624f116"); //2702
@@ -454,6 +455,7 @@ public:
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
+        consensus.nMiningEligibilityThreshold = 0.75;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
@@ -560,6 +562,7 @@ public:
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = REGTEST_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
+        consensus.nMiningEligibilityThreshold = 0.75;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");

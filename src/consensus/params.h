@@ -90,6 +90,7 @@ struct Params
     int64_t nPowMaxAdjustUp = 0;
     int64_t nPowTargetSpacing = 0;
     float nGlobalFeeAdjustmentMultiplier = 1.0;
+    float nMiningEligibilityThreshold = 0.75;
 
     int64_t AveragingWindowTimespan() const noexcept { return nPowAveragingWindow * nPowTargetSpacing; }
     int64_t MinActualTimespan() const noexcept { return (AveragingWindowTimespan() * (100 - nPowMaxAdjustUp  )) / 100; }

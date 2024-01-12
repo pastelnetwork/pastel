@@ -470,16 +470,18 @@ size_t CMasternodeMan::CountCurrent(const int nProtocolVersion) const noexcept
     }, nProtocolVersion);
 }
 
-size_t CMasternodeMan::CountEnabledByLastSeenTime(const int nProtocolVersion, const int nTimeDeltaSecs) const noexcept
+size_t CMasternodeMan::CountEligibleForMining() const noexcept
 {
     return CountMasternodes([&](const masternode_t& pmn)
     {
 		if (!pmn->IsEnabled())
 			return false;
-		if (!pmn->IsPingedWithin(nTimeDeltaSecs))
+        if (!pmn->IsEligibleForMining())
+            return false;
+		if (!pmn->IsPingedWithin(SN_ELIGIBILITY_LAST_SEEN_TIME_SECS))
 			return false;
 		return true;
-	}, nProtocolVersion);
+	}, -1);
 }
 
 /* Only IPv4 masternodes are allowed in 12.1, saving this for later
@@ -651,13 +653,15 @@ bool CMasternodeMan::IsTxHasMNOutputs(const CTransaction& tx) noexcept
 
 unordered_map<string, uint32_t> CMasternodeMan::GetLastMnIdsWithBlockReward(const CBlockIndex* pindex) noexcept
 {
-    const size_t nEnabledMnCount = masterNodeCtrl.masternodeManager.CountEnabledByLastSeenTime(-1, 
-        SN_ELIGIBILITY_LAST_SEEN_TIME_SECS);
+    const auto &consensusParams = Params().GetConsensus();
+    const size_t nEligibleForMiningMnCount = masterNodeCtrl.masternodeManager.CountEligibleForMining();
+    const size_t nMnEligibilityThreshold = static_cast<size_t>(round(nEligibleForMiningMnCount * consensusParams.nMiningEligibilityThreshold));
+
     unordered_map<string, uint32_t> mapMnids;
-    mapMnids.reserve(nEnabledMnCount);
+    mapMnids.reserve(nEligibleForMiningMnCount);
     size_t nProcessed = 0;
     auto pCurIndex = pindex;
-    while (pCurIndex && (nProcessed + 1 < nEnabledMnCount))
+    while (pCurIndex && (nProcessed < nMnEligibilityThreshold))
     {
         if (pCurIndex->nStatus && BlockStatus::BLOCK_ACTIVATES_UPGRADE)
             break;
@@ -691,9 +695,23 @@ bool CMasternodeMan::IsMnEligibleForBlockReward(const CBlockIndex* pindex, const
     return false;   
 }
 
+/**
+ * Find if any MasterNodes from the set are eligible to mine the new block.
+ * Onle ENABLED MasterNodes that specify that they are eligible for mining can 
+ * participate in the search.
+ * Algorithm takes N last mined blocks (N is the number of eligible for search MasterNodes),
+ * then uses threshold consensus parameter (N * consensusParams.nMiningEligibilityThreshold) 
+ * to find MNs eligible for mining new block.
+ *  
+ * \param pindex - block index to start search from
+ * \param setMnIds - set of Pastel IDs (mnids) to check
+ * \return 
+ */
 opt_string_t CMasternodeMan::FindMnEligibleForBlockReward(const CBlockIndex* pindex, const s_strings& setMnIds) noexcept
 {
-    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
+    // get all eligible masternodes for mining and their heights
+    const auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
+
     for (const auto& sPastelID : setMnIds)
     {
 		const auto mnidIt = mapMnids.find(sPastelID);
