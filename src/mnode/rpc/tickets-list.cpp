@@ -114,7 +114,7 @@ As json rpc
         minheight = get_number(params[3]);
 
     // limit minheight for testnet for NFT, Action, Collection & Offer/Accept/Transfer tickets
-    if ((Params().IsTestNet() || Params().IsDevNet()) && !minheight &&
+    if ((Params().IsTestNet()) && !minheight &&
         is_enum_any_of(LIST.cmd(), 
             RPC_CMD_LIST::nft,
             RPC_CMD_LIST::act,
