@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <rpc/rpc_parser.h>
@@ -48,14 +48,14 @@ As json rpc:
     if (!masterNodeCtrl.CanRegisterMnId())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode. Only active MN can register its Pastel ID");
 
-    string pastelID = params[2].get_str();
+    string sPastelID = params[2].get_str();
     SecureString strKeyPass(params[3].get_str());
     opt_string_t sFundingAddress;
     if (params.size() >= 5)
         sFundingAddress = params[4].get_str();
 
     auto mnidRegData = make_optional<CMNID_RegData>(true);
-    const auto regTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sFundingAddress.value_or(""), mnidRegData);
+    const auto regTicket = CPastelIDRegTicket::Create(move(sPastelID), move(strKeyPass), sFundingAddress.value_or(""), mnidRegData);
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(regTicket, sFundingAddress));
 }
 

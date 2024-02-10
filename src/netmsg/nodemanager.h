@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <chrono>
@@ -60,6 +60,8 @@ public:
     void RelayInv(CInv &inv, const int minProtoVersion = MIN_PEER_PROTO_VERSION)
     {
         SHARED_LOCK(mtx_vNodes);
+
+        LogFnPrint("net", "RelayInv: [%s] to %zu nodes", inv.hash.ToString(), m_vNodes.size());
         for (auto &pnode : m_vNodes)
         {
             if (pnode->nVersion >= minProtoVersion)

@@ -13,6 +13,7 @@
 
 #include <mining/miner.h>
 #include <mining/mining-settings.h>
+#include <mining/eligibility-mgr.h>
 #ifdef ENABLE_MINING
 #include <pow/tromp/equi_miner.h>
 #endif
@@ -47,6 +48,10 @@
 #include <mnode/mnode-controller.h>
 
 using namespace std;
+
+#ifdef ENABLE_MINING
+atomic_bool gl_bEligibleForMiningNextBlock(false);
+#endif // ENABLE_MINING
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -127,7 +132,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
     if (chainparams.MineBlocksOnDemand())
-        pblock->nVersion = gl_MinerSettings.getBlockVersion();
+        pblock->nVersion = gl_MiningSettings.getBlockVersion();
 
     // Add dummy coinbase tx as first transaction
     pblock->vtx.push_back(CTransaction());
@@ -136,7 +141,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
 
     // Collect memory pool transactions into the block
     CAmount nFees = 0;
-    const uint32_t nBlockPrioritySize = gl_MinerSettings.getBlockPrioritySize();
+    const uint32_t nBlockPrioritySize = gl_MiningSettings.getBlockPrioritySize();
 
     {
         LOCK2(cs_main, mempool.cs);
@@ -261,7 +266,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
 
             // Size limits
             const size_t nTxSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
-            if (nBlockSize + nTxSize >= gl_MinerSettings.getBlockMaxSize())
+            if (nBlockSize + nTxSize >= gl_MiningSettings.getBlockMaxSize())
                 continue;
 
             // Legacy limits on sigOps:
@@ -275,7 +280,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             CAmount nFeeDelta = 0;
             mempool.ApplyDeltas(hash, dPriorityDelta, nFeeDelta);
             if (fSortedByFee && (dPriorityDelta <= 0) && (nFeeDelta <= 0) && 
-                (feeRate < gl_ChainOptions.minRelayTxFee) && (nBlockSize + nTxSize >= gl_MinerSettings.getBlockMinSize()))
+                (feeRate < gl_ChainOptions.minRelayTxFee) && (nBlockSize + nTxSize >= gl_MiningSettings.getBlockMinSize()))
                 continue;
 
             // Prioritise by fee once past the priority size or we run out of high-priority
@@ -386,7 +391,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         if (bTxHasMnOutputs && !sEligiblePastelID.empty())
         {
             SecureString sPassPhrase;
-            if (!gl_MinerSettings.getGenIdInfo(sEligiblePastelID, sPassPhrase))
+            if (!gl_MiningSettings.getGenIdInfo(sEligiblePastelID, sPassPhrase))
             {
 				LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sEligiblePastelID);
 				throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'",
@@ -486,10 +491,8 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
 static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainparams)
 #endif // ENABLE_WALLET
 {
-    LogPrintf("%s\n", pblock->ToString());
-    LogPrintf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue));
+    LogFnPrintf("PastelMiner new block [%s], generated %s", pblock->ToString(), FormatMoney(pblock->vtx[0].vout[0].nValue));
 
-    // Found a solution
     {
         LOCK(cs_main);
         if (pblock->hashPrevBlock != chainActive.Tip()->GetBlockHash())
@@ -497,7 +500,8 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
     }
 
 #ifdef ENABLE_WALLET
-    if (GetArg("-mineraddress", "").empty()) {
+    if (GetArg("-mineraddress", "").empty())
+    {
         // Remove key from key pool
         reservekey.KeepKey();
     }
@@ -544,7 +548,7 @@ void static PastelMiner(const int nThreadNo)
     const float nMiningEligibilityThreshold = consensusParams.nMiningEligibilityThreshold;
 
     LogPrint("pow", "Using Equihash solver \"%s\" with n = %u, k = %u\n", 
-        gl_MinerSettings.getEquihashSolverName(), n, k);
+        gl_MiningSettings.getEquihashSolverName(), n, k);
 
     mutex m_cs;
     bool cancelSolver = false;
@@ -562,22 +566,37 @@ void static PastelMiner(const int nThreadNo)
         miningTimer.stop();
     });
 
+    const auto fnWaitFor = [&](const int nSeconds) noexcept
+    {
+        for (int i = 0; i < nSeconds; ++i)
+		{
+			MilliSleep(1000);
+			func_thread_interrupt_point();
+		}
+		return true;
+	};
     try {
         while (true)
         {
+            if (!masterNodeCtrl.IsMasterNode())
+            {
+                LogFnPrintf("Node is not running in MasterNode mode, exiting CPU miner thread...");
+                break;
+            }
+            gl_bEligibleForMiningNextBlock = false;
             if (chainparams.MiningRequiresPeers())
             {
                 // Busy-wait for the network to come online so we don't waste time mining
                 // on an obsolete chain. In regtest mode we expect to fly solo.
                 miningTimer.stop();
-                LogFnPrintf("Waiting for network to come online");
+                LogFnPrint("mining", "Waiting for network to come online...");
                 do {
                     const bool fvNodesEmpty = gl_NodeManager.GetNodeCount() == 0;
                     if (!fvNodesEmpty && !fnIsInitialBlockDownload(consensusParams))
                         break;
-                    MilliSleep(1000);
+                    fnWaitFor(1);
                 } while (true);
-                LogFnPrintf("Network is online");
+                LogFnPrint("mining", "Network is online");
                 miningTimer.start();
             }
               
@@ -594,27 +613,53 @@ void static PastelMiner(const int nThreadNo)
             }
             //<-INGEST!!!
 
-            // SuperNode eligibility check - perform only after the masternodes are synced
+            // Check if MasterNode is eligible to mine next block - perform only after the masternodes are synced
             opt_string_t sEligiblePastelID;
-            if (masterNodeCtrl.IsSynced())
             {
                 miningTimer.stop();
-                LogFnPrintf("Waiting for SuperNode eligibility");
-                do
-                {
-                    const auto setMnIds = gl_MinerSettings.getMnIdsAndRotate();
-                    if (setMnIds.empty() && chainparams.IsRegTest())
+                LogFnPrint("mining", "Waiting for MasterNode sync...");
+                do {
+                    if (masterNodeCtrl.IsSynced())
+                    {
+                        LogFnPrint("mining", "MasterNode is synced");
+						break;
+                    }
+                    fnWaitFor(5);
+                } while (true);
+                LogFnPrint("mining", "Waiting for active MasterNode ENABLED state...");
+                while (!masterNodeCtrl.IsActiveMasterNode())
+					fnWaitFor(5);
+                LogFnPrint("mining", "MasterNode has been STARTED");
+                do {
+                    masternode_info_t mnInfo;
+                    const bool bHaveMnInfo = masterNodeCtrl.masternodeManager.GetMasternodeInfo(true, masterNodeCtrl.activeMasternode.outpoint, mnInfo);
+                    if (bHaveMnInfo && mnInfo.IsEnabled())
+                    {
+                        LogFnPrint("mining", "MasterNode is ENABLED");
+                        break;
+                    }
+                    fnWaitFor(5);
+                } while (true);
+                LogFnPrint("mining", "Waiting for MasterNode mining eligibility...");
+                do {
+                    const auto sGenId = gl_MiningSettings.getGenId();
+                    if (sGenId.empty() && chainparams.IsRegTest())
                         break;
                     {
 						LOCK(cs_main);
-						sEligiblePastelID = masterNodeCtrl.masternodeManager.FindMnEligibleForBlockReward(chainActive.Tip(), setMnIds);
+                        if (gl_pMiningEligibilityManager && gl_pMiningEligibilityManager->IsCurrentMnEligibleForBlockReward(chainActive.Tip()))
+						    sEligiblePastelID = gl_MiningSettings.getGenId();
+                        else
+                            sEligiblePastelID= nullopt;
 					}   
                     if (sEligiblePastelID.has_value())
                         break;
-                    MilliSleep(5000);
+                    fnWaitFor(5);
                 } while (true);
-                LogFnPrintf("SuperNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value());
-				miningTimer.start();
+                LogFnPrint("mining", "MasterNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value());
+
+                gl_bEligibleForMiningNextBlock = true;
+                miningTimer.start();
             }
             
             //
@@ -673,7 +718,7 @@ void static PastelMiner(const int nThreadNo)
 
                 // (x_1, x_2, ...) = A(I, V, n, k)
                 LogPrint("pow", "Running Equihash solver \"%s\" with nNonce = %s\n",
-                         gl_MinerSettings.getEquihashSolverName(), pblock->nNonce.ToString());
+                         gl_MiningSettings.getEquihashSolverName(), pblock->nNonce.ToString());
 
                 function<bool(v_uint8)> validBlock =
 #ifdef ENABLE_WALLET
@@ -695,7 +740,7 @@ void static PastelMiner(const int nThreadNo)
                     LogPrintf("PastelMiner:\n");
                     LogPrintf("proof-of-work found\n    hash: %s\n  target: %s\n%s", 
                         pblock->GetHash().GetHex(), hashTarget.GetHex(),
-                        pblock->sPastelID.empty() ? "" : strprintf("   mnid: %s\n", pblock->sPastelID));
+                        pblock->sPastelID.empty() ? "" : strprintf("    mnid: %s\n", pblock->sPastelID));
 #ifdef ENABLE_WALLET
                     if (ProcessBlockFound(pblock, chainparams, *pwallet, reservekey))
 #else
@@ -725,7 +770,7 @@ void static PastelMiner(const int nThreadNo)
                 };
 
                 // TODO: factor this out into a function with the same API for each solver.
-                if (gl_MinerSettings.getEquihashSolver() == EquihashSolver::Tromp)
+                if (gl_MiningSettings.getEquihashSolver() == EquihashSolver::Tromp)
                 {
                     // Create solver and initialize it.
                     equi eq(1);
@@ -829,12 +874,13 @@ void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainpar
     if (nThreads == 0 || !fGenerate)
         return;
 
+    string error;
     for (int i = 0; i < nThreads; i++)
     {
 #ifdef ENABLE_WALLET
-        minerThreads.add_func_thread("miner", bind(&PastelMiner, i + 1, pwallet));
+        minerThreads.add_func_thread(error, "miner", bind(&PastelMiner, i + 1, pwallet));
 #else
-        minerThreads.add_func_thread("miner", bind(&PastelMiner, i + 1));
+        minerThreads.add_func_thread(error, "miner", bind(&PastelMiner, i + 1));
 #endif
     }
 }

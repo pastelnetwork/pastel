@@ -27,63 +27,49 @@ bool CMinerSettings::refreshMnIdInfo(string &error, const bool bRefreshConfig)
     unique_lock<mutex> lock(m_mutexGenIds);
 
     if (bRefreshConfig)
-        ReadConfigFile(mapArgs, mapMultiArgs, "-gen-*");
+        ReadConfigFile(mapArgs, mapMultiArgs, "-gen*");
 
-    // read Pastel IDs and passphrases from the config file
-    int nSuffix = 0;
-    do
+    // read Pastel ID and passphrases from the config file
+    string sParam = "-genpastelid";
+    m_sGenId = GetArg(sParam, "");
+    trim(m_sGenId);
+
+    sParam = "-genpassphrase";
+    string sPassphrase = GetArg(sParam, "");
+    trim(sPassphrase);
+    if (!m_sGenId.empty())
     {
-        string sParam = strprintf("-gen-pastelid%s", nSuffix ? strprintf("_%d", nSuffix) : "");
-        string sPastelID = GetArg(sParam, "");
-        trim(sPastelID);
-        if (m_mapGenIds.count(sPastelID))
+        if (sPassphrase.empty())
+        {
+            error = strprintf("Passphrase for Pastel ID '%s' is not defined in [%s] option",
+                m_sGenId, sParam);
+            return false;
+        }
+        if (!mapLocalPastelIds.count(m_sGenId))
+        {
+            error = strprintf("Secure container for Pastel ID '%s' does not exist locally", m_sGenId);
+            return false;
+		}
+        if (!CPastelID::isValidPassphrase(m_sGenId, SecureString(sPassphrase)))
 		{
-			error = strprintf("Duplicate PastelID '%s' defined in [%s] option", 
-                sPastelID, sParam);
+			error = strprintf("Passphrase for Pastel ID '%s' is not valid", m_sGenId);
 			return false;
 		}
-
-        sParam = strprintf("-gen-passphrase%s", nSuffix ? strprintf("_%d", nSuffix) : "");
-        string sPassphrase = GetArg(sParam, "");
-        trim(sPassphrase);
-        if (!sPastelID.empty())
-        {
-            if (sPassphrase.empty())
-            {
-                error = strprintf("Passphrase for Pastel ID '%s' is not defined in [%s] option",
-                    sPastelID, sParam);
-                return false;
-            }
-            if (!mapLocalPastelIds.count(sPastelID))
-            {
-                error = strprintf("Secure container for Pastel ID '%s' does not exist locally", sPastelID);
-                return false;
-			}
-            if (!CPastelID::isValidPassphrase(sPastelID, SecureString(sPassphrase)))
-			{
-				error = strprintf("Passphrase for Pastel ID '%s' is not valid", sPastelID);
-				return false;
-			}
-        }
-        // check that we have secure container for this PastelID
-        if (sPastelID.empty() || sPassphrase.empty())
-			break;
-        m_mapGenIds.emplace(move(sPastelID), move(sPassphrase));
-        ++nSuffix;
-    } while (false);
-    m_bEligibleForMining = GetBoolArg("-gen-enable-mn-mining", false);
+        m_sGenPassPhrase = sPassphrase;
+    }
+    m_bEligibleForMining = GetBoolArg("-genenablemnmining", false);
     if (m_bEligibleForMining)
     {
-        if (m_mapGenIds.empty())
+        if (m_sGenId.empty() || m_sGenPassPhrase.empty())
         {
-			error = "No MasterNode Pastel ID (gen-pastelid) or passphrase (gen-passphrase) defined in the config file";
+			error = "No MasterNode Pastel ID (genpastelid) or passphrase (genpassphrase) defined in the config file";
 			return false;
 		}
+        LogPrintf("MasterNode mining is enabled\n");
 	}
     else
     {
-        LogPrintf("MasterNode mining is not enabled (gen-enable-mn-mining option), -gen-* options are ignored\n");
-		m_mapGenIds.clear();
+        LogPrintf("MasterNode mining is not enabled (genenablemnmining option), -gen* options are ignored\n");
 	}
     return true;
 }
@@ -142,48 +128,14 @@ std::string CMinerSettings::getEquihashSolverName() const noexcept
     }
 }
 
-s_strings CMinerSettings::getMnIdsAndRotate() noexcept
+bool CMinerSettings::getGenIdInfo(const std::string &sMnId, SecureString& sPassPhrase) const noexcept
 {
-    s_strings setMnIds;
-    if (m_mapGenIds.empty())
-        return setMnIds;
-
-    auto it = m_mapGenIds.cbegin();
-    auto itStart = it;
-
-    advance(it, m_nGenIdIndex % m_mapGenIds.size());
-    do
-    {
-		// Add the PastelID to the set
-		setMnIds.emplace(it->first);
-
-		// Increment the iterator
-		++it;
-
-		// If we're at the end of the map, wrap around to the beginning
-		if (it == m_mapGenIds.cend())
-			it = m_mapGenIds.cbegin();
-
-		// If we've reached the starting point, break out of the loop
-		if (it == itStart)
-			break;
-	} while (true);
-
-    // Increment the index for next call, wrapping around if necessary
-    m_nGenIdIndex = (m_nGenIdIndex + 1) % m_mapGenIds.size();
-
-    return setMnIds;
-}
-
-bool CMinerSettings::getGenIdInfo(const std::string& mnid, SecureString& sPassPhrase) const noexcept
-{
-    if (m_mapGenIds.empty())
-		return false;
-	auto it = m_mapGenIds.find(mnid);
-	if (it == m_mapGenIds.cend())
-		return false;
-	sPassPhrase = SecureString(it->second);
+    if (m_sGenId.empty())
+        return false;
+    if (!str_icmp(sMnId, m_sGenId))
+        return false;
+	sPassPhrase = SecureString(m_sGenPassPhrase);
 	return true;
 }
 
-CMinerSettings gl_MinerSettings;
+CMinerSettings gl_MiningSettings;

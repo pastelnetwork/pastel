@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 Pastel Core developers
+// Copyright (c) 2018-2024 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <algorithm>
@@ -608,9 +608,9 @@ set<uint256> CWallet::GetConflicts(const uint256& txid) const
     return result;
 }
 
-void CWallet::Flush(bool shutdown)
+void CWallet::Flush(const bool bShutdown)
 {
-    bitdb.Flush(shutdown);
+    bitdb.Flush(bShutdown);
 }
 
 bool CWallet::Verify(const string& walletFile, string& warningString, string& errorString)
@@ -1348,6 +1348,15 @@ bool CWallet::UpdatedNoteData(const CWalletTx& wtxIn, CWalletTx& wtx)
     return !unchangedSaplingFlag;
 }
 
+bool CWallet::IsTxInvolvingMe(const CTransaction& tx) const
+{
+    AssertLockHeld(cs_wallet);
+
+    auto saplingNoteDataAndAddressesToAdd = FindMySaplingNotes(tx);
+    auto &saplingNoteData = saplingNoteDataAndAddressesToAdd.first;
+    return IsMine(tx) || IsFromMe(tx) || saplingNoteData.size() > 0;
+}
+
 /**
  * Add a transaction to the wallet, or update it.
  * pblock is optional, but should be provided if the transaction is known to be in a block.
@@ -1360,7 +1369,7 @@ bool CWallet::UpdatedNoteData(const CWalletTx& wtxIn, CWalletTx& wtx)
  * updated; instead, the transaction being in the mempool or conflicted is determined on
  * the fly in CMerkleTx::GetDepthInMainChain().
  */
-bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, bool fUpdate)
+bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, const bool fUpdate)
 {
     {
         AssertLockHeld(cs_wallet);
@@ -1377,7 +1386,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
         }
         if (fExisted || IsMine(tx) || IsFromMe(tx) || saplingNoteData.size() > 0)
         {
-            CWalletTx wtx(this,tx);
+            CWalletTx wtx(this, tx);
 
             if (saplingNoteData.size() > 0)
                 wtx.SetSaplingNoteData(saplingNoteData);
@@ -1394,6 +1403,37 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pbl
         }
     }
     return false;
+}
+
+bool CWallet::AddTxToWallet(const CTransaction& tx, const CBlock* pblock, const bool fUpdate)
+{
+    AssertLockHeld(cs_wallet);
+    const bool fExisted = mapWallet.count(tx.GetHash()) != 0;
+    if (fExisted && !fUpdate)
+        return false;
+    auto saplingNoteDataAndAddressesToAdd = FindMySaplingNotes(tx);
+    auto saplingNoteData = saplingNoteDataAndAddressesToAdd.first;
+    auto addressesToAdd = saplingNoteDataAndAddressesToAdd.second;
+    for (const auto &addressToAdd : addressesToAdd)
+    {
+        if (!AddSaplingIncomingViewingKey(addressToAdd.second, addressToAdd.first))
+            return false;
+    }
+    CWalletTx wtx(this, tx);
+
+    if (saplingNoteData.size() > 0)
+        wtx.SetSaplingNoteData(saplingNoteData);
+
+    // Get merkle branch if transaction was found in a block
+    if (pblock)
+        wtx.SetMerkleBranch(*pblock);
+
+    // Do not flush the wallet here for performance reasons
+    // this is safe, as in case of a crash, we rescan the necessary blocks on startup through our SetBestChain-mechanism
+    CWalletDB walletdb(strWalletFile, "r+", false);
+
+    return AddToWallet(wtx, false, &walletdb);
+
 }
 
 void CWallet::SyncTransaction(const CTransaction& tx, const CBlock* pblock)
@@ -1527,7 +1567,7 @@ isminetype CWallet::GetIsMine(const CTxIn &txin) const
     const auto mi = mapWallet.find(txin.prevout.hash);
     if (mi != mapWallet.cend())
     {
-        const auto& prev = (*mi).second;
+        const auto& prev = mi->second;
         if (txin.prevout.n < prev.vout.size())
             return GetIsMine(prev.vout[txin.prevout.n]);
     }
@@ -1539,12 +1579,14 @@ CAmount CWallet::GetDebit(const CTxIn &txin, const isminetype filter) const
     {
         LOCK(cs_wallet);
         const auto mi = mapWallet.find(txin.prevout.hash);
-        if (mi != mapWallet.end())
+        if (mi != mapWallet.cend())
         {
-            const auto& prev = (*mi).second;
+            const auto& prev = mi->second;
             if (txin.prevout.n < prev.vout.size())
+            {
                 if (IsMineType(GetIsMine(prev.vout[txin.prevout.n]), filter))
                     return prev.vout[txin.prevout.n].nValue;
+            }
         }
     }
     return 0;
@@ -3907,10 +3949,10 @@ int CMerkleTx::SetMerkleBranch(const CBlock& block)
     hashBlock = block.GetHash();
 
     // Locate the transaction
-    for (nIndex = 0; nIndex < (int)block.vtx.size(); nIndex++)
+    for (nIndex = 0; nIndex < static_cast<int>(block.vtx.size()); nIndex++)
         if (block.vtx[nIndex] == *(CTransaction*)this)
             break;
-    if (nIndex == (int)block.vtx.size())
+    if (nIndex == static_cast<int>(block.vtx.size()))
     {
         vMerkleBranch.clear();
         nIndex = -1;
@@ -3922,10 +3964,10 @@ int CMerkleTx::SetMerkleBranch(const CBlock& block)
     vMerkleBranch = block.GetMerkleBranch(nIndex);
 
     // Is the tx in a block that's in the main chain
-    BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
-    if (mi == mapBlockIndex.end())
+    auto mi = mapBlockIndex.find(hashBlock);
+    if (mi == mapBlockIndex.cend())
         return 0;
-    const CBlockIndex* pindex = (*mi).second;
+    const auto pindex = mi->second;
     if (!pindex || !chainActive.Contains(pindex))
         return 0;
 

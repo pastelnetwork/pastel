@@ -598,8 +598,6 @@ void CMasternodeGovernance::UpdatedBlockTip(const CBlockIndex *pindex)
         return;
 
     nCachedBlockHeight = pindex->nHeight;
-    LogFnPrint("governance", "nCachedBlockHeight=%d", nCachedBlockHeight);
-
     ProcessBlock(nCachedBlockHeight);
 }
 

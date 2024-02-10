@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2019-2023 The Pastel Core developers
+// Copyright (c) 2019-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
@@ -57,10 +57,10 @@ private:
 
     MasternodeType mnType;
 
-    bool fPingerEnabled;
+    bool m_bPingerEnabled;
 
-    /// Ping Masternode
-    bool SendMasternodePing();
+    // Send Masternode Ping
+    bool SendMasternodePing(const bool bForce = false);
 
 public:
     // Keys for the active Masternode
@@ -76,12 +76,12 @@ public:
 
     CActiveMasternode() :
         mnType(MasternodeType::Unknown),
-        fPingerEnabled(false),
+        m_bPingerEnabled(false),
         nState(ActiveMasternodeState::Initial)
     {}
 
     /// Manage state of active Masternode
-    void ManageState();
+    void ManageState(const char *szFuncName);
 
     /**
      * Get Active MasterNode current state string.

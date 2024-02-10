@@ -1,4 +1,4 @@
-// Copyright (c) 2023 The Pastel Core developers
+// Copyright (c) 2023-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdexcept>
@@ -89,12 +89,13 @@ Returns the total supply of coins as of current active chain height.
 
     atomic<CAmount> nTotalCoinSupply = 0;
     CServiceThreadGroup threadGroup;
+    string error;
     for (auto &[nFile, vOffsets] : mapBlockFiles)
 	{
         if (threadGroup.size() >= MAX_THREADS)
             threadGroup.join_all();
 
-        threadGroup.add_func_thread(strprintf("coin-supply-%d", nFile).c_str(),
+        threadGroup.add_func_thread(error, strprintf("coin-supply-%d", nFile).c_str(),
             bind(&ProcessBlockFile, nFile, ref(vOffsets), ref(nTotalCoinSupply)));
 	}
     threadGroup.join_all();

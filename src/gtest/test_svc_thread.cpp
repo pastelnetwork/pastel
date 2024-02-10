@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2023 The Pastel Core developers
+// Copyright (c) 2022-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
@@ -75,7 +75,9 @@ TEST_F(CTestThread, exec)
 {
 	m_bTestVar = false;
 	m_TestMode = TEST_MODE::simple_exec;
-	EXPECT_TRUE(start());
+	string error;
+	EXPECT_TRUE(start(error));
+	EXPECT_TRUE(error.empty());
 	waitForStop();
 	EXPECT_TRUE(m_bTestVar);
 }
@@ -85,7 +87,9 @@ TEST_F(CTestThread, exec_stoppable)
 {
 	m_nTestVar = 0;
 	m_TestMode = TEST_MODE::stoppable_exec;
-	EXPECT_TRUE(start());
+	string error;
+	EXPECT_TRUE(start(error));
+	EXPECT_TRUE(error.empty());
 	this_thread::sleep_for(200ms);
 	EXPECT_TRUE(isRunning());
 	this_thread::sleep_for(1s);
@@ -110,7 +114,9 @@ TEST(svc_thread, exec_standalone)
 	int n = 0;
 	auto func = bind(&test_standalone_fn, std::ref(n));
 	CFuncThread<decltype(func)> fn(TEST_THREAD_NAME, func);
-	fn.start();
+	string error;
+	EXPECT_TRUE(fn.start(error));
+	EXPECT_TRUE(error.empty());
 	fn.waitForStop();
 	EXPECT_EQ(n, 42);
 }
@@ -135,9 +141,10 @@ TEST_F(TestServiceThreadGroup, exec_func_thread)
 	constexpr size_t nThreadCount = 20;
 
 	atomic_int64_t counter = 0;
+	string error;
 	for (size_t i = 0; i < nThreadCount; ++i)
 	{
-		const size_t nID = add_func_thread(strprintf("test-%zu", i + 1).c_str(), bind(&test_standalone_group_fn, std::ref(counter)), true);
+		const size_t nID = add_func_thread(error, strprintf("test-%zu", i + 1).c_str(), bind(&test_standalone_group_fn, std::ref(counter)), true);
 		EXPECT_GT(nID, 0);
 	}
 	join_all();

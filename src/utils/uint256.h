@@ -26,6 +26,7 @@ protected:
 
 public:
     inline static constexpr size_t SIZE = WIDTH;
+    inline static constexpr size_t STR_SIZE = WIDTH * 2;
 
     base_blob() noexcept
     {

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <atomic>
 
 #include <primitives/block.h>
 #include <chainparams.h>
@@ -28,7 +29,6 @@ struct CBlockTemplate
     std::vector<int64_t> vTxSigOps;
 };
 
-
 /** Generate a new block, without valid proof-of-work */
 CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn, const std::string& sEligiblePastelID);
 #ifdef ENABLE_WALLET
@@ -40,6 +40,10 @@ CBlockTemplate* CreateNewBlockWithKey(const CChainParams& chainparams, const std
 #endif
 
 #ifdef ENABLE_MINING
+extern std::atomic_bool gl_bEligibleForMiningNextBlock;
+// delay in seconds before a mined block is validated against blocks mined by other miners
+constexpr int64_t MINED_BLOCK_VALIDATION_DELAY_SECS = 20;
+
 /** Modify the extranonce in a block */
 void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 /** Run the miner threads */

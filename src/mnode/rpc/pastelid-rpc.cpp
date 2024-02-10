@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -235,7 +235,7 @@ UniValue pastelid_verify_file(const UniValue& params)
 {
     if (params.size() < 4)
         throw JSONRPCError(RPC_INVALID_PARAMETER,
-                           R"(pastelid verify-file file-path "signature" "PastelID" ("algorithm")
+R"(pastelid verify-file file-path "signature" "PastelID" ("algorithm")
 Verify file's "signature" with with the private key associated with the Pastel ID (algorithm: ed448 or legroast).)");
     
     string sAlgorithm;

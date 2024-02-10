@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -71,7 +71,7 @@ class CTransaction;
 void RelayTransaction(const CTransaction& tx);
 void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
 
-void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
+bool StartNode(std::string &error, CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 bool StopNode();
 
 /** Access to the (IP) address database (peers.dat) */

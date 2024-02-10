@@ -2,11 +2,13 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <iomanip>
+#include <cinttypes>
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
 #include <utils/str_utils.h>
+#include <utils/util.h>
 #include <key_io.h>
 #include <init.h>
 #include <main.h>
@@ -16,10 +18,11 @@
 #include <rpc/rpc-utils.h>
 #include <rpc/server.h>
 #include <netmsg/nodemanager.h>
-
+#include <mining/mining-settings.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/rpc/masternode.h>
 #include <mnode/tickets/pastelid-reg.h>
+
 using namespace std;
 
 UniValue formatMnsInfo(const masternode_vector_t& topBlockMNs)
@@ -316,7 +319,7 @@ UniValue masternode_connect(const UniValue& params, const bool fHelp)
     node_t pnode = gl_NodeManager.ConnectNode(CAddress(addr, NODE_NETWORK), nullptr);
 
     if (!pnode)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to masternode %s", strAddress));
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Couldn't connect to masternode '%s'", strAddress));
 
     return "successfully connected";
 }
@@ -336,6 +339,9 @@ UniValue masternode_count(const UniValue& params)
 
     if (strMode == "current")
         return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountCurrent());
+
+    if (strMode == "eligibleForMining")
+		return static_cast<uint64_t>(masterNodeCtrl.masternodeManager.CountEligibleForMining());
 
     uint32_t nCount = 0;
     masternode_info_t mnInfo;
@@ -407,6 +413,10 @@ bool process_start_alias(const CMasternodeConfig::CMasternodeEntry &mne, UniValu
     {
         if (mnb.getMNPastelID().empty())
             statusObj.pushKV(RPC_KEY_MESSAGE, "Masternode's Pastel ID is not registered");
+        statusObj.pushKV("outpoint", mnb.GetDesc());
+
+        LogFnPrint("masternode", "Created new masternode '%s' broadcast from config, hash='%s', sigTime=%" PRId64, 
+            mnb.GetDesc(), mnb.GetHash().ToString(), mnb.sigTime);
         masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
         mnb.Relay();
     }
@@ -493,7 +503,7 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
     {
 
         const COutPoint outpoint = mne.getOutPoint();
-        masternode_t pmn = masterNodeCtrl.masternodeManager.Get(outpoint);
+        masternode_t pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
 
         if (bStartMissing && pmn)
             continue;
@@ -712,7 +722,7 @@ UniValue masternode_list_conf(const UniValue& params)
     for (const auto& [alias, mne] : masterNodeCtrl.masternodeConfig.getEntries())
     {
         COutPoint outpoint = mne.getOutPoint();
-        auto pmn = masterNodeCtrl.masternodeManager.Get(outpoint);
+        auto pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
 
         string strStatus = pmn ? pmn->GetStatus() : "MISSING";
 
@@ -890,7 +900,7 @@ UniValue masternode_status(const UniValue& params, KeyIO &keyIO)
     mnObj.pushKV("outpoint", activeMN.outpoint.ToStringShort());
     mnObj.pushKV("service", activeMN.service.ToString());
 
-    masternode_t pmn = masterNodeCtrl.masternodeManager.Get(activeMN.outpoint);
+    const auto pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, activeMN.outpoint);
     if (pmn)
     {
         CTxDestination dest = pmn->pubKeyCollateralAddress.GetID();
@@ -900,6 +910,7 @@ UniValue masternode_status(const UniValue& params, KeyIO &keyIO)
         mnObj.pushKV("extP2P", pmn->strExtraLayerP2P);
         mnObj.pushKV("extKey", pmn->getMNPastelID());
         mnObj.pushKV("extCfg", pmn->strExtraLayerCfg);
+        mnObj.pushKV("eligibleForMining", pmn->IsEligibleForMining());
     }
     string sAlias = masterNodeCtrl.masternodeConfig.getAlias(activeMN.outpoint);
     if (!sAlias.empty())
@@ -912,7 +923,7 @@ UniValue masternode_top(const UniValue& params)
 {
     if (params.size() > 3)
         throw JSONRPCError(RPC_INVALID_PARAMETER, 
-            R"(Correct usage is:
+R"(Correct usage is:
     'masternode top'
         OR
     'masternode top "block-height"'
@@ -1006,7 +1017,7 @@ As json rpc:
             strprintf("Invalid 'txid' parameter. %s", error.c_str()));
 
     COutPoint outpoint(collateral_txid, nTxIndex);
-    masternode_t pmn = masterNodeCtrl.masternodeManager.Get(outpoint);
+    auto pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
     // this creates a copy of CMasterNode in mn
     if (!pmn)
         throw JSONRPCError(RPC_INTERNAL_ERROR, 
@@ -1026,7 +1037,7 @@ As json rpc:
             {
                 masterNodeCtrl.masternodeManager.IncrementMasterNodePoSeBanScore(outpoint);
                 // retrieve changed copy of MN
-                pmn = masterNodeCtrl.masternodeManager.Get(outpoint);
+                pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
                 if (!pmn)
                     throw JSONRPCError(RPC_INTERNAL_ERROR, 
                         strprintf("MasterNode not found by collateral txid-index: %s", outpoint.ToStringShort()));
@@ -1251,6 +1262,8 @@ R"(
                  (this maybe not accurate - MN existed before might not be in the current list)
   message <options> - Commands to deal with MN to MN messages - sign, send, print etc\n"
   pose-ban-score - PoSe (Proof-of-Service) ban score management
+  print-cache  - Print masternode cache
+  clear-cache <cache-item> - Clear masternode cache
 )"
 );
 

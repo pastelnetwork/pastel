@@ -1,11 +1,13 @@
-// Copyright (c) 2013-2014 The Bitcoin Core developers
+// Copyright (c) 2009-2010 Satoshi Nakamoto
+// Copyright (c) 2009-2013 The Bitcoin Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "hash.h"
-#include "crypto/common.h"
-#include "crypto/hmac_sha512.h"
-#include "pubkey.h"
+#include <hash.h>
+#include <crypto/common.h>
+#include <crypto/hmac_sha512.h>
+#include <pubkey.h>
 
 
 inline uint32_t ROTL32(uint32_t x, int8_t r)

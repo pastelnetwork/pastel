@@ -1,12 +1,15 @@
 #pragma once
-// Copyright (c) 2021-2023 Pastel Core developers
+// Copyright (c) 2021-2024 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <algorithm>
 #include <set>
+#include <limits>
 
 #include <utils/vector_types.h>
+
+static constexpr size_t DEFINE_SIZE = static_cast<size_t>(-1);
 
 /**
  * test if character is white space not using locale.
@@ -73,6 +76,85 @@ static inline bool isalnumex(const char c) noexcept
 {
     return isalphaex(c) || isdigitex(c);
 }
+
+// convert string to unsigned integer type
+template<typename _UIntType, typename _IntType>
+bool str_to_unsigned_integer_check(const char *str, const size_t cnLength, _UIntType &ui)
+{
+	size_t nLength = cnLength;
+	if (nLength == DEFINE_SIZE)
+		nLength = str ? strlen(str) : 0;
+	ui = 0;
+	if (!str || !nLength)
+		return false;
+	const char *s = str;
+	bool bNegative = false;
+	if (*s == '-')
+    {
+		++s;
+		--nLength;
+		bNegative = true;
+	} else if (*s == '+') {
+		++s;
+		--nLength;
+	}
+	if (!nLength) // fail if we have only '-' or '+'
+		return false;
+	bool bHex = false;
+	// check if it starts with 0x | 0X | x | X | $
+	if (nLength >= 2 && (s[0] == '0' && (s[1] == 'x' || s[1] == 'X'))) { // 0x | 0X
+		s += 2;
+		nLength -= 2;
+		bHex = true;
+	} else if (nLength && (s[0] == 'x' || s[0] == 'X')) {	// x | X
+		++s;
+		--nLength;
+		bHex = true;
+	} else if (nLength && (s[0] == '$')) { // $
+		++s;
+		--nLength;
+		bHex = true;
+	}
+	if (!nLength) // fail if we have only '0x' | '0X' | 'x | 'X' | '$'
+		return false;
+	uint32_t nRadix = bHex ? 16 : 10;
+	_UIntType nOverflowCheck = std::numeric_limits<_UIntType>::max() / nRadix;
+	bool bRet = true;
+	for (ui = 0; nLength && *s; ++s, --nLength) 
+	{
+		char c = tolower(*s);
+		int nDelta = 0;
+		if ((c >= '0') && (c <= '9'))
+			nDelta = c - '0';
+		else if (bHex && (c >= 'a') && (c <= 'f'))
+			nDelta = c - 'a' + 10;
+		else {
+			bRet = false; // invalid char found
+			break;
+		}
+		// save old value to check for overflow
+		volatile _UIntType nOldValue = ui;
+		if (nOverflowCheck < ui)
+		{
+			bRet = false; // multiplication will cause overflow
+			break;
+		}
+		ui *= nRadix;
+		ui += nDelta;
+		if (ui < nOldValue) 
+		{
+			bRet = false; // overflow
+			break;
+		}
+	}
+	if (!bRet)
+		ui = 0;
+	else if (bNegative)
+		ui = (_UIntType)(-(_IntType)ui);
+	return bRet;
+}
+
+static inline bool str_to_uint32_check(const char *str, const size_t nLength, uint32_t &u) { return str_to_unsigned_integer_check<uint32_t, int32_t>(str, nLength, u); }
 
 /**
  * trim string in-place from start (left trim).

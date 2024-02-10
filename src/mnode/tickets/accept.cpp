@@ -88,7 +88,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
 
         // 1. Verify that there is no another Accept ticket for the same Offer ticket
         // or if there are, it is older then 1h and there is no Transfer ticket for it
-        // acceptTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - MaxAcceptTicketAge
+        // acceptTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - nMaxAcceptTicketAge
         CAcceptTicket existingAcceptTicket;
         if (CAcceptTicket::FindTicketInDb(m_offerTxId, existingAcceptTicket))
         {
@@ -125,7 +125,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
                 }
 
                 //check age
-                if (existingAcceptTicket.GetBlock() + masterNodeCtrl.MaxAcceptTicketAge > nActiveChainHeight)
+                if (existingAcceptTicket.GetBlock() + masterNodeCtrl.nMaxAcceptTicketAge > nActiveChainHeight)
                 {
                     tv.errorMsg = strprintf(
                         "%s ticket [%s] already exists and is not yet 1h old for this Offer ticket [%s] [%sfound ticket block=%u, txid=%s]",

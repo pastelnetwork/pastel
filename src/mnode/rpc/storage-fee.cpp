@@ -70,7 +70,7 @@ bool check_active_master_node(masternode_t& pmn, const bool bThrowExceptionIfFai
         return false;
     }
 
-    pmn = masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint);
+    pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, masterNodeCtrl.activeMasternode.outpoint);
     if (!pmn)
     {
         if (bThrowExceptionIfFailed)

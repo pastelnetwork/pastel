@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2022-2023 The Pastel Core developers
+// Copyright (c) 2022-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
@@ -88,6 +88,8 @@ protected:
         }
     } BLOCK_CACHE_ITEM;
 
+    using revalidate_blocks_t = std::vector<std::tuple<uint256, node_t, BLOCK_CACHE_ITEM*>>;
+
      /**
      * if true - processing cached blocks.
      * block cache revalidation can be called concurrently from multiple threads,
@@ -118,4 +120,10 @@ protected:
     void AdjustBlockRevalidationWaitTime();
     // cleanup unlinked map
     void CleanupUnlinkedMap(const uint256& hash);
+    // process next potential blocks to be included into blockchain and activate best chain after any blocks were processed
+    void ProcessNextBlockAndActivateBestChain(const uint256& hash, const CChainParams& chainparams, CValidationState &state,
+        std::unique_lock<std::mutex>& lck);
+    void DeleteCacheItems(const char* szFuncName, const v_uint256& vToDelete, const char* szDesc = nullptr);
+    // collect cached blocks to revalidate
+    revalidate_blocks_t CollectCachedBlocksToRevalidate(const bool bForce, v_uint256 &vToDelete);
 };

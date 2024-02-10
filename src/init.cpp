@@ -137,7 +137,7 @@ CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 // immediately and the parent exits from main().
 //
 
-atomic<bool> fRequestShutdown(false);
+atomic_bool fRequestShutdown(false);
 
 void StartShutdown()
 {
@@ -460,9 +460,9 @@ string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-stopafterblockimport", strprintf("Stop running after importing blocks from disk (default: %u)", 0));
         strUsage += HelpMessageOpt("-nuparams=hexBranchId:activationHeight", "Use given activation height for specified network upgrade (regtest-only)");
     }
-    string debugCategories = "addrman, alert, bench, coindb, compress, db, estimatefee, http, libevent, lock, mempool, net, partitioncheck, pow, proxy, prune, "
+    string debugCategories = "addrman, alert, bench, coindb, compress, db, estimatefee, http, libevent, lock, mempool, mining, net, partitioncheck, pow, proxy, prune, "
                              "rand, reindex, rpc, selectcoins, tor, zmq, zrpc, zrpcunsafe (implies zrpc)"; // Don't translate these
-    strUsage += HelpMessageOpt("-debug=<category>", strprintf(translate("Output debugging information (default: %u, supplying <category> is optional)"), 0) + ". " +
+    strUsage += HelpMessageOpt("-debug=<category>,...", strprintf(translate("Output debugging information (default: %u, supplying <category> is optional)"), 0) + ". " +
         translate("If <category> is not supplied or if <category> = 1, output all debugging information.") + " " + translate("<category> can be:") + " " + debugCategories + ".");
     strUsage += HelpMessageOpt("-experimentalfeatures", translate("Enable use of experimental features"));
     strUsage += HelpMessageOpt("-help-debug", translate("Show all debugging options (usage: --help -help-debug)"));
@@ -788,6 +788,8 @@ bool AppInitServers()
  */
 bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 {
+    string strError;
+
     // ********************************************************* Step 1: setup
 #ifdef _MSC_VER
     // Turn off Microsoft heap dump noise
@@ -1232,7 +1234,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     {
         // Start the persistent metrics interface
         ConnectMetricsScreen();
-        threadGroup.add_func_thread("metrics", ThreadShowMetricsScreen);
+        if (threadGroup.add_func_thread(strError, "metrics", ThreadShowMetricsScreen) == INVALID_THREAD_OBJECT_ID)
+			return InitError(translate("Failed to create metrics thread. ") + strError);
     }
 
     // These must be disabled for now, they are buggy and we probably don't
@@ -1470,8 +1473,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (!fs::exists(blocksDir))
     {
         fs::create_directories(blocksDir);
-        bool linked = false;
-        for (unsigned int i = 1; i < 10000; i++)
+        bool bLinked = false;
+        for (uint32_t i = 1; i < 10000; i++)
         {
             fs::path source = GetDataDir() / strprintf("blk%04u.dat", i);
             if (!fs::exists(source)) 
@@ -1480,7 +1483,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             try {
                 fs::create_hard_link(source, dest);
                 LogPrintf("Hardlinked %s -> %s\n", source.string(), dest.string());
-                linked = true;
+                bLinked = true;
             } catch (const fs::filesystem_error& e) {
                 // Note: hardlink creation failing is not a disaster, it just means
                 // blocks will get re-downloaded from peers.
@@ -1488,10 +1491,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                 break;
             }
         }
-        if (linked)
-        {
+        if (bLinked)
             fReindex = true;
-        }
     }
 
     // cache size calculations
@@ -1515,7 +1516,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     bool bClearWitnessCaches = false;
     bool fLoaded = false;
-    while (!fLoaded) {
+    while (!fLoaded)
+    {
         bool fReset = fReindex;
         string strLoadError;
 
@@ -1562,7 +1564,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                 }
 
                 // Check for changed -txindex state
-                if (fTxIndex != GetBoolArg("-txindex", false)) {
+                if (fTxIndex != GetBoolArg("-txindex", false))
+                {
                     strLoadError = translate("You need to rebuild the database using -reindex to change -txindex");
                     break;
                 }
@@ -1584,6 +1587,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         break;
                     }
                 }
+
+                masterNodeCtrl.InitTicketDB();
 
                 const int64_t nCheckBlocks = GetArg("-checkblocks", FORK_BLOCK_LIMIT);
                 uiInterface.InitMessage(strprintf(translate("Verifying last %" PRId64 " blocks..."), nCheckBlocks));
@@ -1741,8 +1746,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             pwalletMain->SetBestChain(chainActive.GetLocator());
         }
 
-        LogPrintf("%s", strErrors.str());
-        LogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
+        LogPrintf("%s\n", strErrors.str());
+        LogPrintf(" wallet loaded in %15dms\n", GetTimeMillis() - nStart);
 
         RegisterValidationInterface(pwalletMain);
 
@@ -1813,8 +1818,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     }
  #endif // !ENABLE_WALLET
 
-    string strError;
-    if (!gl_MinerSettings.initialize(chainparams, strError))
+    if (!gl_MiningSettings.initialize(chainparams, strError))
         return InitError(strprintf(translate("Could not initialize PastelMiner settings. %s"), strError));
 
     if (mapArgs.count("-mineraddress"))
@@ -1866,13 +1870,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         for (const auto& strFile : mapMultiArgs["-loadblock"])
             vImportFiles.push_back(strFile);
     }
-    threadGroup.add_func_thread("import-files", bind(&ThreadImport, vImportFiles));
-    if (!chainActive.Tip())
-    {
-        LogPrintf("Waiting for genesis block to be imported...\n");
-        while (!fRequestShutdown && !chainActive.Tip())
-            MilliSleep(10);
-    }
+    // create a thread that loads blocks from disk, but not start it yet
+    const size_t nBlockImportThreadId = threadGroup.add_func_thread(strError, "import-files", bind(&ThreadImport, vImportFiles), false);
 
     // ********************************************************* Step 11: start masternode
 #ifdef ENABLE_WALLET
@@ -1883,7 +1882,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     {
        return InitError(strErrors.str());
     }
+    if (!threadGroup.start_thread(strError, nBlockImportThreadId))
+        return InitError(strError);
 
+    if (!chainActive.Tip())
+    {
+        LogPrintf("Waiting for genesis block to be imported...\n");
+        while (!fRequestShutdown && !chainActive.Tip())
+            MilliSleep(10);
+    }
 
     // ********************************************************* Step 12: start node
 
@@ -1903,9 +1910,13 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 #endif
 
     if (GetBoolArg("-listenonion", DEFAULT_LISTEN_ONION))
-        threadGroup.add_thread(make_shared<CTorControlThread>());
+    {
+        if (threadGroup.add_thread(strError, make_shared<CTorControlThread>()) == INVALID_THREAD_OBJECT_ID)
+			return InitError(translate("Failed to create torcontrol thread. ") + strError);
+    }
 
-    StartNode(threadGroup, scheduler);
+    if (!StartNode(strError, threadGroup, scheduler))
+        return InitError(translate(strError.c_str()));
 
     // Monitor the chain, and alert if we get blocks much quicker or slower than expected
     const auto& consensusParams = chainparams.GetConsensus();
@@ -1949,12 +1960,14 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         pwalletMain->ReacceptWalletTransactions();
 
         // Run a thread to flush wallet periodically
-        threadGroup.add_thread(make_shared<CFlushWalletDBThread>(pwalletMain->strWalletFile));
+        if (threadGroup.add_thread(strError, make_shared<CFlushWalletDBThread>(pwalletMain->strWalletFile)) == INVALID_THREAD_OBJECT_ID)
+            return InitError(translate("Failed to create wallet flush thread. ") + strError);
     }
 #endif
 
     // SENDALERT
-    threadGroup.add_func_thread("sendalert", ThreadSendAlert);
+    if (threadGroup.add_func_thread(strError, "sendalert", ThreadSendAlert) == INVALID_THREAD_OBJECT_ID)
+		return InitError(translate("Failed to create sendalert thread. ") + strError);
 
     return !fRequestShutdown;
 }

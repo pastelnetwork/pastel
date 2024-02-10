@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -50,7 +50,7 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&&
     {
         if (mnRegData->bUseActiveMN)
         {
-            masternode_t pmn = masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint);
+            masternode_t pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, masterNodeCtrl.activeMasternode.outpoint);
             if (!pmn)
                 throw runtime_error("This is not a active masternode. Only active MN can register its Pastel ID");
 
@@ -193,11 +193,11 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
 
                 // 2. Check outpoint belongs to active MN
                 // However! If this is validation of an old ticket, MN can be not active or even alive anymore
-                // So will skip the MN validation if ticket is fully confirmed (older then MinTicketConfirmations blocks)
+                // So will skip the MN validation if ticket is fully confirmed (older then nMinTicketConfirmations blocks)
                 //during transaction validation before ticket made in to the block_ticket.ticketBlock will == 0
-                if (_ticket.IsBlock(0) || gl_nChainHeight - _ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations)
+                if (_ticket.IsBlock(0) || gl_nChainHeight - _ticket.GetBlock() < masterNodeCtrl.nMinTicketConfirmations)
                 {
-                    masternode_t pmn = masterNodeCtrl.masternodeManager.Get(m_outpoint);
+                    masternode_t pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, m_outpoint);
                     if (!pmn)
                     {
                         tv.errorMsg = strprintf(

@@ -2,8 +2,8 @@
 // Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <string>
+#include <mutex>
 
 #include <utils/svc_thread.h>
 #include <utils/sync.h>
@@ -37,13 +37,14 @@ public:
     }
 
     CMasternodeConfig masternodeConfig;
-    // Keep track of the active Masternode
+    // Active Masternode manager
     CActiveMasternode activeMasternode;
-    // 
+    // masternode sync manager
     CMasternodeSync masternodeSync;
     // Masternode manager
     CMasternodeMan masternodeManager;
-    //
+
+    // Keep track of the masternode payments
     CMasternodePayments masternodePayments;
     // Keep track of what node has/was asked for and when
     CMasternodeRequestTracker requestTracker;
@@ -74,15 +75,16 @@ public:
     int nMasterNodeMaximumOutboundConnections;
     int nFulfilledRequestExpireTime;
 
-    unsigned int MinTicketConfirmations;
-    unsigned int MaxAcceptTicketAge;
+    uint32_t nMinTicketConfirmations;
+    uint32_t nMaxAcceptTicketAge;
 
-    bool EnableMNSyncCheckAndReset;
+    bool bEnableMNSyncCheckAndReset;
     
     std::string TicketGreenAddress;
 
     // returns true if we're running in "Masternode" mode
     bool IsMasterNode() const noexcept { return m_fMasterNode; }
+    bool IsOurMasterNode(const CPubKey &pubKey) const noexcept;
     // returns true if we're running in "Masternode" mode and in "started" state
     bool IsActiveMasterNode() const noexcept { return m_fMasterNode && activeMasternode.IsStarted(); }
     // returns true if node can register mnid (should be running in Masternode mode and have one of the two statuses: Started or NeedMnId)
@@ -101,6 +103,7 @@ public:
     bool EnableMasterNode(std::ostringstream& strErrors, CServiceThreadGroup& threadGroup);
 #endif
 
+    void InitTicketDB(); // initialize ticket database (ticket processor)
     void StartMasterNode(CServiceThreadGroup& threadGroup);
     void StopMasterNode();
 
@@ -110,6 +113,7 @@ public:
     fs::path GetMasternodeConfigFile();
 
     bool IsSynced() const noexcept { return masternodeSync.IsSynced(); }
+    bool SnEligibilityCheckAllowed() const noexcept;
 
     bool ProcessMessage(node_t& pfrom, std::string& strCommand, CDataStream& vRecv);
     bool AlreadyHave(const CInv& inv);
@@ -185,5 +189,10 @@ public:
     {}
 
     void execute() override;
+
+private:
+    static std::once_flag m_onceFlag;
+
+    void execute_internal();
 };
 extern CMasterNodeController masterNodeCtrl;

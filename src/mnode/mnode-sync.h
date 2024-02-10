@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
@@ -55,6 +55,8 @@ private:
 
     int64_t nTimeLastProcess;
 
+    int64_t nTimeLastSynced;
+
     int64_t nTimeIBDDone;
 
     int nReSyncAttempt;
@@ -87,6 +89,7 @@ public:
     int64_t GetAssetStartTime() const noexcept { return nTimeAssetSyncStarted; }
     std::string GetSyncStatusShort();
     std::string GetSyncStatus();
+    int64_t GetLastSyncTime() const noexcept { return nTimeLastSynced; }
 
     void Reset();
     void SwitchToNextAsset();

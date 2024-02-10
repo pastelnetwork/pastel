@@ -1,5 +1,5 @@
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <assert.h>
@@ -40,10 +40,11 @@ CScheduler::~CScheduler()
  */
 void CScheduler::add_workers(const size_t nThreadCount)
 {
+    string error;
     for (size_t i = 0; i < nThreadCount; ++i)
     {
         const uint32_t nWorkerID = ++m_nWorkerID;
-        m_threadGroup.add_func_thread(strprintf("%s-%zu", m_sThreadName, nWorkerID).c_str(),
+        m_threadGroup.add_func_thread(error, strprintf("%s-%zu", m_sThreadName, nWorkerID).c_str(),
                                       bind(&CScheduler::serviceQueue, this));
     }
     // trigger scheduler handler
