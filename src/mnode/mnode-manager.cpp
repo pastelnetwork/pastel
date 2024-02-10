@@ -724,6 +724,60 @@ bool CMasternodeMan::IsTxHasMNOutputs(const CTransaction& tx) noexcept
 	return false;
 }
 
+unordered_map<string, uint32_t> CMasternodeMan::GetLastMnIdsWithBlockReward(const CBlockIndex* pindex) noexcept
+{
+    const size_t nEnabledMnCount = masterNodeCtrl.masternodeManager.CountEnabledByLastSeenTime(-1, 
+        SN_ELIGIBILITY_LAST_SEEN_TIME_SECS);
+    unordered_map<string, uint32_t> mapMnids;
+    mapMnids.reserve(nEnabledMnCount);
+    size_t nProcessed = 0;
+    auto pCurIndex = pindex;
+    while (pCurIndex && (nProcessed + 1 < nEnabledMnCount))
+    {
+        if (pCurIndex->nStatus && BlockStatus::BLOCK_ACTIVATES_UPGRADE)
+            break;
+        if (pCurIndex->sPastelID.has_value())
+            mapMnids.emplace(pCurIndex->sPastelID.value(), static_cast<uint32_t>(pCurIndex->nHeight));
+        ++nProcessed;
+        pCurIndex = pCurIndex->pprev;
+    }
+    return mapMnids;
+}
+
+/**
+ * Check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
+ * to mine a new block and receive reward.
+ * 
+ * \param pindex - block index to start search from
+ * \param sPastelID - Pastel ID of the MasterNode (mnid)
+ * \param pnHeight - height of the block where MasterNode was found
+ * 
+ * \return true if MasterNode is eligible to mine a new block and receive reward
+ */
+bool CMasternodeMan::IsMnEligibleForBlockReward(const CBlockIndex* pindex, const string& sPastelID,
+    uint32_t *pnHeight) noexcept
+{
+    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
+    const auto mnidIt = mapMnids.find(sPastelID);
+    if (mnidIt == mapMnids.cend())
+        return true;
+	if (pnHeight)
+        *pnHeight = mnidIt->second;
+    return false;   
+}
+
+opt_string_t CMasternodeMan::FindMnEligibleForBlockReward(const CBlockIndex* pindex, const s_strings& setMnIds) noexcept
+{
+    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
+    for (const auto& sPastelID : setMnIds)
+    {
+		const auto mnidIt = mapMnids.find(sPastelID);
+		if (mnidIt == mapMnids.cend())
+			return make_optional<string>(sPastelID);
+	}
+    return nullopt;
+}
+
 //
 // Deterministically select the oldest/best masternode to pay on the network
 //
