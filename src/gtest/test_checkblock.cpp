@@ -20,7 +20,7 @@ TEST(CheckBlock, VersionTooLow)
     block.nVersion = 1;
 
     MockCValidationState state(TxOrigin::UNKNOWN);
-    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "version-too-low", false, "")).Times(1);
+    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "version-too-low", false, Ne(""))).Times(1);
     EXPECT_FALSE(CheckBlock(block, state, Params(), verifier, false, false));
 }
 
