@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -69,6 +69,7 @@ private:
     } mode;
     int nDoS;
     std::string strRejectReason;
+    std::string strRejectReasonDetails;
     unsigned char chRejectCode;
     bool m_bCorruptionPossible;
     TxOrigin txOrigin;
@@ -82,12 +83,16 @@ public:
         txOrigin(_txOrigin)
     {}
 
-    virtual bool DoS(const int level, const bool bRet = false,
-             unsigned char chRejectCodeIn=0, const std::string strRejectReasonIn="",
-             const bool bCorruptionPossible = false) noexcept
+    virtual bool DoS(const int level, 
+        const bool bRet = false,
+        unsigned char chRejectCodeIn = 0,
+        const std::string &strRejectReasonIn = "",
+        const bool bCorruptionPossible = false,
+        const std::string &strRejectReasonDetailsIn = "") noexcept
     {
         chRejectCode = chRejectCodeIn;
         strRejectReason = strRejectReasonIn;
+        strRejectReasonDetails = strRejectReasonDetailsIn;
         m_bCorruptionPossible = bCorruptionPossible;
         if (mode == STATE::ERR)
             return bRet;
@@ -96,9 +101,11 @@ public:
         return bRet;
     }
 
-    virtual bool Invalid(const bool ret = false, const unsigned char _chRejectCode = 0, const std::string _strRejectReason = "") noexcept
+    virtual bool Invalid(const bool ret = false, const unsigned char _chRejectCode = 0, 
+        const std::string &_strRejectReason = "",
+        const std::string &_strRejectReasonDetails = "") noexcept
     {
-        return DoS(0, ret, _chRejectCode, _strRejectReason);
+        return DoS(0, ret, _chRejectCode, _strRejectReason, false, _strRejectReasonDetails);
     }
 
     virtual bool Error(const std::string& strRejectReasonIn) noexcept
@@ -142,6 +149,7 @@ public:
     virtual unsigned char GetRejectCode() const noexcept { return chRejectCode; }
     virtual bool IsRejectCode(const unsigned char chRejCode) const noexcept { return chRejCode == chRejectCode; }
     virtual std::string GetRejectReason() const noexcept { return strRejectReason; }
+    virtual std::string GetRejectReasonDetails() const noexcept { return strRejectReasonDetails; }
 
     virtual TxOrigin getTxOrigin() const noexcept { return txOrigin; }
 };

@@ -10,8 +10,7 @@
 using namespace std;
 using namespace std::chrono_literals;
 
-constexpr auto MINING_ELIGIBILITY_RAISE_TIMEOUT_MINS = 15min;
-
+constexpr auto MINING_ELIGIBILITY_RAISE_TIMEOUT_MINS = 6min;
 
 CMiningEligibilityManager::CMiningEligibilityManager() : 
     CStoppableServiceThread("melig"),
@@ -42,12 +41,12 @@ void CMiningEligibilityManager::ChangeMiningEligibility(const bool bSet)
 	m_bAllMasterNodesAreEligibleForMining = bSet;
     if (bSet)
     {
-		LogPrint("mining", "No new blocks detected in % d mins.All masternodes are now eligible for mining",
+		LogPrint("mining", "No new blocks detected in %d mins. All masternodes are now eligible for mining\n",
             MINING_ELIGIBILITY_RAISE_TIMEOUT_MINS.count());
 	}
     else
     {
-		LogPrint("mining", "All masternodes eligibility for mining is reset");
+		LogPrint("mining", "All masternodes eligibility for mining is reset\n");
 	}
 }
 
@@ -103,7 +102,7 @@ unordered_map<string, uint32_t> CMiningEligibilityManager::GetLastMnIdsWithBlock
             break;
         if (pCurIndex->sPastelID.has_value())
         {
-            LogFnPrint("mining", "mined block: height=%d, mnid=%s", pCurIndex->nHeight, pCurIndex->sPastelID.value());
+            LogFnPrint("mining", "mined block: height=%d, mnid='%s'", pCurIndex->nHeight, pCurIndex->sPastelID.value());
             auto it = mapMnids.find(pCurIndex->sPastelID.value());
             if (it == mapMnids.cend())
                 mapMnids.emplace(pCurIndex->sPastelID.value(), 1);
@@ -174,6 +173,12 @@ bool CMiningEligibilityManager::IsMnEligibleForBlockReward(const CBlockIndex* pi
     return false;
 }
 
+/**
+ * Check if the current masternode is eligible for mining a new block and receiving reward.
+ * 
+ * \param pindex - block index to check
+ * \return true if the current masternode is eligible for mining
+ */
 bool CMiningEligibilityManager::IsCurrentMnEligibleForBlockReward(const CBlockIndex* pindex) noexcept
 {
     if (!pindex)

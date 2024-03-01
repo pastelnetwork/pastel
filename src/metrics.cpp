@@ -343,7 +343,7 @@ int printMetrics(size_t cols, bool mining)
             // Update orphans and calculate subsidies
             for (auto it = gl_TrackedBlocks.begin(); it != gl_TrackedBlocks.end(); )
             {
-                auto hash = *it;
+                const auto &hash = *it;
                 if (mapBlockIndex.count(hash) > 0 &&
                         chainActive.Contains(mapBlockIndex[hash]))
                 {

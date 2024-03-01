@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -172,10 +172,9 @@ class TxExpiringSoonTest(BitcoinTestFramework):
             self.nodes[2].sendrawtransaction(rawtx2)
             fail("Sending transaction should have failed")
         except JSONRPCException as e:
-            assert_equal(
-                "tx-expiring-soon: expiryheight is 204 but should be at least 205 to avoid transaction expiring soon",
-                e.error['message']
-            )
+            assert_equal("tx-expiring-soon", e.error['message'])
+            assert_equal("expiryheight is 204 but should be at least 205 to avoid transaction expiring soon",
+                        e.error['messageDetails'])
 
         self.send_data_message(testnode0, tx2)
 

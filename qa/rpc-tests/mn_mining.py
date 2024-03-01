@@ -3,24 +3,16 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-import time
-from decimal import Decimal, getcontext
+from decimal import getcontext
 
 from test_framework.util import (
     assert_equal,
     assert_true,
-    assert_greater_than,
-    assert_shows_help,
-    assert_raises_rpc,
     initialize_chain_clean,
-    start_node,
-    stop_node
 )
 from mn_common import (
     MasterNodeCommon,
 )
-import test_framework.rpc_consts as rpc
-
 getcontext().prec = 16
 
 class MasterNodeMiningTest (MasterNodeCommon):
@@ -63,7 +55,7 @@ class MasterNodeMiningTest (MasterNodeCommon):
                 block_header = self.nodes[mn.index].getblockheader(block_hash)
                 assert_equal(5, block_header['version'], "Block does not have correct version")
                 assert_equal(mn.mnid, block_header['pastelid'], "Block does not have mnid")
-                assert_equal(1, block_header['confirmations'], "Block does not have correct confirmations")                
+                assert_equal(1, block_header['confirmations'], "Block does not have correct confirmations")
                 assert_true(block_header['prevMerkleRootSignature'], "Previous block merkle root signature is not defined")
                 # increase expected number of confirmations for already generated blocks
                 for blk_hash in expected_confirmations:

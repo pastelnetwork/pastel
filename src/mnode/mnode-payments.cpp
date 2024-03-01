@@ -507,7 +507,7 @@ void CMasternodePayments::CheckAndRemove()
     LogFnPrintf("%s", ToString());
 }
 
-bool CMasternodePaymentVote::IsValid(const node_t& pnode, int nValidationHeight, string& strError)
+bool CMasternodePaymentVote::IsValid(const node_t& pnode, int nValidationHeight, string& strError) const
 {
     masternode_info_t mnInfo;
 

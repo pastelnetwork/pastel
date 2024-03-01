@@ -31,7 +31,7 @@ class CMasternodeMessage
 public:
     CTxIn vinMasternodeFrom;
     CTxIn vinMasternodeTo;
-    uint8_t messageType;
+    uint8_t messageType {};
     std::string message;
     int64_t sigTime{}; //message times
     v_uint8 vchSig;

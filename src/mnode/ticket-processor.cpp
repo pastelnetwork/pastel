@@ -1943,12 +1943,14 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
         error_ret.clear();
         bool fMissingInputs = false;
 
-        LOCK(cs_main);
-        if (AcceptToMemoryPool(Params(), mempool, state, tx_out, false, &fMissingInputs, true))
         {
-            RelayTransaction(tx_out);
-            bRet = true;
-            break;
+            LOCK(cs_main);
+            if (AcceptToMemoryPool(Params(), mempool, state, tx_out, false, &fMissingInputs, true))
+            {
+                RelayTransaction(tx_out);
+                bRet = true;
+                break;
+            }
         }
         int nDoS = 0;
         if (state.IsInvalid(nDoS))

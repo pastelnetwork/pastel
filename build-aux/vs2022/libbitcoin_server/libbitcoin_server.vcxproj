@@ -316,7 +316,6 @@
     <ClInclude Include="..\..\..\src\rpc\server.h" />
     <ClInclude Include="..\..\..\src\script_check.h" />
     <ClInclude Include="..\..\..\src\timedata.h" />
-    <ClInclude Include="..\..\..\src\tinyformat.h" />
     <ClInclude Include="..\..\..\src\torcontrol.h" />
     <ClInclude Include="..\..\..\src\txdb.h" />
     <ClInclude Include="..\..\..\src\txmempool.h" />

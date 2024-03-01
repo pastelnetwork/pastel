@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <sstream>
@@ -268,6 +268,18 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
     }
+
+    constexpr size_t GetReserveSize() const noexcept
+    {
+		return sizeof(nVersion) +
+			sizeof(hashPrevBlock) +
+			sizeof(hashMerkleRoot) +
+			sizeof(hashFinalSaplingRoot) +
+			sizeof(nTime) +
+			sizeof(nBits) +
+			87 + // 86-bytes Pastel ID + 1-byte size
+			115;  // 114-bytes prev merkle root signature + 1-byte size
+	}
 };
 
 

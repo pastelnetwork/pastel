@@ -399,6 +399,7 @@ bool CMasternode::UpdateFromNewBroadcast(const CMasternodeBroadcast& mnb)
 // Deterministically calculate a given "score" for a Masternode depending on how close it's hash is to
 // the proof of work for that block. The further away they are the better, the furthest will win the election
 // and get paid this block
+// Requires cs_main lock
 arith_uint256 CMasternode::CalculateScore(const uint256& blockHash)
 {
     if (m_collateralMinConfBlockHash.IsNull())

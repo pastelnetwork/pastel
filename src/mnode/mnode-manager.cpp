@@ -70,6 +70,12 @@ CMasternodeMan::CMasternodeMan() :
     nLastWatchdogVoteTime(0)
 {}
 
+/**
+ * Add new masternode to the list.
+ * 
+ * \param pmn - masternode to add
+ * \return true if masternode was added, false otherwise
+ */
 bool CMasternodeMan::Add(masternode_t &pmn)
 {
     if (!pmn)
@@ -161,6 +167,11 @@ void mapEraseIf(const char *szMapDesc, _MapType& mapContainer, _Predicate pred)
 		LogPrintf("Removed %zu entries from %s. New size: %zu\n", nPrevSize - nNewSize, szMapDesc, nNewSize);
 }
 
+/**
+ * Check and remove expired masternodes.
+ * Recover masternodes in NEW_START_REQUIRED state or masternodes with partial info (v1 only).
+ * Process recovery replies.
+ */
 void CMasternodeMan::CheckAndRemove()
 {
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
@@ -370,6 +381,11 @@ void CMasternodeMan::CleanupMaps()
     LogFnPrintf("%s", ToString());
 }
 
+/**
+ * Populate list of masternodes that will be used to send recovery requests to.
+ * 
+ * \param mapRecoveryMasternodes - map of masternodes to populate
+ */
 void CMasternodeMan::PopulateMasternodeRecoveryList(recovery_masternodes_t& mapRecoveryMasternodes) const
 {
     size_t nMapRecoveryMasternodesSize = mapRecoveryMasternodes.size();
@@ -724,60 +740,6 @@ bool CMasternodeMan::IsTxHasMNOutputs(const CTransaction& tx) noexcept
 	return false;
 }
 
-unordered_map<string, uint32_t> CMasternodeMan::GetLastMnIdsWithBlockReward(const CBlockIndex* pindex) noexcept
-{
-    const size_t nEnabledMnCount = masterNodeCtrl.masternodeManager.CountEnabledByLastSeenTime(-1, 
-        SN_ELIGIBILITY_LAST_SEEN_TIME_SECS);
-    unordered_map<string, uint32_t> mapMnids;
-    mapMnids.reserve(nEnabledMnCount);
-    size_t nProcessed = 0;
-    auto pCurIndex = pindex;
-    while (pCurIndex && (nProcessed + 1 < nEnabledMnCount))
-    {
-        if (pCurIndex->nStatus && BlockStatus::BLOCK_ACTIVATES_UPGRADE)
-            break;
-        if (pCurIndex->sPastelID.has_value())
-            mapMnids.emplace(pCurIndex->sPastelID.value(), static_cast<uint32_t>(pCurIndex->nHeight));
-        ++nProcessed;
-        pCurIndex = pCurIndex->pprev;
-    }
-    return mapMnids;
-}
-
-/**
- * Check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
- * to mine a new block and receive reward.
- * 
- * \param pindex - block index to start search from
- * \param sPastelID - Pastel ID of the MasterNode (mnid)
- * \param pnHeight - height of the block where MasterNode was found
- * 
- * \return true if MasterNode is eligible to mine a new block and receive reward
- */
-bool CMasternodeMan::IsMnEligibleForBlockReward(const CBlockIndex* pindex, const string& sPastelID,
-    uint32_t *pnHeight) noexcept
-{
-    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
-    const auto mnidIt = mapMnids.find(sPastelID);
-    if (mnidIt == mapMnids.cend())
-        return true;
-	if (pnHeight)
-        *pnHeight = mnidIt->second;
-    return false;   
-}
-
-opt_string_t CMasternodeMan::FindMnEligibleForBlockReward(const CBlockIndex* pindex, const s_strings& setMnIds) noexcept
-{
-    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
-    for (const auto& sPastelID : setMnIds)
-    {
-		const auto mnidIt = mapMnids.find(sPastelID);
-		if (mnidIt == mapMnids.cend())
-			return make_optional<string>(sPastelID);
-	}
-    return nullopt;
-}
-
 //
 // Deterministically select the oldest/best masternode to pay on the network
 //
@@ -795,7 +757,7 @@ bool CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool f
         return false; // without winner list we can't reliably find the next winner anyway
 
     // Need LOCK2 here to ensure consistent locking order because the GetBlockHash call below locks cs_main
-    LOCK2(cs_main,cs_mnMgr);
+    LOCK2(cs_main, cs_mnMgr);
 
     // Make a vector with all of the last paid times
     std::vector<std::pair<int, masternode_t> > vecMasternodeLastPaid;
@@ -971,7 +933,8 @@ bool CMasternodeMan::GetMasternodeRank(string &error, const COutPoint& outpoint,
         return false;
     }
 
-    LOCK(cs_mnMgr);
+    // ensure consistent locking order cs_main -> cs_mnMgr
+    LOCK2(cs_main, cs_mnMgr);
 
     score_pair_vec_t vecMasternodeScores;
     if (!GetMasternodeScores(error, blockHash, vecMasternodeScores, nMinProtocol))
@@ -1021,7 +984,7 @@ GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMaster
         return GetTopMasterNodeStatus::BLOCK_NOT_FOUND;
     }
 
-    LOCK(cs_mnMgr);
+    LOCK2(cs_main, cs_mnMgr);
 
     score_pair_vec_t vecMasternodeScores;
     if (!GetMasternodeScores(error, blockHash, vecMasternodeScores, nMinProtocol))

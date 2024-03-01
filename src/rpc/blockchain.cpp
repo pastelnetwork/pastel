@@ -657,7 +657,7 @@ As a json rpc call
     if (n<0 || (unsigned int)n>=coins.vout.size() || coins.vout[n].IsNull())
         return NullUniValue;
 
-    BlockMap::iterator it = mapBlockIndex.find(gl_pCoinsTip->GetBestBlock());
+    auto it = mapBlockIndex.find(gl_pCoinsTip->GetBestBlock());
     CBlockIndex *pindex = it->second;
     ret.pushKV("bestblock", pindex->GetBlockHash().GetHex());
     if ((unsigned int)coins.nHeight == MEMPOOL_HEIGHT)

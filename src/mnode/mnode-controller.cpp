@@ -398,7 +398,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
                 nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS).c_str());
 			break;
 		}
-        LogFnPrintf("...CPU benchmark passed (%" PRIu64 "ms, min required %" PRIu64"ms)", nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS);
+        LogFnPrintf("...CPU benchmark passed (%" PRIu64 "ms, min required %" PRIu64 "ms)", nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS);
         bRet = true;
     } while (false);
     if (!bRet)
@@ -800,14 +800,15 @@ double CMasterNodeController::GetChainDeflatorFactor(uint32_t chainHeight) const
         }
     }
 
-    if (Params().IsTestNet() && deflatorFactor > 0.11)
-        deflatorFactor = 0.11;
+    //if (Params().IsTestNet() && deflatorFactor > 0.11)
+    //    deflatorFactor = 0.11;
 
     return deflatorFactor;
 }
 
 /**
  * Calculate network blockchain deflator factor for the given block height.
+ * cs_main lock must be acquired before calling this function - to access chainActive.
  * 
  * \param nChainHeight - block height
  * \return chain deflator factor

@@ -566,7 +566,7 @@ public:
     v_uint8 vchSig1{};
     v_uint8 vchSig2{};
 
-    CMasternodeVerification() noexcept = default;
+    CMasternodeVerification() = default;
 
     CMasternodeVerification(CService addr, int nonce, uint32_t nBlockHeight) noexcept :
         addr(addr),

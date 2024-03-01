@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -24,7 +24,9 @@ CP2FMS_TX_Builder::CP2FMS_TX_Builder(const CDataStream& input_stream, const CAmo
     m_bUseFundingAddress(false),
     m_chainParams(Params()),
     m_nExtraAmountInPat(0)
-{}
+{
+    m_consensusBranchId = CurrentEpochBranchId(gl_nChainHeight + 1, m_chainParams.GetConsensus());
+}
 
 void CP2FMS_TX_Builder::setExtraOutputs(std::vector<CTxOut>&& vExtraOutputs, const CAmount nExtraAmountInPat) noexcept
 {

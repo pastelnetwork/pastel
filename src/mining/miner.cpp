@@ -545,7 +545,7 @@ void static PastelMiner(const int nThreadNo)
     const auto& consensusParams = chainparams.GetConsensus();
     unsigned int n = consensusParams.nEquihashN;
     unsigned int k = consensusParams.nEquihashK;
-    const float nMiningEligibilityThreshold = consensusParams.nMiningEligibilityThreshold;
+    const double nMiningEligibilityThreshold = consensusParams.nMiningEligibilityThreshold;
 
     LogPrint("pow", "Using Equihash solver \"%s\" with n = %u, k = %u\n", 
         gl_MiningSettings.getEquihashSolverName(), n, k);
@@ -656,7 +656,7 @@ void static PastelMiner(const int nThreadNo)
                         break;
                     fnWaitFor(5);
                 } while (true);
-                LogFnPrint("mining", "MasterNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value());
+                LogFnPrint("mining", "MasterNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value_or("not defined"));
 
                 gl_bEligibleForMiningNextBlock = true;
                 miningTimer.start();
@@ -704,6 +704,7 @@ void static PastelMiner(const int nThreadNo)
                 // I = the block header minus nonce and solution.
                 CEquihashInput I{*pblock};
                 CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                ss.reserve(I.GetReserveSize());
                 ss << I;
 
                 // H(I||...
@@ -835,8 +836,8 @@ void static PastelMiner(const int nThreadNo)
 
                 // Update nNonce and nTime
                 pblock->nNonce = ArithToUint256(UintToArith256(pblock->nNonce) + 1);
-                UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-                if (chainparams.GetConsensus().nPowAllowMinDifficultyBlocksAfterHeight.has_value())
+                UpdateTime(pblock, consensusParams, pindexPrev);
+                if (consensusParams.nPowAllowMinDifficultyBlocksAfterHeight.has_value())
                 {
                     // Changing pblock->nTime can change work required on testnet:
                     hashTarget.SetCompact(pblock->nBits);

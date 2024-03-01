@@ -1203,6 +1203,7 @@ As json rpc:
 
         case RPC_CMD_MN_CLEAR_CACHE::top__mns:
             masterNodeCtrl.masternodeManager.ClearCache({MNCacheItem::HISTORICAL_TOP_MNS});
+            break;
 
         default:
             break;

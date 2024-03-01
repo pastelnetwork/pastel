@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <univalue.h>
@@ -190,6 +190,7 @@ UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
     retObj.pushKV(sOptionName + "Pat", nFee * COIN);
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
+    retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, nFeeAdjustmentMultiplier);
     return retObj;
 }
 
@@ -228,6 +229,7 @@ UniValue storagefee_getfees(const UniValue& params)
     }
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
+    retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, nFeeAdjustmentMultiplier);
     return retObj;
 }
 
@@ -271,6 +273,7 @@ Returns:
     retObj.pushKV("datasize", static_cast<uint64_t>(nDataSizeInMB));
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
+    retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, fChainDeflatorFactor * nGlobalFeeAdjustmentMultiplier);
 
     string sActionFeeKey;
     for (const auto& [actionTicketType, feePSL] : feeMap)

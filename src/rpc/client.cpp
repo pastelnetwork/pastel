@@ -26,7 +26,7 @@ public:
 };
 
 // 0-based indexes of the params to convert
-static const array<CRPCConvertParam, 78> gl_vRPCConvertParams =
+static const array<CRPCConvertParam, 79> gl_vRPCConvertParams =
 {{
     { "stop", nullptr, {0} },
     { "setmocktime", nullptr, {0} },
@@ -68,6 +68,7 @@ static const array<CRPCConvertParam, 78> gl_vRPCConvertParams =
     { "masternode", "pose-ban-score", {3} },
     { "getblock", nullptr, {1} },
     { "getblockheader", nullptr, {1} },
+    { "getblockmininginfo", nullptr, {1} },
     { "getblocksignature", nullptr, {0, 1} },
     { "gettransaction", nullptr, {1} },
     { "getrawtransaction", nullptr, {1} },

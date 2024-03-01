@@ -555,14 +555,18 @@ static void BlockNotifyCallback(const uint256& hashNewTip)
 
 struct CImportingNow
 {
-    CImportingNow() {
+    CImportingNow()
+    {
         assert(fImporting == false);
         fImporting = true;
+        LogPrint("net", "Block importing mode is ON\n");
     }
 
-    ~CImportingNow() {
+    ~CImportingNow()
+    {
         assert(fImporting == true);
         fImporting = false;
+        LogPrint("net", "Block importing mode is OFF\n");
     }
 };
 
@@ -1109,6 +1113,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         nLocalServices |= NODE_BLOOM;
 
     nMaxTipAge = GetArg("-maxtipage", DEFAULT_MAX_TIP_AGE);
+    if (nMaxTipAge != DEFAULT_MAX_TIP_AGE)
+        LogPrintf("Setting maximum tip age to %d seconds\n", nMaxTipAge);
 
 #ifdef ENABLE_MINING
     if (mapArgs.count("-mineraddress"))
@@ -1588,6 +1594,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                     }
                 }
 
+                // Initialize the ticket database
                 masterNodeCtrl.InitTicketDB();
 
                 const int64_t nCheckBlocks = GetArg("-checkblocks", FORK_BLOCK_LIMIT);
@@ -1769,7 +1776,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         if (chainActive.Tip() && chainActive.Tip() != pindexRescan)
         {
             uiInterface.InitMessage(translate("Rescanning..."));
-            LogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->nHeight, pindexRescan->nHeight);
+            const int nBlocksToRescan = chainActive.Height() - pindexRescan->nHeight;
+            LogPrintf("Rescanning last %i blocks (from block %i)...\n", nBlocksToRescan, pindexRescan->nHeight);
             nStart = GetTimeMillis();
             pwalletMain->ScanForWalletTransactions(pindexRescan, true);
             LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
@@ -1882,6 +1890,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     {
        return InitError(strErrors.str());
     }
+    uiInterface.InitMessage(translate("Importing blocks..."));
     if (!threadGroup.start_thread(strError, nBlockImportThreadId))
         return InitError(strError);
 

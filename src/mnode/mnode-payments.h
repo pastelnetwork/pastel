@@ -144,7 +144,7 @@ public:
     bool Sign();
     bool CheckSignature(const CPubKey& pubKeyMasternode, int nValidationHeight, int &nDos);
 
-    bool IsValid(const node_t& pnode, int nValidationHeight, std::string& strError);
+    bool IsValid(const node_t& pnode, int nValidationHeight, std::string& strError) const;
     void Relay();
 
     bool IsVerified() const noexcept { return !vchSig.empty(); }
