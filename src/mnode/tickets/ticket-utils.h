@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <memory>
@@ -115,11 +115,11 @@ ticket_validation_t common_ticket_validation(
 
             // C.2 Verify Min Confirmations
             const auto height = ticket.IsBlock(0) ? nActiveChainHeight : ticket.GetBlock();
-            if (nActiveChainHeight - referredItemTicket->GetBlock() < masterNodeCtrl.MinTicketConfirmations)
+            if (nActiveChainHeight - referredItemTicket->GetBlock() < masterNodeCtrl.nMinTicketConfirmations)
             {
                 tv.errorMsg = strprintf(
                     "%s ticket can be created only after [%s] confirmations of the %s ticket. chainHeight=%u, block=%u",
-                    sThisTicketDescription, masterNodeCtrl.MinTicketConfirmations, 
+                    sThisTicketDescription, masterNodeCtrl.nMinTicketConfirmations, 
                     sReferredItemTicketDescription, nActiveChainHeight, ticket.GetBlock());
                 break;
             }

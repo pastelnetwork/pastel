@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -32,10 +32,14 @@ static tx_mempool_tracker_t TicketTxMemPoolTracker;
 
 void CPastelTicketProcessor::InitTicketDB()
 {
+    if (m_bTicketDBInitialized)
+        return;
+
     fs::path ticketsDir = GetDataDir() / "tickets";
     if (!fs::exists(ticketsDir))
         fs::create_directories(ticketsDir);
 
+    LogFnPrintf("Initializing ticket database in [%s]...", ticketsDir.string());
     uint64_t nTotalCache = (GetArg("-dbcache", 450) << 20);
     constexpr uint64_t nMinDbCache = 4;
     constexpr uint64_t nMaxDbCache = 16384; //16KB
@@ -44,8 +48,11 @@ void CPastelTicketProcessor::InitTicketDB()
     const uint64_t nTicketDBCache = nTotalCache / 8 / uint8_t(TicketID::COUNT);
 
     // create DB for each ticket type
-    for (uint8_t id = to_integral_type<TicketID>(TicketID::PastelID); id != to_integral_type<TicketID>(TicketID::COUNT); ++id)
+    for (uint8_t id = to_integral_type(TicketID::PastelID); id != to_integral_type(TicketID::COUNT); ++id)
         dbs.emplace(static_cast<TicketID>(id), make_unique<CDBWrapper>(ticketsDir / TICKET_INFO[id].szDBSubFolder, nTicketDBCache, false, fReindex));
+
+    LogFnPrintf("...ticket database has been initialized (%hhu ticket types)", to_integral_type(TicketID::COUNT));
+    m_bTicketDBInitialized = true;
 }
 
 /**
@@ -120,13 +127,13 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
     return ticket;
 }
 
-void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* cBlockIndex, bool fInitialDownload)
+void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* pBlockIndex, bool fInitialDownload)
 {
-    if (!cBlockIndex)
+    if (!pBlockIndex)
         return;
 
     CBlock block;
-    if (!ReadBlockFromDisk(block, cBlockIndex, Params().GetConsensus()))
+    if (!ReadBlockFromDisk(block, pBlockIndex, Params().GetConsensus()))
     {
         LogFnPrintf("ERROR: Can't read block from disk");
         return;
@@ -135,7 +142,7 @@ void CPastelTicketProcessor::UpdatedBlockTip(const CBlockIndex* cBlockIndex, boo
     for (const auto& tx : block.vtx)
     {
         CMutableTransaction mtx(tx);
-        ParseTicketAndUpdateDB(mtx, cBlockIndex->nHeight);
+        ParseTicketAndUpdateDB(mtx, pBlockIndex->nHeight);
     }
 }
 
@@ -1233,7 +1240,7 @@ string CPastelTicketProcessor::filterTickets(F f, const uint32_t nMinHeight, con
     listTickets<_TicketType>([&](const _TicketType& ticket) -> bool
     {
         //check if the ticket is confirmed
-        if (bCheckConfirmation && (nActiveChainHeight - ticket.GetBlock() < masterNodeCtrl.MinTicketConfirmations))
+        if (bCheckConfirmation && (nActiveChainHeight - ticket.GetBlock() < masterNodeCtrl.nMinTicketConfirmations))
             return true;
         // apply functor to the current ticket
         if (f(ticket, nActiveChainHeight))
@@ -1449,7 +1456,7 @@ string CPastelTicketProcessor::ListFilterOfferTickets(const uint32_t nMinHeight,
                         return true;
                 }
                 // if not - check age
-                if (existingAcceptTicket.GetBlock() + masterNodeCtrl.MaxAcceptTicketAge <= chainHeight)
+                if (existingAcceptTicket.GetBlock() + masterNodeCtrl.nMaxAcceptTicketAge <= chainHeight)
                     return true;
             }
             const OFFER_TICKET_STATE state = t.checkValidState(chainHeight);
@@ -1488,7 +1495,7 @@ string CPastelTicketProcessor::ListFilterAcceptTickets(const uint32_t nMinHeight
             if (CTransferTicket::CheckTransferTicketExistByAcceptTicket(t.GetTxId())) {
                 if (filter == 2)
                     return false; // don't skip transferred
-            } else if (filter == 1 && t.GetBlock() + masterNodeCtrl.MaxAcceptTicketAge < chainHeight)
+            } else if (filter == 1 && t.GetBlock() + masterNodeCtrl.nMaxAcceptTicketAge < chainHeight)
                 return false; //don't skip non transferred|sold, and expired
             return true;
         }, checkConfirmation);
@@ -1936,12 +1943,14 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
         error_ret.clear();
         bool fMissingInputs = false;
 
-        LOCK(cs_main);
-        if (AcceptToMemoryPool(Params(), mempool, state, tx_out, false, &fMissingInputs, true))
         {
-            RelayTransaction(tx_out);
-            bRet = true;
-            break;
+            LOCK(cs_main);
+            if (AcceptToMemoryPool(Params(), mempool, state, tx_out, false, &fMissingInputs, true))
+            {
+                RelayTransaction(tx_out);
+                bRet = true;
+                break;
+            }
         }
         int nDoS = 0;
         if (state.IsInvalid(nDoS))

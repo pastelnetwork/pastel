@@ -247,7 +247,8 @@ Arguments:
         UniValue returnObj(UniValue::VOBJ);
 
         // verify all signatures first, bailout if any of them broken
-        for (auto& mnb : vecMnb) {
+        for (auto& mnb : vecMnb)
+        {
             UniValue resultObj(UniValue::VOBJ);
 
             resultObj.pushKV("outpoint", mnb.GetDesc());
@@ -255,10 +256,12 @@ Arguments:
 
             int nDos = 0;
             bool fResult;
-            if (mnb.CheckSignature(nDos)) {
-                if (fSafe) {
-                    fResult = masterNodeCtrl.masternodeManager.CheckMnbAndUpdateMasternodeList(nullptr, mnb, nDos);
-                } else {
+            if (mnb.CheckSignature(nDos))
+            {
+                if (fSafe)
+                    fResult = masterNodeCtrl.masternodeManager.CheckMnbAndUpdateMasternodeList(USE_LOCK, USE_LOCK, nullptr, mnb, nDos);
+                else
+                {
                     masterNodeCtrl.masternodeManager.UpdateMasternodeList(mnb);
                     mnb.Relay();
                     fResult = true;
@@ -266,7 +269,8 @@ Arguments:
             } else
                 fResult = false;
 
-            if (fResult) {
+            if (fResult)
+            {
                 nSuccessful++;
                 resultObj.pushKV(mnb.GetHash().ToString(), RPC_RESULT_SUCCESS);
             } else {

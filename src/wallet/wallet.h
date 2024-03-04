@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <algorithm>
@@ -847,7 +847,7 @@ public:
     wallet_txmap_t mapWallet;
 
     int64_t nOrderPosNext;
-    std::unordered_map<uint256, int> mapRequestCount;
+    std::unordered_map<uint256, int> mapRequestCount; // tracks how many getdata requests we get for each block
 
     std::map<CTxDestination, CAddressBookData> mapAddressBook;
 
@@ -996,7 +996,9 @@ public:
     void UpdateSaplingNullifierNoteMapForBlock(const CBlock* pblock);
     bool AddToWallet(const CWalletTx& wtxIn, bool fFromLoadWallet, CWalletDB* pwalletdb);
     void SyncTransaction(const CTransaction& tx, const CBlock* pblock) override;
-    bool AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, bool fUpdate);
+    bool IsTxInvolvingMe(const CTransaction& tx) const;
+    bool AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, const bool fUpdate);
+    bool AddTxToWallet(const CTransaction& tx, const CBlock* pblock, const bool fUpdate);
     void EraseFromWallet(const uint256 &hash) override;
     int ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate = false);
     void ReacceptWalletTransactions();
@@ -1115,7 +1117,7 @@ public:
     std::set<uint256> GetConflicts(const uint256& txid) const;
 
     //! Flush wallet (bitdb flush)
-    void Flush(bool shutdown=false);
+    void Flush(const bool bShutdown = false);
 
     //! Verify the wallet database and perform salvage if required
     static bool Verify(const std::string& walletFile, std::string& warningString, std::string& errorString);

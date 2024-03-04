@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 Pastel Core developers
+// Copyright (c) 2018-2024 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <cstdint>
@@ -4731,11 +4731,12 @@ UniValue scanForMissingTransactions(const UniValue& params, bool fHelp)
 
     if (fHelp || params.empty())
         throw runtime_error(
-R"(scanformissingtxs <starting_height>
+R"(scanformissingtxs <starting_height> ( <is_involving_me> )
 Scan for missing transactions in the wallet starting from the given height.
 
 Arguments:
 1. <starting_height>  (numeric, required)  // starting block height to search for missing txs"
+2. <is_involving_me>  (boolean, optional, default=true)  // whether to scan for missing txs involving me only
 
 Returns:
 [
@@ -4759,8 +4760,11 @@ As json rpc:
         throw JSONRPCError(RPC_INVALID_PARAMETER, 
             strprintf("Invalid 'starting_height' parameter. Current chain height is %u, but 'starting_height' is %u",
                        nCurrentHeight, nStartingHeight));
+    bool bTxOnlyInvolvingMe = true;
+    if (params.size() > 1)
+        bTxOnlyInvolvingMe = get_bool_value(params[1]);
 
-	return ScanWalletForMissingTransactions(nCurrentHeight, false);
+	return ScanWalletForMissingTransactions(nStartingHeight, false, bTxOnlyInvolvingMe);
 }
 
 UniValue fixMissingTransactions(const UniValue& params, bool fHelp)
@@ -4769,12 +4773,13 @@ UniValue fixMissingTransactions(const UniValue& params, bool fHelp)
 
     if (fHelp || params.empty())
         throw runtime_error(
-R"(fixmissingtxs <starting_height>
+R"(fixmissingtxs <starting_height> ( <is_involving_me> )
 Scan for missing transactions in the wallet starting from the given height.
 Add to wallet all the missing transactions found in the blockchain.
 
 Arguments:
 1. <starting_height>  (numeric, required)  // starting block height to search for missing txs"
+2. <is_involving_me>  (boolean, optional, default=true)  // whether to scan for missing txs involving me only
 
 Returns:
 [
@@ -4798,8 +4803,11 @@ As json rpc:
         throw JSONRPCError(RPC_INVALID_PARAMETER, 
             strprintf("Invalid 'starting_height' parameter. Current chain height is %u, but 'starting_height' is %u",
                        nCurrentHeight, nStartingHeight));
+    bool bTxOnlyInvolvingMe = true;
+    if (params.size() > 1)
+		bTxOnlyInvolvingMe = get_bool_value(params[1]);
 
-	return ScanWalletForMissingTransactions(nCurrentHeight, true);
+	return ScanWalletForMissingTransactions(nStartingHeight, true, bTxOnlyInvolvingMe);
 }
 
 extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp

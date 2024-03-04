@@ -191,9 +191,9 @@ class MasterNodeCommon (PastelTestFramework):
                 datadir.mkdir()
             conf_file = Path(datadir, "pastel.conf")
             with conf_file.open('a') as f:
-                f.write(f"gen-pastelid={self.mnid}\n")
-                f.write(f"gen-passphrase={self.passphrase}\n")
-                f.write("gen-enable-mn-mining=1\n")
+                f.write(f"genpastelid={self.mnid}\n")
+                f.write(f"genpassphrase={self.passphrase}\n")
+                f.write("genenablemnmining=1\n")
         
 
         def create_masternode_conf(self, dirname: str, node_index: int):
@@ -470,9 +470,8 @@ class MasterNodeCommon (PastelTestFramework):
         for mn in self.mn_nodes:
             if mn.index >= self.number_of_cold_nodes:
                 continue
-            mnid_info = self.nodes[mn.index].refreshminingmnidinfo()
-            assert_true(mnid_info, "Failed to refresh mining mnid info")
-            assert_equal(1, len(mnid_info))
+            mnid = self.nodes[mn.index].refreshminingmnidinfo()
+            assert_true(mnid, "Failed to refresh mining mnid info")
         timer.stop()
         print(f"<<<< MasterNode network INITIALIZED in {timer.elapsed_time} secs >>>>")
         self.list_masternode_info()
@@ -481,7 +480,7 @@ class MasterNodeCommon (PastelTestFramework):
     def list_masternode_info(self):
         """List info for all masternodes.
         """
-        print(f'MasterNodes [{len(self.mn_nodes)}], (outpoint, mnid, address)):')
+        print(f'MasterNodes [{len(self.mn_nodes)}], (outpoint, address, mnid)):')
         for mn in self.mn_nodes:
             print(f"  {mn.index}) {mn.collateral_id}, {mn.mnid_reg_address}, {mn.mnid}")
         

@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -1044,10 +1044,9 @@ As a json rpc call
         if (NetworkUpgradeActive(nextBlockHeight, chainparams.GetConsensus(), Consensus::UpgradeIndex::UPGRADE_OVERWINTER))
         {
             if (nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD > tx.nExpiryHeight) {
-                throw JSONRPCError(RPC_TRANSACTION_REJECTED,
-                    strprintf("tx-expiring-soon: expiryheight is %u but should be at least %d to avoid transaction expiring soon",
-                    tx.nExpiryHeight,
-                    nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD));
+                throw JSONRPCError(RPC_TRANSACTION_REJECTED, "tx-expiring-soon",
+                    strprintf("expiryheight is %u but should be at least %d to avoid transaction expiring soon",
+                        tx.nExpiryHeight, nextBlockHeight + TX_EXPIRING_SOON_THRESHOLD));
             }
         }
     }
@@ -1067,10 +1066,16 @@ As a json rpc call
         if (!AcceptToMemoryPool(chainparams, mempool, state, tx, false, &fMissingInputs, !fOverrideFees))
         {
             if (state.IsInvalid())
-                throw JSONRPCError(RPC_TRANSACTION_REJECTED, strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason()));
+                throw JSONRPCError(RPC_TRANSACTION_REJECTED, 
+                    strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason()), 
+                    state.GetRejectReasonDetails());
             if (fMissingInputs)
-                throw JSONRPCError(RPC_TRANSACTION_ERROR, "Missing inputs");
-            throw JSONRPCError(RPC_TRANSACTION_ERROR, state.GetRejectReason());
+            {
+                throw JSONRPCError(RPC_TRANSACTION_ERROR, 
+                    strprintf("Missing inputs. %s", state.GetRejectReason()),
+                    state.GetRejectReasonDetails());
+            }
+            throw JSONRPCError(RPC_TRANSACTION_ERROR, state.GetRejectReason(), state.GetRejectReasonDetails());
         }
     } else if (fHaveChain) {
         throw JSONRPCError(RPC_TRANSACTION_ALREADY_IN_CHAIN, "transaction already in block chain");

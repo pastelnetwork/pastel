@@ -24,10 +24,13 @@
 #include <metrics.h>
 #include <mining/miner.h>
 #include <mining/mining-settings.h>
+#include <mining/eligibility-mgr.h>
 #include <net.h>
 #include <pow.h>
 #include <rpc/server.h>
 #include <rpc/rpc-utils.h>
+#include <rpc/rpc_parser.h>
+#include <rpc/chain-rpc-utils.h>
 #include <txmempool.h>
 #include <validationinterface.h>
 #include <netmsg/nodemanager.h>
@@ -45,6 +48,8 @@ using namespace std;
  */
 int64_t GetNetworkHashPS(int lookup, int height)
 {
+    AssertLockHeld(cs_main);
+
     CBlockIndex *pb = chainActive.Tip();
 
     if (height >= 0 && height < chainActive.Height())
@@ -64,7 +69,8 @@ int64_t GetNetworkHashPS(int lookup, int height)
     CBlockIndex *pb0 = pb;
     int64_t minTime = pb0->GetBlockTime();
     int64_t maxTime = minTime;
-    for (int i = 0; i < lookup; i++) {
+    for (int i = 0; i < lookup; i++)
+    {
         pb0 = pb0->pprev;
         int64_t time = pb0->GetBlockTime();
         minTime = min(time, minTime);
@@ -153,24 +159,22 @@ Examples:
     return GetNetworkHashPS(params.size() > 0 ? params[0].get_int() : 120, params.size() > 1 ? params[1].get_int() : -1);
 }
 
-#ifdef ENABLE_MINING
 UniValue refresh_mining_mnid_info(const UniValue& params, bool fHelp)
 {
     if (fHelp || !params.empty())
         throw runtime_error(
 R"(refreshminingmnidinfo
 
-Refreshes the mining information (mnids) from pastel.conf file.
+Refreshes the mining information from pastel.conf file.
 )");
     string error;
-    if (!gl_MinerSettings.refreshMnIdInfo(error, true))
+    if (!gl_MiningSettings.refreshMnIdInfo(error, true))
         throw JSONRPCError(RPC_INTERNAL_ERROR, error);
-    const auto setMnIds = gl_MinerSettings.getMnIdsAndRotate();
-    UniValue retObj(UniValue::VARR);
-    for (const auto& mnid : setMnIds)
-		retObj.push_back(mnid);
-	return retObj;
+	return gl_MiningSettings.getGenId();
 }
+
+
+#ifdef ENABLE_MINING
 
 UniValue getgenerate(const UniValue& params, bool fHelp)
 {
@@ -368,6 +372,90 @@ Using json rpc
 }
 #endif
 
+UniValue getminingeligibility(const UniValue& params, bool fHelp)
+{
+	if (fHelp || params.size() > 1)
+		throw runtime_error(
+R"(getminingeligibility ( "mnfilter" )
+
+Returns a json object containing mining eligibility information for masternodes.
+
+Arguments:
+1. "mnfilter" (string, optional) masternode filter to use for eligibility check
+
+Available filters:
+   "all"          - returns mining eligibility information for all masternodes (default)
+   "eligibleonly" - returns a list of masternodes that are eligible for mining
+   "noteligible"  - returns a list of masternodes that are not eligible for mining
+
+Result:
+{
+    "height": n,                 (numeric) The current block height for mining
+    "miningEnabledCount": n,     (numeric) The number of masternodes that have mining enabled
+    "blocksChecked": n,          (numeric) The number of blocks checked for mining eligibility 
+                                           (uses mining eligibility threshold from consensus parameters)
+    "nodes": [
+      {
+        "mnid": "xxxx",          (string) masternode id
+        "eligible": true|false,  (boolean) masternode eligibility for mining and signing next block
+        "collateralid": "xxxx",  (string) masternode collateral id (txid-vout)
+        "mnstate": "xxxx",       (string) masternode state (ENABLED, PRE_ENABLED, etc.)
+        "minedblocks": n,        (numeric) number of blocks mined by the masternode in "blocksChecked" range
+      }
+      ,...
+    ]
+}
+
+Examples:
+Get only masternodes eligible for mining next block:
+)" + HelpExampleCli("getminingeligibility", "eligibleonly") 
+   + HelpExampleCli("getminingeligibility", "eligibleonly") 
+);
+    optional<bool> eligibilityFilter;
+    if (!params.empty())
+    {
+        RPC_CMD_PARSER(MNFILTER, params, all, eligibleonly, noteligible);
+        if (MNFILTER.IsCmd(RPC_CMD_MNFILTER::eligibleonly))
+            eligibilityFilter = true;
+		else if (MNFILTER.IsCmd(RPC_CMD_MNFILTER::noteligible))
+			eligibilityFilter = false;
+    }
+
+    const auto &consensusParams = Params().GetConsensus();
+    uint32_t nNewBlockHeight = 0;
+    uint64_t nMiningEnabledCount = 0;
+    const auto vMnEligibility = gl_pMiningEligibilityManager->GetMnEligibilityInfo(nMiningEnabledCount, nNewBlockHeight, eligibilityFilter);
+
+    UniValue obj(UniValue::VOBJ);
+    obj.pushKV("height", static_cast<uint64_t>(nNewBlockHeight));
+    obj.pushKV("miningEnabledCount", nMiningEnabledCount);
+    const uint64_t nMnEligibilityThreshold = CMiningEligibilityManager::GetMnEligibilityThreshold(nMiningEnabledCount);
+    obj.pushKV("blocksChecked", nMnEligibilityThreshold);
+
+    UniValue nodes(UniValue::VARR);
+    nodes.reserve(vMnEligibility.size());
+    for (const auto& mnEligibility : vMnEligibility)
+    {
+		UniValue node(UniValue::VOBJ);
+		node.pushKV("mnid", mnEligibility.sMnId);
+		node.pushKV("eligible", mnEligibility.bEligibleForMining);
+		node.pushKV("collateralid", mnEligibility.sCollateralId);
+		node.pushKV("mnstate", MasternodeStateToString(mnEligibility.mnstate));
+		node.pushKV("minedBlocks", static_cast<uint64_t>(mnEligibility.nMinedBlockCount));
+        node.pushKV("lastMinedBlockHeight", mnEligibility.nLastMinedBlockHeight);
+        if (mnEligibility.nLastMinedBlockHeight >= 0)
+        {
+            node.pushKV("lastMinedBlockHash", mnEligibility.lastMinedBlockHash.GetHex());
+            node.pushKV("blocksSinceLastSigned", static_cast<uint64_t>(nNewBlockHeight - mnEligibility.nLastMinedBlockHeight - 1));
+        }
+        if (!mnEligibility.bEligibleForMining)
+            node.pushKV("blocksUntilEligibilityRestored", static_cast<uint64_t>(nMnEligibilityThreshold - mnEligibility.nMinedBlockCount));
+		nodes.push_back(move(node));
+	}
+    obj.pushKV("nodes", move(nodes));
+    return obj;
+}
+
 UniValue getmininginfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -381,15 +469,16 @@ Result:
   "blocks": nnn,             (numeric) The current block
   "currentblocksize": nnn,   (numeric) The last block size
   "currentblocktx": nnn,     (numeric) The last block transaction
-  "difficulty": xxx.xxxxx    (numeric) The current difficulty
-  "errors": "..."            (string) Current errors
-  "generate": true|false     (boolean) If the generation is on or off (see getgenerate or setgenerate calls)
-  "genproclimit": n          (numeric) The processor limit for generation. -1 if no generation. (see getgenerate or setgenerate calls)
-  "localsolps": xxx.xxxxx    (numeric) The average local solution rate in Sol/s since this node was started
-  "networksolps": x          (numeric) The estimated network solution rate in Sol/s
-  "pooledtx": n              (numeric) The size of the mem pool
-  "testnet": true|false      (boolean) If using testnet or not
-  "chain": "xxxx",          (string) current network name as defined in BIP70 (main, test, regtest)
+  "difficulty": xxx.xxxxx,   (numeric) The current difficulty
+  "errors": "...",           (string) Current errors
+  "generate": true|false,    (boolean) If the generation is on or off (see getgenerate or setgenerate calls)
+  "genproclimit": n,         (numeric) The processor limit for generation. -1 if no generation. (see getgenerate or setgenerate calls)
+  "localsolps": xxx.xxxxx,   (numeric) The average local solution rate in Sol/s since this node was started
+  "networksolps": x,         (numeric) The estimated network solution rate in Sol/s
+  "pooledtx": n,             (numeric) The size of the mem pool
+  "testnet": true|false,     (boolean) If using testnet or not
+  "chain": "xxxx",           (string) current network name as defined in BIP70 (main, test, regtest)
+  "eligibleForMining": true|false, (boolean) If the masternode is eligible to mine using its mnid
 }
 
 Examples:
@@ -408,15 +497,164 @@ Examples:
     obj.pushKV("genproclimit",     (int)GetArg("-genproclimit", -1));
     obj.pushKV("localsolps"  ,     getlocalsolps(params, false));
     obj.pushKV("networksolps",     getnetworksolps(params, false));
-    obj.pushKV("networkhashps", getnetworksolps(params, false));
+    obj.pushKV("networkhashps",    getnetworksolps(params, false));
     obj.pushKV("testnet",          Params().TestnetToBeDeprecatedFieldRPC());
     obj.pushKV("chain",            Params().NetworkIDString());
 #ifdef ENABLE_MINING
+    obj.pushKV("eligibleForMining", gl_MiningSettings.isEligibleForMining());
+    obj.pushKV("eligibleToMineNextBlock", gl_bEligibleForMiningNextBlock.load());
     obj.pushKV("generate",         getgenerate(params, false));
 #endif
     return obj;
 }
 
+UniValue getblockmininginfo(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.empty() || params.size() > 2)
+        throw runtime_error(
+R"(getblockmininginfo "block_hash|block_height" (block_count)
+Returns information about blocks mined and signed by masternodes.
+
+Arguments:
+1. "block_hash|block_height"   (string or numeric, required) The block hash or height to start from
+2. block_count                 (numeric, optional, default=1) The number of blocks to return backwards
+
+Result:
+[
+    {
+        "blockhash": "xxxx",     (string) The block hash
+		"height": n,             (numeric) The block height
+		"mnid": "xxxx",          (string) The masternode id that mined the block
+		"collateralid": "xxxx",  (string) The masternode collateral id (txid-vout)
+    },
+	...
+]
+
+Examples:
+)" + HelpExampleCli("getblockmininginfo", "1000 10")
+   + HelpExampleRpc("getblockmininginfo", "1000 10"));
+
+    auto block_id = rpc_get_block_hash_or_height(params[0]);
+
+    uint32_t nBlockCount = 1;
+    if (params.size() > 1)
+    {
+        int64_t nParamValue = get_long_number(params[1]);
+        rpc_check_unsigned_param<uint32_t>("block_count", nParamValue);
+        nBlockCount = static_cast<uint32_t>(nParamValue);
+    }
+
+    uint256 hashBlock;
+    LOCK(cs_main);
+    if (holds_alternative<uint32_t>(block_id))
+    {
+		uint32_t nBlockHeight = get<uint32_t>(block_id);
+        uint32_t nCurrentHeight = gl_nChainHeight;
+        // chain length could have changed since the block_id was parsed
+		if (nBlockHeight > nCurrentHeight)
+			throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Block height %u out of range [0..%u]", nBlockHeight, nCurrentHeight));
+		hashBlock = chainActive[nBlockHeight]->GetBlockHash();
+	}
+    else
+		hashBlock = get<uint256>(block_id);
+
+    // find the last block and iterate backwards
+    auto it = mapBlockIndex.find(hashBlock);
+    if (it == mapBlockIndex.end())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Starting block %s not found in index", hashBlock.ToString()));
+
+    CBlockIndex* pBlockIndex = it->second;
+
+    UniValue retObj(UniValue::VARR);
+    retObj.reserve(nBlockCount);
+
+    size_t nCount = 0;
+    while (pBlockIndex && nCount++ < nBlockCount)
+    {
+		UniValue obj(UniValue::VOBJ);
+		obj.pushKV("blockhash", pBlockIndex->GetBlockHashString());
+		obj.pushKV("height", pBlockIndex->nHeight);
+        const auto mnid = pBlockIndex->sPastelID;
+        if (mnid.has_value())
+        {
+            obj.pushKV("mnid", mnid.value());
+            masternode_info_t mnInfo;
+            if (masterNodeCtrl.masternodeManager.GetAndCacheMasternodeInfo(mnid.value(), mnInfo))
+                obj.pushKV("collateralid", mnInfo.GetDesc());
+        }
+		retObj.push_back(move(obj));
+
+		pBlockIndex = pBlockIndex->pprev;
+    }
+    return retObj;
+}
+
+UniValue getblocksignature(const UniValue& params, bool fHelp)
+{
+    if (fHelp || !params.empty())
+        throw runtime_error(
+R"(getblocksignature
+Returns merkle root signature for the current active blockchain tip block.
+Works only for masternode enabled for mining (-genenablemnmining option).
+
+Result:
+{
+    "pastelid": "xxxx",    (string) The masternode id (mnid)
+	"signature": "xxxx",   (string) The chain tip merkle root signature
+    "utc_timestamp": n,    (numeric) The UTC timestamp of the signature
+    "blockhash": "xxxx",   (string) The chain tip block hash
+    "height": n,           (numeric) The chain tip block height
+}
+
+Examples:
+)" + HelpExampleCli("getblocksignature", "")
+   + HelpExampleRpc("getblocksignature", ""));
+
+    if (!masterNodeCtrl.IsActiveMasterNode())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "This is not an active masternode");
+
+    if (!gl_MiningSettings.isEligibleForMining())
+		throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not eligible for mining");
+
+    if (!masterNodeCtrl.IsSynced())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not synced");
+
+	LOCK(cs_main);
+	const CBlockIndex* pChainTip = chainActive.Tip();
+    if (!pChainTip)
+		throw JSONRPCError(RPC_INTERNAL_ERROR, "No active chain tip block found");
+
+    const string sGenId = gl_MiningSettings.getGenId();
+    if (sGenId.empty())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "masternode mnid configuration for mining not found (-genpastelid option)");
+
+    masternode_info_t mnInfo;
+    if (!masterNodeCtrl.masternodeManager.GetAndCacheMasternodeInfo(sGenId, mnInfo))
+		throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("masternode info not found by mnid '%s'", sGenId));
+
+    if (mnInfo.getOutPoint() != masterNodeCtrl.activeMasternode.outpoint)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("current masternode info does not match mnid '%s'", sGenId));
+
+    if (gl_pMiningEligibilityManager && !gl_pMiningEligibilityManager->IsCurrentMnEligibleForBlockReward(pChainTip))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not eligible for mining next block");
+
+    SecureString sPassPhrase;
+    if (!gl_MiningSettings.getGenIdInfo(sGenId, sPassPhrase))
+    {
+		LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sGenId);
+		throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'", sGenId));
+	}
+    string sMerkleRoot(pChainTip->hashMerkleRoot.cbegin(), pChainTip->hashMerkleRoot.cend());
+    string sMerkelRootSignature = CPastelID::Sign(sMerkleRoot, sGenId, move(sPassPhrase));
+
+	UniValue obj(UniValue::VOBJ);
+	obj.pushKV("pastelid", sGenId);
+    obj.pushKV("signature", HexStr(string_to_vector(sMerkelRootSignature)));
+	obj.pushKV("utc_timestamp", static_cast<uint64_t>(GetTime()));
+	obj.pushKV("blockhash", pChainTip->GetBlockHashString());
+	obj.pushKV("height", pChainTip->nHeight);
+	return obj;
+}
 
 // NOTE: Unlike wallet RPC (which use BTC values), mining RPCs follow GBT (BIP 22) in using patoshi amounts
 UniValue prioritisetransaction(const UniValue& params, bool fHelp)
@@ -1075,21 +1313,24 @@ Examples:
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
+    { "mining",             "getblocktemplate",       &getblocktemplate,       true  },
+    { "mining",             "getblocksubsidy",        &getblocksubsidy,        true  },
+    { "mining",             "getblockmininginfo",     &getblockmininginfo,     true  },
     { "mining",             "getlocalsolps",          &getlocalsolps,          true  },
     { "mining",             "getnetworksolps",        &getnetworksolps,        true  },
     { "mining",             "getnetworkhashps",       &getnetworkhashps,       true  },
-    { "mining",             "getmininginfo",          &getmininginfo,          true  },
-    { "mining",             "prioritisetransaction",  &prioritisetransaction,  true  },
-    { "mining",             "getblocktemplate",       &getblocktemplate,       true  },
-    { "mining",             "submitblock",            &submitblock,            true  },
-    { "mining",             "getblocksubsidy",        &getblocksubsidy,        true  },
     { "mining",             "getnextblocksubsidy",    &getnextblocksubsidy,    true  },
+    { "mining",             "getmininginfo",          &getmininginfo,          true  },
+    { "mining",             "getminingeligibility",   &getminingeligibility,   true  },
+    { "mining",             "prioritisetransaction",  &prioritisetransaction,  true  },
+    { "mining",             "refreshminingmnidinfo",  &refresh_mining_mnid_info, true  },
+    { "mining",             "submitblock",            &submitblock,            true  },
+    { "mining",             "getblocksignature",      &getblocksignature,      true  },
 
 #ifdef ENABLE_MINING
     { "generating",         "getgenerate",            &getgenerate,            true  },
     { "generating",         "setgenerate",            &setgenerate,            true  },
     { "generating",         "generate",               &generate,               true  },
-    { "generating",         "refreshminingmnidinfo", &refresh_mining_mnid_info, true  },
 #endif
 
     { "util",               "estimatefee",            &estimatefee,            true  },

@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -20,7 +20,7 @@ inline constexpr int INIT_PROTO_VERSION = 209;
 inline constexpr int GETHEADERS_VERSION = 31800;
 
 //! disconnect from peers older than this proto version
-inline constexpr int MIN_PEER_PROTO_VERSION = 170008;
+inline constexpr int MIN_PEER_PROTO_VERSION = 170010;
 
 //! nTime field added to CAddress, starting with this version;
 //! if possible, avoid requesting addresses nodes older than this

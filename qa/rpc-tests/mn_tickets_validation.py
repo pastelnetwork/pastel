@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import json
@@ -85,6 +85,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         self.fake_transfer_tnx_tests()
         self.fake_offer_tnx_tests2()
 
+
     def fake_pastelid_tnx_tests(self):
         print("== Pastelid ticket transaction validation test ==")
 
@@ -118,6 +119,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 self.nodes[0].sendrawtransaction, t)
 
         print("== Pastelid ticket transaction validation tested ==")
+
 
     def fake_nftreg_tnx_tests(self):
         print("== NFT Registration ticket transaction validation test ==")
@@ -238,15 +240,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                                                             str(self.creator_ticket_height), str(self.storage_fee), "1", "0")
         }
 
-        for n, t in tickets.items():
+        for test_desc, t in tickets.items():
             try:
+                print(f'Processing fake nft-reg ticket [{test_desc}]')
                 self.nodes[0].sendrawtransaction(t)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
-                print(n + ": " + self.errorString)
+                print(f'{test_desc}: {self.errorString}')
+                if 'messageDetails' in e.error:
+                    print(f"{test_desc}: {e.error['messageDetails']}")
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
 
         print("== NFT Registration ticket transaction validation tested ==")
+
 
     def fake_nftact_tnx_tests(self):
         print("== NFT Registration Activation ticket transaction validation test ==")
@@ -326,15 +332,19 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 ),
         }
 
-        for n, t in tickets.items():
+        for test_desс, t in tickets.items():
             try:
+                print(f'Processing fake nft-act ticket [{test_desс}]')
                 self.nodes[0].sendrawtransaction(t)
             except JSONRPCException as e:
                 self.errorString = e.error['message']
-                print(n + ": " + self.errorString)
+                print(f'{test_desс}: {self.errorString}')
+                if 'messageDetails' in e.error:
+                    print(f"{test_desс}: {e.error['messageDetails']}")
             assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
 
         print("== NFT Registration Activation ticket transaction validation tested ==")
+
 
     def fake_offer_tnx_tests1(self):
         print("== Offer ticket transaction validation test (for activation ticket) ==")

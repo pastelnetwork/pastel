@@ -152,6 +152,11 @@ function get_time()
 #    $2: time_start
 function difftime()
 {
+	if [[ ! $1 =~ ^[0-9]+\.[0-9]+$ ]] || [[ ! $2 =~ ^[0-9]+\.[0-9]+$ ]]; then
+		echo "Invalid input"
+		return 1
+	fi
+
 	local secs=$(($((10#${1%.*})) - $((10#${2%.*}))))
 	local nsecs=$(($((10#${1#*.})) - $((10#${nsecs_t2%%0}))))
 	if (( $nsecs < 0 )); then

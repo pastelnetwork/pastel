@@ -16,11 +16,13 @@
 #include <json/json.hpp>
 
 #include <utils/util.h>
+#include <utils/str_utils.h>
 #include <addrman.h>
 #include <script/standard.h>
 #include <main.h>
 #include <net.h>
 #include <timedata.h>
+#include <mining/mining-settings.h>
 #include <netmsg/nodemanager.h>
 #include <mnode/mnode-active.h>
 #include <mnode/mnode-sync.h>
@@ -31,9 +33,6 @@
 
 using namespace std;
 using json = nlohmann::json;
-
-const string CMasternodeMan::SERIALIZATION_VERSION_STRING_PREV = "CMasternodeMan-Version-7";
-const string CMasternodeMan::SERIALIZATION_VERSION_STRING = "CMasternodeMan-Version-8";
 
 constexpr auto ERRMSG_MNLIST_NOT_SYNCED = "Masternode list is not synced";
 constexpr auto ERRMSG_MNLIST_EMPTY = "Masternode list is empty";
@@ -71,6 +70,12 @@ CMasternodeMan::CMasternodeMan() :
     nLastWatchdogVoteTime(0)
 {}
 
+/**
+ * Add new masternode to the list.
+ * 
+ * \param pmn - masternode to add
+ * \return true if masternode was added, false otherwise
+ */
 bool CMasternodeMan::Add(masternode_t &pmn)
 {
     if (!pmn)
@@ -117,7 +122,8 @@ void CMasternodeMan::AskForMN(const node_t& pnode, const COutPoint& outpoint)
 bool CMasternodeMan::PoSeBan(const COutPoint &outpoint)
 {
     LOCK(cs_mnMgr);
-    auto pmn = Find(outpoint);
+
+    auto pmn = Get(SKIP_LOCK, outpoint);
     if (!pmn)
         return false;
 
@@ -133,6 +139,11 @@ void CMasternodeMan::Check(const bool bLockMgr)
     if (nLastWatchdogVoteTime)
         LogFnPrint("masternode", "nLastWatchdogVoteTime=%" PRId64 ", IsWatchdogActive()=%d", nLastWatchdogVoteTime, IsWatchdogActive());
 
+    if (m_nLastMasternodeCount != size())
+    {
+		LogFnPrint("masternode", "Number of masternodes has changed: [%zu] -> [%zu]", m_nLastMasternodeCount, size());
+		m_nLastMasternodeCount = size();
+	}
     for (auto& [outpoint, pmn] : mapMasternodes)
     {
         if (pmn)
@@ -141,8 +152,9 @@ void CMasternodeMan::Check(const bool bLockMgr)
 }
 
 template<typename _MapType, typename _Predicate>
-void mapEraseIf(_MapType& mapContainer, _Predicate pred)
+void mapEraseIf(const char *szMapDesc, _MapType& mapContainer, _Predicate pred)
 {
+    const size_t nPrevSize = mapContainer.size();
     for (auto iter = mapContainer.begin(), end = mapContainer.end(); iter != end;)
     {
         if (pred(*iter))
@@ -150,24 +162,30 @@ void mapEraseIf(_MapType& mapContainer, _Predicate pred)
         else
             ++iter;
     }
+    const size_t nNewSize = mapContainer.size();
+    if (nPrevSize != nNewSize)
+		LogPrintf("Removed %zu entries from %s. New size: %zu\n", nPrevSize - nNewSize, szMapDesc, nNewSize);
 }
 
-void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
+/**
+ * Check and remove expired masternodes.
+ * Recover masternodes in NEW_START_REQUIRED state or masternodes with partial info (v1 only).
+ * Process recovery replies.
+ */
+void CMasternodeMan::CheckAndRemove()
 {
-    if (!bCheckAndRemove)
-        return;
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
         return;
 
     {
-        // Need LOCK2 here to ensure consistent locking order because code below locks cs_main
-        // in CheckMnbAndUpdateMasternodeList()
+        // Need LOCK2 here to ensure consistent locking order
         LOCK2(cs_main, cs_mnMgr);
 
         Check(SKIP_LOCK);
 
         // Remove spent masternodes, prepare structures and make requests to reasure the state of inactive ones
-        rank_pair_vec_t vecMasternodeRanks;
+        map<COutPoint, masternode_t> mapRecoveryMasternodes;
+        
         // ask for up to MNB_RECOVERY_MAX_ASK_ENTRIES (10) masternode entries at a time
         int nAskForMnbRecovery = MNB_RECOVERY_MAX_ASK_ENTRIES;
         auto itMN = mapMasternodes.begin();
@@ -176,174 +194,252 @@ void CMasternodeMan::CheckAndRemove(bool bCheckAndRemove)
             auto pmn = itMN->second;
             if (!pmn)
                 continue;
-            CMasternodeBroadcast mnb(*pmn);
-            uint256 hash = mnb.GetHash();
-            COutPoint outpoint = itMN->first;
-            // If collateral was spent ...
+            const auto hash = pmn->GetHash();
+            const auto outpoint = itMN->first;
+            // If collateral was spent ...remove this masternode right away from all maps
             if (pmn->IsOutpointSpent())
             {
-                LogFnPrint("masternode", "Removing masternode %s, %s, addr=%s, %i now", pmn->GetDesc(), pmn->GetStateString(), pmn->get_address(), size() - 1);
+                LogFnPrint("masternode", "Removing Masternode '%s', %s, addr=%s, %i now", 
+                    pmn->GetDesc(), pmn->GetStateString(), pmn->get_address(), size() - 1);
 
-                // erase all of the broadcasts we've seen from this txin, ...
-                mapSeenMasternodeBroadcast.erase(hash);
+                // erase all of the broadcasts we've seen from this MN, ...
+                EraseSeenMnb(hash);
                 mWeAskedForMasternodeListEntry.erase(outpoint);
 
-                // and finally remove it from the list
+                // make sure we don't have this masternode in mapRecoveryMasternodes
+                mapRecoveryMasternodes.erase(outpoint);
+
+                // and finally remove it from the masternode list
                 itMN = mapMasternodes.erase(itMN);
-            } else {
-                // ask for the masternode recovery if:
-                //  - MN's outpoint is not spent
-                //  - MN is in NEW_START_REQUIRED state
-                //  - MNsynced flag is set
-                //  - we haven't asked for recovery yet
-                const bool fAskForMnbRecovery = (nAskForMnbRecovery > 0) &&
-                            masterNodeCtrl.masternodeSync.IsSynced() &&
-                            pmn->IsNewStartRequired() &&
-                            !IsMnbRecoveryRequested(hash);
-                if (fAskForMnbRecovery)
-                {
-                    LogFnPrint("masternode", "Asking for masternode %s recovery: %s  addr=%s", pmn->GetDesc(), pmn->GetStateString(), pmn->get_address());
-                    // this mn is in a non-recoverable state and we haven't asked other nodes yet
-                    set<CNetAddr> setRecoveryRequested;
-                    // calculate only once and only when MN's needed
-                    if (vecMasternodeRanks.empty())
-                    {
-                        int nRandomBlockHeight = GetRandInt(nCachedBlockHeight);
-                        string error;
-                        GetMasternodeRanks(error, vecMasternodeRanks, nRandomBlockHeight);
-                        if (vecMasternodeRanks.empty())
-                            LogFnPrint("WARNING: could not get masternode ranks for height=%u", nCachedBlockHeight.load());
-                    }
-                    bool fAskedForMnbRecovery = false;
-                    // ask first MNB_RECOVERY_QUORUM_TOTAL (10) masternodes we can connect to and we haven't asked recently
-                    for (const auto& [rank, pmnRanked] : vecMasternodeRanks)
-                    {
-                        if (setRecoveryRequested.size() >= MNB_RECOVERY_QUORUM_TOTAL)
-                            break;
-                        if (!pmnRanked)
-							continue;
-
-                        CService addr = pmnRanked->get_addr();
-                        const auto it = mWeAskedForMasternodeListEntry.find(outpoint);
-                        // avoid banning
-                        if (it != mWeAskedForMasternodeListEntry.cend() && it->second.count(addr))
-                            continue;
-
-                        // didn't ask recently, ok to ask now
-                        setRecoveryRequested.insert(addr);
-                        listScheduledMnbRequestConnections.emplace_back(addr, hash);
-                        fAskedForMnbRecovery = true;
-                    }
-                    if (fAskedForMnbRecovery)
-                    {
-                        LogFnPrint("masternode", "Recovery initiated for masternode %s in %s state", pmn->GetDesc(), pmn->GetStateString());
-                        nAskForMnbRecovery--;
-                    }
-                    // wait for mnb recovery replies for MNB_RECOVERY_WAIT_SECONDS seconds (1 min)
-                    mMnbRecoveryRequests[hash] = make_pair(GetTime() + MNB_RECOVERY_WAIT_SECONDS, setRecoveryRequested);
-                }
-                ++itMN;
+                continue;
             }
+
+            // ask for the masternode recovery if:
+            //  - MN's outpoint is not spent
+            //  - MN is in NEW_START_REQUIRED state
+            //  - MNsynced flag is set
+            //  - we haven't asked for recovery yet
+            const bool bHasPartialMNInfo = pmn->hasPartialInfo();
+            const bool fAskForMnbRecovery = (nAskForMnbRecovery > 0) &&
+                        masterNodeCtrl.masternodeSync.IsSynced() &&
+                        (pmn->IsNewStartRequired() || bHasPartialMNInfo)&&
+                        !IsMnbRecoveryRequested(hash);
+            if (fAskForMnbRecovery)
+            {
+                LogFnPrint("masternode", "Asking for masternode recovery [%s]: %s%s  addr=%s", 
+                    pmn->GetDesc(), pmn->GetStateString(), bHasPartialMNInfo ? " (has partial info)" : "", pmn->get_address());
+                // this mn is in a non-recoverable state and we haven't asked other nodes yet
+                set<CNetAddr> setRecoveryRequested;
+
+                PopulateMasternodeRecoveryList(mapRecoveryMasternodes);
+
+                // ask first MNB_RECOVERY_QUORUM_TOTAL (10) recovery masternodes we can connect to and we haven't asked recently
+                for (const auto& [outpointMN, pmnRecovery] : mapRecoveryMasternodes)
+                {
+                    if (setRecoveryRequested.size() >= MNB_RECOVERY_QUORUM_TOTAL)
+                    {
+                        LogFnPrint("masternode", "Asked for recovery from %zu masternodes, stopping", setRecoveryRequested.size());
+                        break;
+                    }
+                    if (!pmnRecovery)
+						continue;
+
+                    CService addr = pmnRecovery->get_addr();
+                    const auto it = mWeAskedForMasternodeListEntry.find(outpoint);
+                    // avoid banning, don't ask the same node for the same masternode entry too often
+                    if (it != mWeAskedForMasternodeListEntry.cend() && it->second.count(addr))
+                    {
+                        LogFnPrint("masternode", "We already asked %s for masternode entry %s, skipping...", 
+                            							addr.ToString(), outpoint.ToStringShort());
+                        continue;
+                    }
+
+                    // didn't ask recently, ok to ask now
+                    setRecoveryRequested.insert(addr);
+                    LogFnPrint("masternode", "Asking %s for masternode entry %s", addr.ToString(), outpoint.ToStringShort());
+                    listScheduledMnbRequestConnections.emplace_back(addr, hash);
+                }
+                if (setRecoveryRequested.size() > 0)
+                {
+                    LogFnPrint("Recovery initiated for Masternode '%s' in %s state%s (using %zu MN addresses)",
+                        pmn->GetDesc(), pmn->GetStateString(), bHasPartialMNInfo ? ", has partial info" : "", setRecoveryRequested.size());
+                    --nAskForMnbRecovery;
+                }
+                // wait for mnb recovery replies for MNB_RECOVERY_WAIT_SECONDS seconds (1 min)
+                m_mapMnRecoveryRequests[hash] = make_pair(GetTime() + MNB_RECOVERY_WAIT_SECONDS, move(setRecoveryRequested));
+            }
+            ++itMN;
         }
 
-        // process recovery replies for masternodes in NEW_STARTED_REQUIRED state
-        LogFnPrint("masternode", "mMnbRecoveryGoodReplies size=%zu", mMnbRecoveryGoodReplies.size());
-        auto itMnbReplies = mMnbRecoveryGoodReplies.begin();
-        while (itMnbReplies != mMnbRecoveryGoodReplies.end())
+        // process recovery replies for masternodes in NEW_STARTED_REQUIRED state or for the MNs with partial info
+        LogFnPrint("masternode", "MnRecoveryGoodReplies size=%zu", m_mapMnRecoveryGoodReplies.size());
+        auto itMnbReplies = m_mapMnRecoveryGoodReplies.begin();
+        while (itMnbReplies != m_mapMnRecoveryGoodReplies.end())
         {
-            if (mMnbRecoveryRequests[itMnbReplies->first].first < GetTime())
+            if (m_mapMnRecoveryRequests[itMnbReplies->first].first < GetTime())
             {
-                // all nodes we asked should have replied now
+                // all nodes we asked should have replied by now
                 if (itMnbReplies->second.size() >= MNB_RECOVERY_QUORUM_REQUIRED)
                 {
-                    // majority of nodes we asked agrees that this mn doesn't require new mnb, reprocess one of new mnbs
-                    LogFnPrint("masternode", "reprocessing mnb, masternode=%s", itMnbReplies->second[0].GetDesc());
-                    // mapSeenMasternodeBroadcast.erase(itMnbReplies->first);
+                    // majority of nodes we asked agrees that this mn doesn't require new mnb, reprocess mnb with the best ping
+                    auto& mnb = itMnbReplies->second[0];
+                    LogFnPrint("masternode", "reprocessing mnb for masternode='%s', recovery replies collected: %zu",
+                        mnb.GetDesc(), itMnbReplies->second.size());
+                    
                     int nDos;
-                    itMnbReplies->second[0].fRecovery = true;
-                    CheckMnbAndUpdateMasternodeList(nullptr, itMnbReplies->second[0], nDos);
+                    mnb.fRecovery = true;
+                    CheckMnbAndUpdateMasternodeList(SKIP_LOCK, SKIP_LOCK, nullptr, mnb, nDos);
                 }
-                LogFnPrint("masternode", "Removing mnb recovery reply, masternode=%s, size=%zu",
+                LogFnPrint("masternode", "Removing mnb recovery reply, masternode='%s', size=%zu",
                     itMnbReplies->second[0].GetDesc(), itMnbReplies->second.size());
-                itMnbReplies = mMnbRecoveryGoodReplies.erase(itMnbReplies);
+                itMnbReplies = m_mapMnRecoveryGoodReplies.erase(itMnbReplies);
             } else
                 ++itMnbReplies;
         }
     }
+
+    CleanupMaps();
+}
+
+/**
+ * Cleanup cache maps - called from CheckAndRemove.
+ */
+void CMasternodeMan::CleanupMaps()
+{
+    LOCK2(cs_main, cs_mnMgr);
+
+    const int64_t nNow = GetTime();
+
+    mapEraseIf("masternode recovery map", m_mapMnRecoveryRequests, [&](const auto& pair)
     {
-        LOCK2(cs_main, cs_mnMgr);
+        // Allow this mnb to be verified again after MNB_RECOVERY_RETRY_SECONDS seconds
+        // if MN is still in NEW_STARTED_REQUIRED state.
+        const int64_t nMnbRecoveryRequestAgeSecs = nNow - pair.second.first;
+        const bool bToRemove = nMnbRecoveryRequestAgeSecs > MNB_RECOVERY_RETRY_SECONDS;
+        if (bToRemove)
+			LogPrint("masternode", "Removing expired MN recovery request (%" PRId64 " secs old), masternode=%s\n",
+                nMnbRecoveryRequestAgeSecs, pair.first.ToString());
+        return bToRemove;
+    });
 
-        const int64_t nNow = GetTime();
+    // validate map with peers that asked us for the Masternode list - remove expired entries
+    // expiration time was set to current + DSEG_UPDATE_SECONDS (3hrs)
+    mapEraseIf("AskedUsForMasternode map", mAskedUsForMasternodeList, [&](const auto& pair)
+    {
+        return pair.second < nNow;
+    });
 
-        mapEraseIf(mMnbRecoveryRequests, [&](const auto& pair)
+    // validate map with peers that we asked for the Masternode list - removed expired entries
+    // expiration time was set to current + DSEG_UPDATE_SECONDS (3hrs)
+    mapEraseIf("WeAskedForMasterNode map", mWeAskedForMasternodeList, [&](const auto& pair)
+    {
+        return pair.second < nNow;
+    });
+
+    // check which Masternodes we've asked for
+    // expiration time was set to current + DSEG_UPDATE_SECONDS (3hrs)
+    mapEraseIf("WeAskedForMasternodeEntry map", mWeAskedForMasternodeListEntry, [&](auto& pair)
+    {
+        string sMapDesc = strprintf("WeAskedForMasternodeEntry %s address map", pair.first.ToString());
+        mapEraseIf("", pair.second, [&](const auto& mnAddrPair)
         {
-            // Allow this mnb to be verified again after MNB_RECOVERY_RETRY_SECONDS seconds
-            // if MN is still in NEW_STARTED_REQUIRED state.
-            const int64_t nMnbRecoveryRequestAgeSecs = nNow - pair.second.first;
-            const bool bToRemove = nMnbRecoveryRequestAgeSecs > MNB_RECOVERY_RETRY_SECONDS;
-            if (bToRemove)
-				LogPrint("masternode", "Removing expired mnb recovery request (%" PRId64 " secs old), masternode=%s\n", 
-                    nMnbRecoveryRequestAgeSecs, pair.first.ToString());
-            return bToRemove;
+            return mnAddrPair.second < nNow;
         });
+        return pair.second.empty();
+    });
 
-        // validate map with peers that asked us for the Masternode list - remove expired entries
-        // expiration time was set to current + DSEG_UPDATE_SECONDS (3hrs)
-        mapEraseIf(mAskedUsForMasternodeList, [&](const auto& pair)
-        {
-            return pair.second < nNow;
-        });
+    mapEraseIf("WeAskedForVerification map", mWeAskedForVerification, [&](const auto& pair)
+    {
+        return pair.second.nBlockHeight < nCachedBlockHeight - MAX_POSE_BLOCKS;
+    });
 
-        // validate map with peers that we asked for the Masternode list - removed expired entries
-        // expiration time was set to current + DSEG_UPDATE_SECONDS (3hrs)
-        mapEraseIf(mWeAskedForMasternodeList, [&](const auto& pair)
-        {
-            return pair.second < nNow;
-        });
+    // NOTE: do not expire mapSeenMasternodeBroadcast entries here, clean them on mnb updates!
 
-        // check which Masternodes we've asked for
-        // expiration time was set to current + DSEG_UPDATE_SECONDS (3hrs)
-        mapEraseIf(mWeAskedForMasternodeListEntry, [&](auto& pair)
+    // remove expired mapSeenMasternodePing
+    mapEraseIf("SeenMasternodePing map", mapSeenMasternodePing, [&](const auto& pair)
+    {
+        const auto& mnp = pair.second;
+        const bool bIsExpired = mnp.IsExpired();
+        if (bIsExpired)
+            LogPrint("masternode", "Removing expired mnp [%s]  (%" PRId64 " secs old) : hash=%s\n",
+                mnp.GetDesc(), mnp.getAgeInSecs(), mnp.GetHash().ToString());
+        return bIsExpired;
+    });
+
+    // remove expired mapSeenMasternodeVerification
+    mapEraseIf("SeenMasternodeVerification map", mapSeenMasternodeVerification, [&](const auto& pair)
+    {
+        const auto &mnv = pair.second;
+        const uint32_t nAgeInBlocks = nCachedBlockHeight >= mnv.nBlockHeight ?  nCachedBlockHeight - mnv.nBlockHeight : 0;
+        const bool bIsExpired = nAgeInBlocks > MAX_POSE_BLOCKS;
+        if (bIsExpired)
+            LogPrint("masternode", "Removing expired Masternode verification (%u blocks old): hash=%s\n",
+                nAgeInBlocks, pair.first.ToString());
+        return bIsExpired;
+    });
+
+    LogFnPrintf("%s", ToString());
+}
+
+/**
+ * Populate list of masternodes that will be used to send recovery requests to.
+ * 
+ * \param mapRecoveryMasternodes - map of masternodes to populate
+ */
+void CMasternodeMan::PopulateMasternodeRecoveryList(recovery_masternodes_t& mapRecoveryMasternodes) const
+{
+    size_t nMapRecoveryMasternodesSize = mapRecoveryMasternodes.size();
+
+    // calculate only once and only when MN's needed
+    if (mapRecoveryMasternodes.empty())
+    {
+        int nTryCount = 10;
+        while (--nTryCount && (mapRecoveryMasternodes.size() < MNB_RECOVERY_QUORUM_TOTAL * 2))
         {
-            mapEraseIf(pair.second, [&](const auto& mnAddrPair)
+            const int nRandomBlockHeight = (nCachedBlockHeight > MN_RECOVERY_LOOKBACK_BLOCKS) ? 
+                nCachedBlockHeight - GetRandUInt(MN_RECOVERY_LOOKBACK_BLOCKS) : nCachedBlockHeight.load();
+            string error;
+            rank_pair_vec_t vecCurrentMasternodeRanks;
+            GetMasternodeRanks(error, vecCurrentMasternodeRanks, nRandomBlockHeight);
+            if (vecCurrentMasternodeRanks.empty())
+                LogFnPrint("WARNING: could not get masternode ranks for height=%d. %s",
+                    nRandomBlockHeight, error);
+            else
             {
-                return mnAddrPair.second < nNow;
-            });
-            return pair.second.empty();
-        });
-
-        mapEraseIf(mWeAskedForVerification, [&](const auto& pair)
-        {
-            return pair.second.nBlockHeight < nCachedBlockHeight - MAX_POSE_BLOCKS;
-        });
-
-        // NOTE: do not expire mapSeenMasternodeBroadcast entries here, clean them on mnb updates!
-
-        // remove expired mapSeenMasternodePing
-        mapEraseIf(mapSeenMasternodePing, [&](const auto& pair)
-        {
-            const auto& mnp = pair.second;
-            const bool bIsExpired = mnp.IsExpired();
-            if (bIsExpired)
-                LogPrint("masternode", "Removing expired Masternode %s ping (%" PRId64 " secs old) : hash=%s\n",
-                    mnp.GetDesc(), mnp.getAgeInSecs(), mnp.GetHash().ToString());
-            return bIsExpired;
-        });
-
-        // remove expired mapSeenMasternodeVerification
-        mapEraseIf(mapSeenMasternodeVerification, [&](const auto& pair)
-        {
-            const auto &mnv = pair.second;
-            const uint32_t nAgeInBlocks = nCachedBlockHeight >= mnv.nBlockHeight ?  nCachedBlockHeight - mnv.nBlockHeight : 0;
-            const bool bIsExpired = nAgeInBlocks > MAX_POSE_BLOCKS;
-            if (bIsExpired)
-                LogPrint("masternode", "Removing expired Masternode verification (%u blocks old): hash=%s\n",
-                    nAgeInBlocks, pair.first.ToString());
-            return bIsExpired;
-        });
-
-        LogFnPrintf("%s", ToString());
+                for (const auto& [rank, pmnRanked] : vecCurrentMasternodeRanks)
+                {
+					if (!pmnRanked)
+						continue;
+                    if (pmnRanked->IsExpired() || pmnRanked->hasPartialInfo())
+                        continue;
+					const auto& outpointRanked = pmnRanked->getOutPoint();
+					if (mapRecoveryMasternodes.count(outpointRanked))
+						continue;
+					mapRecoveryMasternodes[outpointRanked] = pmnRanked;
+					if (mapRecoveryMasternodes.size() >= MNB_RECOVERY_QUORUM_TOTAL * 2)
+						break;
+				}
+            }
+        }
     }
+    // if we still didn't retrieve enough masternodes, add some enabled masternodes from the list 
+    if (mapRecoveryMasternodes.size() < MNB_RECOVERY_QUORUM_TOTAL * 2)
+    {
+        for (const auto& [outpoint, pmn] : mapMasternodes)
+        {
+			if (!pmn)
+				continue;
+			if (mapRecoveryMasternodes.size() >= MNB_RECOVERY_QUORUM_TOTAL * 2)
+				break;
+            if (!pmn->IsEnabled())
+                continue;
+            if (mapRecoveryMasternodes.count(outpoint))
+				continue;
+			mapRecoveryMasternodes.insert_or_assign(outpoint, pmn);
+		}
+    }
+    if (nMapRecoveryMasternodesSize != mapRecoveryMasternodes.size())
+        LogFnPrint("masternode", "Recovery Masternodes size=%zu", mapRecoveryMasternodes.size());
 }
 
 set<MNCacheItem> getAllMNCacheItems() noexcept
@@ -375,12 +471,12 @@ void CMasternodeMan::ClearCache(const std::set<MNCacheItem> &setCacheItems)
     }
     if (setCacheItems.count(MNCacheItem::RECOVERY_REQUESTS))
     {
-        mMnbRecoveryRequests.clear();
+        m_mapMnRecoveryRequests.clear();
         LogFnPrintf("Cleared Masternode recovery requests cache");
     }
     if (setCacheItems.count(MNCacheItem::RECOVERY_GOOD_REPLIES))
     {
-        mMnbRecoveryGoodReplies.clear();
+        m_mapMnRecoveryGoodReplies.clear();
         LogFnPrintf("Cleared Masternode recovery good replies cache");
     }
     if (setCacheItems.count(MNCacheItem::ASKED_US_FOR_MN_LIST))
@@ -478,7 +574,7 @@ size_t CMasternodeMan::CountEligibleForMining() const noexcept
 			return false;
         if (!pmn->IsEligibleForMining())
             return false;
-		if (!pmn->IsPingedWithin(SN_ELIGIBILITY_LAST_SEEN_TIME_SECS))
+		if (pmn->IsOutpointSpent() || pmn->IsUpdateRequired())
 			return false;
 		return true;
 	}, -1);
@@ -525,18 +621,10 @@ void CMasternodeMan::DsegUpdate(node_t& pnode)
     LogFnPrint("masternode", "asked %s for the list", pnode->addr.ToString());
 }
 
-masternode_t CMasternodeMan::Find(const COutPoint &outpoint)
-{
-    LOCK(cs_mnMgr);
-
-    auto it = mapMasternodes.find(outpoint);
-    return it == mapMasternodes.end() ? nullptr : it->second;
-}
-
-masternode_t CMasternodeMan::Get(const COutPoint& outpoint)
+masternode_t CMasternodeMan::Get(const bool bLockMgr, const COutPoint& outpoint)
 {
     // Theses mutexes are recursive so double locking by the same thread is safe.
-    LOCK(cs_mnMgr);
+    LOCK_COND(bLockMgr, cs_mnMgr);
 
     auto it = mapMasternodes.find(outpoint);
     if (it == mapMasternodes.end())
@@ -643,82 +731,13 @@ bool CMasternodeMan::HasPayee(const bool bLock, const CScript& payee) noexcept
 bool CMasternodeMan::IsTxHasMNOutputs(const CTransaction& tx) noexcept
 {
     LOCK(cs_mnMgr);
+
     for (const auto& txOut : tx.vout)
     {
 		if (HasPayee(false, txOut.scriptPubKey))
 			return true;
 	}
 	return false;
-}
-
-unordered_map<string, uint32_t> CMasternodeMan::GetLastMnIdsWithBlockReward(const CBlockIndex* pindex) noexcept
-{
-    const auto &consensusParams = Params().GetConsensus();
-    const size_t nEligibleForMiningMnCount = masterNodeCtrl.masternodeManager.CountEligibleForMining();
-    const size_t nMnEligibilityThreshold = static_cast<size_t>(round(nEligibleForMiningMnCount * consensusParams.nMiningEligibilityThreshold));
-
-    unordered_map<string, uint32_t> mapMnids;
-    mapMnids.reserve(nEligibleForMiningMnCount);
-    size_t nProcessed = 0;
-    auto pCurIndex = pindex;
-    while (pCurIndex && (nProcessed < nMnEligibilityThreshold))
-    {
-        if (pCurIndex->nStatus && BlockStatus::BLOCK_ACTIVATES_UPGRADE)
-            break;
-        if (pCurIndex->sPastelID.has_value())
-            mapMnids.emplace(pCurIndex->sPastelID.value(), static_cast<uint32_t>(pCurIndex->nHeight));
-        ++nProcessed;
-        pCurIndex = pCurIndex->pprev;
-    }
-    return mapMnids;
-}
-
-/**
- * Check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
- * to mine a new block and receive reward.
- * 
- * \param pindex - block index to start search from
- * \param sPastelID - Pastel ID of the MasterNode (mnid)
- * \param pnHeight - height of the block where MasterNode was found
- * 
- * \return true if MasterNode is eligible to mine a new block and receive reward
- */
-bool CMasternodeMan::IsMnEligibleForBlockReward(const CBlockIndex* pindex, const string& sPastelID,
-    uint32_t *pnHeight) noexcept
-{
-    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
-    const auto mnidIt = mapMnids.find(sPastelID);
-    if (mnidIt == mapMnids.cend())
-        return true;
-	if (pnHeight)
-        *pnHeight = mnidIt->second;
-    return false;   
-}
-
-/**
- * Find if any MasterNodes from the set are eligible to mine the new block.
- * Onle ENABLED MasterNodes that specify that they are eligible for mining can 
- * participate in the search.
- * Algorithm takes N last mined blocks (N is the number of eligible for search MasterNodes),
- * then uses threshold consensus parameter (N * consensusParams.nMiningEligibilityThreshold) 
- * to find MNs eligible for mining new block.
- *  
- * \param pindex - block index to start search from
- * \param setMnIds - set of Pastel IDs (mnids) to check
- * \return 
- */
-opt_string_t CMasternodeMan::FindMnEligibleForBlockReward(const CBlockIndex* pindex, const s_strings& setMnIds) noexcept
-{
-    // get all eligible masternodes for mining and their heights
-    const auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
-
-    for (const auto& sPastelID : setMnIds)
-    {
-		const auto mnidIt = mapMnids.find(sPastelID);
-		if (mnidIt == mapMnids.cend())
-			return make_optional<string>(sPastelID);
-	}
-    return nullopt;
 }
 
 //
@@ -738,7 +757,7 @@ bool CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight, bool f
         return false; // without winner list we can't reliably find the next winner anyway
 
     // Need LOCK2 here to ensure consistent locking order because the GetBlockHash call below locks cs_main
-    LOCK2(cs_main,cs_mnMgr);
+    LOCK2(cs_main, cs_mnMgr);
 
     // Make a vector with all of the last paid times
     std::vector<std::pair<int, masternode_t> > vecMasternodeLastPaid;
@@ -862,7 +881,8 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const v_outpoints &vecToExc
     return masternode_info_t();
 }
 
-bool CMasternodeMan::GetMasternodeScores(string &error, const uint256& blockHash, CMasternodeMan::score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol)
+bool CMasternodeMan::GetMasternodeScores(string &error, const uint256& blockHash, 
+    CMasternodeMan::score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol) const noexcept
 {
     vecMasternodeScoresRet.clear();
     if (!masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
@@ -913,7 +933,8 @@ bool CMasternodeMan::GetMasternodeRank(string &error, const COutPoint& outpoint,
         return false;
     }
 
-    LOCK(cs_mnMgr);
+    // ensure consistent locking order cs_main -> cs_mnMgr
+    LOCK2(cs_main, cs_mnMgr);
 
     score_pair_vec_t vecMasternodeScores;
     if (!GetMasternodeScores(error, blockHash, vecMasternodeScores, nMinProtocol))
@@ -945,7 +966,7 @@ bool CMasternodeMan::GetMasternodeRank(string &error, const COutPoint& outpoint,
  * \param nMinProtocol - minimum protocol version
  * \return GetTopMasterNodeStatus - status of the operation
  */
-GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMasternodeMan::rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight, int nMinProtocol)
+GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMasternodeMan::rank_pair_vec_t& vecMasternodeRanksRet, int nBlockHeight, int nMinProtocol) const
 {
     vecMasternodeRanksRet.clear();
     error.clear();
@@ -963,7 +984,7 @@ GetTopMasterNodeStatus CMasternodeMan::GetMasternodeRanks(string &error, CMaster
         return GetTopMasterNodeStatus::BLOCK_NOT_FOUND;
     }
 
-    LOCK(cs_mnMgr);
+    LOCK2(cs_main, cs_mnMgr);
 
     score_pair_vec_t vecMasternodeScores;
     if (!GetMasternodeScores(error, blockHash, vecMasternodeScores, nMinProtocol))
@@ -1012,38 +1033,35 @@ pair<CService, set<uint256> > CMasternodeMan::PopScheduledMnbRequestConnection()
     auto it = listScheduledMnbRequestConnections.begin();
     while (it != listScheduledMnbRequestConnections.end())
     {
-        if (pairFront.first == it->first)
+        if (pairFront.first != it->first)
         {
-            setResult.insert(it->second);
-            it = listScheduledMnbRequestConnections.erase(it);
-        } else
             // since list is sorted now, we can be sure that there is no more hashes left
             // to ask for from this addr
             break;
+        }
+        setResult.insert(it->second);
+        it = listScheduledMnbRequestConnections.erase(it);
     }
-    return make_pair(pairFront.first, setResult);
+    return make_pair(pairFront.first, move(setResult));
 }
-
 
 void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStream& vRecv)
 {
     if (strCommand == NetMsgType::MNANNOUNCE) // Masternode Broadcast (mnb)
     {
-
         CMasternodeBroadcast mnb;
         vRecv >> mnb;
 
         pfrom->setAskFor.erase(mnb.GetHash());
-
         if (!masterNodeCtrl.masternodeSync.IsBlockchainSynced())
             return;
 
-        LogFnPrint("masternode", "MNANNOUNCE -- Masternode announce (%s), masternode=%s, peer=%d",
-            strCommand, mnb.GetDesc(), pfrom->id);
+        LogFnPrint("masternode", "MNANNOUNCE -- Masternode announce (%s v%hd), hash='%s', masternode='%s', peer=%d",
+           strCommand, mnb.GetVersion(), mnb.GetHash().ToString(), mnb.GetDesc(), pfrom->id);
 
         int nDos = 0;
-        if (CheckMnbAndUpdateMasternodeList(pfrom, mnb, nDos))
-	{
+        if (CheckMnbAndUpdateMasternodeList(USE_LOCK, USE_LOCK, pfrom, mnb, nDos))
+	    {
             // use announced Masternode as a peer, time penalty 2hrs
             addrman.Add(CAddress(mnb.get_addr(), NODE_NETWORK), pfrom->addr, 2 * 60 * 60);
         } else if(nDos > 0)
@@ -1054,47 +1072,60 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
         CMasterNodePing mnp;
         vRecv >> mnp;
 
-        const uint256 nHash = mnp.GetHash();
-
-        pfrom->setAskFor.erase(nHash);
-
+        const uint256 hashPing = mnp.GetHash();
+        pfrom->setAskFor.erase(hashPing);
         if (!masterNodeCtrl.masternodeSync.IsBlockchainSynced())
             return;
 
-        LogFnPrint("masternode", "MNPING -- Masternode ping (%s), masternode=%s (%" PRId64 " secs old), peer=%d",
-            strCommand, mnp.GetDesc(), mnp.getAgeInSecs(), pfrom->id);
+        const bool bIsExpired = mnp.IsExpired(); // older than 180 mins (10800 secs)
+        LogFnPrint("masternode", "MNPING -- hash='%s', masternode='%s' (%" PRId64 " secs old%s), peer=%d",
+            hashPing.ToString(), mnp.GetDesc(), mnp.getAgeInSecs(), bIsExpired ? ", expired" : "", pfrom->id);
 
         // Need LOCK2 here to ensure consistent locking order because the CheckAndUpdate call below locks cs_main
         LOCK2(cs_main, cs_mnMgr);
 
-        if (mapSeenMasternodePing.count(nHash))
-            return; //seen
-        mapSeenMasternodePing.emplace(nHash, mnp);
+        if (bIsExpired)
+        {
+            EraseSeenMnp(hashPing); // make sure it is not in the seen mnp cache
+            return;
+        }
 
-        LogFnPrint("masternode", "MNPING -- Masternode ping (%s), masternode=%s new", strCommand, mnp.GetDesc());
+        if (mapSeenMasternodePing.count(hashPing))
+            return; //seen
+        SetSeenMnp(hashPing, mnp);
+
+        LogFnPrint("masternode", "MNPING -- hash='%s', masternode='%s' new", hashPing.ToString(), mnp.GetDesc());
 
         // see if we have this Masternode
         const auto &outpoint = mnp.getOutPoint();
-        auto pmn = Find(outpoint);
+        auto pmn = Get(SKIP_LOCK, outpoint);
 
         // too late, new MNANNOUNCE is required
         if (pmn && pmn->IsNewStartRequired())
-            return;
+        {
+            // apparently we have this masternode alive (it sent this ping and it is not expired), check mnb
+            if (!pmn->IsBroadcastedWithin(masterNodeCtrl.MasternodeExpirationSeconds))
+            {
+                LogFnPrint("masternode", "MNPING -- hash='%s', masternode='%s', new mnb required (last broadcast %" PRId64 " secs ago)", 
+                    hashPing.ToString(), mnp.GetDesc(), pmn->GetLastBroadcastAge());
+                return;
+            }
+        }
 
         int nDos = 0;
-        if (mnp.CheckAndUpdateEx(pmn, false, nDos))
-            return;
+        if (pmn && pmn->setLastPingAndCheck(mnp, false, nDos))
+			return;
 
         if (nDos > 0)
             Misbehaving(pfrom->GetId(), nDos); // if anything significant failed, mark that node 
-        else if(pmn)
+        else if (pmn)
             return; // nothing significant failed, mn is a known one too
 
         // something significant is broken or mn is unknown,
         // we might have to ask for a masternode entry once
         AskForMN(pfrom, outpoint);
 
-    } else if (strCommand == NetMsgType::DSEG) { // Get Masternode list or specific entry (dseg)
+    } else if (strCommand == NetMsgType::DSEG) { // Request for us to get Masternode list or specific entry (dseg)
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
@@ -1104,16 +1135,18 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
         CTxIn vin;
         vRecv >> vin;
 
-        LogFnPrint("masternode", "DSEG -- Masternode list (%s), masternode=%s, peer=%d",
+        LogFnPrint("masternode", "DSEG -- Masternode list (%s), masternode='%s', peer=%d",
             strCommand, vin.prevout.ToStringShort(), pfrom->id);
 
         LOCK(cs_mnMgr);
 
-        if (vin == CTxIn()) { //only should ask for this once
-            //local network
+        const auto& chainparams = Params();
+        if (vin == CTxIn()) // only should ask for this once
+        { 
+            // local network
             const bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
 
-            if (!isLocal && Params().IsMainNet())
+            if (!isLocal && chainparams.IsMainNet())
             {
                 const auto it = mAskedUsForMasternodeList.find(pfrom->addr);
                 if (it != mAskedUsForMasternodeList.end() && it->second > GetTime())
@@ -1135,23 +1168,26 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
                 continue;
             if (vin != CTxIn() && vin != pmn->get_vin())
                 continue; // asked for specific vin but we are not there yet
-            if (!Params().IsRegTest() && 
+            if (!chainparams.IsRegTest() && 
                 (pmn->get_addr().IsRFC1918() || pmn->get_addr().IsLocal()))
                     continue; // do not send local network masternode
-            if (pmn->IsUpdateRequired())
-                continue; // do not send outdated masternodes
 
-            LogFnPrint("masternode", "DSEG -- Sending Masternode entry: masternode=%s  addr=%s", outpoint.ToStringShort(), pmn->get_address());
+            // do not send outdated masternodes or masternodes with partial info
+            if (pmn->IsUpdateRequired() || pmn->hasPartialInfo())
+                continue; 
+
+            LogFnPrint("masternode", "DSEG -- Sending Masternode entry v%hd: masternode='%s' %s addr=%s", 
+                pmn->GetVersion(), outpoint.ToStringShort(), MasternodeStateToString(pmn->GetActiveState()), pmn->get_address());
             CMasternodeBroadcast mnb(*pmn);
             CMasterNodePing mnp(pmn->getLastPing());
             const uint256 hashMNB = mnb.GetHash();
             const uint256 hashMNP = mnp.GetHash();
+            SetSeenMnb(hashMNB, GetTime(), mnb);
+            SetSeenMnp(hashMNP, mnp);
+
             pfrom->PushInventory(CInv(MSG_MASTERNODE_ANNOUNCE, hashMNB));
             pfrom->PushInventory(CInv(MSG_MASTERNODE_PING, hashMNP));
             nInvCount++;
-
-            mapSeenMasternodeBroadcast.emplace(hashMNB, make_pair(GetTime(), mnb));
-            mapSeenMasternodePing.emplace(hashMNP, mnp);
 
             if (vin.prevout == outpoint)
             {
@@ -1200,6 +1236,7 @@ void CMasternodeMan::DoFullVerificationStep()
 {
     if (masterNodeCtrl.activeMasternode.outpoint.IsNull())
         return;
+
     if (!masterNodeCtrl.masternodeSync.IsSynced())
         return;
 
@@ -1211,8 +1248,7 @@ void CMasternodeMan::DoFullVerificationStep()
     int nOffset = 0;
     size_t nCount = 0;
     int nMyRank = -1;
-    int nRanksTotal = (int)vecMasternodeRanks.size();
-
+    const int nRanksTotal = static_cast<int>(vecMasternodeRanks.size());
     {
         // Need LOCK2 here to ensure consistent locking order because the SendVerifyRequest call below locks cs_main
         // through GetHeight() signal in ConnectNode
@@ -1227,7 +1263,7 @@ void CMasternodeMan::DoFullVerificationStep()
                 LogFnPrint("masternode", "Must be in top %d to send verify request", MAX_POSE_RANK);
                 return;
             }
-            auto pmn = it->second;
+            const auto pmn = it->second;
             if (pmn && pmn->getOutPoint() == masterNodeCtrl.activeMasternode.outpoint)
             {
                 nMyRank = it->first;
@@ -1248,7 +1284,7 @@ void CMasternodeMan::DoFullVerificationStep()
         if (Params().IsRegTest())
             nOffset = 1;
         else
-            if (nOffset >= (int)vecMasternodeRanks.size())
+            if (nOffset >= nRanksTotal)
                 return;
 
         for (auto& [outpoint, pmn] : mapMasternodes)
@@ -1257,26 +1293,26 @@ void CMasternodeMan::DoFullVerificationStep()
         sort(vSortedByAddr.begin(), vSortedByAddr.end(), CompareByAddr());
     }
 
-    auto it = vecMasternodeRanks.begin() + nOffset;
-    while (it != vecMasternodeRanks.end())
+    auto it = vecMasternodeRanks.cbegin() + nOffset;
+    while (it != vecMasternodeRanks.cend())
     {
-        auto pmn = it->second;
+        const auto pmn = it->second;
         if (!pmn)
             continue;
         if (pmn->IsPoSeVerified() || pmn->IsPoSeBanned())
         {
-            LogFnPrint("masternode", "Already %s%s%s masternode %s address %s, skipping...",
+            LogFnPrint("masternode", "Already %s%s%s Masternode '%s' address %s, skipping...",
                 pmn->IsPoSeVerified() ? "verified" : "",
                 pmn->IsPoSeVerified() && pmn->IsPoSeBanned() ? " and " : "",
                 pmn->IsPoSeBanned() ? "banned" : "",
                 pmn->GetDesc(), pmn->get_address());
             nOffset += MAX_POSE_CONNECTIONS;
-            if (nOffset >= (int)vecMasternodeRanks.size())
+            if (nOffset >= nRanksTotal)
                 break;
             it += MAX_POSE_CONNECTIONS;
             continue;
         }
-        LogFnPrint("masternode", "Verifying masternode %s rank %d/%d address %s",
+        LogFnPrint("masternode", "Verifying masternode rank [%s] %d/%d address %s",
             pmn->GetDesc(), it->first, nRanksTotal, pmn->get_address());
         if (SendVerifyRequest(CAddress(pmn->get_addr(), NODE_NETWORK), vSortedByAddr))
         {
@@ -1285,7 +1321,7 @@ void CMasternodeMan::DoFullVerificationStep()
                 break;
         }
         nOffset += MAX_POSE_CONNECTIONS;
-        if (nOffset >= (int)vecMasternodeRanks.size())
+        if (nOffset >= nRanksTotal)
             break;
         it += MAX_POSE_CONNECTIONS;
     }
@@ -1353,7 +1389,7 @@ void CMasternodeMan::CheckSameAddr()
     for (auto &pmn : vBan)
     {
         pmn->IncrementPoSeBanScore();
-        LogFnPrintf("increased PoSe ban score for masternode %s", pmn->GetDesc());
+        LogFnPrintf("increased PoSe ban score for Masternode '%s'", pmn->GetDesc());
     }
 }
 
@@ -1555,12 +1591,12 @@ void CMasternodeMan::ProcessVerifyReply(const node_t& pnode, CMasternodeVerifica
             Misbehaving(pnode->id, 20);
             return;
         }
-        LogFnPrintf("verified real masternode %s for addr %s", prealMasternode->GetDesc(), pnode->addr.ToString());
+        LogFnPrintf("verified real Masternode '%s' for addr %s", prealMasternode->GetDesc(), pnode->addr.ToString());
         // increase ban score for everyone else
         for (auto &pmn : vpMasternodesToBan)
         {
             pmn->IncrementPoSeBanScore();
-            LogFnPrint("masternode", "increased PoSe ban score for masternode %s addr %s, new score %d",
+            LogFnPrint("masternode", "increased PoSe ban score for Masternode '%s' addr %s, new score %d",
                         prealMasternode->GetDesc(), pnode->addr.ToString(), pmn->getPoSeBanScore());
         }
         if (!vpMasternodesToBan.empty())
@@ -1609,13 +1645,13 @@ void CMasternodeMan::ProcessVerifyBroadcast(const node_t& pnode, const CMasterno
     string error;
     if (!GetMasternodeRank(error, mnv.vin2.prevout, nRank, mnv.nBlockHeight, MIN_POSE_PROTO_VERSION))
     {
-        LogFnPrint("masternode", "Can't calculate rank for masternode %s. %s", mnv.vin2.prevout.ToStringShort(), error);
+        LogFnPrint("masternode", "Can't calculate rank for Masternode '%s'. %s", mnv.vin2.prevout.ToStringShort(), error);
         return;
     }
 
     if (nRank > MAX_POSE_RANK)
     {
-        LogFnPrint("masternode", "Masternode %s is not in top %d, current rank %d, peer=%d",
+        LogFnPrint("masternode", "Masternode '%s' is not in top %d, current rank %d, peer=%d",
                     mnv.vin2.prevout.ToStringShort(), MAX_POSE_RANK, nRank, pnode->id);
         return;
     }
@@ -1627,14 +1663,14 @@ void CMasternodeMan::ProcessVerifyBroadcast(const node_t& pnode, const CMasterno
         string strMessage2 = strprintf("%s%d%s%s%s", mnv.addr.ToString(false), mnv.nonce, blockHash.ToString(),
                                 mnv.vin1.prevout.ToStringShort(), mnv.vin2.prevout.ToStringShort());
 
-        auto pmn1 = Find(mnv.vin1.prevout);
+        auto pmn1 = Get(USE_LOCK, mnv.vin1.prevout);
         if (!pmn1)
         {
             LogFnPrintf("can't find masternode1 %s", mnv.vin1.prevout.ToStringShort());
             return;
         }
 
-        auto pmn2 = Find(mnv.vin2.prevout);
+        auto pmn2 = Get(USE_LOCK, mnv.vin2.prevout);
         if (!pmn2)
         {
             LogFnPrintf("can't find masternode2 %s", mnv.vin2.prevout.ToStringShort());
@@ -1665,7 +1701,7 @@ void CMasternodeMan::ProcessVerifyBroadcast(const node_t& pnode, const CMasterno
         }
         mnv.Relay();
 
-        LogFnPrintf("verified masternode %s for addr %s", pmn1->GetDesc(), pmn1->get_address());
+        LogFnPrintf("verified masternode '%s' for addr %s", pmn1->GetDesc(), pmn1->get_address());
 
         // increase ban score for everyone else with the same addr
         int nCount = 0;
@@ -1677,11 +1713,68 @@ void CMasternodeMan::ProcessVerifyBroadcast(const node_t& pnode, const CMasterno
                 continue;
             pmn->IncrementPoSeBanScore();
             nCount++;
-            LogFnPrint("masternode", "increased PoSe ban score for %s addr %s, new score %d",
+            LogFnPrint("masternode", "increased PoSe ban score for '%s' addr %s, new score %d",
                         mn_outpoint.ToStringShort(), pmn->get_address(), pmn->getPoSeBanScore());
         }
         if (nCount)
             LogFnPrintf("PoSe score increased for %d fake masternodes, addr %s", nCount, pmn1->get_address());
+    }
+}
+
+void CMasternodeMan::ScheduleMnbForRelay(const uint256& hashMNB, const COutPoint& outpoint)
+{
+    LOCK(cs_mnMgr);
+
+    if (m_mapScheduledMnbForRelay.find(hashMNB) == m_mapScheduledMnbForRelay.cend())
+    {
+        m_mapScheduledMnbForRelay.emplace(hashMNB, outpoint);
+        LogFnPrint("masternode", "Scheduled mnb '%s' for relay for Masternode '%s'", hashMNB.ToString(), outpoint.ToStringShort());
+    }
+}
+
+void CMasternodeMan::RelayScheduledMnb()
+{
+    map<uint256, COutPoint> mapScheduledMnbForRelay;
+    {
+        LOCK(cs_mnMgr);
+        mapScheduledMnbForRelay = move(m_mapScheduledMnbForRelay);
+    }
+
+    for (const auto& [hashMNB, outpoint] : mapScheduledMnbForRelay)
+    {
+        LogFnPrint("masternode", "Relaying scheduled mnb '%s' for '%s'", 
+            hashMNB.ToString(), outpoint.ToStringShort());
+        CInv inv(MSG_MASTERNODE_ANNOUNCE, hashMNB);
+        gl_NodeManager.RelayInv(inv);
+    }
+}
+
+void CMasternodeMan::ScheduleMnpForRelay(const uint256& hashPing, const COutPoint& outpoint)
+{
+    LOCK(cs_mnMgr);
+
+    if (m_mapScheduledMnpForRelay.find(hashPing) == m_mapScheduledMnpForRelay.cend())
+    {
+        m_mapScheduledMnpForRelay.emplace(hashPing, outpoint);
+        LogFnPrint("masternode", "Scheduled ping '%s' for relay for Masternode '%s'",
+            hashPing.ToString(), outpoint.ToStringShort());
+    }
+}
+
+void CMasternodeMan::RelayScheduledMnp()
+{
+    map<uint256, COutPoint> mapScheduledMnpForRelay;
+    {
+        LOCK(cs_mnMgr);
+        mapScheduledMnpForRelay = move(m_mapScheduledMnpForRelay);
+    }
+
+    for (const auto& [hashPing, outpoint] : mapScheduledMnpForRelay)
+    {
+        LogFnPrint("masternode", "Relaying scheduled ping '%s' for '%s'", 
+            hashPing.ToString(), outpoint.ToStringShort());
+        CInv inv(MSG_MASTERNODE_PING, hashPing);
+        gl_NodeManager.RelayInv(inv);
     }
 }
 
@@ -1699,227 +1792,403 @@ string CMasternodeMan::ToString() const
 
 string CMasternodeMan::ToJSON() const
 {
+    LOCK(cs_mnMgr);
 
     json jsonObj;
 
-    jsonObj["CachedBlockHeight"] = nCachedBlockHeight.load();
-    jsonObj["LastWatchdogVoteTime"] = nLastWatchdogVoteTime;
+    jsonObj["cachedBlockHeight"] = nCachedBlockHeight.load();
+    jsonObj["lastWatchdogVoteTime"] = nLastWatchdogVoteTime;
 
-    jsonObj["Masternodes"] = json::array();
+    jsonObj["masternodes"] = json::array();
     for (const auto& [outpoint, pmn]: mapMasternodes)
     {
         if (!pmn)
             continue;
-        const CMasterNodePing lastPing = pmn->getLastPing();
+        const CMasterNodePing &lastPing = pmn->getLastPing();
         json mnJson {
-            { "Outpoint", pmn->GetDesc() },
-            { "PastelID", pmn->getMNPastelID() },
+            { "outpoint", pmn->GetDesc() },
+            { "pastelId", pmn->getMNPastelID() },
             { "ip", pmn->get_address() },
             { "status", pmn->GetStateString() },
-            { "PoSeBanScore", pmn->getPoSeBanScore() },
-            { "PoSeBanHeight", pmn->getPoSeBanHeight() },
-            { "LastPing",
+            { "poSeBanScore", pmn->getPoSeBanScore() },
+            { "poSeBanHeight", pmn->getPoSeBanHeight() },
+            { "version", pmn->GetVersion() },
+            { "eligibleForMining", pmn->IsEligibleForMining() },
+            { "sigTime", pmn->sigTime },
+            { "lastPing",
               {
-                { "Hash", lastPing.GetHash().ToString() },
-                { "Outpoint", lastPing.GetDesc() },
-                { "Signature", lastPing.getEncodedBase64Signature() },
-                { "BlockHashString", lastPing.getBlockHashString() }
+                { "hash", lastPing.GetHash().ToString() },
+                { "signature", lastPing.getEncodedBase64Signature() },
+                { "blockHash", lastPing.getBlockHashString() },
+                { "sigTime", lastPing.getSigTime() }
               }
             },
         };
-        jsonObj["Masternodes"].push_back(mnJson);
+        jsonObj["masternodes"].push_back(move(mnJson));
     }
-    for (const auto& mnb : mapSeenMasternodeBroadcast)
+    for (const auto& [hashMNB, pairMNB] : mapSeenMasternodeBroadcast)
+    {
+        const auto &mnb = pairMNB.second;
+        json mnJson {
+                { "hash", hashMNB.ToString() },
+                { "outpoint", mnb.GetDesc() },
+                { "pastelId", mnb.getMNPastelID() },
+                { "ip", mnb.get_address() },
+                { "status", mnb.GetStateString() },
+                { "poSeBanScore", mnb.getPoSeBanScore() },
+                { "poSeBanHeight", mnb.getPoSeBanHeight() },
+                { "eligibleForMining", mnb.IsEligibleForMining() },
+                { "sigTime", mnb.sigTime },
+                { "version", mnb.GetVersion() },
+        };
+        jsonObj["seenMasternodeBroadcast"].push_back(move(mnJson));
+    }
+    for (const auto& [hashMNP, mnp] : mapSeenMasternodePing)
     {
         json mnJson {
-                { "Hash", mnb.first.ToString() },
-                { "Outpoint", mnb.second.second.GetDesc() },
-                { "PastelID", mnb.second.second.getMNPastelID() },
-                { "ip", mnb.second.second.get_address() },
-                { "status", mnb.second.second.GetStateString() },
-                { "PoSeBanScore", mnb.second.second.getPoSeBanScore() },
-                { "PoSeBanHeight", mnb.second.second.getPoSeBanHeight() },
+                { "hash", hashMNP.ToString() },
+                { "outpoint", mnp.GetDesc() },
+                { "signature", mnp.getEncodedBase64Signature() },
+                { "blockHash", mnp.getBlockHashString() },
+                { "sigTime", mnp.getSigTime() }
         };
-        jsonObj["SeenMasternodeBroadcast"].push_back(mnJson);
-    }
-    for (const auto& mnp : mapSeenMasternodePing)
-    {
-        json mnJson {
-                { "Hash", mnp.first.ToString() },
-                { "Outpoint", mnp.second.GetDesc() },
-                { "Signature", mnp.second.getEncodedBase64Signature() },
-                { "BlockHashString", mnp.second.getBlockHashString() }
-        };
-        jsonObj["SeenMasternodePing"].push_back(mnJson);
+        jsonObj["seenMasternodePing"].push_back(move(mnJson));
     }
     for (const auto& asked : mAskedUsForMasternodeList)
     {
         json mnJson {
-                { "IP", asked.first.ToString() },
+                { "ip", asked.first.ToString() },
                 { "time", asked.second },
         };
-        jsonObj["AskedUsForMasternodeList"].push_back(mnJson);
+        jsonObj["askedUsForMasternodeList"].push_back(move(mnJson));
     }
     for ( const auto& asked : mWeAskedForMasternodeList)
     {
         json mnJson {
-                { "IP", asked.first.ToString() },
+                { "ip", asked.first.ToString() },
                 { "time", asked.second },
         };
-        jsonObj["WeAskedForMasternodeList"].push_back(mnJson);
+        jsonObj["weAskedForMasternodeList"].push_back(move(mnJson));
     }
-
-//    mWeAskedForMasternodeListEntry
-//    mMnbRecoveryRequests
-//    mMnbRecoveryGoodReplies
-//    mapHistoricalTopMNs
 
     return jsonObj.dump(4);
 }
 
-void CMasternodeMan::UpdateMasternodeList(CMasternodeBroadcast &mnb)
+void CMasternodeMan::UpdateMasternodeList(const CMasternodeBroadcast &mnb)
 {
-    const auto &mnPing = mnb.getLastPing();
-
     LOCK2(cs_main, cs_mnMgr);
 
-    mapSeenMasternodePing.emplace(mnPing.GetHash(), mnPing);
-    mapSeenMasternodeBroadcast.emplace(mnb.GetHash(), make_pair(GetTime(), mnb));
+    if (mnb.IsLastPingDefined())
+    {
+        const auto &mnPing = mnb.getLastPing();
+        SetSeenMnp(mnPing.GetHash(), mnPing);
+    }
+    const auto &hashMNB = mnb.GetHash();
+    SetSeenMnb(hashMNB, GetTime(), mnb);
 
-    LogFnPrintf("masternode=%s, addr=%s", mnb.GetDesc(), mnb.get_address());
+    LogFnPrintf("masternode=%s, addr=%s, sigtime=%" PRId64 " mnb='%s'", 
+        mnb.GetDesc(), mnb.get_address(), mnb.sigTime, hashMNB.ToString());
 
-    auto pmn = Find(mnb.getOutPoint());
+    auto pmn = Get(SKIP_LOCK, mnb.getOutPoint());
     if (!pmn)
     {
-        auto pmnNew = make_shared<CMasternode>(mnb);
-        if (Add(pmnNew))
+        pmn = make_shared<CMasternode>(mnb);
+        if (Add(pmn))
             masterNodeCtrl.masternodeSync.BumpAssetLastTime(__METHOD_NAME__, "new");
     }
     else
     {
-        CMasternodeBroadcast mnbOld = mapSeenMasternodeBroadcast[CMasternodeBroadcast(*pmn).GetHash()].second;
+        const auto itOldMnb = mapSeenMasternodeBroadcast.find(pmn->GetHash());
         if (pmn->UpdateFromNewBroadcast(mnb))
         {
             masterNodeCtrl.masternodeSync.BumpAssetLastTime(__METHOD_NAME__, "seen");
-            mapSeenMasternodeBroadcast.erase(mnbOld.GetHash());
+            if (itOldMnb != mapSeenMasternodeBroadcast.cend())
+            {
+                const auto &hashOldMnb = itOldMnb->second.second.GetHash();
+                if (hashOldMnb != hashMNB)
+                    EraseSeenMnb(hashOldMnb);
+            }
         }
     }
 }
 
-bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(const node_t& pfrom, CMasternodeBroadcast &mnb, int& nDos)
+/**
+ * Process masternode recovery reply.
+ * 
+ * \param hashMNB - masternode broadcast hash
+ * \param pfrom - node that sent mnb
+ * \param mnb - masternode broadcast
+ * \param pmn - masternode instance
+ * \return true if recovery reply was processed successfully
+ */
+bool CMasternodeMan::ProcessRecoveryReply(const uint256 &hashMNB, const node_t& pfrom, const CMasternodeBroadcast &mnb, masternode_t &pmn)
 {
-    nDos = 0;
+    if (!pmn || !pfrom)
+        return false;
 
-    // Need to lock cs_main here to ensure consistent locking order because the SimpleCheck call below locks cs_main
-    LOCK(cs_main);
+    auto& [nRecoveryExpirationTime, setRequestedAddr] = m_mapMnRecoveryRequests[hashMNB];
+    time_t nNow = GetTime();
+    if (nNow >= nRecoveryExpirationTime)
     {
-        LOCK(cs_mnMgr);
-        LogFnPrint("masternode", "masternode=%s", mnb.GetDesc());
-
-        const uint256 hash = mnb.GetHash();
-        const int64_t nNow = GetTime();
-        if (mapSeenMasternodeBroadcast.count(hash) && !mnb.fRecovery)
-        { //seen
-            LogFnPrint("masternode", "masternode=%s seen", mnb.GetDesc());
-            // less then 2 pings left before this MN goes into non-recoverable state, bump sync timeout
-            // if last mnb we received more than (180 mins - 10 mins * 2) = 160 mins ago
-            const int64_t nMnbTime = mapSeenMasternodeBroadcast[hash].first;
-            if (nNow - nMnbTime > masterNodeCtrl.MasternodeNewStartRequiredSeconds - masterNodeCtrl.MasternodeMinMNPSeconds * 2)
-            {
-                LogFnPrint("masternode", "masternode=%s seen update [%" PRId64 " -> %" PRId64 " | %" PRId64 "]", 
-                    mnb.GetDesc(), nMnbTime, nNow, nNow - nMnbTime);
-                mapSeenMasternodeBroadcast[hash].first = nNow;
-                masterNodeCtrl.masternodeSync.BumpAssetLastTime(__METHOD_NAME__, "seen");
-            }
-            // did we ask this node for it?
-            const bool isMnbRecoveryRequested = IsMnbRecoveryRequested(hash);
-            if (pfrom && isMnbRecoveryRequested)
-            {
-                auto& [nRecoveryTime, setRequestedAddr] = mMnbRecoveryRequests[hash];
-                if (nNow < nRecoveryTime)
-                {
-                    LogFnPrint("masternode", "mnb=%s seen request", hash.ToString());
-                    if (setRequestedAddr.count(pfrom->addr))
-                    {
-                        LogFnPrint("masternode", "mnb=%s seen request, addr=%s", hash.ToString(), pfrom->addr.ToString());
-                        // do not allow node to send same mnb multiple times in recovery mode
-                        setRequestedAddr.erase(pfrom->addr);
-                        // does it have newer lastPing?
-                        if (mnb.IsPingedAfter(mapSeenMasternodeBroadcast[hash].second))
-                        {
-                            // simulate Check
-                            CMasternode mnTemp(mnb);
-                            mnTemp.Check(false, SKIP_LOCK);
-                            LogFnPrint("masternode", "mnb=%s seen request, addr=%s, better lastPing: %d min ago, projected mn state: %s",
-                                hash.ToString(), pfrom->addr.ToString(), (GetAdjustedTime() - mnb.getLastPing().getSigTime()) / 60, mnTemp.GetStateString());
-                            if (mnTemp.IsValidStateForAutoStart(mnTemp.GetActiveState()))
-                            {
-                                // this node thinks it's a good one
-                                LogFnPrint("masternode", "masternode=%s seen good", mnb.GetDesc());
-                                mMnbRecoveryGoodReplies[hash].push_back(mnb);
-                            }
-                        }
-                    }
-                }
-            }
-            return true;
-        }
-
-        mapSeenMasternodeBroadcast.emplace(hash, make_pair(nNow, mnb));
-        LogFnPrint("masternode", "masternode=%s new", mnb.GetDesc());
-
-        if (!mnb.SimpleCheck(nDos))
-        {
-            LogFnPrint("masternode", "SimpleCheck() failed, masternode=%s", mnb.GetDesc());
-            return false;
-        }
-
-        // search Masternode list
-        auto pmn = Find(mnb.getOutPoint());
-        if (pmn)
-        {
-            auto mnbOld = mapSeenMasternodeBroadcast[CMasternodeBroadcast(*pmn).GetHash()].second;
-            if (!mnb.Update(pmn, nDos))
-            {
-                LogFnPrint("masternode", "Update() failed, masternode=%s", mnb.GetDesc());
-                return false;
-            }
-            if (hash != mnbOld.GetHash())
-                mapSeenMasternodeBroadcast.erase(mnbOld.GetHash());
-            return true;
-        }
-    }
-
-    if (mnb.CheckOutpoint(nDos))
-    {
-        // if Announce messsage has correct collateral tnx
-        auto pmnNew = make_shared<CMasternode>(mnb);
-        Add(pmnNew);
-        masterNodeCtrl.masternodeSync.BumpAssetLastTime(__METHOD_NAME__, "new");
-        // if it matches our Masternode privkey...
-        if (masterNodeCtrl.IsMasterNode() && mnb.pubKeyMasternode == masterNodeCtrl.activeMasternode.pubKeyMasternode)
-        {
-            mnb.PoSeUnBan();
-            if (mnb.nProtocolVersion == PROTOCOL_VERSION)
-            {
-                // ... and PROTOCOL_VERSION, then we've been remotely activated ...
-                LogFnPrintf("Got NEW Masternode entry: masternode=%s  sigTime=%" PRId64 " addr=%s",
-                            mnb.GetDesc(), mnb.sigTime, mnb.get_address());
-                masterNodeCtrl.activeMasternode.ManageState();
-            } else {
-                // ... otherwise we need to reactivate our node, do not add it to the list and do not relay
-                // but also do not ban the node we get this message from
-                LogFnPrintf("wrong PROTOCOL_VERSION, re-activate your MN: message nProtocolVersion=%d  PROTOCOL_VERSION=%d", mnb.nProtocolVersion, PROTOCOL_VERSION);
-                return false;
-            }
-        }
-        mnb.Relay();
-    } else {
-        LogFnPrintf("Rejected Masternode entry: %s  addr=%s", mnb.GetDesc(), mnb.get_address());
+        LogFnPrint("masternode", "masternode '%s' recovery broadcast came after expiration time %" PRId64, 
+            pmn->GetDesc(), nRecoveryExpirationTime);
         return false;
     }
 
+    if (!setRequestedAddr.count(pfrom->addr))
+    {
+        LogFnPrint("masternode", "masternode '%s' recovery broadcast '%s' - already processed", mnb.GetDesc(), hashMNB.ToString());
+        return false;
+    }
+
+    LogFnPrint("masternode", "masternode '%s' recovery broadcast '%s', addr=%s", 
+        pmn->GetDesc(), hashMNB.ToString(), pfrom->addr.ToString());
+    // do not allow node to send same mnb multiple times in recovery mode
+    setRequestedAddr.erase(pfrom->addr);
+
+    const auto& lastPing = pmn->getLastPing();
+    bool bSamePing = false;
+    // does it have newer lastPing?
+    string sMnbPingDesc;
+    if (!mnb.IsLastPingDefined())
+        sMnbPingDesc = "has no last ping";
+    else if (lastPing.IsDefined())
+    {
+        bSamePing = mnb.IsSamePingTime(lastPing.getSigTime());
+        if (bSamePing)
+            sMnbPingDesc = strprintf("has same last ping (%" PRId64 ")", lastPing.getSigTime());
+        else if (!mnb.IsPingedAfter(lastPing.getSigTime()))
+            sMnbPingDesc = strprintf("has older last ping (%" PRId64 " secs old) than known one (%" PRId64 " secs old)",
+                				mnb.getLastPing().getAgeInSecs(), lastPing.getAgeInSecs());
+    }
+	LogFnPrint("masternode", "masternode '%s' recovery broadcast hash='%s' %s", pmn->GetDesc(), hashMNB.ToString(), sMnbPingDesc);
+
+    // simulate Check
+    CMasternode mnTemp(mnb);
+    mnTemp.setLastPing(mnb.getLastPing());
+    mnTemp.Check(true, SKIP_LOCK);
+    const bool bIsValidStateForAutoStart = mnTemp.IsValidStateForAutoStart(mnTemp.GetActiveState());
+    LogFnPrint("masternode", "masternode '%s' recovery broadcast [%s] processed, projected masternode state: %s (%svalid for auto-start)",
+        pmn->GetDesc(), hashMNB.ToString(), mnTemp.GetStateString(), bIsValidStateForAutoStart ? "" : "not ");
+    if (!bIsValidStateForAutoStart)
+        return false;
+
+    // this node thinks it's a good recovery broadcast
+    size_t nGoodReplies = 0;
+    auto it = m_mapMnRecoveryGoodReplies.find(hashMNB);
+    if (it == m_mapMnRecoveryGoodReplies.end())
+    {
+        vector<CMasternodeBroadcast> vMnb;
+        vMnb.push_back(mnb);
+        m_mapMnRecoveryGoodReplies.emplace(hashMNB, vMnb);
+        nGoodReplies = 1;
+    }
+    else
+    {
+		it->second.push_back(mnb);
+		nGoodReplies = it->second.size();
+	}
+
+    LogFnPrint("masternode", "masternode '%s' recovery broadcast collected (%zu/%zu)", 
+        mnb.GetDesc(), nGoodReplies, MNB_RECOVERY_QUORUM_REQUIRED);
     return true;
+}
+
+/**
+ * Check masternode broadcast (mnb) and update masternode list.
+ * 
+ * \param bLockMain - lock cs_main
+ * \param bLockMgr - lock cs_mnMgr
+ * \param pfrom - node that sent mnb
+ * \param mnb - masternode broadcast
+ * \param nDos - denial-of-service score
+ * 
+ * \return true if mnb is valid and masternode list was updated
+ */
+bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(const bool bLockMain, const bool bLockMgr, const node_t& pfrom, const CMasternodeBroadcast &mnb, int& nDos)
+{
+    nDos = 0;
+    bool bRelayMnb = false;
+    const uint256 hashMNB = mnb.GetHash();
+    const auto& outpoint = mnb.getOutPoint();
+    {
+        // Need to lock cs_main here to ensure consistent locking order because the SimpleCheck call below locks cs_main
+        LOCK2_COND(bLockMain, cs_main, bLockMgr, cs_mnMgr);
+
+        LogFnPrint("masternode", "masternode broadcast v%hd received (sigtime=%" PRId64 ", eligibleForMining=%d) for '%s'%s", mnb.GetVersion(), mnb.sigTime,
+            mnb.IsEligibleForMining(), mnb.GetDesc(), pfrom ? strprintf(" from peer=%d", pfrom->GetId()) : "");
+
+        uint256 hashOldMNB;
+        const int64_t nNow = GetTime();
+
+        bool bNeedUpdateFromMnb = false;
+        // search Masternode by outpoint
+        auto pmn = Get(SKIP_LOCK, outpoint);
+        if (pmn)
+        {
+            hashOldMNB = pmn->GetHash();
+            bNeedUpdateFromMnb = pmn->NeedUpdateFromBroadcast(mnb);
+        }
+        else
+            bNeedUpdateFromMnb = true;
+
+        // check if this mnb is already known
+        const bool bMnbExists = mapSeenMasternodeBroadcast.find(hashMNB) != mapSeenMasternodeBroadcast.cend();
+        if (bMnbExists)
+        {
+            // less then 2 pings left before this MN goes into non-recoverable state, bump sync timeout
+            // if last mnb we received more than (180 mins - 10 mins * 2) = 160 mins ago
+            const auto &[nMnbTime, mnbSeen] = mapSeenMasternodeBroadcast[hashMNB];
+            const int64_t nMnbSeenTimeAgo = nNow - nMnbTime;
+            LogFnPrint("masternode", "masternode='%s' broadcast '%s' seen %" PRId64 " secs ago", 
+                mnb.GetDesc(), hashMNB.ToString(), nMnbSeenTimeAgo);
+        }
+
+        bool bExpired = false;
+        if (!mnb.SimpleCheck(nDos, bExpired))
+        {
+            LogFnPrint("masternode", "masternode='%s', SimpleCheck for mnb '%s' failed", mnb.GetDesc(), hashMNB.ToString());
+            return false;
+        }
+
+        // process recovery reply if we requested for masternode recovery
+        if (!mnb.fRecovery && IsMnbRecoveryRequested(hashMNB))
+            return ProcessRecoveryReply(hashMNB, pfrom, mnb, pmn);
+
+        if (!bNeedUpdateFromMnb)
+        {
+            UpdateSeenMnbTime(hashMNB, nNow);
+            return true;
+        }
+
+        if (pmn)
+        {
+            SetSeenMnb(hashMNB, nNow, mnb);
+            masterNodeCtrl.masternodeSync.BumpAssetLastTime(__METHOD_NAME__, "seen");
+
+            string error;
+            if (bNeedUpdateFromMnb)
+            {
+                auto mnbUpdateResult = mnb.Update(error, pmn, nDos);
+                if (to_integral_type(mnbUpdateResult) < 0)
+                {
+                    LogFnPrint("masternode", "Update failed, masternode='%s'. %s", mnb.GetDesc(), error);
+                    return false;
+                }
+                LogFnPrint("masternode", "masternode '%s'. Update finished. %s", mnb.GetDesc(), error);
+            }
+            if (bMnbExists && (hashOldMNB != hashMNB))
+                EraseSeenMnb(hashOldMNB);
+        }
+        else
+		{
+            uint256 collateralMinConfBlockHash;
+            // we didn't find existing masternode for this mnb, add it if outpoint is valid
+            if (mnb.CheckOutpoint(nDos, collateralMinConfBlockHash))
+            {
+                pmn = make_shared<CMasternode>(mnb);
+                pmn->SetCollateralMinConfBlockHash(collateralMinConfBlockHash);
+                Add(pmn);
+                LogFnPrint("masternode", "masternode='%s' new mnb", mnb.GetDesc());
+                SetSeenMnb(hashMNB, nNow, mnb);
+                masterNodeCtrl.masternodeSync.BumpAssetLastTime(__METHOD_NAME__, "new");
+
+                if (mnb.IsLastPingDefined())
+                    pmn->setLastPingAndCheck(mnb.getLastPing(), true, nDos);
+
+                // if it matches our Masternode public key...
+                if (masterNodeCtrl.IsOurMasterNode(mnb.pubKeyMasternode))
+                {
+                    pmn->PoSeUnBan();
+                    if (mnb.nProtocolVersion == PROTOCOL_VERSION)
+                    {
+                        // ... and PROTOCOL_VERSION, then we've been remotely activated ...
+                        LogFnPrintf("Got NEW Masternode entry: masternode='%s'  sigTime=%" PRId64 " addr=%s (v%hd)",
+                                    mnb.GetDesc(), mnb.sigTime, mnb.get_address(), mnb.GetVersion());
+                        masterNodeCtrl.activeMasternode.ManageState(__FUNCTION__);
+                    } else {
+                        // ... otherwise we need to reactivate our node, do not add it to the list and do not relay
+                        // but also do not ban the node we get this message from
+                        LogFnPrintf("wrong PROTOCOL_VERSION, re-activate your MN: message nProtocolVersion=%d  PROTOCOL_VERSION=%d", mnb.nProtocolVersion, PROTOCOL_VERSION);
+                        return false;
+                    }
+                }
+            } else {
+                LogFnPrintf("Rejected Masternode entry (outpoint is invalid): %s  addr=%s", mnb.GetDesc(), mnb.get_address());
+                return false;
+            }
+		}
+        // relay only mnbs with the latest version
+        if (pmn && !pmn->hasPartialInfo())
+            bRelayMnb = true;
+    }
+    if (bRelayMnb)
+        mnb.Relay();
+    else
+        LogFnPrint("masternode", "masternode '%s', skipping mnb '%s' relay", mnb.GetDesc(), hashMNB.ToString());
+    return true;
+}
+
+void CMasternodeMan::EraseSeenMnb(const uint256& hash)
+{
+    auto it = mapSeenMasternodeBroadcast.find(hash);
+    if (it != mapSeenMasternodeBroadcast.cend())
+    {
+        LogFnPrint("masternode", "Removed seen mnb '%s' for '%s'", hash.ToString(), it->second.second.GetDesc());
+        mapSeenMasternodeBroadcast.erase(it);
+    }
+}
+
+void CMasternodeMan::SetSeenMnb(const uint256& hash, const int64_t nTime, const CMasternodeBroadcast& mnb)
+{
+    const auto it = mapSeenMasternodeBroadcast.find(hash);
+    if (it == mapSeenMasternodeBroadcast.cend())
+    {
+        LogFnPrint("masternode", "Set seen mnb '%s' at %" PRId64 " for '%s'", hash.ToString(), nTime, mnb.GetDesc());
+        mapSeenMasternodeBroadcast.insert_or_assign(hash, make_pair(nTime, mnb));
+    }
+}
+
+void CMasternodeMan::UpdateSeenMnbTime(const uint256& hash, const int64_t nTime)
+{
+    auto it = mapSeenMasternodeBroadcast.find(hash);
+	if (it != mapSeenMasternodeBroadcast.cend() && (nTime > it->second.first))
+	{
+		LogFnPrint("masternode", "Updated seen mnb '%s' time from %" PRId64 " to %" PRId64 " for '%s'", hash.ToString(), it->second.first, nTime, it->second.second.GetDesc());
+		it->second.first = nTime;
+	}
+}
+
+void CMasternodeMan::EraseSeenMnp(const uint256& hash)
+{
+	auto it = mapSeenMasternodePing.find(hash);
+	if (it != mapSeenMasternodePing.cend())
+	{
+		LogFnPrint("masternode", "Removed seen mnp '%s'", hash.ToString());
+		mapSeenMasternodePing.erase(it);
+	}
+}
+
+void CMasternodeMan::SetSeenMnp(const uint256& hash, const CMasterNodePing& mnp)
+{
+    const auto it = mapSeenMasternodePing.find(hash);
+    if (it == mapSeenMasternodePing.cend())
+    {
+        LogFnPrint("masternode", "Set seen mnp '%s'", hash.ToString());
+        mapSeenMasternodePing.emplace(hash, mnp);
+    }
+}
+
+void CMasternodeMan::UpdateMnpAndMnb(const uint256& hashMNB, const uint256& hashMNP, const CMasterNodePing& mnp)
+{
+    SetSeenMnp(hashMNP, mnp);
+
+    auto it = mapSeenMasternodeBroadcast.find(hashMNB);
+    if (it != mapSeenMasternodeBroadcast.end())
+    {
+		auto& mnb = it->second.second;
+		mnb.setLastPing(mnp);
+	}
 }
 
 void CMasternodeMan::UpdateLastPaid(const CBlockIndex* pindex)
@@ -1950,7 +2219,7 @@ void CMasternodeMan::UpdateWatchdogVoteTime(const COutPoint& outpoint, const uin
 {
     LOCK(cs_mnMgr);
 
-    auto pmn = Find(outpoint);
+    auto pmn = Get(SKIP_LOCK, outpoint);
     if (!pmn)
         return;
 
@@ -1984,11 +2253,11 @@ bool CMasternodeMan::IsMasternodePingedWithin(const COutPoint& outpoint, int nSe
 {
     LOCK(cs_mnMgr);
 
-    const auto pmn = Find(outpoint);
+    const auto pmn = Get(SKIP_LOCK, outpoint);
     if (pmn)
         return pmn->IsPingedWithin(nSeconds, nTimeToCheckAt, psReason);
     if (psReason)
-        *psReason = strprintf("masternode not found by outpoint %s", outpoint.ToStringShort());
+        *psReason = strprintf("masternode not found by outpoint '%s'", outpoint.ToStringShort());
     return false;
 }
 
@@ -1996,15 +2265,13 @@ void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMas
 {
     LOCK(cs_mnMgr);
 
-    auto pmn = Find(outpoint);
-    if(!pmn) {
+    auto pmn = Get(SKIP_LOCK, outpoint);
+    if (!pmn)
         return;
-    }
     pmn->setLastPing(mnp);
-    mapSeenMasternodePing.emplace(mnp.GetHash(), mnp);
+    SetSeenMnp(mnp.GetHash(), mnp);
 
-    CMasternodeBroadcast mnb(*pmn);
-    const auto hash = mnb.GetHash();
+    const auto hash = pmn->GetHash();
     if (mapSeenMasternodeBroadcast.count(hash))
         mapSeenMasternodeBroadcast[hash].second.setLastPing(mnp);
 }
@@ -2012,7 +2279,8 @@ void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMas
 void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, const MN_FEE mnFeeType, const CAmount newFee)
 {
     LOCK(cs_mnMgr);
-    auto pmn = Find(outpoint);
+
+    auto pmn = Get(SKIP_LOCK, outpoint);
     if (pmn)
         pmn->SetMNFee(mnFeeType, newFee);
 }
@@ -2025,7 +2293,8 @@ void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, const MN_FEE mn
 void CMasternodeMan::IncrementMasterNodePoSeBanScore(const COutPoint& outpoint)
 {
     LOCK2(cs_main, cs_mnMgr);
-    auto pmn = Find(outpoint);
+
+    auto pmn = Get(SKIP_LOCK, outpoint);
     if (pmn)
     {
         pmn->IncrementPoSeBanScore();
@@ -2036,8 +2305,9 @@ void CMasternodeMan::IncrementMasterNodePoSeBanScore(const COutPoint& outpoint)
 
 void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
 {
+    if (!pindex)
+        return;
     nCachedBlockHeight = pindex->nHeight;
-    LogFnPrint("masternode", "CachedBlockHeight=%u", nCachedBlockHeight);
 
     CheckSameAddr();
 

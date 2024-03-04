@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2015-2018 The Zcash developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <limits>
@@ -297,6 +297,7 @@ bool ContextualCheckTransaction(
     const bool overwinterActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_OVERWINTER);
     const bool beforeOverwinter = !overwinterActive;
     const bool saplingActive = NetworkUpgradeActive(nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING);
+    string strRejectReasonDetails;
 
     // DoS level to ban peers.
     const int DOS_LEVEL_BLOCK = 100;
@@ -315,10 +316,13 @@ bool ContextualCheckTransaction(
     {
         // Reject transactions which are intended for Overwinter and beyond
         if (tx.fOverwintered)
+        {
+            strRejectReasonDetails = strprintf("overwinter is not active yet, height=%d", nHeight);
             return state.DoS(
                 dosLevelPotentiallyRelaxing,
-                error("ContextualCheckTransaction(): overwinter is not active yet, height=%d", nHeight),
-                REJECT_INVALID, "tx-overwinter-not-active");
+                error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                REJECT_INVALID, "tx-overwinter-not-active", false, strRejectReasonDetails);
+        }
     }
 
     // Rules that apply to Overwinter and later
@@ -326,20 +330,24 @@ bool ContextualCheckTransaction(
     {
         // Reject transactions intended for Sprout
         if (!tx.fOverwintered)
+        {
+            strRejectReasonDetails = strprintf("overwintered flag must be set when Overwinter is active, height=%d", nHeight);
             return state.DoS(
                 dosLevelConstricting,
-                error("ContextualCheckTransaction: fOverwintered flag must be set when Overwinter is active, height=%d", nHeight),
-                REJECT_INVALID, "tx-overwintered-flag-not-set");
+                error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                REJECT_INVALID, "tx-overwintered-flag-not-set", false, strRejectReasonDetails);
+        }
 
         // Check that all transactions are unexpired
         if (IsExpiredTx(tx, nHeight))
         {
             // Don't increase banscore if the transaction only just expired
             const int expiredDosLevel = IsExpiredTx(tx, nHeight - 1) ? dosLevelConstricting : 0;
+            strRejectReasonDetails = strprintf("transaction is expired at %u, height=%d", tx.nExpiryHeight, nHeight);
             return state.DoS(
                 expiredDosLevel,
-                error("ContextualCheckTransaction(): transaction is expired at %u, height=%d", tx.nExpiryHeight, nHeight), 
-                REJECT_INVALID, "tx-overwinter-expired");
+                error("%s: %s", __FUNCTION__, strRejectReasonDetails), 
+                REJECT_INVALID, "tx-overwinter-expired", false, strRejectReasonDetails);
         }
 
         // Rules that became inactive after Sapling activation.
@@ -348,17 +356,23 @@ bool ContextualCheckTransaction(
             // Reject transactions with invalid version
             // OVERWINTER_MIN_TX_VERSION is checked against as a non-contextual check.
             if (tx.nVersion > OVERWINTER_MAX_TX_VERSION)
+            {
+                strRejectReasonDetails = strprintf("overwinter version too high, height=%d", nHeight);
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("ContextualCheckTransaction(): overwinter version too high, height=%d", nHeight),
-                    REJECT_INVALID, "bad-tx-overwinter-version-too-high");
+                    error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                    REJECT_INVALID, "bad-tx-overwinter-version-too-high", false, strRejectReasonDetails);
+            }
 
             // Reject transactions with non-Overwinter version group ID
             if (tx.nVersionGroupId != OVERWINTER_VERSION_GROUP_ID)
+            {
+                strRejectReasonDetails = strprintf("invalid Overwinter tx version group id, height=%d", nHeight);
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("ContextualCheckTransaction(): invalid Overwinter tx version, height=%d", nHeight),
-                    REJECT_INVALID, "bad-overwinter-tx-version-group-id");
+                    error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                    REJECT_INVALID, "bad-overwinter-tx-version-group-id", false, strRejectReasonDetails);
+            }
         }
     }
 
@@ -369,26 +383,35 @@ bool ContextualCheckTransaction(
         {
             // Reject transactions with invalid version
             if (tx.fOverwintered && tx.nVersion < SAPLING_MIN_TX_VERSION)
+            {
+                strRejectReasonDetails = strprintf("Sapling version too low, height=%d", nHeight);
                 return state.DoS(
                     dosLevelConstricting,
-                    error("CheckTransaction(): Sapling version too low, height=%d", nHeight),
-                    REJECT_INVALID, "bad-tx-sapling-version-too-low");
+                    error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                    REJECT_INVALID, "bad-tx-sapling-version-too-low", false, strRejectReasonDetails);
+            }
 
             // Reject transactions with invalid version
             if (tx.fOverwintered && tx.nVersion > SAPLING_MAX_TX_VERSION)
+            {
+                strRejectReasonDetails = strprintf("Sapling version too high, height=%d", nHeight);
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("CheckTransaction(): Sapling version too high, height=%d", nHeight),
-                    REJECT_INVALID, "bad-tx-sapling-version-too-high");
+                    error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                    REJECT_INVALID, "bad-tx-sapling-version-too-high", false, strRejectReasonDetails);
+            }
         }
         else
         {
             // Reject transactions with non-Sapling version group ID
             if (tx.fOverwintered)
+            {
+                strRejectReasonDetails = strprintf("invalid Sapling tx version group id, height=%d", nHeight);
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("CheckTransaction(): invalid Sapling tx version"),
-                    REJECT_INVALID, "bad-sapling-tx-version-group-id");
+                    error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                    REJECT_INVALID, "bad-sapling-tx-version-group-id", false, strRejectReasonDetails);
+            }
         }
     } else {
         // Rules that apply generally before Sapling. These were previously 
@@ -397,10 +420,13 @@ bool ContextualCheckTransaction(
         // Size limits
         static_assert(MAX_BLOCK_SIZE > MAX_TX_SIZE_BEFORE_SAPLING); // sanity
         if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > MAX_TX_SIZE_BEFORE_SAPLING)
+        {
+            strRejectReasonDetails = strprintf("size limits failed, height=%d", nHeight);
             return state.DoS(
                 dosLevelPotentiallyRelaxing,
-                error("ContextualCheckTransaction(): size limits failed, height=%d", nHeight),
-                REJECT_INVALID, "bad-txns-oversize");
+                error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-oversize", false, strRejectReasonDetails);
+        }
     }
 
     uint256 dataToBeSigned;
@@ -415,10 +441,11 @@ bool ContextualCheckTransaction(
             dataToBeSigned = SignatureHash(scriptCode, tx, NOT_AN_INPUT, to_integral_type(SIGHASH::ALL), 0, consensusBranchId);
         } catch (logic_error ex)
         {
+            strRejectReasonDetails = strprintf("error computing signature hash, height=%d", nHeight);
             return state.DoS(
                 DOS_LEVEL_BLOCK,
-                error("CheckTransaction(): error computing signature hash, height=%d", nHeight),
-                REJECT_INVALID, "error-computing-signature-hash");
+                error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                REJECT_INVALID, "error-computing-signature-hash", false, strRejectReasonDetails);
         }
 
         auto ctx = librustzcash_sapling_verification_ctx_init();
@@ -436,10 +463,11 @@ bool ContextualCheckTransaction(
             ))
             {
                 librustzcash_sapling_verification_ctx_free(ctx);
+                strRejectReasonDetails = strprintf("Sapling spend description invalid, height=%d", nHeight);
                 return state.DoS(
                     dosLevelPotentiallyRelaxing,
-                    error("ContextualCheckTransaction(): Sapling spend description invalid, height=%d", nHeight),
-                    REJECT_INVALID, "bad-txns-sapling-spend-description-invalid");
+                    error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                    REJECT_INVALID, "bad-txns-sapling-spend-description-invalid", false, strRejectReasonDetails);
             }
         }
 
@@ -457,10 +485,11 @@ bool ContextualCheckTransaction(
                 // This should be a non-contextual check, but we check it here
                 // as we need to pass over the outputs anyway in order to then
                 // call librustzcash_sapling_final_check().
+                strRejectReasonDetails = strprintf("Sapling output description invalid, height=%d", nHeight);
                 return state.DoS(
                     DOS_LEVEL_BLOCK,
-                    error("ContextualCheckTransaction(): Sapling output description invalid, height=%d", nHeight),
-                    REJECT_INVALID, "bad-txns-sapling-output-description-invalid");
+                    error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                    REJECT_INVALID, "bad-txns-sapling-output-description-invalid", false, strRejectReasonDetails);
             }
         }
 
@@ -472,10 +501,11 @@ bool ContextualCheckTransaction(
         ))
         {
             librustzcash_sapling_verification_ctx_free(ctx);
+            strRejectReasonDetails = strprintf("Sapling binding signature invalid, height=%d", nHeight);
             return state.DoS(
                 dosLevelPotentiallyRelaxing,
-                error("ContextualCheckTransaction(): Sapling binding signature invalid, height=%d", nHeight),
-                REJECT_INVALID, "bad-txns-sapling-binding-signature-invalid");
+                error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-sapling-binding-signature-invalid", false, strRejectReasonDetails);
         }
 
         librustzcash_sapling_verification_ctx_free(ctx);
@@ -485,11 +515,15 @@ bool ContextualCheckTransaction(
     const auto tv = CPastelTicketProcessor::ValidateIfTicketTransaction(state, nHeight, tx);
     if (tv.state == TICKET_VALIDATION_STATE::NOT_TICKET || tv.state == TICKET_VALIDATION_STATE::VALID)
         return true;
-    if (tv.state == TICKET_VALIDATION_STATE::MISSING_INPUTS) 
-        return state.DoS(0, warning_msg("ValidateIfTicketTransaction(): missing dependent transactions, height=%d. %s", nHeight, tv.errorMsg),
-                         REJECT_MISSING_INPUTS, "tx-missing-inputs");
-    return state.DoS(10, error("ValidateIfTicketTransaction(): invalid ticket transaction, height=%d. %s", nHeight, tv.errorMsg),
-                     REJECT_INVALID, "bad-tx-invalid-ticket");
+    if (tv.state == TICKET_VALIDATION_STATE::MISSING_INPUTS)
+    {
+        strRejectReasonDetails = strprintf("missing dependent transactions, height=%d. %s", nHeight, tv.errorMsg);
+        return state.DoS(0, warning_msg("%s: %s", __FUNCTION__, strRejectReasonDetails),
+            REJECT_MISSING_INPUTS, "tx-missing-inputs", false, strRejectReasonDetails);
+    }
+    strRejectReasonDetails = strprintf("invalid ticket transaction, height=%d. %s", nHeight, tv.errorMsg);
+    return state.DoS(10, error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                     REJECT_INVALID, "bad-tx-invalid-ticket", false, strRejectReasonDetails);
 }
 
 bool ContextualCheckBlock(
@@ -500,6 +534,7 @@ bool ContextualCheckBlock(
 {
     const int nHeight = !pindexPrev ? 0 : pindexPrev->nHeight + 1;
     const auto& consensusParams = chainparams.GetConsensus();
+    string strRejectReasonDetails;
 
     // Check that all transactions are finalized
     for (const auto& tx : block.vtx)
@@ -511,7 +546,11 @@ bool ContextualCheckBlock(
         int nLockTimeFlags = 0;
         const int64_t nLockTimeCutoff = (nLockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST) ? pindexPrev->GetMedianTimePast() : block.GetBlockTime(); //-V547
         if (!IsFinalTx(tx, nHeight, nLockTimeCutoff))
-            return state.DoS(10, error("%s: contains a non-final transaction", __func__), REJECT_INVALID, "bad-txns-nonfinal");
+        {
+            strRejectReasonDetails = strprintf("contains non-final transaction, height=%d", nHeight);
+            return state.DoS(10, error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-nonfinal", false, strRejectReasonDetails);
+        }
     }
 
     // Enforce BIP 34 rule that the coinbase starts with serialized block height.
@@ -522,8 +561,11 @@ bool ContextualCheckBlock(
     {
         CScript expect = CScript() << nHeight;
         if (block.vtx[0].vin[0].scriptSig.size() < expect.size() ||
-            !equal(expect.begin(), expect.end(), block.vtx[0].vin[0].scriptSig.begin())) {
-            return state.DoS(100, error("%s: block height mismatch in coinbase", __func__), REJECT_INVALID, "bad-cb-height");
+            !equal(expect.begin(), expect.end(), block.vtx[0].vin[0].scriptSig.begin()))
+        {
+            strRejectReasonDetails = strprintf("block height mismatch in coinbase, height=%d", nHeight);
+            return state.DoS(100, error("%s: %s", __FUNCTION__, strRejectReasonDetails),
+                REJECT_INVALID, "bad-cb-height", false, strRejectReasonDetails);
         }
     }
 
@@ -596,77 +638,110 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
      *        0 <= tx.nVersion < OVERWINTER_MIN_TX_VERSION
      *        OVERWINTER_MAX_TX_VERSION < tx.nVersion <= INT32_MAX
      */
-    if (!tx.fOverwintered && tx.nVersion < SPROUT_MIN_TX_VERSION) {
-        return state.DoS(100, error("CheckTransaction(): version too low"),
-                         REJECT_INVALID, "bad-txns-version-too-low");
+    string strRejectReasonDetails;
+    if (!tx.fOverwintered && tx.nVersion < SPROUT_MIN_TX_VERSION)
+    {
+        strRejectReasonDetails = "version too low";
+        return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+            REJECT_INVALID, "bad-txns-version-too-low", false, strRejectReasonDetails);
     }
     else if (tx.fOverwintered) {
-        if (tx.nVersion < OVERWINTER_MIN_TX_VERSION) {
-            return state.DoS(100, error("CheckTransaction(): overwinter version too low"),
-                REJECT_INVALID, "bad-tx-overwinter-version-too-low");
+        if (tx.nVersion < OVERWINTER_MIN_TX_VERSION)
+        {
+            strRejectReasonDetails = "overwinter version too low";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-tx-overwinter-version-too-low", false, strRejectReasonDetails);
         }
         if (tx.nVersionGroupId != OVERWINTER_VERSION_GROUP_ID &&
-                tx.nVersionGroupId != SAPLING_VERSION_GROUP_ID) {
-            return state.DoS(100, error("CheckTransaction(): unknown tx version group id"),
-                    REJECT_INVALID, "bad-tx-version-group-id");
+                tx.nVersionGroupId != SAPLING_VERSION_GROUP_ID)
+        {
+            strRejectReasonDetails = "unknown tx version group id";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-tx-version-group-id", false, strRejectReasonDetails);
         }
-        if (tx.nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD) {
-            return state.DoS(100, error("CheckTransaction(): expiry height is too high"),
-                            REJECT_INVALID, "bad-tx-expiry-height-too-high");
+        if (tx.nExpiryHeight >= TX_EXPIRY_HEIGHT_THRESHOLD)
+        {
+            strRejectReasonDetails = "expiry height too high";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-tx-expiry-height-too-high", false, strRejectReasonDetails);
         }
     }
 
     // Transactions containing empty `vin` must have non-empty `vShieldedSpend`.
     if (tx.vin.empty() && tx.vShieldedSpend.empty())
-        return state.DoS(10, error("CheckTransaction(): vin empty"),
-                         REJECT_INVALID, "bad-txns-vin-empty");
+    {
+        strRejectReasonDetails = "vin empty";
+        return state.DoS(10, error("CheckTransaction(): %s", strRejectReasonDetails),
+            REJECT_INVALID, "bad-txns-vin-empty", false, strRejectReasonDetails);
+    }
     // Transactions containing empty `vout` must have non-empty `vShieldedOutput`.
     if (tx.vout.empty() && tx.vShieldedOutput.empty())
-        return state.DoS(10, error("CheckTransaction(): vout empty"),
-                         REJECT_INVALID, "bad-txns-vout-empty");
+    {
+        strRejectReasonDetails = "vout empty";
+        return state.DoS(10, error("CheckTransaction(): %s", strRejectReasonDetails),
+            REJECT_INVALID, "bad-txns-vout-empty", false, strRejectReasonDetails);
+    }
 
     // Size limits
     static_assert(MAX_BLOCK_SIZE >= MAX_TX_SIZE_AFTER_SAPLING); // sanity
     static_assert(MAX_TX_SIZE_AFTER_SAPLING > MAX_TX_SIZE_BEFORE_SAPLING); // sanity
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) > MAX_TX_SIZE_AFTER_SAPLING)
-        return state.DoS(100, error("CheckTransaction(): size limits failed"),
-                         REJECT_INVALID, "bad-txns-oversize");
+    {
+        strRejectReasonDetails = "size limits failed";
+        return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+            REJECT_INVALID, "bad-txns-oversize", false, strRejectReasonDetails);
+    }
 
     // Check for negative or overflow output values
     CAmount nValueOut = 0;
     for (const auto &txout : tx.vout)
     {
         if (txout.nValue < 0)
-            return state.DoS(100, error("CheckTransaction(): txout.nValue negative"),
-                             REJECT_INVALID, "bad-txns-vout-negative");
+        {
+            strRejectReasonDetails = "txout.nValue negative";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-vout-negative", false, strRejectReasonDetails);
+        }
         if (txout.nValue > MAX_MONEY)
-            return state.DoS(100, error("CheckTransaction(): txout.nValue too high"),
-                             REJECT_INVALID, "bad-txns-vout-toolarge");
+        {
+            strRejectReasonDetails = "txout.nValue too high";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-vout-toolarge", false, strRejectReasonDetails);
+        }
         nValueOut += txout.nValue;
         if (!MoneyRange(nValueOut))
-            return state.DoS(100, error("CheckTransaction(): txout total out of range"),
-                             REJECT_INVALID, "bad-txns-txouttotal-toolarge");
+        {
+            strRejectReasonDetails = "txout total out of range";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-txouttotal-toolarge", false, strRejectReasonDetails);
+        }
     }
 
     // Check for non-zero valueBalance when there are no Sapling inputs or outputs
-    if (tx.vShieldedSpend.empty() && tx.vShieldedOutput.empty() && tx.valueBalance != 0) {
-        return state.DoS(100, error("CheckTransaction(): tx.valueBalance has no sources or sinks"),
-                            REJECT_INVALID, "bad-txns-valuebalance-nonzero");
+    if (tx.vShieldedSpend.empty() && tx.vShieldedOutput.empty() && tx.valueBalance != 0)
+    {
+        strRejectReasonDetails = "tx.valueBalance has no sources or sinks";
+        return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+            REJECT_INVALID, "bad-txns-valuebalance-nonzero", false, strRejectReasonDetails);
     }
 
     // Check for overflow valueBalance
-    if (tx.valueBalance > MAX_MONEY || tx.valueBalance < -MAX_MONEY) {
-        return state.DoS(100, error("CheckTransaction(): abs(tx.valueBalance) too large"),
-                            REJECT_INVALID, "bad-txns-valuebalance-toolarge");
+    if (tx.valueBalance > MAX_MONEY || tx.valueBalance < -MAX_MONEY)
+    {
+        strRejectReasonDetails = "abs(tx.valueBalance) too large";
+        return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+            REJECT_INVALID, "bad-txns-valuebalance-toolarge", false, strRejectReasonDetails);
     }
 
     if (tx.valueBalance <= 0) {
         // NB: negative valueBalance "takes" money from the transparent value pool just as outputs do
         nValueOut += -tx.valueBalance;
 
-        if (!MoneyRange(nValueOut)) {
-            return state.DoS(100, error("CheckTransaction(): txout total out of range"),
-                                REJECT_INVALID, "bad-txns-txouttotal-toolarge");
+        if (!MoneyRange(nValueOut))
+        {
+            strRejectReasonDetails = "txout total out of range";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-txouttotal-toolarge", false, strRejectReasonDetails);
         }
     }
 
@@ -675,8 +750,11 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
     for (const auto& txin : tx.vin)
     {
         if (vInOutPoints.count(txin.prevout))
-            return state.DoS(100, error("CheckTransaction(): duplicate inputs"),
-                             REJECT_INVALID, "bad-txns-inputs-duplicate");
+        {
+            strRejectReasonDetails = "duplicate inputs";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-inputs-duplicate", false, strRejectReasonDetails);
+        }
         vInOutPoints.insert(txin.prevout);
     }
 
@@ -686,8 +764,11 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
         for (const auto& spend_desc : tx.vShieldedSpend)
         {
             if (vSaplingNullifiers.count(spend_desc.nullifier))
-                return state.DoS(100, error("CheckTransaction(): duplicate nullifiers"),
-                            REJECT_INVALID, "bad-spend-description-nullifiers-duplicate");
+            {
+                strRejectReasonDetails = "duplicate nullifiers";
+                return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                    REJECT_INVALID, "bad-spend-description-nullifiers-duplicate", false, strRejectReasonDetails);
+            }
 
             vSaplingNullifiers.insert(spend_desc.nullifier);
         }
@@ -697,23 +778,35 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
     {
         // A coinbase transaction cannot have spend descriptions or output descriptions
         if (tx.vShieldedSpend.size() > 0)
-            return state.DoS(100, error("CheckTransaction(): coinbase has spend descriptions"),
-                             REJECT_INVALID, "bad-cb-has-spend-description");
+        {
+            strRejectReasonDetails = "coinbase has spend descriptions";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-cb-has-spend-description", false, strRejectReasonDetails);
+        }
         if (tx.vShieldedOutput.size() > 0)
-            return state.DoS(100, error("CheckTransaction(): coinbase has output descriptions"),
-                             REJECT_INVALID, "bad-cb-has-output-description");
+        {
+            strRejectReasonDetails = "coinbase has output descriptions";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-cb-has-output-description", false, strRejectReasonDetails);
+        }
 
         if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)
-            return state.DoS(100, error("CheckTransaction(): coinbase script size"),
-                             REJECT_INVALID, "bad-cb-length");
+        {
+            strRejectReasonDetails = "coinbase script size";
+            return state.DoS(100, error("CheckTransaction(): %s", strRejectReasonDetails),
+                REJECT_INVALID, "bad-cb-length", false, strRejectReasonDetails);
+        }
     }
     else
     {
         for (const auto& txin : tx.vin)
         {
             if (txin.prevout.IsNull())
-                return state.DoS(10, error("CheckTransaction(): prevout is null"),
-                                 REJECT_INVALID, "bad-txns-prevout-null");
+            {
+                strRejectReasonDetails = "prevout is null";
+                return state.DoS(10, error("CheckTransaction(): %s", strRejectReasonDetails),
+                    REJECT_INVALID, "bad-txns-prevout-null", false, strRejectReasonDetails);
+            }
         }
     }
 
@@ -722,7 +815,8 @@ bool CheckTransactionWithoutProofVerification(const CTransaction& tx, CValidatio
 
 bool AcceptToMemoryPool(
     const CChainParams& chainparams,
-    CTxMemPool& pool, CValidationState& state, const CTransaction& tx, bool fLimitFree,
+    CTxMemPool& pool, CValidationState& state, 
+    const CTransaction& tx, bool fLimitFree,
     bool* pfMissingInputs, bool fRejectAbsurdFee)
 {
     AssertLockHeld(cs_main);
@@ -737,11 +831,12 @@ bool AcceptToMemoryPool(
     static_assert(numeric_limits<size_t>::max() >= numeric_limits<uint64_t>::max(), "size_t too small");
 
     const uint256 hash = tx.GetHash();
+    string sFuncLog = strprintf("AcceptToMemoryPool [%s]", hash.ToString());
+    string strRejectReasonDetails;
+
     auto verifier = libzcash::ProofVerifier::Strict();
     if (!CheckTransaction(tx, state, verifier))
-    {
-        return error("AcceptToMemoryPool [%s]: CheckTransaction failed. %s", hash.ToString(), state.GetRejectReason());
-    }
+        return error("%s: CheckTransaction failed. %s", sFuncLog, state.GetRejectReason());
 
     // Check transaction contextually against the set of consensus rules which apply in the next block to be mined.
     if (!ContextualCheckTransaction(tx, state, chainparams, nextBlockHeight))
@@ -750,9 +845,9 @@ bool AcceptToMemoryPool(
         {
             if (pfMissingInputs)
                 *pfMissingInputs = true;
-            return warning_msg("AcceptToMemoryPool [%s]: ContextualCheckTransaction missing inputs", hash.ToString());
+            return warning_msg("%s: ContextualCheckTransaction missing inputs", sFuncLog);
         }
-        return error("AcceptToMemoryPool [%s]: ContextualCheckTransaction failed. %s", hash.ToString(), state.GetRejectReason());
+        return error("%s: ContextualCheckTransaction failed. %s", sFuncLog, state.GetRejectReason());
     }
 
     // DoS mitigation: reject transactions expiring soon
@@ -760,23 +855,26 @@ bool AcceptToMemoryPool(
     // upon restart, CWalletTx::AcceptToMemoryPool() will be invoked which might result in rejection.
     if (IsExpiringSoonTx(tx, nextBlockHeight))
     {
-        return state.DoS(0, error("AcceptToMemoryPool [%s]: transaction is expiring soon", hash.ToString()),
-            REJECT_INVALID, "tx-expiring-soon");
+        strRejectReasonDetails = strprintf("transaction is expiring soon at height=%d", nextBlockHeight);
+        return state.DoS(0, error("%s: %s", sFuncLog, strRejectReasonDetails),
+            REJECT_INVALID, "tx-expiring-soon", false, strRejectReasonDetails);
     }
 
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
     {
-        return state.DoS(100, error("AcceptToMemoryPool [%s]: coinbase as individual tx", hash.ToString()),
-            REJECT_INVALID, "coinbase");
+        strRejectReasonDetails = "coinbase as individual tx";
+        return state.DoS(100, error("%s: %s", sFuncLog, strRejectReasonDetails),
+            REJECT_INVALID, "coinbase", false, strRejectReasonDetails);
     }
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     string reason;
     if (chainparams.RequireStandard() && !IsStandardTx(tx, reason, chainparams, nextBlockHeight))
     {
-        return state.DoS(0, error("AcceptToMemoryPool [%s]: nonstandard transaction: %s", hash.ToString(), reason),
-            REJECT_NONSTANDARD, reason);
+        strRejectReasonDetails = strprintf("nonstandard transaction: %s", reason);
+        return state.DoS(0, error("%s: %s", sFuncLog, strRejectReasonDetails),
+            REJECT_NONSTANDARD, reason, false, strRejectReasonDetails);
     }
 
     // Only accept nLockTime-using transactions that can be mined in the next
@@ -784,14 +882,15 @@ bool AcceptToMemoryPool(
     // be mined yet.
     if (!CheckFinalTx(tx, STANDARD_LOCKTIME_VERIFY_FLAGS))
     {
-        return state.DoS(0, error("AcceptToMemoryPool[% s]: non-final transaction", hash.ToString()),
-            REJECT_NONSTANDARD, "non-final");
+        strRejectReasonDetails = "non-final transaction";
+        return state.DoS(0, error("%s: %s", sFuncLog, strRejectReasonDetails),
+            REJECT_NONSTANDARD, "non-final", false, strRejectReasonDetails);
     }
 
     // is it already in the memory pool?
     if (pool.exists(hash))
     {
-        return warning_msg("AcceptToMemoryPool [%s]: duplication transaction", hash.ToString());
+        return warning_msg("%s: duplication transaction", sFuncLog);
     }
 
     // Check for conflicts with in-memory transactions
@@ -803,13 +902,13 @@ bool AcceptToMemoryPool(
             if (pool.mapNextTx.count(outpoint))
             {
                 // Disable replacement feature for now
-                return warning_msg("AcceptToMemoryPool [%s]: transaction with the same input already exists in the memory pool", hash.ToString());
+                return warning_msg("%s: transaction with the same input already exists in the memory pool", sFuncLog);
             }
         }
         for (const auto &spendDescription : tx.vShieldedSpend)
         {
             if (pool.nullifierExists(spendDescription.nullifier, SAPLING))
-                return warning_msg("AcceptToMemoryPool [%s]: nullifier exists for the shielded spend in the memory pool", hash.ToString());
+                return warning_msg("%s: nullifier exists for the shielded spend in the memory pool", sFuncLog);
         }
     } // end of mempool locked section (pool.cs)
 
@@ -826,7 +925,7 @@ bool AcceptToMemoryPool(
             // do we already have it?
             if (view.HaveCoins(hash))
             {
-                return warning_msg("AcceptToMemoryPool [%s]: transaction already exists in the mempool coins cache", hash.ToString());
+                return warning_msg("%s: transaction already exists in the mempool coins cache", sFuncLog);
             }
 
             // do all inputs exist?
@@ -844,13 +943,19 @@ bool AcceptToMemoryPool(
 
             // are the actual inputs available?
             if (!view.HaveInputs(tx))
-                return state.Invalid(error("AcceptToMemoryPool [%s]: inputs already spent", hash.ToString()),
-                                     REJECT_DUPLICATE, "bad-txns-inputs-spent");
+            {
+                strRejectReasonDetails = "inputs already spent";
+                return state.Invalid(error("%s: %s", sFuncLog, strRejectReasonDetails),
+                    REJECT_DUPLICATE, "bad-txns-inputs-spent", strRejectReasonDetails);
+            }
 
             // are the sapling spends requirements met in tx(valid anchors/nullifiers)?
             if (!view.HaveShieldedRequirements(tx))
-                return state.Invalid(error("AcceptToMemoryPool [%s]: sapling spends requirements not met", hash.ToString()),
-                                     REJECT_DUPLICATE, "bad-txns-shielded-requirements-not-met");
+            {
+                strRejectReasonDetails = "sapling spends requirements not met";
+                return state.Invalid(error("%s: %s", sFuncLog, strRejectReasonDetails),
+                    REJECT_DUPLICATE, "bad-txns-shielded-requirements-not-met", strRejectReasonDetails);
+            }
 
             // Bring the best block into scope
             view.GetBestBlock();
@@ -863,7 +968,7 @@ bool AcceptToMemoryPool(
 
         // Check for non-standard pay-to-script-hash in inputs
         if (chainparams.RequireStandard() && !AreInputsStandard(tx, view, consensusBranchId))
-            return error("AcceptToMemoryPool [%s]: nonstandard transaction input", hash.ToString());
+            return error("%s: nonstandard transaction input", sFuncLog);
 
         // Check that the transaction doesn't have an excessive number of
         // sigops, making it impossible to mine. Since the coinbase transaction
@@ -873,8 +978,11 @@ bool AcceptToMemoryPool(
         unsigned int nSigOps = GetLegacySigOpCount(tx);
         nSigOps += GetP2SHSigOpCount(tx, view);
         if (nSigOps > MAX_STANDARD_TX_SIGOPS)
-            return state.DoS(0, error("AcceptToMemoryPool [%s]: too many sigops %u > %u", hash.ToString(), nSigOps, MAX_STANDARD_TX_SIGOPS),
-                             REJECT_NONSTANDARD, "bad-txns-too-many-sigops");
+        {
+            strRejectReasonDetails = strprintf("too many sigops %u > %u", nSigOps, MAX_STANDARD_TX_SIGOPS);
+            return state.DoS(0, error("%s: %s", sFuncLog, strRejectReasonDetails),
+                REJECT_NONSTANDARD, "bad-txns-too-many-sigops", false, strRejectReasonDetails);
+        }
 
         CAmount nValueOut = tx.GetValueOut();
         CAmount nFees = nValueIn-nValueOut;
@@ -905,15 +1013,19 @@ bool AcceptToMemoryPool(
         // Don't accept it if it can't get into a block
         CAmount txMinFee = GetMinRelayFee(tx, nTxSize, true);
         if (fLimitFree && nFees < txMinFee)
-            return state.DoS(0, error("AcceptToMemoryPool [%s]: not enough fees %" PRId64 " < %" PRId64, hash.ToString(), nFees, txMinFee),
-                             REJECT_INSUFFICIENTFEE, "insufficient fee");
+        {
+            strRejectReasonDetails = strprintf("not enough fees %" PRId64 " < % " PRId64, nFees, txMinFee);
+            return state.DoS(0, error("%s: %s", sFuncLog, strRejectReasonDetails),
+                REJECT_INSUFFICIENTFEE, "insufficient fee", false, strRejectReasonDetails);
+        }
 
         // Require that free transactions have sufficient priority to be mined in the next block.
         if (GetBoolArg("-relaypriority", false) && nFees < gl_ChainOptions.minRelayTxFee.GetFee(nTxSize) && 
             !AllowFree(view.GetPriority(tx, chainActive.Height() + 1)))
         {
-            return state.DoS(0, error("AcceptToMemoryPool [%s]: insufficient priority to be mined in the next block", hash.ToString()),
-                             REJECT_INSUFFICIENTFEE, "insufficient priority");
+            strRejectReasonDetails = "insufficient priority to be mined in the next block";
+            return state.DoS(0, error("%s: %s", sFuncLog, strRejectReasonDetails),
+                REJECT_INSUFFICIENTFEE, "insufficient priority", false, strRejectReasonDetails);
         }
 
         // Continuously rate-limit free (really, very-low-fee) transactions
@@ -933,9 +1045,12 @@ bool AcceptToMemoryPool(
             nLastTime = nNow;
             // -limitfreerelay unit is thousand-bytes-per-minute
             // At default rate it would take over a month to fill 1GB
-            if (dFreeCount >= GetArg("-limitfreerelay", 15)*10*1000)
-                return state.DoS(0, error("AcceptToMemoryPool [%s]: free transaction rejected by rate limiter", hash.ToString()),
-                                 REJECT_INSUFFICIENTFEE, "rate limited free transaction");
+            if (dFreeCount >= GetArg("-limitfreerelay", 15) * 10 * 1000)
+            {
+                strRejectReasonDetails = "free transaction rejected by rate limiter";
+                return state.DoS(0, error("%s: %s", sFuncLog, strRejectReasonDetails),
+                    REJECT_INSUFFICIENTFEE, "rate limited free transaction", false, strRejectReasonDetails);
+            }
             LogPrint("mempool", "Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount+nTxSize);
             dFreeCount += nTxSize;
         }
@@ -946,7 +1061,7 @@ bool AcceptToMemoryPool(
                                       hash.ToString(),
                                       nFees, gl_ChainOptions.minRelayTxFee.GetFee(nTxSize) * 10000);
             LogPrint("mempool", errmsg.c_str());
-            return state.Error(strprintf("AcceptToMemoryPool [%s]: %s", hash.ToString(), errmsg));
+            return state.Error(strprintf("%s: %s", sFuncLog, errmsg));
         }
 
         // Check against previous transactions
@@ -954,7 +1069,7 @@ bool AcceptToMemoryPool(
         PrecomputedTransactionData txdata(tx);
         if (!ContextualCheckInputs(tx, state, view, true, STANDARD_SCRIPT_VERIFY_FLAGS, true, txdata, consensusParams, consensusBranchId))
         {
-            return error("AcceptToMemoryPool [%s]: ConnectInputs failed", hash.ToString());
+            return error("%s: ConnectInputs failed", sFuncLog);
         }
 
         // Check again against just the consensus-critical mandatory script
@@ -968,7 +1083,7 @@ bool AcceptToMemoryPool(
         // can be exploited as a DoS attack.
         if (!ContextualCheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, txdata, consensusParams, consensusBranchId))
         {
-            return error("AcceptToMemoryPool [%s]: BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags", hash.ToString());
+            return error("%s: BUG! PLEASE REPORT THIS! ConnectInputs failed against MANDATORY but not STANDARD flags", sFuncLog);
         }
 
         // Store transaction in memory

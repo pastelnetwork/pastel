@@ -153,7 +153,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             stop_node(self.nodes[self.cold_node_num])
 
             print(f"Waiting for {mn.alias} EXPIRED state on all other nodes...")
-            self.wait_for_mn_state(50, 30, "EXPIRED", mn_id, 8, self.nodes[1:])
+            self.wait_for_mn_state(80, 30, "EXPIRED", mn_id, 8, self.nodes[1:])
 
             print(f"Starting node {self.cold_node_num} as Masternode again...")
             self.nodes[self.cold_node_num] = start_node(self.cold_node_num, self.options.tmpdir, mn_params)
@@ -161,7 +161,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.sync_all()
 
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(50, 30, "ENABLED", mn_id, 8)
+            self.wait_for_mn_state(80, 40, "ENABLED", mn_id, 8)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'restart' in tests:

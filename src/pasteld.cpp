@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdio>
@@ -191,7 +191,8 @@ void print_callstack()
 
     int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
 
-    if (addrlen == 0) {
+    if (addrlen == 0)
+    {
         LogFnPrintf("No stack trace found");
         return;
     }
@@ -211,7 +212,7 @@ void print_callstack()
         {
             void* offset = (void*)((uintptr_t)addrlist[i] - (uintptr_t)info.dli_fbase);
             char syscom[256];
-            snprintf(syscom, sizeof(syscom), "addr2line %p -e %s", offset, info.dli_fname);
+            snprintf(syscom, sizeof(syscom), "addr2line -pfC -e %s %p", info.dli_fname, offset);
             system(syscom);
         }
     }

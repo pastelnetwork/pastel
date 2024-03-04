@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <limits>
@@ -42,3 +42,4 @@ double GetTruncatedPSLAmount(const CAmount& nAmountInPat) noexcept
     const double nAmountInPSL = static_cast<double>(nAmountInPat) / COIN;
     return trunc(nAmountInPSL * COIN_DECIMALS_FACTOR) / COIN_DECIMALS_FACTOR;
 }
+

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -21,9 +21,6 @@
 #include <mnode/mnode-perfcheck.h>
 
 using namespace std;
-
-// 7 days, 1 block per 2.5 minutes -> 4032
-constexpr uint32_t MAX_IN_PROCESS_COLLECTION_TICKET_AGE = 7 * 24 * static_cast<uint32_t>(60 / 2.5);
 
 /*
 MasterNode specific logic and initializations
@@ -67,8 +64,8 @@ void CMasterNodeController::InvalidateParameters()
     m_nMasternodeTopMNsNumber = 0;
 
     nGovernanceVotingPeriodBlocks = 0;
-    MinTicketConfirmations = 0;
-    MaxAcceptTicketAge = 0;
+    nMinTicketConfirmations = 0;
+    nMaxAcceptTicketAge = 0;
 
     MasternodeCollateral = 0;
     nMasternodeMinimumConfirmations = 0;
@@ -108,7 +105,7 @@ void CMasterNodeController::SetParameters()
     MasternodeExpirationSeconds             =  65 * 60;
     MasternodeWatchdogMaxSeconds            = 120 * 60;
     MasternodeNewStartRequiredSeconds       = 180 * 60;
-    MNStartRequiredExpirationTime           = 7 * 24 * 60 * 60;
+    MNStartRequiredExpirationTime           = 7 * 24 * 3600; // 7 days
 
     // MasterNode PoSe (Proof of Service) Max Ban Score
     m_nMasternodePOSEBanMaxScore            = 5;
@@ -123,10 +120,10 @@ void CMasterNodeController::SetParameters()
 
     nGovernanceVotingPeriodBlocks = 576; //24 hours, 1 block per 2.5 minutes
     
-    MinTicketConfirmations = 5; //blocks
-    MaxAcceptTicketAge = 24; //1 hour, 1 block per 2.5 minutes
+    nMinTicketConfirmations = 5; //blocks
+    nMaxAcceptTicketAge = 24; //1 hour, 1 block per 2.5 minutes
 
-    EnableMNSyncCheckAndReset = GetBoolArg("-enablemnsynccheck", false);
+    bEnableMNSyncCheckAndReset = GetBoolArg("-enablemnsynccheck", false);
 
     const auto& chainparams = Params();
     if (chainparams.IsMainNet())
@@ -174,6 +171,11 @@ void CMasterNodeController::SetParameters()
     else{
         //TODO Pastel: assert
     }
+}
+
+bool CMasterNodeController::IsOurMasterNode(const CPubKey &pubKey) const noexcept
+{
+    return m_fMasterNode && activeMasternode.pubKeyMasternode == pubKey;
 }
 
 /**
@@ -247,21 +249,82 @@ void CMasterNodeController::LockMnOutpoints(CWallet* pWalletMain)
     //Prevent Wallet from accidental spending of the collateral!!!
     if (GetBoolArg("-mnconflock", true) && pWalletMain && (masternodeConfig.getCount() > 0))
     {
-        LOCK(pWalletMain->cs_wallet);
-        LogFnPrintf("Locking Masternodes:");
-        for (const auto & [alias, mne]: masternodeConfig.getEntries())
+        v_outpoints vOutpointsToRecover;
+
         {
-            const COutPoint outpoint = mne.getOutPoint();
-            if (outpoint.IsNull())
-                continue;
-            // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
-            if (!IsMineSpendable(pWalletMain->GetIsMine(CTxIn(outpoint))))
+            LOCK(pWalletMain->cs_wallet);
+            LogFnPrintf("Locking Masternodes:");
+            for (const auto& [alias, mne] : masternodeConfig.getEntries())
             {
-                LogFnPrintf("  %s - IS NOT SPENDABLE, was not locked", outpoint.ToStringShort());
-                continue;
+                const COutPoint outpoint = mne.getOutPoint();
+                if (outpoint.IsNull())
+                    continue;
+                // don't lock non-spendable outpoint (i.e. it's already spent or it's not from this wallet at all)
+                const auto txin = CTxIn(outpoint);
+                auto txIsMine = pWalletMain->GetIsMine(txin);
+                if (txIsMine == isminetype::NO)
+                {
+                    // check if transaction exists in the wallet
+                    const auto pWalletTx = pWalletMain->GetWalletTx(outpoint.hash);
+                    // if no - try to recover it
+                    if (!pWalletTx)
+                    {
+                        vOutpointsToRecover.push_back(outpoint);
+                        continue;
+                    }
+                }
+                else if (!IsMineSpendable(txIsMine))
+                {
+                    LogFnPrintf("  %s - IS NOT SPENDABLE, was not locked", outpoint.ToStringShort());
+                    continue;
+                }
+                pWalletMain->LockCoin(outpoint);
+                LogFnPrintf("  %s - locked successfully", outpoint.ToStringShort());
             }
-            pWalletMain->LockCoin(outpoint);
-            LogFnPrintf("  %s - locked successfully", outpoint.ToStringShort());
+        }
+        if (!vOutpointsToRecover.empty())
+        {
+            const auto &chainparams = Params();
+            const auto &consensusParams = chainparams.GetConsensus();
+
+            for (const auto& outpoint : vOutpointsToRecover)
+            {
+                LogFnPrintf("  %s - outpoint transaction not found in the wallet, trying to recover...", outpoint.ToStringShort());
+
+                LOCK2(cs_main, pWalletMain->cs_wallet);
+                CTransaction tx;
+                uint256 hashBlock;
+                uint32_t nBlockHeight = 0;
+                if (!GetTransaction(outpoint.hash, tx, consensusParams, hashBlock, true, &nBlockHeight))
+                    continue;
+                LogFnPrintf("  %s - outpoint transaction found in block %s, height=%u", outpoint.ToStringShort(), hashBlock.ToString(), nBlockHeight);
+                const auto it = mapBlockIndex.find(hashBlock);
+                if (it == mapBlockIndex.cend())
+                {
+					LogFnPrintf("  %s - block index not found", outpoint.ToStringShort());
+					continue;
+				}
+                const auto pindex = it->second;
+                CBlock block;
+                if (!ReadBlockFromDisk(block, pindex, consensusParams))
+                {
+                    LogFnPrintf("  %s - block not found on disk", outpoint.ToStringShort());
+                    continue;
+                }
+                if (!pWalletMain->AddTxToWallet(tx, &block, false))
+                    continue;
+                const auto txin = CTxIn(outpoint);
+                LogFnPrintf("  %s - outpoint transaction recovered successfully", outpoint.ToStringShort());
+
+                auto txIsMine = pWalletMain->GetIsMine(txin);
+                if (!IsMineSpendable(txIsMine))
+                {
+                    LogFnPrintf("  %s - IS NOT SPENDABLE, was not locked", outpoint.ToStringShort());
+                    continue;
+                }
+                pWalletMain->LockCoin(outpoint);
+                LogFnPrintf("  %s - locked successfully", outpoint.ToStringShort());
+            }
         }
     }
 }
@@ -293,49 +356,53 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
         return false;
     }
 
+    bool bRet = true;
     if (m_fMasterNode)
-    {
-        LogFnPrintf("MASTERNODE:");
+    do {
+        LogFnPrintf("MASTERNODE mode");
 
+        bRet = false;
         const string strMasterNodePrivKey = GetArg("-masternodeprivkey", "");
-        if (!strMasterNodePrivKey.empty())
+        if (strMasterNodePrivKey.empty())
         {
-            if (!CMessageSigner::GetKeysFromSecret(strMasterNodePrivKey, activeMasternode.keyMasternode, activeMasternode.pubKeyMasternode))
-            {
-                strErrors << translate("Invalid masternodeprivkey. Please see documentation.");
-                return false;
-            }
-
-            KeyIO keyIO(Params());
-            const CTxDestination dest = activeMasternode.pubKeyMasternode.GetID();
-            string address = keyIO.EncodeDestination(dest);
-
-            LogFnPrintf("  pubKeyMasternode: %s", address);
-
-            // check hardware requirements
-            LogFnPrintf("Checking hardware requirements...");
-            string error;
-            if (!checkHardwareRequirements(error, "MasterNode mode"))
-            {
-                strErrors << translate(error.c_str());
-                return false;
-            }
-            LogFnPrintf("...hardware requirements passed");
-            LogFnPrintf("Checking CPU benchmark...");
-            uint64_t nCPUBenchMark = cpuBenchmark(100);
-            if (nCPUBenchMark > CPU_BENCHMARK_THRESHOLD_MSECS)
-			{
-				strErrors << translate(strprintf("Machine does not meet the minimum requirements to run in Masternode mode.\n"
-                    "Your CPU is too weak - benchmark %" PRIu64 "ms with required %" PRIu64 "ms.", 
-                    nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS).c_str());
-				return false;
-			}
-            LogFnPrintf("...CPU benchmark passed (%" PRIu64 "ms, min required %" PRIu64"ms)", nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS);
-        } else {
             strErrors << translate("You must specify a masternodeprivkey in the configuration. Please see documentation for help.");
-            return false;
+            break;
         }
-    }
+        if (!CMessageSigner::GetKeysFromSecret(strMasterNodePrivKey, activeMasternode.keyMasternode, activeMasternode.pubKeyMasternode))
+        {
+            strErrors << translate("Invalid masternodeprivkey. Please see documentation.");
+            break;
+        }
+
+        KeyIO keyIO(Params());
+        const CTxDestination dest = activeMasternode.pubKeyMasternode.GetID();
+        string address = keyIO.EncodeDestination(dest);
+
+        LogFnPrintf("  pubKeyMasternode: %s", address);
+
+        // check hardware requirements
+        LogFnPrintf("Checking hardware requirements...");
+        string error;
+        if (!checkHardwareRequirements(error, "MasterNode mode"))
+        {
+            strErrors << translate(error.c_str());
+            break;
+        }
+        LogFnPrintf("...hardware requirements passed");
+        LogFnPrintf("Checking CPU benchmark...");
+        uint64_t nCPUBenchMark = cpuBenchmark(100);
+        if (nCPUBenchMark > CPU_BENCHMARK_THRESHOLD_MSECS)
+		{
+			strErrors << translate(strprintf("Machine does not meet the minimum requirements to run in Masternode mode.\n"
+                "Your CPU is too weak - benchmark %" PRIu64 "ms with required %" PRIu64 "ms.", 
+                nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS).c_str());
+			break;
+		}
+        LogFnPrintf("...CPU benchmark passed (%" PRIu64 "ms, min required %" PRIu64 "ms)", nCPUBenchMark, CPU_BENCHMARK_THRESHOLD_MSECS);
+        bRet = true;
+    } while (false);
+    if (!bRet)
+        return false;
 
 #ifdef ENABLE_WALLET
     LockMnOutpoints(pWalletMain);
@@ -388,9 +455,6 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
         return false;
     }
 	
-    //enable tickets database
-	masternodeTickets.InitTicketDB();
-
     pacNotificationInterface = new CACNotificationInterface();
     RegisterValidationInterface(pacNotificationInterface);
 
@@ -398,9 +462,18 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     pacNotificationInterface->InitializeCurrentBlockTip();
 
     //Enable Maintenance thread
-    threadGroup.add_thread(make_shared<CMasterNodeMaintenanceThread>());
+    if (threadGroup.add_thread(strErr, make_shared<CMasterNodeMaintenanceThread>()) == INVALID_THREAD_OBJECT_ID)
+	{
+		strErrors << translate("Failed to start masternode maintenance thread. ") + strErr;
+		return false;
+	}
 
     return true;
+}
+
+void CMasterNodeController::InitTicketDB()
+{
+    masternodeTickets.InitTicketDB();
 }
 
 void CMasterNodeController::StartMasterNode(CServiceThreadGroup& threadGroup)
@@ -410,7 +483,9 @@ void CMasterNodeController::StartMasterNode(CServiceThreadGroup& threadGroup)
         semMasternodeOutbound = make_unique<CSemaphore>(nMasterNodeMaximumOutboundConnections);
 
     //Enable Broadcast re-requests thread
-    threadGroup.add_thread(make_shared<CMnbRequestConnectionsThread>());
+    string error;
+    if (threadGroup.add_thread(error, make_shared<CMnbRequestConnectionsThread>()) == INVALID_THREAD_OBJECT_ID)
+		LogFnPrintf("Failed to start masternode broadcast re-requests thread. %s", error);
 }
 
 void CMasterNodeController::StopMasterNode()
@@ -420,7 +495,6 @@ void CMasterNodeController::StopMasterNode()
     for (int i=0; i<nMasterNodeMaximumOutboundConnections; i++)
         semMasternodeOutbound->post();
 }
-
 
 bool CMasterNodeController::ProcessMessage(node_t& pfrom, string& strCommand, CDataStream& vRecv)
 {
@@ -465,7 +539,7 @@ bool CMasterNodeController::AlreadyHave(const CInv& inv)
         }
 
     case MSG_MASTERNODE_ANNOUNCE:
-        return masternodeManager.mapSeenMasternodeBroadcast.count(inv.hash) > 0 && !masternodeManager.IsMnbRecoveryRequested(inv.hash);
+        return masternodeManager.mapSeenMasternodeBroadcast.count(inv.hash) && !masternodeManager.IsMnbRecoveryRequested(inv.hash);
 
     case MSG_MASTERNODE_PING:
         return masternodeManager.mapSeenMasternodePing.count(inv.hash) > 0;
@@ -548,11 +622,18 @@ bool CMasterNodeController::ProcessGetData(node_t& pfrom, const CInv& inv)
         {
             if (masternodeManager.mapSeenMasternodeBroadcast.count(inv.hash))
             {
-                CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-                ss.reserve(1000);
-                ss << masternodeManager.mapSeenMasternodeBroadcast[inv.hash].second;
-                pfrom->PushMessage(NetMsgType::MNANNOUNCE, ss);
-                bPushed = true;
+                // don't send mnbs with partial info
+                // "not-found" reply will be sent for this getdata request to the sender
+                const auto& mnb = masternodeManager.mapSeenMasternodeBroadcast[inv.hash].second;
+                if (!mnb.hasPartialInfo())
+                {
+                    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+                    ss.reserve(1000);
+                    ss << mnb;
+                    pfrom->PushMessage(NetMsgType::MNANNOUNCE, ss);
+                    bPushed = true;
+                } else
+                    LogFnPrint("masternode", "not sending mnb [%s] - partial info v%hd", inv.hash.ToString(), mnb.GetVersion());
             }
         } break;
 
@@ -719,14 +800,15 @@ double CMasterNodeController::GetChainDeflatorFactor(uint32_t chainHeight) const
         }
     }
 
-    if (Params().IsTestNet() && deflatorFactor > 0.11)
-        deflatorFactor = 0.11;
+    //if (Params().IsTestNet() && deflatorFactor > 0.11)
+    //    deflatorFactor = 0.11;
 
     return deflatorFactor;
 }
 
 /**
  * Calculate network blockchain deflator factor for the given block height.
+ * cs_main lock must be acquired before calling this function - to access chainActive.
  * 
  * \param nChainHeight - block height
  * \return chain deflator factor
@@ -759,6 +841,19 @@ double CMasterNodeController::CalculateChainDeflatorFactor(uint32_t chainHeight)
     }
     const double averageTrailingDifficulty = fTotalTrailingDifficulty/m_nChainTrailingAverageDifficultyRange;
     return averageBaselineDifficulty/averageTrailingDifficulty;
+}
+
+bool CMasterNodeController::SnEligibilityCheckAllowed() const noexcept
+{
+    if (!masternodeSync.IsSynced())
+        return false;
+    const int64_t nTimeLastSynced = masternodeSync.GetLastSyncTime();
+    if (!nTimeLastSynced)
+        return false;
+    const int64_t nTimeNow = GetTime();
+    if (nTimeNow - nTimeLastSynced > SN_ELIGIBILITY_CHECK_DELAY_SECS)
+		return false;
+	return true;
 }
 
 /*
@@ -809,13 +904,15 @@ void CMnbRequestConnectionsThread::execute()
     }
 }
 
+once_flag CMasterNodeMaintenanceThread::m_onceFlag;
+
 void CMasterNodeMaintenanceThread::execute()
 {
-    static bool fOneThread = false;
-    if (fOneThread)
-        return;
-    fOneThread = true;
+    call_once(m_onceFlag, &CMasterNodeMaintenanceThread::execute_internal, this);
+}
 
+void CMasterNodeMaintenanceThread::execute_internal()
+{
     size_t nTick = 0;
 
     while (!shouldStop())
@@ -831,6 +928,7 @@ void CMasterNodeMaintenanceThread::execute()
         {
             nTick++;
 
+            if (nTick % 10 == 0)
             {
                 LOCK(cs_main);
                 // make sure to check all masternodes first
@@ -840,12 +938,12 @@ void CMasterNodeMaintenanceThread::execute()
             // check if we should activate or ping every few minutes,
             // slightly postpone first run to give net thread a chance to connect to some peers
             if (nTick % masterNodeCtrl.MasternodeMinMNPSeconds == 15)
-                masterNodeCtrl.activeMasternode.ManageState();
+                masterNodeCtrl.activeMasternode.ManageState(__FUNCTION__);
 
             if (nTick % 60 == 0)
             {
                 masterNodeCtrl.masternodeManager.ProcessMasternodeConnections();
-                masterNodeCtrl.masternodeManager.CheckAndRemove(true);
+                masterNodeCtrl.masternodeManager.CheckAndRemove();
                 masterNodeCtrl.masternodePayments.CheckAndRemove();
                 masterNodeCtrl.masternodeMessages.CheckAndRemove();
 #ifdef GOVERNANCE_TICKETS

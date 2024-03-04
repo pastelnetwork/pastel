@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Developers
+// Copyright (c) 2018-2024 The Pastel Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <main.h>
@@ -194,7 +194,7 @@ void CMasternodeMessageProcessor::ProcessMessage(node_t& pFrom, string& strComma
 //        if no vinMasternodeFrom - we only accept messages encrypted with our public key!!!!
 
         masternode_info_t mnInfo; //Node that sent the message
-        if(!masterNodeCtrl.masternodeManager.GetMasternodeInfo(true, message.vinMasternodeFrom.prevout, mnInfo))
+        if (!masterNodeCtrl.masternodeManager.GetMasternodeInfo(true, message.vinMasternodeFrom.prevout, mnInfo))
         {
             // mn was not found, so we can't check message, some info is probably missing
             LogFnPrintf("MASTERNODEMESSAGE -- masternode is missing %s", message.vinMasternodeFrom.prevout.ToStringShort());
@@ -279,7 +279,7 @@ void CMasternodeMessageProcessor::ProcessMessage(node_t& pFrom, string& strComma
             }
             if (bSetFee && mnFeeType != MN_FEE::COUNT)
             {
-                masternode_t pmn = masterNodeCtrl.masternodeManager.Get(masterNodeCtrl.activeMasternode.outpoint);
+                masternode_t pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, masterNodeCtrl.activeMasternode.outpoint);
                 if (!pmn)
                     throw runtime_error("Unknown Masternode");
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unistd.h>
@@ -358,7 +358,7 @@ constexpr uint32_t MAINNET_MN_FEWVOTE_ACTIVATION_HEIGHT = 228'700;
  * Validate transaction - check for scheduled MN payments.
  * 
  * mainnet logic before block 228700:
- *   - the transaction was considered valid if there were less than 6 votes
+ *   - the transaction was considered valid if there was less than 6 votes
  * new voting logic is activated at block height 228700 (or regtest,testnet):
  *   - the transaction is checked for payment regardless of the payee vote count
  *   - regular transactions with no votes are considered valid
@@ -407,17 +407,15 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew) const
     {
         const auto& payee = payeeRef.get();
 
-        // skip payees without votes
         const auto nVoteCount = payee.GetVoteCount();
-        if (nVoteCount == 0)
-            break; // vOrderedPayee is sorted by vote count
+        if (nVoteCount > 0)
+            ++nPayeesWithVotes;
 
-        ++nPayeesWithVotes;
         for (const auto &txout : txNew.vout)
         {
             if (payee.GetPayee() == txout.scriptPubKey && nMasternodePayment == txout.nValue)
             {
-                LogFnPrint("mnpayments", "Found required payment");
+                LogFnPrint("mnpayments", "Found required payment (height=%u)", nCurrentHeight);
                 bFound = true;
                 break;
             }
@@ -427,23 +425,25 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew) const
             break;
         CTxDestination dest;
         if (ExtractDestination(payee.GetPayee(), dest))
-            str_append_field(strPayeesPossible, 
+        {
+            str_append_field(strPayeesPossible,
                 strprintf("%s(%zu)", keyIO.EncodeDestination(dest), nVoteCount).c_str(), ", ");
+        }
     }
     vOrderedPayee.clear();
     if (!bFound && !nPayeesWithVotes)
         bFound = true;
     if (!bFound)
     {
-        LogFnPrintf("ERROR: Missing required payment, possible payees: '%s', amount: %" PRId64 " PSL",
-            strPayeesPossible, nMasternodePayment);
+        LogFnPrintf("ERROR: Missing required payment, possible payees: '%s', amount: %.5f PSL",
+            strPayeesPossible, GetTruncatedPSLAmount(nMasternodePayment));
         size_t i = 1;
         for (const auto& txout : txNew.vout)
         {
             CTxDestination dest;
             if (!ExtractDestination(txout.scriptPubKey, dest))
                 continue;
-            LogFnPrintf("\t%zu) %s -- %" PRId64, i++, keyIO.EncodeDestination(dest), txout.nValue);
+            LogFnPrintf("\t%zu) %s -- %.5f PSL", i++, keyIO.EncodeDestination(dest), GetTruncatedPSLAmount(txout.nValue));
             LogFnPrintf("\t  %s", txout.scriptPubKey.ToString());
         }
     }
@@ -507,7 +507,7 @@ void CMasternodePayments::CheckAndRemove()
     LogFnPrintf("%s", ToString());
 }
 
-bool CMasternodePaymentVote::IsValid(const node_t& pnode, int nValidationHeight, string& strError)
+bool CMasternodePaymentVote::IsValid(const node_t& pnode, int nValidationHeight, string& strError) const
 {
     masternode_info_t mnInfo;
 
@@ -541,7 +541,7 @@ bool CMasternodePaymentVote::IsValid(const node_t& pnode, int nValidationHeight,
     if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(strError, vinMasternode.prevout, nRank,
          nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta, nMinRequiredProtocol))
     {
-        strError = strprintf("Can't calculate rank for masternode %s. %s", vinMasternode.prevout.ToStringShort(), strError);
+        strError = strprintf("Can't calculate rank for Masternode '%s'. %s", vinMasternode.prevout.ToStringShort(), strError);
         LogFnPrint("mnpayments", strError);
         return false;
     }
@@ -582,7 +582,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     string error;
     if (!masterNodeCtrl.masternodeManager.GetMasternodeRank(error, masterNodeCtrl.activeMasternode.outpoint, nRank, nBlockHeight + masterNodeCtrl.nMasternodePaymentsVotersIndexDelta))
     {
-        LogFnPrint("mnpayments", "Can't get Masternode %s rank. %s", masterNodeCtrl.activeMasternode.outpoint.ToStringShort(), error);
+        LogFnPrint("mnpayments", "Can't get Masternode '%s' rank. %s", masterNodeCtrl.activeMasternode.outpoint.ToStringShort(), error);
         return false;
     }
 

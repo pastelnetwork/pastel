@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <condition_variable>
@@ -498,6 +498,14 @@ constexpr bool SKIP_LOCK = false;
 #define LOCK2_RS(cs1_recursive, cs2_simple) \
     CCriticalBlock criticalblock1(cs1_recursive, #cs1_recursive, __FILE__, __LINE__); \
     CWaitableCriticalBlock criticalblock2(cs2_simple, #cs2_simple, __FILE__, __LINE__)
+#define LOCK2_COND(condition1, cs1, condition2, cs2) \
+    CCriticalBlock criticalblock1(cs1, #cs1, __FILE__, __LINE__, LockingStrategy::DEFERRED); \
+    CCriticalBlock criticalblock2(cs2, #cs2, __FILE__, __LINE__, LockingStrategy::DEFERRED); \
+    if (condition1) \
+		criticalblock1.Lock(#cs1, __FILE__, __LINE__); \
+    if (condition2) \
+		criticalblock2.Lock(#cs2, __FILE__, __LINE__);
+
 #define TRY_LOCK(cs, name) CCriticalBlock name(cs, #cs, __FILE__, __LINE__, LockingStrategy::TRY)
 #define TRY_LOCK_COND(condition, cs, name) \
     CCriticalBlock name(cs, #cs, __FILE__, __LINE__, LockingStrategy::DEFERRED); \

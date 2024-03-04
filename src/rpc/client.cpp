@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <set>
@@ -26,7 +26,7 @@ public:
 };
 
 // 0-based indexes of the params to convert
-static const array<CRPCConvertParam, 75> gl_vRPCConvertParams =
+static const array<CRPCConvertParam, 79> gl_vRPCConvertParams =
 {{
     { "stop", nullptr, {0} },
     { "setmocktime", nullptr, {0} },
@@ -38,6 +38,8 @@ static const array<CRPCConvertParam, 75> gl_vRPCConvertParams =
     { "sendtoaddress", nullptr, {1, 4} },
     { "settxfee", nullptr, {0} },
     { "getreceivedbyaddress", nullptr, {1} },
+    { "scanformissingtxs", nullptr, {0, 1} },
+    { "fixmissingtxs", nullptr, {0, 1} },
     { "getreceivedbyaccount", nullptr, {1} },
     { "listreceivedbyaddress", nullptr, {0, 1, 2} },
     { "listreceivedbyaccount", nullptr, {0, 1, 2} },
@@ -66,6 +68,8 @@ static const array<CRPCConvertParam, 75> gl_vRPCConvertParams =
     { "masternode", "pose-ban-score", {3} },
     { "getblock", nullptr, {1} },
     { "getblockheader", nullptr, {1} },
+    { "getblockmininginfo", nullptr, {1} },
+    { "getblocksignature", nullptr, {0, 1} },
     { "gettransaction", nullptr, {1} },
     { "getrawtransaction", nullptr, {1} },
     { "createrawtransaction", nullptr, {0, 1, 2, 3} },

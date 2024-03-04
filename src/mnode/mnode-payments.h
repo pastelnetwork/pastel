@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -144,7 +144,7 @@ public:
     bool Sign();
     bool CheckSignature(const CPubKey& pubKeyMasternode, int nValidationHeight, int &nDos);
 
-    bool IsValid(const node_t& pnode, int nValidationHeight, std::string& strError);
+    bool IsValid(const node_t& pnode, int nValidationHeight, std::string& strError) const;
     void Relay();
 
     bool IsVerified() const noexcept { return !vchSig.empty(); }

@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -13,8 +13,10 @@ public:
     MockCValidationState(TxOrigin txOrigin) noexcept :
         CValidationState(txOrigin)
     {}
-    MOCK_METHOD(bool, DoS, (const int level, const bool bRet, const unsigned char chRejectCodeIn, const std::string strRejectReasonIn, const bool bCorruptionPossible), (override, noexcept));
-    MOCK_METHOD(bool, Invalid, (const bool bRet, const unsigned char chRejectCode, const std::string strRejectReason), (override, noexcept));
+    MOCK_METHOD(bool, DoS, (const int level, const bool bRet, const unsigned char chRejectCodeIn, 
+        const std::string &strRejectReasonIn, const bool bCorruptionPossible, const std::string &strRejectReasonDetails), (override, noexcept));
+    MOCK_METHOD(bool, Invalid, (const bool bRet, const unsigned char chRejectCode, const std::string &strRejectReason, 
+        const std::string &strRejectReasonDetails), (override, noexcept));
     MOCK_METHOD(bool, Error, (const std::string& strRejectReasonIn), (override, noexcept));
     MOCK_METHOD(bool, IsValid, (), (const, override, noexcept));
     MOCK_METHOD(bool, IsInvalid, (), (const, override, noexcept));

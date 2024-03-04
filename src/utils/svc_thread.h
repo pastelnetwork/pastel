@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2022-2023 The Pastel Core developers
+// Copyright (c) 2022-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <atomic>
@@ -54,14 +54,22 @@ public:
      * 
      * \return true if thread created successfully
      */
-    bool start() noexcept
+    bool start(std::string &error) noexcept
     {
+        error.clear();
         try
         {
             m_Thread = std::thread(&CServiceThread::run, this);
         }
+        catch (const std::exception& exc)
+        {
+            error = strprintf("Exception occured on thread [%s] creation: %s", m_sThreadName, exc.what());
+			LogPrintf("%s\n", error);
+			return false;
+		}
         catch(...) {
-            LogPrintf("exception occured on thread [%s] creation\n", m_sThreadName);
+            error = strprintf("Exception occured on thread [%s] creation", m_sThreadName);
+			LogPrintf("%s\n", error);
             return false;
         }
         return true;
@@ -183,10 +191,14 @@ public:
         m_condVar.notify_one();
     }
 
+    void sendSignal() noexcept { m_condVar.notify_one(); }
+
 protected:
     std::mutex m_mutex;
     std::condition_variable m_condVar;
 };
+
+static constexpr size_t INVALID_THREAD_OBJECT_ID = std::numeric_limits<size_t>::max();
 
 /** 
  * Group of threads.
@@ -201,40 +213,83 @@ public:
     /**
      * Add thread to thread group.
      * 
+     * \param error - error message 
      * \param t - instance of class inherited from CServiceThread (create with make_shared)
      * \param bStartThread - if true - start thread after it was added
+     * 
      * \return - id of the thread object that can be used later on to access it
+     *           INVALID_THREAD_OBJECT_ID if failed to add thread, error message returned in this case
      */
-    size_t add_thread(std::shared_ptr<CServiceThread> t, const bool bStartThread = true)
+    size_t add_thread(std::string &error, std::shared_ptr<CServiceThread> t, const bool bStartThread = true)
     {
+        error.clear();
         std::unique_lock<std::mutex> lck(m_Lock);
         ++m_nCurrentID;
         auto pr = m_vThreads.emplace(m_nCurrentID, std::move(t));
         if (pr.second && bStartThread)
         {
-            if (!pr.first->second->start())
+            if (!pr.first->second->start(error))
             {
                 // failed to create thread
                 // remove thread from map and return -1
                 m_vThreads.erase(m_nCurrentID);
-                return std::numeric_limits<size_t>::max();
+                return INVALID_THREAD_OBJECT_ID;
             }
         }
-        return pr.second ? m_nCurrentID : std::numeric_limits<size_t>::max();
+        return pr.second ? m_nCurrentID : INVALID_THREAD_OBJECT_ID;
     }
 
     /** 
      * Add Callable function to thread group.
      * 
+     * \param error - error message
      * \param szThreadName - thread name used for identification
      * \param func - callable function (any lambfa, std::function or std::bind(...))
      * \param bStartThread - if true - start thread after it was added
+     * 
+     * \return id of the thread object that can be used later on to access it
+     *         INVALID_THREAD_OBJECT_ID if failed to add thread
      */
     template <typename Callable>
-    size_t add_func_thread(const char *szThreadName, Callable &&func, const bool bStartThread = true)
+    size_t add_func_thread(std::string &error, const char *szThreadName, Callable &&func, const bool bStartThread = true)
     {
-        return add_thread(std::make_shared<CFuncThread<Callable>>(szThreadName, func), bStartThread);
+        return add_thread(error, std::make_shared<CFuncThread<Callable>>(szThreadName, func), bStartThread);
     }
+
+    /** 
+     * Start thread by its id.
+     * 
+     * \param error - error message
+     * \param nThreadObjectID - id of the thread object
+     * 
+     * \return true if thread started successfully, false otherwise
+     */
+    bool start_thread(std::string &error, const size_t nThreadObjectID)
+    {
+		std::unique_lock<std::mutex> lck(m_Lock);
+		auto it = m_vThreads.find(nThreadObjectID);
+        if (it == m_vThreads.end())
+        {
+            error = strprintf("Thread object with ID=%zu not found in a thread group", nThreadObjectID);
+            return false;
+        }
+        auto threadObj = it->second;
+        if (!threadObj)
+        {
+			error = strprintf("Thread object with ID=%zu is not defined", nThreadObjectID);
+			return false;
+		}
+        if (threadObj->isRunning())
+            return true;
+        if (threadObj->start(error))
+        {
+            LogFnPrintf("Thread '%s' (ID=%zu) has been started", threadObj->get_thread_name(), nThreadObjectID);
+            return true;
+        }
+        error = strprintf("Failed to start thread '%s' (ID=%zu). %s",
+            threadObj->get_thread_name(), nThreadObjectID, error);
+        return false;
+	}
 
     /**
      * Call stop() for all thread objects.

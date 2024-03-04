@@ -88,11 +88,11 @@ void CScriptCheckManager::create_workers(CServiceThreadGroup &threadGroup)
         return;
     }
     LogPrintf("Using %zu threads for script verification\n", m_nScriptCheckThreads);
-    string sThreadName;
+    string sThreadName, error;
     for (size_t i = 0; i < m_nScriptCheckThreads - 1; ++i)
     {
         sThreadName = strprintf("scr-ch%d", i + 1);
-        threadGroup.add_thread(make_shared<CScriptCheckWorker>(&m_ScriptCheckQueue, false, sThreadName.c_str()), true);
+        threadGroup.add_thread(error, make_shared<CScriptCheckWorker>(&m_ScriptCheckQueue, false, sThreadName.c_str()), true);
     }
 }
 

@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
@@ -31,7 +31,7 @@ class CMasternodeMessage
 public:
     CTxIn vinMasternodeFrom;
     CTxIn vinMasternodeTo;
-    uint8_t messageType;
+    uint8_t messageType {};
     std::string message;
     int64_t sigTime{}; //message times
     v_uint8 vchSig;
@@ -93,7 +93,7 @@ public:
 //    std::map<uint256, > mapLatestSenders;
 //    std::map<CNetAddr, int64_t> mapLatestSenders; how many time during last hour(?) or time ago
 
-    CMasternodeMessageProcessor() = default;
+    CMasternodeMessageProcessor() noexcept = default;
 
     ADD_SERIALIZE_METHODS;
 

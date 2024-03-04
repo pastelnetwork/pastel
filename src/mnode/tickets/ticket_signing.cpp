@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_map>
@@ -212,7 +212,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
             // Check that outpoint belongs to the one of the masternodes
             if (masterNodeCtrl.masternodeSync.IsSynced())
             {
-                const auto pMN = masterNodeCtrl.masternodeManager.Get(outpoint);
+                const auto pMN = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
                 if (!pMN)
                 {
 					tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel developers
+// Copyright (c) 2018-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -9,6 +9,7 @@
 #include <zcash/Proof.hpp>
 #include <clientversion.h>
 
+using namespace testing;
 
 TEST(CheckBlock, VersionTooLow)
 {
@@ -19,7 +20,7 @@ TEST(CheckBlock, VersionTooLow)
     block.nVersion = 1;
 
     MockCValidationState state(TxOrigin::UNKNOWN);
-    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "version-too-low", false)).Times(1);
+    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "version-too-low", false, Ne(""))).Times(1);
     EXPECT_FALSE(CheckBlock(block, state, Params(), verifier, false, false));
 }
 
@@ -55,7 +56,7 @@ TEST(CheckBlock, BlockSproutRejectsBadVersion)
 
     auto verifier = libzcash::ProofVerifier::Strict();
 
-    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-version-too-low", false)).Times(1);
+    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-version-too-low", false, Ne(""))).Times(1);
     EXPECT_FALSE(CheckBlock(block, state, chainparams, verifier, false, false));
 }
 
@@ -137,7 +138,7 @@ protected:
 
         // We now expect this to be an invalid block, for the given reason.
         MockCValidationState state(TxOrigin::MINED_BLOCK);
-        EXPECT_CALL(state, DoS(level, false, REJECT_INVALID, reason, false));
+        EXPECT_CALL(state, DoS(level, false, REJECT_INVALID, reason, false, Ne("")));
         EXPECT_FALSE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
     }
 };
@@ -172,14 +173,15 @@ TEST_F(ContextualCheckBlockTest, BadCoinbaseHeight)
     CBlock prev;
     CBlockIndex indexPrev {prev};
     indexPrev.nHeight = 0;
-    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-cb-height", false)).Times(1);
+    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-cb-height", false, Ne(""))).Times(1);
     EXPECT_FALSE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
 
     // Setting to an incorrect height should fail
     mtx.vin[0].scriptSig = CScript() << 2 << OP_0;
     CTransaction tx3 {mtx};
     block.vtx[0] = tx3;
-    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-cb-height", false)).Times(1);
+    EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-cb-height", false, Ne(""))).Times(1);
+
     EXPECT_FALSE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
 
     // After correcting the scriptSig, should pass

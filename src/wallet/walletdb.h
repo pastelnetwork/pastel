@@ -1,13 +1,14 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <list>
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <mutex>
 
 #include <utils/vector_types.h>
 #include <utils/svc_thread.h>
@@ -218,4 +219,7 @@ public:
 
 private:
     std::string m_sWalletFile;
+    static std::once_flag m_onceFlag;
+
+    void execute_internal();
 };

@@ -17,7 +17,7 @@
 #define CLIENT_VERSION_MAJOR 2
 #define CLIENT_VERSION_MINOR 1
 #define CLIENT_VERSION_REVISION 0
-#define CLIENT_VERSION_BUILD 12
+#define CLIENT_VERSION_BUILD 15
 
 //! Set to true for release, false for prerelease or test build
 #define CLIENT_VERSION_IS_RELEASE true
@@ -26,7 +26,7 @@
  * Copyright year (2009-this)
  * Todo: update this when changing our copyright comments in the source
  */
-#define COPYRIGHT_YEAR 2023
+#define COPYRIGHT_YEAR 2024
 
 #endif //HAVE_CONFIG_H
 
@@ -48,8 +48,7 @@
 
 #if !defined(WINDRES_PREPROC)
 
-#include <string>
-#include <vector>
+#include <utils/vector_types.h>
 
 static const int CLIENT_VERSION =
                            1000000 * CLIENT_VERSION_MAJOR
@@ -64,6 +63,6 @@ extern const std::string CLIENT_DATE;
 
 std::string FormatVersion(int nVersion);
 std::string FormatFullVersion();
-std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments);
+std::string FormatSubVersion(const std::string& name, int nClientVersion, const v_strings& comments);
 
 #endif // WINDRES_PREPROC

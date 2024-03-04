@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2023 The Pastel developers
+// Copyright (c) 2018-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -9,6 +9,7 @@
 #include <mnode/mnode-notificationinterface.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/tickets/ticket-types.h>
+#include <mining/eligibility-mgr.h>
 
 void CACNotificationInterface::InitializeCurrentBlockTip()
 {
@@ -39,4 +40,6 @@ void CACNotificationInterface::UpdatedBlockTip(const CBlockIndex *pindexNew, boo
 #ifdef GOVERNANCE_TICKETS
 	masterNodeCtrl.masternodeGovernance.UpdatedBlockTip(pindexNew);
 #endif // GOVERNANCE_TICKETS
+	if (gl_pMiningEligibilityManager)
+		gl_pMiningEligibilityManager->UpdatedBlockTip(pindexNew);
 }

@@ -163,7 +163,7 @@ bool parse_uint256(string& error, uint256& value, const string &sUint256, const 
     do
     {
         // validate string size
-        if (sUint256.size() != uint256::SIZE * 2)
+        if (sUint256.size() != uint256::STR_SIZE)
         {
             error = strprintf("Incorrect %s value size: %zu, expected: %zu. [%s]",
                 szValueDesc ? szValueDesc : "uint256", sUint256.size(), uint256::SIZE * 2, sUint256);

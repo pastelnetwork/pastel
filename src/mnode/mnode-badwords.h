@@ -1,11 +1,12 @@
 #pragma once
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <unordered_set>
 
-struct UsernameBadWords {
+struct UsernameBadWords
+{
 public:
     // The list was get from:
     // https://github.com/dariusk/wordfilter/blob/master/lib/badwords.json

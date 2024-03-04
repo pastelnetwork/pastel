@@ -22,6 +22,7 @@
 #include <rpc/server.h>
 #include <rpc/coin-supply.h>
 #include <rpc/rpc-utils.h>
+#include <rpc/chain-rpc-utils.h>
 
 using namespace std;
 
@@ -397,9 +398,9 @@ Result (for verbose = true):
   "nonce" : n,           (numeric) The nonce
   "bits" : "1d00ffff",   (string) The bits
   "difficulty" : x.xxx,  (numeric) The difficulty
-  "previousblockhash" : "hash",  (string) The hash of the previous block
-  "nextblockhash" : "hash"       (string) The hash of the next block
-  "pastelid" : "xxxx",   (string) The Pastel ID (mnid) of the block signer (for v5 block version only)
+  "previousblockhash" : "hash",       (string) The hash of the previous block
+  "nextblockhash" : "hash"            (string) The hash of the next block
+  "pastelid" : "xxxx",                (string) The Pastel ID (mnid) of the block signer (for v5 block version only)
   "prevMerkleRootSignature" : "xxxx", (string) The signature of the previous block's merkle root (for v5 block version only)
 }
 
@@ -493,33 +494,7 @@ Examples:
 + HelpExampleRpc("getblock", "12800")
 );
 
-    LOCK(cs_main);
-
-    string strHash = params[0].get_str();
-
-    // If height is supplied, find the hash
-    if (strHash.size() < (2 * sizeof(uint256))) {
-        // stoi allows characters, whereas we want to be strict
-        regex r("[[:digit:]]+");
-        if (!regex_match(strHash, r)) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid block height parameter");
-        }
-
-        int nHeight = -1;
-        try {
-            nHeight = stoi(strHash);
-        }
-        catch (const exception &) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid block height parameter");
-        }
-
-        if (nHeight < 0 || nHeight > chainActive.Height()) {
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
-        }
-        strHash = chainActive[nHeight]->GetBlockHash().GetHex();
-    }
-
-    uint256 hash(uint256S(strHash));
+    auto block_id = rpc_get_block_hash_or_height(params[0]);
 
     int verbosity = 1;
     if (params.size() > 1)
@@ -533,17 +508,33 @@ Examples:
     if (verbosity < 0 || verbosity > 2)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Verbosity must be in range from 0 to 2");
 
-    if (mapBlockIndex.count(hash) == 0)
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-
     CBlock block;
-    CBlockIndex* pblockindex = mapBlockIndex[hash];
+    uint256 hashBlock;
+
+    LOCK(cs_main);
+    if (holds_alternative<uint32_t>(block_id))
+    {
+		uint32_t nBlockHeight = get<uint32_t>(block_id);
+        uint32_t nCurrentHeight = gl_nChainHeight;
+        // chain length could have changed since the block_id was parsed
+		if (nBlockHeight > nCurrentHeight)
+			throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Block height %u out of range [0..%u]", nBlockHeight, nCurrentHeight));
+		hashBlock = chainActive[nBlockHeight]->GetBlockHash();
+	}
+    else
+		hashBlock = get<uint256>(block_id);
+
+    auto it = mapBlockIndex.find(hashBlock);
+    if (it == mapBlockIndex.end())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Block %s not found in index", hashBlock.ToString()));
+
+	CBlockIndex* pblockindex = it->second;
 
     if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Block %s not available (pruned data)", hashBlock.ToString()));
 
     if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Can't read block %s from disk", hashBlock.ToString()));
 
     if (verbosity == 0)
     {
@@ -666,7 +657,7 @@ As a json rpc call
     if (n<0 || (unsigned int)n>=coins.vout.size() || coins.vout[n].IsNull())
         return NullUniValue;
 
-    BlockMap::iterator it = mapBlockIndex.find(gl_pCoinsTip->GetBestBlock());
+    auto it = mapBlockIndex.find(gl_pCoinsTip->GetBestBlock());
     CBlockIndex *pindex = it->second;
     ret.pushKV("bestblock", pindex->GetBlockHash().GetHex());
     if ((unsigned int)coins.nHeight == MEMPOOL_HEIGHT)

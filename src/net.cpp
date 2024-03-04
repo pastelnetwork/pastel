@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -41,6 +41,7 @@
 #include <netmsg/nodestate.h>
 #include <netmsg/nodemanager.h>
 #include <netmsg/node.h>
+#include <mining/eligibility-mgr.h>
 //MasterNode
 #include <mnode/mnode-controller.h>
 
@@ -74,6 +75,8 @@ static vector<CNodeManager::ListenSocket> vhListenSocket;
 size_t nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
 bool fAddressesInitialized = false;
 static node_t pnodeLocalHost;
+
+shared_ptr<CMiningEligibilityManager> gl_pMiningEligibilityManager;
 
 map<CInv, CDataStream> mapRelay;
 deque<pair<int64_t, CInv> > vRelayExpiration;
@@ -1123,8 +1126,9 @@ void static Discover()
 #endif
 }
 
-void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
+bool StartNode(string &error, CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
+    error.clear();
     uiInterface.InitMessage(translate("Loading addresses..."));
     // Load addresses for peers.dat
     int64_t nStart = GetTimeMillis();
@@ -1138,7 +1142,11 @@ void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     fAddressesInitialized = true;
 
     // Network Manager thread, checks network connectivity
-    gl_NetMgr.start();
+    if (!gl_NetMgr.start(error))
+    {
+        error = strprintf("Network Manager failed to start. %s", error);
+		return false;
+	}
 
     if (!semOutbound)
     {
@@ -1159,26 +1167,56 @@ void StartNode(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     if (!GetBoolArg("-dnsseed", true))
         LogFnPrintf("DNS seeding disabled");
     else
-        threadGroup.add_thread(make_shared<CDNSAddressSeedThread>());
+    {
+        if (threadGroup.add_thread(error, make_shared<CDNSAddressSeedThread>()) == INVALID_THREAD_OBJECT_ID)
+        {
+			error = strprintf("Failed to start DNS seeding thread. %s", error);
+			return false;
+		}
+    }
 
     // Send and receive from sockets, accept connections
-    threadGroup.add_thread(make_shared<CSocketHandlerThread>());
+    if (threadGroup.add_thread(error, make_shared<CSocketHandlerThread>()) == INVALID_THREAD_OBJECT_ID)
+    {
+        error = strprintf("Failed to start socket handler thread. %s", error);
+        return false;
+    }
 
     // Initiate outbound connections from -addnode
-    threadGroup.add_thread(make_shared<COpenAddedConnectionsThread>());
+    if (threadGroup.add_thread(error, make_shared<COpenAddedConnectionsThread>()) == INVALID_THREAD_OBJECT_ID)
+	{
+		error = strprintf("Failed to start added connections thread. %s", error);
+		return false;
+	}
 
     // Initiate outbound connections
-    threadGroup.add_thread(make_shared<COpenConnectionsThread>());
+    if (threadGroup.add_thread(error, make_shared<COpenConnectionsThread>()) == INVALID_THREAD_OBJECT_ID)
+    {
+        error = strprintf("Failed to start connections thread. %s", error);
+		return false;
+	}
 
     // Process messages
-    threadGroup.add_thread(make_shared<CMessageHandlerThread>());
+    if (threadGroup.add_thread(error, make_shared<CMessageHandlerThread>()) == INVALID_THREAD_OBJECT_ID)
+    {
+		error = strprintf("Failed to start message handler thread. %s", error);
+        return false;
+    }
 
     //MasterNode
     masterNodeCtrl.StartMasterNode(threadGroup);
 
+    if (!gl_pMiningEligibilityManager)
+        gl_pMiningEligibilityManager = make_shared<CMiningEligibilityManager>();
+    if (threadGroup.add_thread(error, gl_pMiningEligibilityManager) == INVALID_THREAD_OBJECT_ID)
+	{
+		error = strprintf("Failed to start mining eligibility manager thread. %s", error);
+		return false;
+	}
 
     // Dump network addresses
     scheduler.scheduleEvery(&DumpAddresses, DUMP_ADDRESSES_INTERVAL);
+    return true;
 }
 
 bool StopNode()

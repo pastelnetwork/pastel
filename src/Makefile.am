@@ -339,6 +339,7 @@ BITCOIN_CORE_H = \
   memusage.h \
   merkleblock.h \
   metrics.h \
+  mining/eligibility-mgr.h \
   mining/miner.h \
   mining/mining-settings.h \
   mruset.h \
@@ -364,6 +365,7 @@ BITCOIN_CORE_H = \
   pubkey.h \
   random.h \
   rpc/client.h \
+  rpc/chain-rpc-utils.h \
   rpc/coin-supply.h \
   rpc/protocol.h \
   rpc/server.h \
@@ -442,6 +444,7 @@ libbitcoin_server_a_SOURCES = \
   main.cpp \
   merkleblock.cpp \
   metrics.cpp \
+  mining/eligibility-mgr.cpp \
   mining/miner.cpp \
   mining/mining-settings.cpp \
   netmsg/bloom.cpp \
@@ -459,6 +462,7 @@ libbitcoin_server_a_SOURCES = \
   pow.cpp \
   rest.cpp \
   rpc/blockchain.cpp \
+  rpc/chain-rpc-utils.cpp \
   rpc/coin-supply.cpp \
   rpc/mining.cpp \
   rpc/misc.cpp \

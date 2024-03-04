@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
@@ -36,14 +36,18 @@ static constexpr char DB_LAST_BLOCK = 'l';
 static constexpr char DB_SPENTINDEX = 'p';
 
 
-CCoinsViewDB::CCoinsViewDB(string dbName, size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / dbName, nCacheSize, fMemory, fWipe)
+CCoinsViewDB::CCoinsViewDB(string dbName, size_t nCacheSize, bool fMemory, bool fWipe) :
+    db(GetDataDir() / dbName, nCacheSize, fMemory, fWipe)
 {}
 
-CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe) 
+CCoinsViewDB::CCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) :
+    db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe) 
 {}
 
-bool CCoinsViewDB::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const {
-    if (rt == SproutMerkleTree::empty_root()) {
+bool CCoinsViewDB::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const
+{
+    if (rt == SproutMerkleTree::empty_root())
+    {
         SproutMerkleTree new_tree;
         tree = new_tree;
         return true;

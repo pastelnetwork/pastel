@@ -446,7 +446,8 @@ void CDBEnv::Flush(bool fShutdown)
                 mi++;
         }
         LogPrint("db", "CDBEnv::Flush: Flush(%s)%s took %15dms\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " database not started", GetTimeMillis() - nStart);
-        if (fShutdown) {
+        if (fShutdown)
+        {
             char** listp;
             if (mapFileUseCount.empty()) {
                 dbenv->log_archive(&listp, DB_ARCH_REMOVE);

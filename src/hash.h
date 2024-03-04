@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
@@ -136,7 +136,7 @@ private:
     const int m_nVersion;
 public:
 
-    CHashWriter(const int nType, const int nVersion) : 
+    CHashWriter(const int nType, const int nVersion) noexcept : 
         m_nType(nType), 
         m_nVersion(nVersion)
     {}
@@ -151,14 +151,16 @@ public:
     void ignore(const size_t nSizeToSkip) {} // stub
 
     // invalidates the object
-    uint256 GetHash() {
+    uint256 GetHash()
+    {
         uint256 result;
         ctx.Finalize((unsigned char*)&result);
         return result;
     }
 
     template<typename T>
-    CHashWriter& operator<<(const T& obj) {
+    CHashWriter& operator<<(const T& obj)
+    {
         // Serialize to this stream
         ::Serialize(*this, obj);
         return (*this);

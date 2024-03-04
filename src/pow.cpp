@@ -116,6 +116,7 @@ bool CheckEquihashSolution(const CBlockHeader* pblock, const Consensus::Params& 
     CEquihashInput I{*pblock};
     // I||V
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss.reserve(I.GetReserveSize() + pblock->nNonce.SIZE);
     ss << I;
     ss << pblock->nNonce;
 

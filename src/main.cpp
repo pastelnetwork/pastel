@@ -1,7 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2015-2018 The Zcash developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <algorithm>
@@ -47,6 +47,7 @@
 #include <netmsg/node.h>
 #include <netmsg/nodemanager.h>
 #include <netmsg/fork-switch-tracker.h>
+#include <mining/eligibility-mgr.h>
 
 //MasterNode
 #include <mnode/mnode-controller.h>
@@ -634,7 +635,10 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
                         bRet = errorFn(__METHOD_NAME__, "txid mismatch");
                         break;
                     }
-                    // block height is not defined in this case
+                    // find block index by hash
+                    const auto mi = mapBlockIndex.find(hashBlock);
+                    if (mi != mapBlockIndex.cend())
+                        nBlockHeight = mi->second->nHeight;
                     bRet = true;
                     break;
                 }
@@ -2097,6 +2101,20 @@ static void PruneBlockIndexCandidates()
     assert(!setBlockIndexCandidates.empty());
 }
 
+bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nInvalidBlockHeight, const uint256& invalidBlockHash)
+{
+    //(chainparams.IsTestNet() && nInvalidBlockHeight == 252500 && invalidBlockHash ==
+    //    uint256S("0018bd16a9c6f15795a754c498d2b2083ab78f14dae44a66a8d0e90ba8464d9c"));
+    const string sRewindChainBlockHash = GetArg("-rewindchain", "");
+    if (!sRewindChainBlockHash.empty())
+    {
+		const uint256 rewindChainBlockHash = uint256S(sRewindChainBlockHash);
+        if (rewindChainBlockHash == invalidBlockHash)
+			return true;
+	}
+    return false;
+}
+
 /**
  * Try to make some progress towards making pindexMostWork the active block.
  * pblock is either NULL or a pointer to a CBlock corresponding to pindexMostWork.
@@ -2114,24 +2132,38 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
     //   our genesis block. In practice this (probably) won't happen because of checks elsewhere.
     const int nReorgLength = pindexOldTip ? pindexOldTip->nHeight - (pindexFork ? pindexFork->nHeight : -1) : 0;
     static_assert(MAX_REORG_LENGTH > 0, "We must be able to reorg some distance");
+
+    bool bClearWitnessCaches = false;
     if (nReorgLength > static_cast<int>(MAX_REORG_LENGTH))
     {
-        auto msg = strprintf(translate(
-            "A block chain reorganization has been detected that would roll back %d blocks! "
-            "This is larger than the maximum of %d blocks, and so the node is shutting down for your safety."
+        const bool bIsIntendedChainRewind = IsIntendedChainRewind(chainparams, pindexFork->nHeight, pindexFork->GetBlockHash());
+        if (bIsIntendedChainRewind)
+        {
+            bClearWitnessCaches = true;
+            auto msg = strprintf(translate(
+                "An intended block chain rewind has been detected: network %s, hash %s, height %d"
+                ), chainparams.NetworkIDString(), pindexFork->GetBlockHashString(), pindexFork->nHeight);
+            LogPrintf("*** %s\n", msg);
+        }
+        else
+        {
+            auto msg = strprintf(translate(
+                "A block chain reorganization has been detected that would roll back %d blocks! "
+                "This is larger than the maximum of %d blocks, and so the node is shutting down for your safety."
             ), nReorgLength, MAX_REORG_LENGTH) + "\n\n" +
-            translate("Reorganization details") + ":\n" +
-            "- " + strprintf(translate("Current tip: %s, height %d, work %s"),
-                pindexOldTip->GetBlockHashString(), pindexOldTip->nHeight, pindexOldTip->nChainWork.GetHex()) + "\n" +
-            "- " + strprintf(translate("New tip:     %s, height %d, work %s"),
-                pindexMostWork->GetBlockHashString(), pindexMostWork->nHeight, pindexMostWork->nChainWork.GetHex()) + "\n" +
-            "- " + strprintf(translate("Fork point:  %s, height %d"),
-                pindexFork->GetBlockHashString(), pindexFork->nHeight) + "\n\n" +
-            translate("Please help, human!");
-        LogPrintf("*** %s\n", msg);
-        uiInterface.ThreadSafeMessageBox(msg, "", CClientUIInterface::MSG_ERROR);
-        StartShutdown();
-        return false;
+                translate("Reorganization details") + ":\n" +
+                "- " + strprintf(translate("Current tip: %s, height %d, work %s"),
+                    pindexOldTip->GetBlockHashString(), pindexOldTip->nHeight, pindexOldTip->nChainWork.GetHex()) + "\n" +
+                "- " + strprintf(translate("New tip:     %s, height %d, work %s"),
+                    pindexMostWork->GetBlockHashString(), pindexMostWork->nHeight, pindexMostWork->nChainWork.GetHex()) + "\n" +
+                "- " + strprintf(translate("Fork point:  %s, height %d"),
+                    pindexFork->GetBlockHashString(), pindexFork->nHeight) + "\n\n" +
+                translate("Please help, human!");
+            LogPrintf("*** %s\n", msg);
+            uiInterface.ThreadSafeMessageBox(msg, "", CClientUIInterface::MSG_ERROR);
+            StartShutdown();
+            return false;
+        }
     }
 
     // Disconnect active blocks which are no longer in the best chain.
@@ -2142,6 +2174,8 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
             return false;
         fBlocksDisconnected = true;
     }
+    if (bClearWitnessCaches)
+        pwalletMain->ClearNoteWitnessCache();
 
     // Build list of new blocks to connect.
     block_index_vector_t vpindexToConnect;
@@ -2332,7 +2366,7 @@ uint32_t IncBlockSequenceId()
 }
 
 /**
- * Add this block to unlinked block map.
+ * Add this block index to unlinked block map.
  * 
  * \param pindex - block index pointer
  */
@@ -2467,6 +2501,7 @@ void ReconsiderBlock(CValidationState& state, CBlockIndex *pindex)
 
     const int nHeight = pindex->nHeight;
     pindex->UpdateChainTx();
+    LogFnPrintf("removing invalidity status from block %s (height=%d) and its descendents\n", pindex->GetBlockHashString(), nHeight);
 
     // Remove the invalidity flag from this block and all its descendants.
     for (auto &[hash, pBlockIndex] : mapBlockIndex)
@@ -2482,7 +2517,7 @@ void ReconsiderBlock(CValidationState& state, CBlockIndex *pindex)
                 setBlockIndexCandidates.insert(pBlockIndex);
             if (pBlockIndex == pindexBestInvalid)
             {
-                LogPrint("net", "%s: reset invalid block marker\n", __func__);
+                LogFnPrint("net", "reset invalid block marker (height=%d, %s)", pBlockIndex->nHeight, pBlockIndex->GetBlockHashString());
                 pindexBestInvalid = nullptr; // Reset invalid block marker if it was pointing to one of those.
             }
         }
@@ -2652,7 +2687,8 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
             fCheckForPruning = true;
         if (CheckDiskSpace(nNewChunks * UNDOFILE_CHUNK_SIZE - pos.nPos)) {
             FILE *file = OpenUndoFile(pos);
-            if (file) {
+            if (file)
+            {
                 LogPrintf("Pre-allocating up to position 0x%x in rev%05u.dat\n", nNewChunks * UNDOFILE_CHUNK_SIZE, pos.nFile);
                 AllocateFileRange(file, pos.nPos, nNewChunks * UNDOFILE_CHUNK_SIZE - pos.nPos);
                 fclose(file);
@@ -2668,38 +2704,53 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
 bool CheckBlockHeader(
     const CBlockHeader& block,
     CValidationState& state,
+    uint256& hashBlock,
     const CChainParams& chainparams,
     bool fCheckPOW)
 {
+    string strRejectReasonDetails;
     // Check block version
     if (block.nVersion < MIN_ALLOWED_BLOCK_VERSION)
-        return state.DoS(100, error("CheckBlockHeader(): block version too low"),
-                         REJECT_INVALID, "version-too-low");
+    {
+        strRejectReasonDetails = strprintf("block version too low: %d", block.nVersion);
+        return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_INVALID, "version-too-low", false, strRejectReasonDetails);
+    }
     
     const auto &consensusParams = chainparams.GetConsensus();
+    hashBlock = block.GetHash();
     //INGEST->!!!
     if (chainparams.IsRegTest())
     {
         // Check Equihash solution is valid
         if (fCheckPOW && !CheckEquihashSolution(&block, consensusParams))
-            return state.DoS(100, error("CheckBlockHeader(): Equihash solution invalid"),
-                             REJECT_INVALID, "invalid-solution");
+        {
+            strRejectReasonDetails = strprintf("Equihash solution invalid for block %s", hashBlock.ToString());
+            return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "invalid-solution", false, strRejectReasonDetails);
+        }
     }
     else if (chainActive.Tip() && chainActive.Tip()->nHeight >= TOP_INGEST_BLOCK) { //if current is TOP_INGEST_BLOCK, no more skips
 
-        const auto it = mapBlockIndex.find(block.GetHash());
+        const auto it = mapBlockIndex.find(hashBlock);
         if (it != mapBlockIndex.cend() && it->second->nHeight > TOP_INGEST_BLOCK) { //if new block is TOP_INGEST_BLOCK+1, no more skips
     //<-INGEST!!!
          
             // Check Equihash solution is valid
             if (fCheckPOW && !CheckEquihashSolution(&block, consensusParams))
-                return state.DoS(100, error("CheckBlockHeader(): Equihash solution invalid"),
-                                 REJECT_INVALID, "invalid-solution");
+            {
+                strRejectReasonDetails = strprintf("Equihash solution invalid for block %s", hashBlock.ToString());
+                return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                    REJECT_INVALID, "invalid-solution", false, strRejectReasonDetails);
+            }
     
             // Check proof of work matches claimed amount
-            if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
-                return state.DoS(50, error("CheckBlockHeader(): proof of work failed"),
-                                 REJECT_INVALID, "high-hash");
+            if (fCheckPOW && !CheckProofOfWork(hashBlock, block.nBits, consensusParams))
+            {
+                strRejectReasonDetails = strprintf("proof of work failed for block %s", hashBlock.ToString());
+                return state.DoS(50, error("%s: %s", __func__, strRejectReasonDetails),
+								 REJECT_INVALID, "high-hash", false, strRejectReasonDetails);
+            }
             //INGEST->!!!
         }
     }
@@ -2710,8 +2761,12 @@ bool CheckBlockHeader(
     const int64_t blockTime = block.GetBlockTime();
     const int64_t adjustedTime = GetAdjustedTime();
     if (blockTime > adjustedTime + 2 * 60 * 60)
-        return state.Invalid(error("CheckBlockHeader(): block timestamp too far in the future. blockTime = %" PRId64 "; adjustedTime = %" PRId64, blockTime, adjustedTime),
-                             REJECT_INVALID, "time-too-new");
+    {
+        strRejectReasonDetails = strprintf("block timestamp too far in the future. blockTime=%" PRId64 "; adjustedTime=%" PRId64,
+            blockTime, adjustedTime);
+        return state.Invalid(error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_INVALID, "time-too-new", strRejectReasonDetails);
+    }
 
     return true;
 }
@@ -2730,9 +2785,11 @@ bool CheckBlock(
 
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
-    if (!CheckBlockHeader(block, state, chainparams, fCheckPOW))
+    uint256 hashBlock;
+    if (!CheckBlockHeader(block, state, hashBlock, chainparams, fCheckPOW))
         return false;
 
+    string strRejectReasonDetails;
     // Check the merkle root.
     if (fCheckMerkleRoot)
     {
@@ -2745,15 +2802,21 @@ bool CheckBlock(
         // calculate merkle root for this block and compare with the value in the block
         const uint256 hashMerkleRoot2 = block.BuildMerkleTree(&bMutated);
         if (block.hashMerkleRoot != hashMerkleRoot2)
-            return state.DoS(100, error("CheckBlock(): hashMerkleRoot mismatch"),
-                             REJECT_INVALID, "bad-txnmrklroot", true);
+        {
+            strRejectReasonDetails = strprintf("hashMerkleRoot mismatch for block %s", hashBlock.ToString());
+            return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "bad-txnmrklroot", true, strRejectReasonDetails);
+        }
 
         // Check for merkle tree malleability (CVE-2012-2459): repeating sequences
         // of transactions in a block without affecting the merkle root of a block,
         // while still invalidating it.
         if (bMutated)
-            return state.DoS(100, error("CheckBlock(): duplicate transaction"),
-                             REJECT_INVALID, "bad-txns-duplicate", true);
+        {
+            strRejectReasonDetails = strprintf("duplicate transaction in block %s", hashBlock.ToString());
+            return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "bad-txns-duplicate", true, strRejectReasonDetails);
+        }
     }
 
     // All potential-corruption validation must be done before we do any
@@ -2785,72 +2848,103 @@ bool CheckBlock(
     } while (false);
     
     if (!bSizeLimitsCheck)
-        return state.DoS(100, error("CheckBlock(): size limits failed, %s", sErrorDetails),
-                         REJECT_INVALID, "bad-blk-length");
+    {
+        strRejectReasonDetails = strprintf("size limits failed for block %s, %s", hashBlock.ToString(), sErrorDetails);
+        return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_INVALID, "bad-blk-length", false, strRejectReasonDetails);
+    }
 
     // First transaction must be coinbase, the rest must not be
     if (block.vtx.empty() || !block.vtx[0].IsCoinBase())
-        return state.DoS(100, error("CheckBlock(): first tx is not coinbase"),
-                         REJECT_INVALID, "bad-cb-missing");
+    {
+        strRejectReasonDetails = "first tx is not coinbase";
+        return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_INVALID, "bad-cb-missing", false, strRejectReasonDetails);
+    }
+
+    // checks for the block mined by MasterNode with signature of the previous block's merkle root
+    if (!block.sPastelID.empty())
+    {
+        string sPastelID = block.sPastelID;
+        CPastelIDRegTicket mnidTicket;
+        mnidTicket.SetKeyOne(move(sPastelID));
+
+        // check that this Pastel ID is registered by MasterNode (mnid)
+        if (!masterNodeCtrl.masternodeTickets.FindTicket(mnidTicket))
+        {
+            strRejectReasonDetails = strprintf("registration ticket with mnid='%s' not found", block.sPastelID);
+            return state.DoS(0, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_MISSING_INPUTS, "mnid-not-registered", false, strRejectReasonDetails);
+        }
+        if (mnidTicket.isPersonal())
+        {
+            strRejectReasonDetails = strprintf("[%s] refers to personal Pastel ID registration ticket", block.sPastelID);
+            return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "personal-pastel-id", false, strRejectReasonDetails);
+        }
+    }
 
     // Check transactions
     size_t nCoinBaseTransactions = 0;
     unsigned int nSigOps = 0;
     bool bHasMnPaymentInCoinbase = false;
-    const bool bIsMnSynced = masterNodeCtrl.IsSynced();
+    const bool bSnEligibilityCheckAllowed = masterNodeCtrl.SnEligibilityCheckAllowed();
     for (const auto& tx : block.vtx)
     {
         if (tx.IsCoinBase())
         {
             if (++nCoinBaseTransactions > 1)
-                return state.DoS(100, error("CheckBlock(): more than one coinbase"),
-                                 REJECT_INVALID, "bad-cb-multiple");
-            if (bIsMnSynced && !fSkipSnEligibilityChecks && block.HasPrevBlockSignature())
+            {
+                strRejectReasonDetails = "more than one coinbase";
+                return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                    REJECT_INVALID, "bad-cb-multiple", false, strRejectReasonDetails);
+            }
+            if (bSnEligibilityCheckAllowed && !fSkipSnEligibilityChecks && block.HasPrevBlockSignature())
                 bHasMnPaymentInCoinbase = masterNodeCtrl.masternodeManager.IsTxHasMNOutputs(tx);
         }
         if (!CheckTransaction(tx, state, verifier))
-            return error("CheckBlock(): CheckTransaction failed");
+            return error("%s: CheckTransaction failed", __func__);
         nSigOps += GetLegacySigOpCount(tx);
     }
 
     if (nSigOps > MAX_BLOCK_SIGOPS)
-        return state.DoS(100, error("CheckBlock(): out-of-bounds SigOpCount"),
-                         REJECT_INVALID, "bad-blk-sigops", true);
+    {
+        strRejectReasonDetails = "out-of-bounds SigOpCount";
+        return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_INVALID, "bad-blk-sigops", true, strRejectReasonDetails);
+    }
 
     // check only blocks that were mined/generated recently within last 30 mins
     if (bHasMnPaymentInCoinbase && !fSkipSnEligibilityChecks &&
         (block.GetBlockTime() > (GetTime() - BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS)) &&
         is_enum_any_of(state.getTxOrigin(), TxOrigin::MINED_BLOCK, TxOrigin::MSG_BLOCK, TxOrigin::GENERATED))
     {
-        // basic validation is already done in CheckBlockHeader:
-        //   1) Pastel ID (mnid) is registered
-        //   2) signature of the previous block's merkle root is valid
+        // signature validation of the previous block's merkle root is already done in CheckBlockHeader
+        // so here we need to check that PastelID (mnid) of the signer is registered
         masternode_info_t mnInfo;
         if (!masterNodeCtrl.masternodeManager.GetAndCacheMasternodeInfo(block.sPastelID, mnInfo))
         {
-            return state.DoS(100, error("CheckBlock(): MasterNode with mnid='%s' is not registered", block.sPastelID),
-                REJECT_INVALID, "mnid-not-registered");
+            strRejectReasonDetails = strprintf("MasterNode with mnid='%s' is not in the list", block.sPastelID);
+            return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "mn-not-listed", false, strRejectReasonDetails);
         }
 
-        if (!mnInfo.IsEnabled())
-        {
-            return state.DoS(100, error("CheckBlock(): MasterNode '%s' is not enabled (%s)", 
-                mnInfo.GetDesc(), mnInfo.GetStateString()),
-                REJECT_INVALID, "mnid-not-enabled");
-        }
         if (!pindexPrev)
         {
-            return state.DoS(100, error("CheckBlock(): previous block index is not defined"),
-                            	REJECT_INVALID, "block-index-not-defined");
+            strRejectReasonDetails = "previous block index is not defined";
+            return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "block-index-not-defined", false, strRejectReasonDetails);
         }
         // check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
         // to mine this block and receive rewards
-        uint32_t nHeightNotEligible = 0;
-        if (!masterNodeCtrl.masternodeManager.IsMnEligibleForBlockReward(pindexPrev, block.sPastelID, &nHeightNotEligible))
+        uint32_t nMinedBlocks = 0;
+        if (gl_pMiningEligibilityManager && 
+            !gl_pMiningEligibilityManager->IsMnEligibleForBlockReward(pindexPrev, block.sPastelID, nMinedBlocks))
 		{
-			return state.DoS(100, error("CheckBlock(): MasterNode '%s' is not eligible to mine this block (found mined block height=%d)", 
-                				mnInfo.GetDesc(), nHeightNotEligible),
-                				REJECT_INVALID, "mnid-not-eligible");
+            strRejectReasonDetails = strprintf("MasterNode '%s' (mnid: %s) is not eligible to mine this block %s (mined blocks: %u)",
+                				mnInfo.GetDesc(), block.sPastelID, hashBlock.ToString(), nMinedBlocks);
+			return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "mnid-not-eligible", false, strRejectReasonDetails);
 		}
 	}
 
@@ -2862,33 +2956,29 @@ bool CheckBlockSignature(const CBlockHeader& blockHeader, const CBlockIndex* pin
     if (!blockHeader.HasPrevBlockSignature())
         return true;
 
+    string strRejectReasonDetails;
     try
     {
         if (!pindexPrev)
-            return state.DoS(100, error("%s: previous block is not defined", __func__),
-                				REJECT_INVALID, "prev-block-not-defined");
-        // check that this Pastel ID is registered by MasterNode (mnid)
-        CPastelIDRegTicket mnidTicket;
-        string sPastelID = blockHeader.sPastelID;
-        mnidTicket.SetKeyOne(move(sPastelID));
-        if (!masterNodeCtrl.masternodeTickets.FindTicket(mnidTicket))
-            return state.DoS(100, error("%s: Pastel ID %s is not registered by MasterNode", __func__, blockHeader.sPastelID),
-                REJECT_INVALID, "mnid-not-registered");
-        if (mnidTicket.isPersonal())
-            return state.DoS(100, error("%s: Pastel ID %s is personal", __func__, blockHeader.sPastelID),
-                REJECT_INVALID, "personal-pastel-id");
+        {
+            strRejectReasonDetails = "previous block index is not defined";
+            return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "prev-block-not-defined", false, strRejectReasonDetails);
+        }
         string sPrevMerkleRoot(pindexPrev->hashMerkleRoot.cbegin(), pindexPrev->hashMerkleRoot.cend());
         if (!CPastelID::Verify(sPrevMerkleRoot, vector_to_string(blockHeader.prevMerkleRootSignature), blockHeader.sPastelID,
             CPastelID::SIGN_ALGORITHM::ed448, false))
         {
-            return state.DoS(100, error("%s: block signature verification failed", __func__),
-                REJECT_SIGNATURE_ERROR, "bad-merkleroot-signature");
+            strRejectReasonDetails = "block signature verification failed";
+            return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_SIGNATURE_ERROR, "bad-merkleroot-signature", false, strRejectReasonDetails);
         }
     }
     catch (const exception& e)
     {
-		return state.DoS(100, error("%s: block signature verification failed. %s", __func__, e.what()),
-            REJECT_SIGNATURE_ERROR, "verify-merkleroot-signature");
+        strRejectReasonDetails = strprintf("block signature verification failed. %s", e.what());
+		return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_SIGNATURE_ERROR, "verify-merkleroot-signature", false, strRejectReasonDetails);
 	}
 
 	return true;
@@ -2919,28 +3009,40 @@ bool ContextualCheckBlockHeader(
 
     const int nHeight = pindexPrev->nHeight + 1;
 
+    string strRejectReasonDetails;
     // Check proof of work
     if (blockHeader.nBits != GetNextWorkRequired(pindexPrev, &blockHeader, consensusParams))
-        return state.DoS(100, error("%s: incorrect proof of work", __func__),
-                         REJECT_INVALID, "bad-diffbits");
+    {
+        strRejectReasonDetails = strprintf("incorrect proof of work for block %s", hash.ToString());
+        return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_INVALID, "bad-diffbits", false, strRejectReasonDetails);
+    }
 
     // Check timestamp against prev
     if (blockHeader.GetBlockTime() <= pindexPrev->GetMedianTimePast())
-        return state.Invalid(error("%s: block's timestamp is too early", __func__),
-                             REJECT_INVALID, "time-too-old");
+    {
+        strRejectReasonDetails = strprintf("block's timestamp is too early for block %s", hash.ToString());
+        return state.Invalid(error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_INVALID, "time-too-old", strRejectReasonDetails);
+    }
 
     if (fCheckpointsEnabled)
     {
         // Don't accept any forks from the main chain prior to last checkpoint
         auto pcheckpoint = Checkpoints::GetLastCheckpoint(chainparams.Checkpoints());
         if (pcheckpoint && nHeight < pcheckpoint->nHeight)
+        {
             return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d)", __func__, nHeight));
+        }
     }
 
     // Reject by invalid block version
     if (blockHeader.nVersion < MIN_ALLOWED_BLOCK_VERSION)
-        return state.Invalid(error("%s : rejected block by version (min supported: %d)", __func__, MIN_ALLOWED_BLOCK_VERSION),
-                             REJECT_OBSOLETE, "bad-version");
+    {
+        strRejectReasonDetails = strprintf("block version too low: %d", blockHeader.nVersion);
+        return state.Invalid(error("%s: %s", __func__, strRejectReasonDetails),
+            REJECT_OBSOLETE, "bad-version", strRejectReasonDetails);
+    }
 
     // Check that the signature of the previous block's merkle root is valid
     if (!bGenesisBlock && !CheckBlockSignature(blockHeader, pindexPrev, state))
@@ -2967,8 +3069,9 @@ bool AcceptBlockHeader(
 {
     AssertLockHeld(cs_main);
 
+    string strRejectReasonDetails;
     // Check for duplicate
-    const uint256 hash = block.GetHash();
+    uint256 hash = block.GetHash();
     CBlockIndex* pindex = nullptr;
     auto miSelf = mapBlockIndex.find(hash);
     if (miSelf != mapBlockIndex.end())
@@ -2978,14 +3081,19 @@ bool AcceptBlockHeader(
         if (ppindex)
             *ppindex = pindex;
         if (pindex->nStatus & BLOCK_FAILED_MASK)
-            return state.Invalid(error("%s: block (height=%d) is marked invalid", __func__, pindex->nHeight), 0, "duplicate");
+        {
+            strRejectReasonDetails = strprintf("received block header (height=%d, %s) already exists in index and marked invalid",
+                				pindex->nHeight, pindex->GetBlockHashString());
+            return state.Invalid(error("%s: %s", __func__, strRejectReasonDetails),
+                0, "duplicate", strRejectReasonDetails);
+        }
         // if previous block has failed contextual validation - add it to unlinked block map as well
         if (gl_BlockCache.check_prev_block(pindex))
             LogFnPrint("net", "block %s (height=%d) added to cached unlinked map", hash.ToString(), pindex->nHeight);
         return true;
     }
 
-    if (!CheckBlockHeader(block, state, chainparams))
+    if (!CheckBlockHeader(block, state, hash, chainparams))
         return false;
 
     // Get prev block index
@@ -2996,10 +3104,19 @@ bool AcceptBlockHeader(
     {
         const auto mi = mapBlockIndex.find(block.hashPrevBlock);
         if (mi == mapBlockIndex.cend())
-            return state.DoS(10, error("%s: prev block not found", __func__), 0, "bad-prevblk");
+        {
+            strRejectReasonDetails = strprintf("previous block (%s) not found for block %s", hash.ToString());
+            return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
+                0, "bad-prevblk", false, strRejectReasonDetails);
+        }
         pindexPrev = mi->second;
         if (pindexPrev->nStatus & BLOCK_FAILED_MASK)
-            return state.DoS(100, error("%s: prev block (height=%d) invalid", __func__, pindexPrev->nHeight), REJECT_INVALID, "bad-prevblk");
+        {
+            strRejectReasonDetails = strprintf("previous block (%s, height=%d) is marked invalid",
+				pindexPrev->GetBlockHashString(), pindexPrev->nHeight);
+            return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+                REJECT_INVALID, "bad-prevblk", false, strRejectReasonDetails);
+        }
     }
 
     if (!ContextualCheckBlockHeader(block, state, chainparams, bGenesisBlock, pindexPrev))
@@ -3114,10 +3231,9 @@ static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned 
 }
 
 /**
- * Mark block with the give hash as received.
+ * Mark block with the given hash as received.
  * 
  * \param hash - block hash
- * \param mapBlocksInFlight
  * \return a bool indicating whether we requested this block.
  */
 bool MarkBlockAsReceived(const uint256& hash)
@@ -3163,14 +3279,14 @@ bool ProcessNewBlock(CValidationState &state, const CChainParams& chainparams,
 {
     // Preliminary checks
     auto verifier = libzcash::ProofVerifier::Disabled();
-    const bool bChecked = CheckBlock(*pblock, state, chainparams, verifier, true, true, true);
+    const bool bBlockChecked = CheckBlock(*pblock, state, chainparams, verifier, true, true, true);
 
     const auto &consensusParams = chainparams.GetConsensus();
     {
         LOCK(cs_main);
         bool fRequested = MarkBlockAsReceived(pblock->GetHash());
         fRequested |= fForceProcessing;
-        if (!bChecked)
+        if (!bBlockChecked)
         {
             if (!state.GetRejectReason().empty())
                 return error("%s: CheckBlock FAILED, reject reason: %s", __func__, state.GetRejectReason());
@@ -3527,7 +3643,9 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     }
 
     // Load pointer to end of best chain
-    auto it = mapBlockIndex.find(gl_pCoinsTip->GetBestBlock());
+    const auto hashBestBlock = gl_pCoinsTip->GetBestBlock();
+    LogFnPrintf("best block hash in chainstate db: %s", hashBestBlock.GetHex());
+    auto it = mapBlockIndex.find(hashBestBlock);
     if (it == mapBlockIndex.end())
         return true;
     chainActive.SetTip(it->second);
@@ -3644,13 +3762,6 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     return true;
 }
 
-bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nInvalidBlockHeight, const uint256& invalidBlockHash)
-{
-    //(chainparams.IsTestNet() && nInvalidBlockHeight == 252500 && invalidBlockHash ==
-    //    uint256S("0018bd16a9c6f15795a754c498d2b2083ab78f14dae44a66a8d0e90ba8464d9c"));
-    return false;
-}
-
 bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlockHeight, 
     const char *szRewindBlockDesc, bool& bClearWitnessCaches)
 {
@@ -3665,7 +3776,7 @@ bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlo
         const auto networkID = chainparams.NetworkIDString();
 
         // This is true when we intend to do a long rewind.
-        bool bIntendedRewind = IsIntendedChainRewind(chainparams, nInvalidBlockHeight, *phashInvalidBlock);
+        const bool bIntendedRewind = IsIntendedChainRewind(chainparams, nInvalidBlockHeight, *phashInvalidBlock);
 
         bClearWitnessCaches = (nRewindLength > MAX_REORG_LENGTH && bIntendedRewind);
         if (bClearWitnessCaches)
@@ -3791,24 +3902,24 @@ bool RewindChainToBlock(string &error, const CChainParams& chainparams, const st
         auto it = mapBlockIndex.find(block_hash);
         if (it == mapBlockIndex.end())
         {
-            error = strprintf("Block with hash %s is not found in the block chain", sBlockHash);
+            error = strprintf("%s. Block with hash %s is not found in the block chain", REWIND_ERRMSG, sBlockHash);
             return false;
         }
         auto pindex = it->second;
         if (!chainActive.Contains(pindex))
         {
-            error = strprintf("Block with hash %s is not on the active chain", sBlockHash);
+            error = strprintf("%s. Block with hash %s is not on the active chain", REWIND_ERRMSG, sBlockHash);
             return false;
         }
         if (pindex == chainActive.Tip())
         {
-			error = strprintf("Block with hash %s (%d) is already the active tip", sBlockHash, pindex->nHeight);
+			error = strprintf("%s. Block with hash %s (%d) is already the active tip", REWIND_ERRMSG, sBlockHash, pindex->nHeight);
 			return false;
 		}
         const uint32_t nOldChainHeight = gl_nChainHeight;
         if (static_cast<uint32_t>(pindex->nHeight) > nOldChainHeight)
         {
-            error = strprintf("Block with hash %s (%d) is ahead of the active tip (%u)", sBlockHash, pindex->nHeight, nOldChainHeight);
+            error = strprintf("%s. Block with hash %s (%d) is ahead of the active tip (%u)", REWIND_ERRMSG, sBlockHash, pindex->nHeight, nOldChainHeight);
 			return false;
         }
 
@@ -3826,7 +3937,7 @@ bool RewindChainToBlock(string &error, const CChainParams& chainparams, const st
         // rewind the chain to the fork point
         if (!InvalidateBlock(state, chainparams, pindexToInvalidate))
         {
-            error = strprintf("%s: unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, pindexToInvalidate->nHeight);
+            error = strprintf("%s. Unable to invalidate blockchain starting at height %d", REWIND_ERRMSG, pindexToInvalidate->nHeight);
             return false;
         }
         LogFnPrintf("*** Invalidated %u blocks", nRewindLength);
@@ -3836,7 +3947,7 @@ bool RewindChainToBlock(string &error, const CChainParams& chainparams, const st
 
         if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_ALWAYS))
         {
-            error = strprintf("%s: unable to flush the blockchain state to disk", REWIND_ERRMSG);
+            error = strprintf("%s. Unable to flush the blockchain state to disk", REWIND_ERRMSG);
             return false;
         }
 
@@ -3911,13 +4022,14 @@ bool RewindBlockIndexToValidFork(const CChainParams& chainparams)
 {
     constexpr auto REWIND_ERRMSG = "Unable to rewind the chain";
 
+    uint32_t nOldChainHeight = gl_nChainHeight;
     int nInvalidBlockHeight = -1;
-    const uint32_t nOldChainHeight = gl_nChainHeight;
     uint256 hashOldChainTip;
     string sMsg;
     {
         LOCK(cs_main);
 
+        nOldChainHeight = gl_nChainHeight;
         if (!pindexBestHeader)
             return error("%s: valid fork chain block is not defined", REWIND_ERRMSG);
 
@@ -3963,6 +4075,13 @@ bool RewindBlockIndexToValidFork(const CChainParams& chainparams)
         sMsg +=     "\n  - " + strprintf(translate("Forked chain: %s, height %d, log2 chain work - " SPEC_CHAIN_WORK),
                 forkedChainBlockHash.ToString(), pindexBestHeader->nHeight, pindexBestHeader->GetLog2ChainWork()) + "\n";
         LogPrintf("%s\n", sMsg);
+#ifdef ENABLE_WALLET
+        if (bClearWitnessCaches)
+        {
+		    LogFnPrintf("Clearing witness caches due to a long rewind");
+			pwalletMain->ClearNoteWitnessCache();
+        }
+#endif // ENABLE_WALLET
     }
 
     bool bSwitchedToForkedChain = false;
@@ -4822,7 +4941,7 @@ void static ProcessGetData(node_t &pfrom, const Consensus::Params& consensusPara
 
     for (const auto& inv : vInvToPush)
     {
-        bool bPushed = masterNodeCtrl.ProcessGetData(pfrom, inv);
+        const bool bPushed = masterNodeCtrl.ProcessGetData(pfrom, inv);
         if (!bPushed)
             vNotFound.push_back(inv);
     }

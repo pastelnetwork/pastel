@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -38,6 +38,7 @@ void CMasternodeSync::Reset()
     nTimeLastBumped = GetTime();
     nTimeLastFailure = 0;
     nTimeLastProcess = 0;
+    nTimeLastSynced = 0;
     nTimeIBDDone = 0;
     nReSyncAttempt = 0;
 }
@@ -69,7 +70,7 @@ string CMasternodeSync::GetSyncStatus()
 {
     switch (syncState)
     {
-        case MasternodeSyncState::Initial:      return translate("Synchroning blockchain...");
+        case MasternodeSyncState::Initial:      return translate("Synchronizing blockchain...");
         case MasternodeSyncState::Waiting:      return translate("Synchronization pending...");
         case MasternodeSyncState::List:         return translate("Synchronizing masternodes...");
         case MasternodeSyncState::Winners:      return translate("Synchronizing masternode payments...");
@@ -121,19 +122,20 @@ void CMasternodeSync::SwitchToNextAsset()
             syncState = MasternodeSyncState::Finished;
             LogFnPrintf("MasterNode %s", GetSyncStatus());
 
-            //try to activate our masternode if possible
-            masterNodeCtrl.activeMasternode.ManageState();
+            masterNodeCtrl.masternodeManager.RelayScheduledMnb();
+            masterNodeCtrl.masternodeManager.RelayScheduledMnp();
 
-            // TODO: Find out whether we can just use LOCK instead of:
-            // TRY_LOCK(cs_vNodes, lockRecv);
-            // if(lockRecv) { ... }
+            // try to activate our masternode if possible
+            masterNodeCtrl.activeMasternode.ManageState(__FUNCTION__);
 
             gl_NodeManager.ForEachNode(CNodeManager::AllNodes, [](const node_t& pnode)
             {
                 masterNodeCtrl.requestTracker.AddFulfilledRequest(pnode->addr, "full-sync");
             });
-            LogFnPrintf("Sync has finished");
+            LogFnPrintf("*** MasterNode SYNC has finished ***");
+            nTimeLastSynced = GetTime();
             break;
+
         default:
             break;
     }
@@ -218,32 +220,32 @@ void CMasternodeSync::ProcessTick()
         return;
     }
 
-    if (IsSynced()){
-        if (masterNodeCtrl.EnableMNSyncCheckAndReset) {
+    if (IsSynced())
+    {
+        if (masterNodeCtrl.bEnableMNSyncCheckAndReset)
+        {
             int MNSyncCheckInterval = 30;
             // check if we have enough supernodes in the list (>=10) after 10 minutes of being fully synced, and then every 10 minutes but not more than 3 times in the row
             int64_t currentTime = GetTime();
             int64_t secsFromPrevious = (currentTime - nTimeLastBumped) % (MNSyncCheckInterval * 60);
             if (secsFromPrevious < 6 &&
                 currentTime - nTimeLastBumped > MNSyncCheckInterval * 60 &&
-                nReSyncAttempt < 3) {
+                nReSyncAttempt < 3)
+            {
                 LogFnPrintf("Check that has enough top 10 supernodes: %d seconds after previous check",
                             secsFromPrevious + (MNSyncCheckInterval * 60));
-                int nHeight;
-                {
-                    LOCK(cs_main);
-                    CBlockIndex *pindex = chainActive.Tip();
-                    if (!pindex)
-                        return;
-                    nHeight = pindex->nHeight;
-                }
+                uint32_t nHeight = gl_nChainHeight;
+                if (nHeight == 0)
+                    return;
 
                 string error;
                 masternode_vector_t topBlockMNs;
-                auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, nHeight, false);
-                LogFnPrintf("GetTopMNsForBlock: %s, status = %d, topBlockMNs.size = %d", error, int(status), topBlockMNs.size());
-                if (topBlockMNs.size() < 10) {
-                    if (nReSyncAttempt == 0) {
+                auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, static_cast<int>(nHeight), false);
+                LogFnPrintf("GetTopMNsForBlock: %s, status = %d, topBlockMNs.size = %d", error, to_integral_type(status), topBlockMNs.size());
+                if (topBlockMNs.size() < 10)
+                {
+                    if (nReSyncAttempt == 0)
+                    {
                         LogFnPrintf("WARNING: not enough top 10 supernodes, clearing cache...");
                         //clear cache and try again
                         masterNodeCtrl.masternodeManager.ClearCache(getAllMNCacheItems());
@@ -258,17 +260,18 @@ void CMasternodeSync::ProcessTick()
         return;
     }
 
+    const auto& chainparams = Params();
+    const auto& consensusParams = chainparams.GetConsensus();
+
     if (IsInitial())
     {
-        const auto& chainparams = Params();
-        const auto& consensusParams = chainparams.GetConsensus();
         const bool fInitialDownload = fnIsInitialBlockDownload(consensusParams);
         if (!fInitialDownload)
         {
             if (nTimeIBDDone == 0)
             {
                 nTimeIBDDone = GetTime();
-                LogFnPrintf("MN Sync initial state - %" PRId64, nTimeIBDDone );
+                LogFnPrintf("MN Sync initial state - %" PRId64, nTimeIBDDone);
             }
             else
             {
@@ -287,12 +290,13 @@ void CMasternodeSync::ProcessTick()
     }
 
     // Calculate "progress" for LOG reporting / GUI notification
-    double nSyncProgress = double(nRequestedMasternodeAttempt + (int)syncState * 8) / (8*4);
+    double nSyncProgress = double(nRequestedMasternodeAttempt + to_integral_type(syncState) * 8) / (8 * 4);
     if (nSyncProgress < 0)
         nSyncProgress = 0;
     if (nSyncProgress != nLastSyncProgress)
     {
-        LogFnPrintf("nTick %d syncState %d nRequestedMasternodeAttempt %d nSyncProgress %f", nTick, (int)syncState, nRequestedMasternodeAttempt, nSyncProgress);
+        LogFnPrintf("nTick %d syncState %d nRequestedMasternodeAttempt %d nSyncProgress %f", 
+            nTick, to_integral_type(syncState), nRequestedMasternodeAttempt, nSyncProgress);
         nLastSyncProgress = nSyncProgress;
     }
 /*TEMP-->
@@ -311,7 +315,7 @@ void CMasternodeSync::ProcessTick()
             continue;
 
         // QUICK MODE (REGTEST ONLY!)
-        if (Params().IsRegTest())
+        if (chainparams.IsRegTest())
         {
             if(nRequestedMasternodeAttempt <= 2) {
             } else if(nRequestedMasternodeAttempt < 4) {
@@ -334,7 +338,7 @@ void CMasternodeSync::ProcessTick()
 
         // NORMAL NETWORK MODE - TESTNET/MAINNET
         {
-            if(masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "full-sync"))
+            if (masterNodeCtrl.requestTracker.HasFulfilledRequest(pnode->addr, "full-sync"))
             {
                 // We already fully synced from this node recently,
                 // disconnect to free this connection slot for another peer.
@@ -363,7 +367,8 @@ void CMasternodeSync::ProcessTick()
             // MNLIST : SYNC MASTERNODE LIST FROM OTHER CONNECTED CLIENTS
             if (syncState == MasternodeSyncState::List)
             {
-                LogFnPrint("masternode", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogFnPrint("masternode", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, 
+                    nTick, to_integral_type(syncState), nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 if (!CheckSyncTimeout(nTick, vNodesCopy))
                     return; //this will cause each peer to get one request each six seconds for the various assets we need
@@ -381,7 +386,8 @@ void CMasternodeSync::ProcessTick()
             // MNW : SYNC MASTERNODE PAYMENT VOTES FROM OTHER CONNECTED CLIENTS
             if (syncState == MasternodeSyncState::Winners)
             {
-                LogFnPrint("mnpayments", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogFnPrint("mnpayments", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, 
+                    nTick, to_integral_type(syncState), nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 // This might take a lot longer than MasternodeSyncTimeoutSeconds due to new blocks,
                 // but that should be OK and it should timeout eventually.
@@ -393,7 +399,7 @@ void CMasternodeSync::ProcessTick()
                 // try to fetch data from at least two peers though
                 if (nRequestedMasternodeAttempt > 1 && masterNodeCtrl.masternodePayments.IsEnoughData())
                 {
-                    LogFnPrintf("nTick %d syncState %d -- found enough data", nTick, (int)syncState);
+                    LogFnPrintf("nTick %d syncState %d -- found enough data", nTick, to_integral_type(syncState));
                     SwitchToNextAsset();
                     return;
                 }
@@ -416,7 +422,8 @@ void CMasternodeSync::ProcessTick()
 #ifdef GOVERNANCE_TICKETS
             if(syncState == MasternodeSyncState::Governance)
             {
-                LogFnPrint("governance", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, nTick, (int)syncState, nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
+                LogFnPrint("governance", "nTick %d syncState %d nTimeLastBumped %" PRId64 " GetTime() %" PRId64 " diff %" PRId64, 
+                    nTick, to_integral_type(syncState), nTimeLastBumped, GetTime(), GetTime() - nTimeLastBumped);
                 // check for timeout first
                 if (!CheckSyncTimeout(nTick, vNodesCopy))
                     return; //this will cause each peer to get one request each six seconds for the various assets we need
@@ -467,6 +474,9 @@ void CMasternodeSync::NotifyHeaderTip(const CBlockIndex *pindexNew, bool fInitia
 
 void CMasternodeSync::UpdatedBlockTip(const CBlockIndex *pindexNew, bool fInitialDownload)
 {
+    if (!pindexNew)
+        return;
+
     LogFnPrint("mnsync", "pindexNew->nHeight: %d fInitialDownload=%d", pindexNew->nHeight, fInitialDownload);
 
     if (IsFailed() || IsSynced() || !pindexBestHeader)
