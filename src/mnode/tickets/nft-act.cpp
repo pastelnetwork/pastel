@@ -116,10 +116,9 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
                 !existingTicket.IsTxId(m_txid))
             {
                 string sMessage = strprintf( "The Activation ticket for the Registration ticket with txid [%s]", m_regTicketTxId);
-                bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
-                                                                                       m_txid, m_nBlock,
-                                                                                       bPreReg, sMessage);
-                if (bFound)
+                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
+                // for testnet: if the ticket was accepted to the blockchain (not bPreReg) - accept duplicate ticket (though it was probably done by mistake)
+                if (bTicketFound && !(Params().IsTestNet() && !bPreReg))
                 {
                     tv.errorMsg = sMessage;
                     break;

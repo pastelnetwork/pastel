@@ -1201,7 +1201,7 @@ int exec_system_command(const char* szCommand, string& stdOutput, string& stdErr
 			pclose(pipe);
     });
 
-    while (fgets(buffer.data(), buffer.size(), pipe) != nullptr)
+    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr)
     {
         stdOutput += buffer.data();
     }

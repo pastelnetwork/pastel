@@ -431,7 +431,7 @@ bool process_start_alias(const CMasternodeConfig::CMasternodeEntry &mne, UniValu
  * \param params - [1]: "MN alias"
  * \return output UniValue json object
  */
-UniValue masternode_start_alias(const UniValue& params)
+UniValue masternode_activate(const UniValue& params)
 {
     if (params.size() < 2)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
@@ -1216,7 +1216,7 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #ifdef ENABLE_WALLET
     RPC_CMD_PARSER(MN, params, init, list, list__conf, count, debug, current, winner, winners,
         genkey, connect, status, top, message, make__conf, pose__ban__score,
-        print__cache, clear__cache,
+        print__cache, clear__cache, activate,
         start__many, start__alias, start__all, start__missing, start__disabled, outputs);
 #else
     RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
@@ -1320,7 +1320,8 @@ R"(
             return masternode_init(params, fHelp, keyIO);
 
         case RPC_CMD_MN::start__alias:
-            return masternode_start_alias(params);
+        case RPC_CMD_MN::activate:
+            return masternode_activate(params);
 
         case RPC_CMD_MN::start__all:
         case RPC_CMD_MN::start__missing:

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <optional>
@@ -312,17 +312,15 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
                 !existingTicket.IsBlock(m_nBlock))
             {
                 string sMessage;
-                bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
-                                                                                       m_txid, m_nBlock,
-                                                                                       bPreReg, sMessage);
-                if (bFound)
+                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
+                if (bTicketFound)
                 {
                     tv.errorMsg = strprintf(
                             "%s ticket already exists for the %s ticket with this txid [%s]. Signature - our=%s; their=%s [%sfound ticket block=%u, txid=%s]. %s",
                             GetTicketDescription(), COfferTicket::GetTicketDescription(), m_offerTxId,
                             ed_crypto::Hex_Encode(m_signature.data(), m_signature.size()),
                             ed_crypto::Hex_Encode(existingTicket.m_signature.data(), existingTicket.m_signature.size()),
-                            bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                            bPreReg ? "" : strprintf("this ticket block=%u, txid=%s; ", m_nBlock, m_txid),
                             existingTicket.GetBlock(), existingTicket.m_txid, sMessage);
                     break;
                 }
@@ -338,10 +336,8 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
                 !existingTicket.IsBlock(m_nBlock))
             {
                 string sMessage;
-                bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
-                                                                                       m_txid, m_nBlock,
-                                                                                       bPreReg, sMessage);
-                if (bFound)
+                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
+                if (bTicketFound)
                 {
                     tv.errorMsg = strprintf(
                             "%s ticket already exists for the %s ticket with this txid [%s]. %s",

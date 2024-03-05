@@ -476,9 +476,9 @@ Result:
   "localsolps": xxx.xxxxx,   (numeric) The average local solution rate in Sol/s since this node was started
   "networksolps": x,         (numeric) The estimated network solution rate in Sol/s
   "pooledtx": n,             (numeric) The size of the mem pool
-  "testnet": true|false,     (boolean) If using testnet or not
-  "chain": "xxxx",           (string) current network name as defined in BIP70 (main, test, regtest)
+  "chain": "xxxx",           (string) current network name ((mainnet, testnet, devnet, regtest))
   "eligibleForMining": true|false, (boolean) If the masternode is eligible to mine using its mnid
+  "eligibleToMineNextBlock": true|false, (boolean) If the masternode is eligible to mine next block using its mnid
 }
 
 Examples:
@@ -498,7 +498,6 @@ Examples:
     obj.pushKV("localsolps"  ,     getlocalsolps(params, false));
     obj.pushKV("networksolps",     getnetworksolps(params, false));
     obj.pushKV("networkhashps",    getnetworksolps(params, false));
-    obj.pushKV("testnet",          Params().TestnetToBeDeprecatedFieldRPC());
     obj.pushKV("chain",            Params().NetworkIDString());
 #ifdef ENABLE_MINING
     obj.pushKV("eligibleForMining", gl_MiningSettings.isEligibleForMining());

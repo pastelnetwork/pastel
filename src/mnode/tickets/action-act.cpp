@@ -147,22 +147,22 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
                 !existingTicket.IsTxId(m_txid))
             {
                 string message = strprintf( "The Activation ticket for the Registration ticket with txid [%s]", m_regTicketTxId);
-                bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
-                                                                                       m_txid, m_nBlock,
-                                                                                       bPreReg, message);
-                if (bFound) {
+                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+                // for testnet: if the ticket was accepted to the blockchain (not bPreReg) - accept duplicate ticket (though it was probably done by mistake)
+                if (bTicketFound && !(Params().IsTestNet() && !bPreReg))
+                {
                     tv.errorMsg = message;
                     break;
                 }
             }
         }
 
-        auto pActionRegTicket = dynamic_cast<CActionRegTicket*>(pastelTicket.get());
+        const auto pActionRegTicket = dynamic_cast<const CActionRegTicket*>(pastelTicket.get());
         // this is already validated in common_ticket_validation, but just double check that we retrieved a parent activation reg ticket
         if (!pActionRegTicket)
         {
             tv.errorMsg = strprintf(
-                "The Action registration ticket with this txid [%s] is not in the blockchain or is invalid", 
+                "The Action Registration ticket with this txid [%s] is not in the blockchain or is invalid", 
                 m_regTicketTxId);
             break;
         }

@@ -115,14 +115,14 @@ Arguments:
 1. "{nft-ticket}"	(string, required) Base64 encoded NFT ticket created by the creator.
     {
         "nft_ticket_version": 2,
-        "author":               "<Pastel ID of the author (creator)>",
-        "blocknum":             <block number when the ticket was created>,
-        "block_hash":           "<hash of the top block when the ticket was created>",
-        "copies":               <number of copies of NFT this ticket is creating, optional in v2>,
-        "royalty":              <royalty fee, how much creator should get on all future resales, optional in v2>,
-        "green":                <boolean, is there Green NFT payment or not, optional in v2>,
-        "collection_txid":      "<transaction id of the collection that NFT belongs to, v2 only, optional, can be empty>",
-        "app_ticket":           "<application-specific-data>"
+        "author":             "<Pastel ID of the author (creator)>",
+        "blocknum":           <block number when the ticket was created>,
+        "block_hash":         "<hash of the top block when the ticket was created>",
+        "copies":             <number of copies of NFT this ticket is creating, optional in v2>,
+        "royalty":            <royalty fee, how much creator should get on all future resales, optional in v2>,
+        "green":              <boolean, is there Green NFT payment or not, optional in v2>,
+        "collection_txid":    "transaction id of the activation ticket for collection that NFT belongs to, v2 only, optional, can be empty",
+        "app_ticket":         "<application-specific-data>"
     }
 2. "{signatures}"	(string, required) Signatures (base64) and Pastel IDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
     {
@@ -677,12 +677,13 @@ Supported action types:
 Arguments:
 1. "action-ticket"	(string, required) Base64 encoded Action ticket created by the MN 1.
     {
-        "action_ticket_version": 1,
-        "action_type": "<action-type>",
-        "caller":      "<caller-PastelID>",
-        "blocknum":    <block-number-when-the-ticket-was-created-by-the-mn1>,
-        "block_hash":  "<base64'ed-hash-of-the-action>",
-        "app_ticket":  "<application-specific-data>",
+        "action_ticket_version": 2,
+        "action_type":           "<action-type>",
+        "caller":                "<caller-PastelID>",
+        "blocknum":              <block-number-when-the-ticket-was-created-by-the-mn1>,
+        "block_hash":            "<base64'ed-hash-of-the-action>",
+        "collection_txid":       "transaction id of the activation ticket for collection that action belongs to, v2 only, optional, can be empty",
+        "app_ticket":            "<application-specific-data>",
     }
 2. "signatures"	(string, required) Signatures (base64) and Pastel IDs of the principal and verifying masternodes (MN2 and MN3) as JSON:
     {

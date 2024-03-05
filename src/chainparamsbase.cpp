@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -10,13 +10,15 @@
 #include <port_config.h>
 #include <utils/util.h>
 
+using namespace std;
+
 /**
  * Main network
  */
 class CBaseMainParams : public CBaseChainParams
 {
 public:
-    CBaseMainParams()
+    CBaseMainParams() noexcept
     {
         nRPCPort = MAINNET_DEFAULT_RPC_PORT;
     }
@@ -28,10 +30,23 @@ public:
 class CBaseTestNetParams : public CBaseChainParams
 {
 public:
-    CBaseTestNetParams()
+    CBaseTestNetParams() noexcept
     {
         nRPCPort = TESTNET_DEFAULT_RPC_PORT;
         strDataDir = "testnet3";
+    }
+};
+
+/**
+ * Devnet
+ */
+class CBaseDevNetParams : public CBaseChainParams
+{
+public:
+    CBaseDevNetParams() noexcept
+    {
+        nRPCPort = DEVNET_DEFAULT_RPC_PORT;
+        strDataDir = "devnet";
     }
 };
 
@@ -41,7 +56,7 @@ public:
 class CBaseRegTestParams : public CBaseChainParams
 {
 public:
-    CBaseRegTestParams()
+    CBaseRegTestParams() noexcept
     {
         nRPCPort = 18232;
         strDataDir = "regtest";
@@ -54,13 +69,13 @@ public:
 class CBaseUnitTestParams : public CBaseMainParams
 {
 public:
-    CBaseUnitTestParams()
+    CBaseUnitTestParams() noexcept
     {
         strDataDir = "unittest";
     }
 };
 
-static std::unique_ptr<CBaseChainParams> globalChainBaseParams;
+static unique_ptr<CBaseChainParams> globalChainBaseParams;
 
 const CBaseChainParams& BaseParams()
 {
@@ -69,31 +84,35 @@ const CBaseChainParams& BaseParams()
 }
 
 /**
- * Creates and returns a std::unique_ptr<CBaseChainParams>.
+ * Creates and returns a unique_ptr<CBaseChainParams>.
  * 
  * \param network - blockchain type (MAIN, TESTNET or REGTEST)
- * \return std::unique_ptr<CBaseChainParams>
+ * \return unique_ptr<CBaseChainParams>
  */
-std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const ChainNetwork network)
+unique_ptr<CBaseChainParams> CreateBaseChainParams(const ChainNetwork network)
 {
-    std::unique_ptr<CBaseChainParams> BaseChainParams;
+    unique_ptr<CBaseChainParams> BaseChainParams;
     switch (network)
     {
     case ChainNetwork::MAIN:
-        BaseChainParams = std::make_unique<CBaseMainParams>();
+        BaseChainParams = make_unique<CBaseMainParams>();
         break;
 
     case ChainNetwork::TESTNET:
-        BaseChainParams = std::make_unique<CBaseTestNetParams>();
+        BaseChainParams = make_unique<CBaseTestNetParams>();
+        break;
+
+    case ChainNetwork::DEVNET:
+        BaseChainParams = make_unique<CBaseDevNetParams>();
         break;
 
     case ChainNetwork::REGTEST:
-        BaseChainParams = std::make_unique<CBaseRegTestParams>();
+        BaseChainParams = make_unique<CBaseRegTestParams>();
         break;
 
     default:
         assert(false && "Unimplemented network");
-        BaseChainParams = std::make_unique<CBaseMainParams>();
+        BaseChainParams = make_unique<CBaseMainParams>();
         break;
     }
     return BaseChainParams;
@@ -109,13 +128,16 @@ ChainNetwork NetworkIdFromCommandLine()
 {
     const bool fRegTest = GetBoolArg("-regtest", false);
     const bool fTestNet = GetBoolArg("-testnet", false);
+    const bool fDevNet = GetBoolArg("-devnet", false);
 
-    if (fTestNet && fRegTest)
+    if (fTestNet && fRegTest || fTestNet && fDevNet || fDevNet && fRegTest)
         return ChainNetwork::MAX_NETWORK_TYPES;
     if (fRegTest)
         return ChainNetwork::REGTEST;
     if (fTestNet)
         return ChainNetwork::TESTNET;
+    if (fDevNet)
+        return ChainNetwork::DEVNET;
     return ChainNetwork::MAIN;
 }
 

@@ -195,7 +195,7 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
  * \param tx - transaction
  * \param data_stream - compressed data stream ()
  * \param ticket_id - ticket id (first byte in the data stream)
- * \param error - returns error message if any
+ * \param error - returns error sMessage if any
  * \param bLog - log flag, default is true
  * \param bUncompressData - uncompress ticket data (if stored in compressed zstd format), default is true
  * \return - true if ticket was parsed successfully
@@ -247,7 +247,7 @@ bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CComp
  * \param nHeight - current height
  * \param tx - ticket transaction
  * \param ticket - ticket object
- * \return validation status with error message if any
+ * \return validation status with error sMessage if any
  */
 ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, unique_ptr<CPastelTicket>&& ticket) noexcept
 {
@@ -481,7 +481,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
  *    NOT_TICKET     - if transaction being validated is not a ticket transaction
  *    VALID          - ticket is valid
  *    MISSING_INPUTS - ticket is missing some dependent data (for example, nft-act ticket can't find nft-reg ticket)
- *    INVALID        - ticket validation failed, error message is returned in errorMsg
+ *    INVALID        - ticket validation failed, error sMessage is returned in errorMsg
  */
 ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidationState &state, const uint32_t nHeight, const CTransaction& tx)
 {
@@ -1929,7 +1929,7 @@ void CPastelTicketProcessor::SearchForNFTs(const search_thumbids_t& p, function<
  * Add P2FMS transaction to the memory pool.
  * 
  * \param tx_out - P2FMS transaction
- * \param error_ret - returns an error message if any
+ * \param error_ret - returns an error sMessage if any
  * \return true if transaction was successfully added to the transaction memory pool (txmempool)
  */
 bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx_out, string& error_ret)
@@ -1974,7 +1974,7 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
  * 
  * \param tx_in - transaction
  * \param output_string - output string
- * \param error - returns an error message if any
+ * \param error - returns an error sMessage if any
  * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output string
  */
 bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, string& output_string, string& error)
@@ -2270,11 +2270,22 @@ tx_mempool_tracker_t CPastelTicketProcessor::GetTxMemPoolTracker()
     return TicketTxMemPoolTracker;
 }
 
+/**
+ * Find and validate existing ticket.
+ * 
+ * \param ticket - existing Pastel ticket
+ * \param new_txid - new ticket transaction id
+ * \param nNewHeight - new ticket block height
+ * \param bPreReg - true if it is pre-registration transaction
+ * \param sMessage - return sMessage prefix in case of failure
+ * \param bAllowDuplicates - true if duplicate tickets of this type are allowed
+ * \return true if ticket was found and validated
+ */
 bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicket& ticket,
-                                                              const string& new_txid, uint32_t new_height,
-                                                              bool bPreReg, string &message)
+    const string& new_txid, const uint32_t nNewHeight, const bool bPreReg, string &sMessage,
+    const bool bAllowDuplicates)
 {
-    bool bFound= true;
+    bool bTicketFound = true;
     const uint256 txid = uint256S(ticket.GetTxId());
     try {
         const auto pTicket = CPastelTicketProcessor::GetTicket(txid);
@@ -2284,50 +2295,52 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
             {
                 CTransaction tx;
                 if (mempool.lookup(txid, tx))
-                    message += " found in mempool.";
+                    sMessage += " found in mempool.";
                 else
                 {
-                    bFound = false;
-                    bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-                    message += strprintf(" found in stale block. %s removed from TicketDB",
-                                        ok ? "Successfully" : "Failed to be");
+                    bTicketFound = false;
+                    bool bErasedFromDb = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
+                    sMessage += strprintf(" found in stale block. %s from Ticket DB",
+                                        bErasedFromDb ? "Successfully removed" : "Failed to remove");
                 }
             } else {
-                message += " already exists in blockchain.";
-                CTransaction new_tx;
-                if (mempool.lookup(uint256S(new_txid), new_tx)) {
-                    message += strprintf(" Removing new[%s] from mempool.", new_txid);
-                    mempool.remove(new_tx, false);
+                sMessage += " already exists in blockchain.";
+                if (!bAllowDuplicates)
+                {
+                    CTransaction new_tx;
+                    if (mempool.lookup(uint256S(new_txid), new_tx))
+                    {
+                        sMessage += strprintf(" Removing new [%s] from mempool.", new_txid);
+                        mempool.remove(new_tx, false);
+                    }
                 }
             }
         } else {
-            bFound = false;
-            bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-            message += strprintf(" found in Ticket DB, but not in blockchain. %s removed from TicketDB",
-                                 ok ? "Successfully" : "Failed to be");
+            bTicketFound = false;
+            bool bErasedFromDb = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
+            sMessage += strprintf(" found in Ticket DB, but not in blockchain. %s from Ticket DB",
+                                 bErasedFromDb ? "Successfully removed" : "Failed to remove");
         }
     } catch (...) {
-        bFound = false;
-        bool ok = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-        message += strprintf(" found in Ticket DB, but not in blockchain (bad transaction?). %s removed from TicketDB",
-                             ok ? "Successfully" : "Failed to be");
+        bTicketFound = false;
+        bool bErasedFromDb = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
+        sMessage += strprintf(" found in Ticket DB, but not in blockchain (bad transaction?). %s from Ticket DB",
+                             bErasedFromDb ? "Successfully removed" : "Failed to remove");
     }
-    message += strprintf(" [%sfound ticket block=%u, txid=%s]",
-                        bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", new_height, new_txid),
+    sMessage += strprintf(" [%sfound ticket block=%u, txid=%s]",
+                        bPreReg ? "" : strprintf("this ticket block=%u, txid=%s; ", nNewHeight, new_txid),
                         ticket.GetBlock(), ticket.GetTxId());
-    if (!bFound) {
-        LogFnPrintf("WARNING: %s", message);
-    }
-    return bFound;
+    if (!bTicketFound)
+        LogFnPrintf("WARNING: %s", sMessage);
+    return bTicketFound;
 }
 
 void CPastelTicketProcessor::RemoveTicketFromMempool(const string& txid)
 {
     try {
         CTransaction tx;
-        if (mempool.lookup(uint256S(txid), tx)) {
+        if (mempool.lookup(uint256S(txid), tx))
             mempool.remove(tx, false);
-        }
     } catch (const std::exception& e) {
         LogFnPrintf("ERROR: txid [%s]. %s", txid, e.what());
     }

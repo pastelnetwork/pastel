@@ -296,10 +296,9 @@ ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32
             !existingTicket.IsTxId(m_txid)))
         {
             string message = strprintf("This NFT is already registered in blockchain [key=%s; label=%s]", m_keyOne, KeyTwo());
-            bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
-                                                                                   m_txid, m_nBlock,
-                                                                                   bPreReg, message);
-            if (bFound) {
+            const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+            if (bTicketFound)
+            {
                 tv.errorMsg = message;
                 break;
             }

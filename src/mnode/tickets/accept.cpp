@@ -130,7 +130,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
                     tv.errorMsg = strprintf(
                         "%s ticket [%s] already exists and is not yet 1h old for this Offer ticket [%s] [%sfound ticket block=%u, txid=%s]",
                         GetTicketDescription(), existingAcceptTicket.GetTxId(), m_offerTxId,
-                        bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                        bPreReg ? "" : strprintf("this ticket block=%u, txid=%s; ", m_nBlock, m_txid),
                         existingAcceptTicket.GetBlock(), existingAcceptTicket.GetTxId());
                     CPastelTicketProcessor::RemoveTicketFromMempool(m_txid);
                     break;

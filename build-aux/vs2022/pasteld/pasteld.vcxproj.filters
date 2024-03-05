@@ -40,5 +40,6 @@
   <ItemGroup>
     <None Include="..\..\..\src\Makefile.am" />
     <None Include="..\..\..\configure.ac" />
+    <None Include="..\..\..\README.md" />
   </ItemGroup>
 </Project>

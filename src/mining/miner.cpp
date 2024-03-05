@@ -613,8 +613,14 @@ void static PastelMiner(const int nThreadNo)
             }
             //<-INGEST!!!
 
+            // check if we can use new mining 
+            const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
+            const bool bNewMiningAllowed = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
+                (gl_nChainHeight >= nNewMiningAllowedHeight + NEW_MINING_ALGO_HEIGHT_DELAY);
+
             // Check if MasterNode is eligible to mine next block - perform only after the masternodes are synced
             opt_string_t sEligiblePastelID;
+            if (bNewMiningAllowed)
             {
                 miningTimer.stop();
                 LogFnPrint("mining", "Waiting for MasterNode sync...");

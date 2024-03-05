@@ -188,8 +188,8 @@ public:
     void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
 
     static bool FindAndValidateTicketTransaction(const CPastelTicket& ticket,
-                                                 const std::string& new_txid, uint32_t new_height,
-                                                 bool bPreReg, std::string &message);
+        const std::string& new_txid, const uint32_t nNewHeight, const bool bPreReg,
+        std::string &sMessage, const bool bAllowDuplicates = false);
     static void RemoveTicketFromMempool(const std::string& txid);
 
 #ifdef ENABLE_WALLET

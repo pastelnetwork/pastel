@@ -100,6 +100,7 @@ public:
 
     bool IsMainNet() const noexcept { return consensus.network == ChainNetwork::MAIN; }
     bool IsTestNet() const noexcept { return consensus.network == ChainNetwork::TESTNET; }
+    bool IsDevNet() const noexcept { return consensus.network == ChainNetwork::DEVNET; }
     bool IsRegTest() const noexcept { return consensus.network == ChainNetwork::REGTEST; }
 
     void UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex idx, const uint32_t nActivationHeight)
