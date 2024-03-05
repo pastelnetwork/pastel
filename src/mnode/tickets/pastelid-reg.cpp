@@ -125,6 +125,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
     ticket_validation_t tv;
     do
     {
+        const bool bIsPersonal = isPersonal();
         const bool bPreReg = isPreReg(txOrigin);
         // Something to check ONLY before ticket made into transaction
         if (bPreReg)
@@ -141,20 +142,21 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
             // retrieve mempool transactions with TicketID::PastelID tickets
             CPastelTicketMemPoolProcessor TktMemPool(ID());
             TktMemPool.Initialize(mempool);
-            // check if Pastel MNID ticket with the same Pastel ID is already in the mempool
+            // check if PastelID registration ticket with the same Pastel ID is already in the mempool
             if (TktMemPool.TicketExists(KeyOne()))
             {
                 tv.errorMsg = strprintf(
-					"Pastel ID ticket (MNID) with the same Pastel ID [%s] is already in the mempool",
-                    m_sPastelID);
+					"%s Registration ticket with the same Pastel ID [%s] is already in the mempool",
+                    bIsPersonal ? "Pastel ID" : "MNID", m_sPastelID);
 				break;
 			}
 
+            // this check is only for MNID registration
             // check if we have already mnid ticket with the same outpoint in the mempool
-            if (TktMemPool.TicketExistsBySecondaryKey(KeyTwo()))
+            if (!bIsPersonal && TktMemPool.TicketExistsBySecondaryKey(KeyTwo()))
             {
-				tv.errorMsg = strprintf("Pastel ID ticket (MNID) with the same outpoint [%s] is already in the mempool",
-                    m_outpoint.ToStringShort());
+				tv.errorMsg = strprintf("%s ticket with the same outpoint [%s] is already in the mempool",
+                    bIsPersonal ? "Pastel ID" : "MNID", m_outpoint.ToStringShort());
 				break;
 			}
             
@@ -185,7 +187,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
                         tv.errorMsg = strprintf(
                             "Masternode's outpoint - [%s] is already registered as a ticket. Your Pastel ID - [%s] [%sfound ticket block=%u, txid=%s]",
                             m_outpoint.ToStringShort(), m_sPastelID, 
-                            bPreReg ? "" : strprintf("this ticket block=%u txid=%s; ", m_nBlock, m_txid),
+                            bPreReg ? "" : strprintf("this ticket block=%u, txid=%s; ", m_nBlock, m_txid),
                             _ticket.m_nBlock, _ticket.m_txid);
                         break;
                     }

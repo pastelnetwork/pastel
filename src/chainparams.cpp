@@ -19,6 +19,11 @@ Genesis block for TestNet found
   nonce: 0000000000000000000000000000000000000000000000000000000000000025
   solution: 008c182882d3e546b05bf5c93b669b81f81d1715a310295f26e21f69af5050c133b745c285432c786b89170113757f8f9a5c876f62d30ae7335f546b5dc48f3c838e70558f66a1324644ae0af83006cf3ff9a9fa08c134b2178d4169f3a283d84054678681d77bfd20124501140310781ed2cc6256bcef194cb58dab2eac0bca87adb6d8f690e871b136fd3b2628e5d58c66221fe9e555facb32a07f34b682c2f987da795fba09920beab08ffc8af465744db6afba4859fde438d22fb81d4f91e2c5e1be091d9643124c68cc95c94633cbf11ecfb60626683a2d7426d544ee6a9f3e11513b08704544aee4a7956bef622ff7d72dee614e3974d2981212ae016c31466769a58e85cbf46955e1922b5515e3314ab6b5cf9e5f17640c5545ddfcbb0671b89b1259176003f8276ca98f8986317ffcb6f65c8f927fd0b9326416006b154c0ebeea7afeade9590ac0c158f46e068b29536697988ba1b253ee9237d0ef0394fd50c038114eeb5352c4d0d49803ee82fa90a10c03cd3df611d3f5c56c0eff17db59e34143cbb568eb67cdd1a8213a448d342d9f9dedc396ae1efed1e5e9deb5892b122bfacf00507b0c89a671763a210afc9ce1341ca5152d6afebb126f30efaab1d1743ae06a34e5d8baec1a4fb1219330866dec45529a5a2a96b94b7d94faa44aaf7772d8601493b82b784a92c70e763874d60d4806bf4349988fc1b0fbfd2585442c6be9a1ad96d54823a7c685fe9b99d2e07d8b3159efe1b2eba2faa6d31a982e724b10415b9c8592dbf0d469c1762a718bc2308bd30729d68463113236e683cdc495d90a373be90b4b432159db23275909c5cf793c3c19a9c03c51a0222592fd9911b3739b3168bab9eb2b7662eb3d502a456f768b91a8d033d534b457d53d1d0630a614c1045710baf8269bbad52a1275bec8f8dafe332f760cdb019ccc21981d21db45ebd4da0dfec989591d4d0b9f15bb5b7dd9aa8745afa3253ee044fefe68bdb72dbf23274755d488cf46b958e350d8d6c4b2878d15f94624d78519a0e2be2d4dd7d6025c6b3a75cee82e9d500438693a4ddcb2594a34462701e843b9e7b0b61ddb06d1c8d33d13c54d885d206d934443a26f545b3424384dbe70cc2582ab3c3ad69e6bbd45c1b6837365b43959fe6fb1af942ff52967fcb9766fe250f958b343036ce6019a57f47b49ae47c60853ab128ed0d879ce154fec8be990c41dff2c42287b9944a544cd4d00e4376bb6c70418ef18fd41156dfab551bdc8fab1a7ea468acf3f39ad572fceb79a33975c498334f4fff17a03de24c9b00e7ac5e3fff357823b03d10c221755d82941e320fbd7c8e127e8e34f99529bc917f316b70006dae2116fc8c761fa34a0ec6918408c51a2f2efa52eb76ce1daf6fc03eedf72fbedde274ebb077a22b901bca3a1bd116fc924642601867135134a665e1784481b82c186e29ebdb7f87650e3ef2276160312e42e07bf22ef5d936bc5a4f63c703dfc4bb32d557f4e400e6feec6d0893e38acb0039c39d8d312a36d5b5e0d072d8b6f3ea380cbc8cd808f00f2b5a8bb6271e1d30ac36918134741e19e8840ec834bf37471284d0eda265f648a38189d17c3b8b299dee28a06b109df70545083e305fa5ba589e4bab93b69d8e86b806ffec86b04e180919e9ce05eee7bf2bb70b5f4e5cc16f500ea15e3de802b91767abf48583dea6e9faf77a35e890309924645fe9d5f65171b63d797f475eee236fbed8713e0e2b217ce24fcd1b1a4352456e75da0d079defd07e8b1efdb4b324ca4292431afe6b621b255fc0dad5ffc8d6e435ac0af1bd937339dcfb2dedd54dc1beb103499dededfc9312a4a962bc0c5622337d15c510845e134c38f26fd9d8ad378a4346bb0d6bd87b8dd1d
 
+Genesis block for DevNet found
+  merkle root hash: ac375f272f2ac1f23f505a71ca33159e7d32993976cf91620b8363400c757161
+  header hash: 0302f1ab449e6424f1ec076a6496b331fa664d8b95d866023ea6675bbb387f53
+  nonce: 0000000000000000000000000000000000000000000000000000000000000025
+  solution: 008c182882d3e546b05bf5c93b669b81f81d1715a310295f26e21f69af5050c133b745c285432c786b89170113757f8f9a5c876f62d30ae7335f546b5dc48f3c838e70558f66a1324644ae0af83006cf3ff9a9fa08c134b2178d4169f3a283d84054678681d77bfd20124501140310781ed2cc6256bcef194cb58dab2eac0bca87adb6d8f690e871b136fd3b2628e5d58c66221fe9e555facb32a07f34b682c2f987da795fba09920beab08ffc8af465744db6afba4859fde438d22fb81d4f91e2c5e1be091d9643124c68cc95c94633cbf11ecfb60626683a2d7426d544ee6a9f3e11513b08704544aee4a7956bef622ff7d72dee614e3974d2981212ae016c31466769a58e85cbf46955e1922b5515e3314ab6b5cf9e5f17640c5545ddfcbb0671b89b1259176003f8276ca98f8986317ffcb6f65c8f927fd0b9326416006b154c0ebeea7afeade9590ac0c158f46e068b29536697988ba1b253ee9237d0ef0394fd50c038114eeb5352c4d0d49803ee82fa90a10c03cd3df611d3f5c56c0eff17db59e34143cbb568eb67cdd1a8213a448d342d9f9dedc396ae1efed1e5e9deb5892b122bfacf00507b0c89a671763a210afc9ce1341ca5152d6afebb126f30efaab1d1743ae06a34e5d8baec1a4fb1219330866dec45529a5a2a96b94b7d94faa44aaf7772d8601493b82b784a92c70e763874d60d4806bf4349988fc1b0fbfd2585442c6be9a1ad96d54823a7c685fe9b99d2e07d8b3159efe1b2eba2faa6d31a982e724b10415b9c8592dbf0d469c1762a718bc2308bd30729d68463113236e683cdc495d90a373be90b4b432159db23275909c5cf793c3c19a9c03c51a0222592fd9911b3739b3168bab9eb2b7662eb3d502a456f768b91a8d033d534b457d53d1d0630a614c1045710baf8269bbad52a1275bec8f8dafe332f760cdb019ccc21981d21db45ebd4da0dfec989591d4d0b9f15bb5b7dd9aa8745afa3253ee044fefe68bdb72dbf23274755d488cf46b958e350d8d6c4b2878d15f94624d78519a0e2be2d4dd7d6025c6b3a75cee82e9d500438693a4ddcb2594a34462701e843b9e7b0b61ddb06d1c8d33d13c54d885d206d934443a26f545b3424384dbe70cc2582ab3c3ad69e6bbd45c1b6837365b43959fe6fb1af942ff52967fcb9766fe250f958b343036ce6019a57f47b49ae47c60853ab128ed0d879ce154fec8be990c41dff2c42287b9944a544cd4d00e4376bb6c70418ef18fd41156dfab551bdc8fab1a7ea468acf3f39ad572fceb79a33975c498334f4fff17a03de24c9b00e7ac5e3fff357823b03d10c221755d82941e320fbd7c8e127e8e34f99529bc917f316b70006dae2116fc8c761fa34a0ec6918408c51a2f2efa52eb76ce1daf6fc03eedf72fbedde274ebb077a22b901bca3a1bd116fc924642601867135134a665e1784481b82c186e29ebdb7f87650e3ef2276160312e42e07bf22ef5d936bc5a4f63c703dfc4bb32d557f4e400e6feec6d0893e38acb0039c39d8d312a36d5b5e0d072d8b6f3ea380cbc8cd808f00f2b5a8bb6271e1d30ac36918134741e19e8840ec834bf37471284d0eda265f648a38189d17c3b8b299dee28a06b109df70545083e305fa5ba589e4bab93b69d8e86b806ffec86b04e180919e9ce05eee7bf2bb70b5f4e5cc16f500ea15e3de802b91767abf48583dea6e9faf77a35e890309924645fe9d5f65171b63d797f475eee236fbed8713e0e2b217ce24fcd1b1a4352456e75da0d079defd07e8b1efdb4b324ca4292431afe6b621b255fc0dad5ffc8d6e435ac0af1bd937339dcfb2dedd54dc1beb103499dededfc9312a4a962bc0c5622337d15c510845e134c38f26fd9d8ad378a4346bb0d6bd87b8dd1d
 
 Genesis block for RegTest found
   merkle root hash: e6d9b5038bb15366c806cefb34ad4922cee668ea1c887e9be8476f2c188dea50
@@ -47,12 +52,21 @@ constexpr uint32_t MAINNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t MAINNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK = 337'800;
 constexpr uint32_t MAINNET_MONET_UPGRADE_STARTING_BLOCK = 575'000;
+constexpr uint32_t MAINNET_VERMEER_UPGRADE_STARTING_BLOCK = 645'500;
 
 // testnet upgrades activation heights
 constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 158'530;
 constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 370'000;
+constexpr uint32_t TESTNET_VERMEER_UPGRADE_STARTING_BLOCK = 426'000;
+
+// devnet upgrades activation heights
+constexpr uint32_t DEVNET_OVERWINTER_STARTING_BLOCK = 10;
+constexpr uint32_t DEVNET_SAPLING_STARTING_BLOCK = 20;
+constexpr uint32_t DEVNET_CEZANNE_UPGRADE_STARTING_BLOCK = 30;
+constexpr uint32_t DEVNET_MONET_UPGRADE_STARTING_BLOCK = 40;
+constexpr uint32_t DEVNET_VERMEER_UPGRADE_STARTING_BLOCK = 30'000;
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
@@ -87,6 +101,7 @@ static CBlock CreateGenesisBlock(const char* pszTimestamp,
 #ifdef MINE_GENESIS
 #define MINE_GENESIS_MAIN
 #define MINE_GENESIS_TEST
+#define MINE_GENESIS_DEV
 #define MINE_GENESIS_REGT
 
 namespace MineGenesis {
@@ -142,8 +157,7 @@ static void __mineGenBlock(string network, bool tromp, unsigned int n, unsigned 
                                                         pblock->GetHash().GetHex().c_str(), 
                                                         pblock->nNonce.GetHex().c_str(),
                                                         HexStr(pblock->nSolution).c_str());
-
-            return true;
+            exit(0);
         };
 
         if (tromp) {
@@ -231,6 +245,10 @@ static const string TestnetNonce = "00000000000000000000000000000000000000000000
 static const string TestnetSolution = "008c182882d3e546b05bf5c93b669b81f81d1715a310295f26e21f69af5050c133b745c285432c786b89170113757f8f9a5c876f62d30ae7335f546b5dc48f3c838e70558f66a1324644ae0af83006cf3ff9a9fa08c134b2178d4169f3a283d84054678681d77bfd20124501140310781ed2cc6256bcef194cb58dab2eac0bca87adb6d8f690e871b136fd3b2628e5d58c66221fe9e555facb32a07f34b682c2f987da795fba09920beab08ffc8af465744db6afba4859fde438d22fb81d4f91e2c5e1be091d9643124c68cc95c94633cbf11ecfb60626683a2d7426d544ee6a9f3e11513b08704544aee4a7956bef622ff7d72dee614e3974d2981212ae016c31466769a58e85cbf46955e1922b5515e3314ab6b5cf9e5f17640c5545ddfcbb0671b89b1259176003f8276ca98f8986317ffcb6f65c8f927fd0b9326416006b154c0ebeea7afeade9590ac0c158f46e068b29536697988ba1b253ee9237d0ef0394fd50c038114eeb5352c4d0d49803ee82fa90a10c03cd3df611d3f5c56c0eff17db59e34143cbb568eb67cdd1a8213a448d342d9f9dedc396ae1efed1e5e9deb5892b122bfacf00507b0c89a671763a210afc9ce1341ca5152d6afebb126f30efaab1d1743ae06a34e5d8baec1a4fb1219330866dec45529a5a2a96b94b7d94faa44aaf7772d8601493b82b784a92c70e763874d60d4806bf4349988fc1b0fbfd2585442c6be9a1ad96d54823a7c685fe9b99d2e07d8b3159efe1b2eba2faa6d31a982e724b10415b9c8592dbf0d469c1762a718bc2308bd30729d68463113236e683cdc495d90a373be90b4b432159db23275909c5cf793c3c19a9c03c51a0222592fd9911b3739b3168bab9eb2b7662eb3d502a456f768b91a8d033d534b457d53d1d0630a614c1045710baf8269bbad52a1275bec8f8dafe332f760cdb019ccc21981d21db45ebd4da0dfec989591d4d0b9f15bb5b7dd9aa8745afa3253ee044fefe68bdb72dbf23274755d488cf46b958e350d8d6c4b2878d15f94624d78519a0e2be2d4dd7d6025c6b3a75cee82e9d500438693a4ddcb2594a34462701e843b9e7b0b61ddb06d1c8d33d13c54d885d206d934443a26f545b3424384dbe70cc2582ab3c3ad69e6bbd45c1b6837365b43959fe6fb1af942ff52967fcb9766fe250f958b343036ce6019a57f47b49ae47c60853ab128ed0d879ce154fec8be990c41dff2c42287b9944a544cd4d00e4376bb6c70418ef18fd41156dfab551bdc8fab1a7ea468acf3f39ad572fceb79a33975c498334f4fff17a03de24c9b00e7ac5e3fff357823b03d10c221755d82941e320fbd7c8e127e8e34f99529bc917f316b70006dae2116fc8c761fa34a0ec6918408c51a2f2efa52eb76ce1daf6fc03eedf72fbedde274ebb077a22b901bca3a1bd116fc924642601867135134a665e1784481b82c186e29ebdb7f87650e3ef2276160312e42e07bf22ef5d936bc5a4f63c703dfc4bb32d557f4e400e6feec6d0893e38acb0039c39d8d312a36d5b5e0d072d8b6f3ea380cbc8cd808f00f2b5a8bb6271e1d30ac36918134741e19e8840ec834bf37471284d0eda265f648a38189d17c3b8b299dee28a06b109df70545083e305fa5ba589e4bab93b69d8e86b806ffec86b04e180919e9ce05eee7bf2bb70b5f4e5cc16f500ea15e3de802b91767abf48583dea6e9faf77a35e890309924645fe9d5f65171b63d797f475eee236fbed8713e0e2b217ce24fcd1b1a4352456e75da0d079defd07e8b1efdb4b324ca4292431afe6b621b255fc0dad5ffc8d6e435ac0af1bd937339dcfb2dedd54dc1beb103499dededfc9312a4a962bc0c5622337d15c510845e134c38f26fd9d8ad378a4346bb0d6bd87b8dd1d";
 static const uint256 TestnetHashGenesisBlock = uint256S("0302f1ab449e6424f1ec076a6496b331fa664d8b95d866023ea6675bbb387f53");
 
+static const string DevnetNonce = "0000000000000000000000000000000000000000000000000000000000000025";
+static const string DevnetSolution =  "008c182882d3e546b05bf5c93b669b81f81d1715a310295f26e21f69af5050c133b745c285432c786b89170113757f8f9a5c876f62d30ae7335f546b5dc48f3c838e70558f66a1324644ae0af83006cf3ff9a9fa08c134b2178d4169f3a283d84054678681d77bfd20124501140310781ed2cc6256bcef194cb58dab2eac0bca87adb6d8f690e871b136fd3b2628e5d58c66221fe9e555facb32a07f34b682c2f987da795fba09920beab08ffc8af465744db6afba4859fde438d22fb81d4f91e2c5e1be091d9643124c68cc95c94633cbf11ecfb60626683a2d7426d544ee6a9f3e11513b08704544aee4a7956bef622ff7d72dee614e3974d2981212ae016c31466769a58e85cbf46955e1922b5515e3314ab6b5cf9e5f17640c5545ddfcbb0671b89b1259176003f8276ca98f8986317ffcb6f65c8f927fd0b9326416006b154c0ebeea7afeade9590ac0c158f46e068b29536697988ba1b253ee9237d0ef0394fd50c038114eeb5352c4d0d49803ee82fa90a10c03cd3df611d3f5c56c0eff17db59e34143cbb568eb67cdd1a8213a448d342d9f9dedc396ae1efed1e5e9deb5892b122bfacf00507b0c89a671763a210afc9ce1341ca5152d6afebb126f30efaab1d1743ae06a34e5d8baec1a4fb1219330866dec45529a5a2a96b94b7d94faa44aaf7772d8601493b82b784a92c70e763874d60d4806bf4349988fc1b0fbfd2585442c6be9a1ad96d54823a7c685fe9b99d2e07d8b3159efe1b2eba2faa6d31a982e724b10415b9c8592dbf0d469c1762a718bc2308bd30729d68463113236e683cdc495d90a373be90b4b432159db23275909c5cf793c3c19a9c03c51a0222592fd9911b3739b3168bab9eb2b7662eb3d502a456f768b91a8d033d534b457d53d1d0630a614c1045710baf8269bbad52a1275bec8f8dafe332f760cdb019ccc21981d21db45ebd4da0dfec989591d4d0b9f15bb5b7dd9aa8745afa3253ee044fefe68bdb72dbf23274755d488cf46b958e350d8d6c4b2878d15f94624d78519a0e2be2d4dd7d6025c6b3a75cee82e9d500438693a4ddcb2594a34462701e843b9e7b0b61ddb06d1c8d33d13c54d885d206d934443a26f545b3424384dbe70cc2582ab3c3ad69e6bbd45c1b6837365b43959fe6fb1af942ff52967fcb9766fe250f958b343036ce6019a57f47b49ae47c60853ab128ed0d879ce154fec8be990c41dff2c42287b9944a544cd4d00e4376bb6c70418ef18fd41156dfab551bdc8fab1a7ea468acf3f39ad572fceb79a33975c498334f4fff17a03de24c9b00e7ac5e3fff357823b03d10c221755d82941e320fbd7c8e127e8e34f99529bc917f316b70006dae2116fc8c761fa34a0ec6918408c51a2f2efa52eb76ce1daf6fc03eedf72fbedde274ebb077a22b901bca3a1bd116fc924642601867135134a665e1784481b82c186e29ebdb7f87650e3ef2276160312e42e07bf22ef5d936bc5a4f63c703dfc4bb32d557f4e400e6feec6d0893e38acb0039c39d8d312a36d5b5e0d072d8b6f3ea380cbc8cd808f00f2b5a8bb6271e1d30ac36918134741e19e8840ec834bf37471284d0eda265f648a38189d17c3b8b299dee28a06b109df70545083e305fa5ba589e4bab93b69d8e86b806ffec86b04e180919e9ce05eee7bf2bb70b5f4e5cc16f500ea15e3de802b91767abf48583dea6e9faf77a35e890309924645fe9d5f65171b63d797f475eee236fbed8713e0e2b217ce24fcd1b1a4352456e75da0d079defd07e8b1efdb4b324ca4292431afe6b621b255fc0dad5ffc8d6e435ac0af1bd937339dcfb2dedd54dc1beb103499dededfc9312a4a962bc0c5622337d15c510845e134c38f26fd9d8ad378a4346bb0d6bd87b8dd1d";
+static const uint256 DevnetHashGenesisBlock = uint256S("0302f1ab449e6424f1ec076a6496b331fa664d8b95d866023ea6675bbb387f53");
+
 static const string RegtestNonce = "0000000000000000000000000000000000000000000000000000000000000039";
 static const string RegtestSolution = "07b461d5f48e91b1fe4a65a112b513c1ad230a9bd4b8f79c069da636341051b3ff455393";
 static const uint256 RegtestHashGenesisBlock = uint256S("065c1d8ea9abb121b8b12e4e483e46f60e743bb149de4bc82e4dd81598b99338");
@@ -274,6 +292,27 @@ static CBlock CreateTestnetGenesisBlock()
 
 #ifdef MINE_GENESIS_TEST
     MineGenesis::__mineGenBlock("TestNet", true, 200, 9, &block);
+#endif
+    return block;
+}
+
+static CBlock CreateDevnetGenesisBlock()
+{
+    uint32_t nTime = EpocTime;
+    uint32_t nBits = 0x2007ffff;
+
+#ifdef MINE_GENESIS_DEV
+    uint256 nNonce = uint256S("0");
+    v_uint8 nSolution = ParseHex("0");
+#else
+    uint256 nNonce = uint256S(DevnetNonce);
+    v_uint8 nSolution = ParseHex(DevnetSolution);
+#endif
+
+    CBlock block = CreateGenesisBlock(PastelGenesisTimestamp, PastelGenesisPubKey, EpocTime, nNonce, nSolution, nBits);
+
+#ifdef MINE_GENESIS_DEV
+    MineGenesis::__mineGenBlock("DevNet", true, 200, 9, &block);
 #endif
     return block;
 }
@@ -339,6 +378,7 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170007, MAINNET_SAPLING_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, MAINNET_MONET_UPGRADE_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_VERMEER, 170011, MAINNET_VERMEER_UPGRADE_STARTING_BLOCK);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
@@ -451,6 +491,7 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170007, TESTNET_SAPLING_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, TESTNET_MONET_UPGRADE_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_VERMEER, 170011, TESTNET_VERMEER_UPGRADE_STARTING_BLOCK);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
@@ -529,6 +570,105 @@ public:
     }
 };
 
+class CDevNetParams : public CChainParams
+{
+public:
+    CDevNetParams() :
+        CChainParams(ChainNetwork::DEVNET)
+    {
+        strNetworkID = "devnet";
+        strCurrencyUnits = "DEV";
+        bip44CoinType = 1;
+        consensus.nSubsidyHalvingInterval = 840'000;
+        consensus.nMajorityEnforceBlockUpgrade = 51;
+        consensus.nMajorityRejectBlockOutdated = 75;
+        consensus.nMajorityWindow = 400;
+        consensus.powLimit = uint256S("07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+        consensus.nPowAveragingWindow = 17;
+        assert(maxUint/UintToArith256(consensus.powLimit) >= consensus.nPowAveragingWindow);
+        consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
+        consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
+        consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
+        consensus.nPowAllowMinDifficultyBlocksAfterHeight = 299'187;
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::BASE_SPROUT, 170002, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY, 170002, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, DEVNET_OVERWINTER_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170007, DEVNET_SAPLING_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, DEVNET_CEZANNE_UPGRADE_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, DEVNET_MONET_UPGRADE_STARTING_BLOCK);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_VERMEER, 170011, DEVNET_VERMEER_UPGRADE_STARTING_BLOCK);
+        // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
+        consensus.nNetworkUpgradePeerPreferenceBlockPeriod = DEVNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
+        consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
+        consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
+        consensus.nMiningEligibilityThreshold = 0.75;
+
+        // The best chain should have at least this much work.
+        consensus.nMinimumChainWork = uint256S("0x00");
+
+        /**
+         * The message start string
+         */
+        pchMessageStart[0] = 0x8F;
+        pchMessageStart[1] = 0xAB;
+        pchMessageStart[2] = 0xC1;
+        pchMessageStart[3] = 0xD2;
+        vAlertPubKey = ParseHex("0429aff40718031ed61f0166f3e33b5dfb256c78cdbfa916bf6cc9869a40ce1d66ca35b92fe874bd18b69457ecef27bc3a0f089b737b03fb889dc1420b6a6e70cb");
+        nDefaultPort = DEVNET_DEFAULT_PORT;
+        m_nPruneAfterHeight = 1000;
+        m_nOfferReplacementAllowedBlocks = 2'880;
+        const size_t N = 200, K = 9;
+        static_assert(equihash_parameters_acceptable(N, K));
+        consensus.nEquihashN = N;
+        consensus.nEquihashK = K;
+
+        genesis = CreateDevnetGenesisBlock();
+        consensus.hashGenesisBlock = genesis.GetHash();
+#ifndef MINE_GENESIS
+        assert(consensus.hashGenesisBlock == DevnetHashGenesisBlock);
+#endif
+
+        vFixedSeeds.clear();
+        vSeeds.clear();
+        vSeeds.push_back(CDNSSeedData("pastel.network", "dnsseed.devnet.pastel.network"));
+
+        // guarantees the first 2 characters, when base58 encoded, are "DN"
+        m_base58Prefixes[to_integral_type(Base58Type::PUBKEY_ADDRESS)] = {0x64, 0x1c};
+        // guarantees the first 2 characters, when base58 encoded, are "dn"
+        m_base58Prefixes[to_integral_type(Base58Type::SCRIPT_ADDRESS)] = {0x64, 0x09};
+        // the first character, when base58 encoded, is "9" or "c" (as in Bitcoin)
+        m_base58Prefixes[to_integral_type(Base58Type::SECRET_KEY)] = {0xEF};
+        // do not rely on these BIP32 prefixes; they are not specified and may change
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_PUBLIC_KEY)] = {0x04, 0x35, 0x87, 0xCF};
+        m_base58Prefixes[to_integral_type(Base58Type::EXT_SECRET_KEY)] = {0x04, 0x35, 0x83, 0x94};
+        // guarantees the first 2 characters, when base58 encoded, are "dZ"
+        m_base58Prefixes[to_integral_type(Base58Type::ZCPAYMENT_ADDRESS)] = {0x63, 0x6d};
+        // guarantees the first 4 characters, when base58 encoded, are "dX"
+        m_base58Prefixes[to_integral_type(Base58Type::ZCVIEWING_KEY)] = {0x63, 0x55};
+        // guarantees the first 2 characters, when base58 encoded, are "dQ"
+        m_base58Prefixes[to_integral_type(Base58Type::ZCSPENDING_KEY)] = {0x63, 0x01};
+
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_PAYMENT_ADDRESS)] = "pdevsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_FULL_VIEWING_KEY)] = "pviewdevsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_INCOMING_VIEWING_KEY)] = "pivkdevsapling";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_SPEND_KEY)] = "p-secret-extended-key-dev";
+        m_bech32HRPs[to_integral_type(Bech32Type::SAPLING_EXTENDED_FVK)] = "pxviewdevsapling";
+
+        fMiningRequiresPeers = true;
+        fDefaultConsistencyChecks = false;
+        fRequireStandard = true;
+        fMineBlocksOnDemand = false;
+        fTestnetToBeDeprecatedFieldRPC = true;
+
+        checkpointData.mapCheckpoints = {
+            {0, consensus.hashGenesisBlock},
+        };
+        checkpointData.nTimeLastCheckpoint = genesis.nTime;     // * UNIX timestamp of last checkpoint block
+        checkpointData.nTransactionsLastCheckpoint = 0;
+        checkpointData.fTransactionsPerDay = 0;
+    }
+};
+
 /**
  * Regression test
  */
@@ -558,6 +698,7 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_SAPLING, 170008, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+        consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_VERMEER, 170011, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = REGTEST_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
@@ -655,6 +796,10 @@ unique_ptr<const CChainParams> CreateChainParams(const ChainNetwork network)
 
         case ChainNetwork::TESTNET:
             ChainParams = make_unique<CTestNetParams>();
+            break;
+
+        case ChainNetwork::DEVNET:
+            ChainParams = make_unique<CDevNetParams>();
             break;
 
         case ChainNetwork::REGTEST:

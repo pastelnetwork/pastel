@@ -351,10 +351,9 @@ ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const 
         {
             string message = strprintf("This %s collection '%s' is already registered in blockchain [key=%s; label=%s]",
                                        getCollectionItemDesc(), m_sCollectionName, m_keyOne, KeyTwo());
-            bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
-                                                                                   m_txid, m_nBlock,
-                                                                                   bPreReg, message);
-            if (bFound) {
+            const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+            if (bTicketFound)
+            {
                 tv.errorMsg = message;
                 break;
             }

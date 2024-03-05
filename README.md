@@ -1,4 +1,4 @@
-Pastel v2.0 - Monet
+Pastel v2.1 - Vermeer
 
 [![PastelNetwork](https://circleci.com/gh/pastelnetwork/pastel.svg?style=shield)](https://app.circleci.com/pipelines/github/pastelnetwork/pastel)
 
@@ -25,7 +25,7 @@ Building
 --------
 
 Build Pastel along with most dependencies from source by running
-./pcutil/build.sh. Currently only Linux and Windows are officially supported.
+./build.sh. Currently only Linux and Windows are officially supported.
 
 ### Dependencies
 #### Main
@@ -55,18 +55,18 @@ sudo pip install pyblake2
 
 #### Default build (for Ubuntu on Ubuntu) 
 ```shell
-./pcutil/build.sh -j$(nproc)
+./build.sh -j$(nproc)
 ```
 
-> For build without build-in CPU miner use
+> For build without built-in CPU miner use
 ```shell
-./pcutil/build.sh -j$(nproc) --disable-mining
+./build.sh -j$(nproc) --disable-mining
 ```
 
 #### Cross-platforms builds on Ubuntu
 ##### For Windows
 ```shell
-HOST=x86_64-w64-mingw32 ./pcutil/build.sh -j$(nproc)
+HOST=x86_64-w64-mingw32 ./build.sh -j$(nproc)
 ```
 > Windows build must be done on the clean tree:
 ```shell
@@ -75,7 +75,7 @@ make clean && make -C src/univalue clean
 
 ##### For Mac OSX
 ```shell
-HOST=x86_64-apple-darwin ./pcutil/build.sh -j$(nproc)
+HOST=x86_64-apple-darwin ./build.sh -j$(nproc)
 ```
 > Apple build must be done on the clean tree:
 ```shell
@@ -99,7 +99,7 @@ qa/pull-tester/rpc-tests.sh
 [Pastel Network Docs](https://docs.pastel.network/introduction/pastel-overview)
 
 ### Command line help
-[paslted](https://github.com/pastelnetwork/pastel/blob/master/doc/pasteld-help.md)
+[pasteld](https://github.com/pastelnetwork/pastel/blob/master/doc/pasteld-help.md)
 [Pastel RPC](https://github.com/pastelnetwork/pastel/blob/master/doc/pastel-rpc.md)
 
 License

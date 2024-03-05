@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
@@ -62,7 +62,7 @@ Result:
   "connections": xxxxx,       (numeric) the number of connections
   "proxy": "host:port",       (string, optional) the proxy used by the server
   "difficulty": xxxxxx,       (numeric) the current difficulty
-  "testnet": true|false,      (boolean) if the server is using testnet or not
+  "chain": "xxxx",          (string) current network name (mainnet, testnet, devnet, regtest)
   "keypoololdest": xxxxxx,    (numeric) the timestamp (seconds since GMT epoch) of the oldest pre-generated key in the key pool
   "keypoolsize": xxxx,        (numeric) how many new keys are pre-generated
   "unlocked_until": ttt,      (numeric) the timestamp in seconds since epoch (midnight Jan 1 1970 GMT) that the wallet is unlocked for transfers, or 0 if the wallet is locked
@@ -100,7 +100,7 @@ Examples:
     obj.pushKV("connections",   static_cast<uint64_t>(gl_NodeManager.GetNodeCount()));
     obj.pushKV("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string()));
     obj.pushKV("difficulty",    GetDifficulty());
-    obj.pushKV("testnet",       Params().TestnetToBeDeprecatedFieldRPC());
+    obj.pushKV("chain",         Params().NetworkIDString());
 #ifdef ENABLE_WALLET
     if (pwalletMain)
     {

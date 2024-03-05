@@ -33,6 +33,7 @@ static constexpr bool DEFAULT_LISTEN = true;
 // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
 constexpr uint32_t MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24 * 24 * 3;
 constexpr uint32_t TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 100;
+constexpr uint32_t DEVNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 100;
 constexpr uint32_t REGTEST_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD = 24;
 
 void AddOneShot(const std::string& strDest);

@@ -8,7 +8,7 @@
  * network protocol versioning
  */
 
-inline constexpr int PROTOCOL_VERSION = 170010;
+inline constexpr int PROTOCOL_VERSION = 170011;
 
 // min MasterNodes protocol version before Monet upgrade
 inline constexpr int MN_MIN_PROTOCOL_VERSION = 170009;

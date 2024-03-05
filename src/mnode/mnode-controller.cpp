@@ -148,6 +148,16 @@ void CMasterNodeController::SetParameters()
         
         TicketGreenAddress = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6";
         m_nMaxInProcessCollectionTicketAge = MAX_IN_PROCESS_COLLECTION_TICKET_AGE;
+    } else if (chainparams.IsDevNet()) {
+        MasternodeCollateral                = 1'000'000; // PSL
+
+        nMasternodeMinimumConfirmations = 1;
+        nMasternodePaymentsIncreaseBlock = 4030;
+        nMasternodePaymentsIncreasePeriod = 10;
+        nFulfilledRequestExpireTime = 60*60; // 60 minutes
+
+        TicketGreenAddress = "";
+        m_nMaxInProcessCollectionTicketAge = MAX_IN_PROCESS_COLLECTION_TICKET_AGE;
     } else if (chainparams.IsRegTest()) {
         MasternodeCollateral                = 1000; // PSL
 
@@ -800,7 +810,7 @@ double CMasterNodeController::GetChainDeflatorFactor(uint32_t chainHeight) const
         }
     }
 
-    //if (Params().IsTestNet() && deflatorFactor > 0.11)
+    //if ((Params().IsTestNet() || Params().IsDevNet()) && deflatorFactor > 0.11)
     //    deflatorFactor = 0.11;
 
     return deflatorFactor;

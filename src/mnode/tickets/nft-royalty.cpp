@@ -129,10 +129,9 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const ui
         {
             string message = strprintf("The Change Royalty ticket from pastelID=%s to new_pastelID=%s for NFT txid [%s]",
                                        m_sPastelID, m_sNewPastelID, m_sNFTTxId);
-            bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
-                                                                                   m_txid, m_nBlock,
-                                                                                   bPreReg, message);
-            if (bFound) {
+            const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+            if (bTicketFound)
+            {
                 tv.errorMsg = message;
                 break;
             }

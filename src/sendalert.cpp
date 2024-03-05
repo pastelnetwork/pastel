@@ -1,5 +1,5 @@
 // Copyright (c) 2016-2018 The Zcash developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // 
 // Original code from: https://gist.github.com/laanwj/0e689cfa37b52bcbbb44
 
@@ -115,6 +115,8 @@ void ThreadSendAlert()
         szPrivKey = pszPrivKey;
     else if (chainparams.IsTestNet())
         szPrivKey = pszTestNetPrivKey;
+    else if (chainparams.IsDevNet())
+        szPrivKey = pszDevNetPrivKey;
     else if (chainparams.IsRegTest())
         szPrivKey = pszRegTestPrivKey;
     else

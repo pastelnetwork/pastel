@@ -117,10 +117,10 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
                 !existingTicket.IsTxId(m_txid))
             {
                 string message = strprintf( "The Activation ticket for the Collection Registration ticket with txid [%s]", m_regTicketTxId);
-                bool bFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket,
-                                                                                       m_txid, m_nBlock,
-                                                                                       bPreReg, message);
-                if (bFound) {
+                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+                // for testnet: if the ticket was accepted to the blockchain (not bPreReg) - accept duplicate ticket (though it was probably done by mistake)
+                if (bTicketFound && !(Params().IsTestNet() && !bPreReg))
+                {
                     tv.errorMsg = message;
                     break;
                 }
