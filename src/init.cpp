@@ -487,6 +487,7 @@ string HelpMessage(HelpMessageMode mode)
     }
     strUsage += HelpMessageOpt("-shrinkdebugfile", translate("Shrink debug.log file on client startup (default: 1 when no -debug)"));
     strUsage += HelpMessageOpt("-testnet", translate("Use the test network"));
+    strUsage += HelpMessageOpt("-devnet", translate("Use the devnet network"));
 
     strUsage += HelpMessageGroup(translate("Node relay options:"));
     strUsage += HelpMessageOpt("-datacarrier", strprintf(translate("Relay and mine data carrier transactions (default: %u)"), 1));
