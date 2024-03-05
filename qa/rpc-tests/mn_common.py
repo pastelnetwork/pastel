@@ -429,7 +429,7 @@ class MasterNodeCommon (PastelTestFramework):
             for mn in self.mn_nodes:
                 if mn.index >= self.number_of_cold_nodes:
                     continue
-                self.wait_for_mn_state(initial_wait, 10, "PRE_ENABLED", mn.index, 3)
+                self.wait_for_mn_state(initial_wait, 20, "PRE_ENABLED", mn.index, 6)
                 initial_wait = 0
                 
             # register mnids

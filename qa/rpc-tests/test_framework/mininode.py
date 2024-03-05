@@ -2,7 +2,7 @@
 # Copyright (c) 2010 ArtForz -- public domain half-a-node
 # Copyright (c) 2012 Jeff Garzik
 # Copyright (c) 2010-2016 The Bitcoin Core developers
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -52,7 +52,8 @@ SAPLING_PROTO_VERSION = 170006
 BLOSSOM_PROTO_VERSION = 170008
 CEZANNE_PROTO_VERSION = 170009
 MONET_PROTO_VERSION = 170010
-LATEST_PROTO_VERSION = 170010
+VERMEER_PROTO_VERSION = 170011
+LATEST_PROTO_VERSION = 170011
 
 MY_SUBVERSION = b"/python-mininode-tester:0.0.2/"
 

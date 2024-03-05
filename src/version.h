@@ -10,8 +10,8 @@
 
 inline constexpr int PROTOCOL_VERSION = 170011;
 
-// min MasterNodes protocol version before Monet upgrade
-inline constexpr int MN_MIN_PROTOCOL_VERSION = 170009;
+// min MasterNodes protocol version
+inline constexpr int MN_MIN_PROTOCOL_VERSION = 170010;
 
 //! initial proto version, to be increased after version/verack negotiation
 inline constexpr int INIT_PROTO_VERSION = 209;
