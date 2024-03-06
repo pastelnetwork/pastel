@@ -37,6 +37,7 @@ bool CMinerSettings::refreshMnIdInfo(string &error, const bool bRefreshConfig)
     sParam = "-genpassphrase";
     string sPassphrase = GetArg(sParam, "");
     trim(sPassphrase);
+
     if (!m_sGenId.empty())
     {
         if (sPassphrase.empty())

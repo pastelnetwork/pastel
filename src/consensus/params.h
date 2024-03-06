@@ -92,6 +92,8 @@ struct Params
     int64_t nPowTargetSpacing = 0;
     double nGlobalFeeAdjustmentMultiplier = 1.0;
     double nMiningEligibilityThreshold = 0.75;
+    // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
+    size_t nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 24 * 2;
 
     int64_t AveragingWindowTimespan() const noexcept { return nPowAveragingWindow * nPowTargetSpacing; }
     int64_t MinActualTimespan() const noexcept { return (AveragingWindowTimespan() * (100 - nPowMaxAdjustUp  )) / 100; }

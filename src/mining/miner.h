@@ -43,8 +43,6 @@ CBlockTemplate* CreateNewBlockWithKey(const CChainParams& chainparams, const std
 extern std::atomic_bool gl_bEligibleForMiningNextBlock;
 // delay in seconds before a mined block is validated against blocks mined by other miners
 constexpr int64_t MINED_BLOCK_VALIDATION_DELAY_SECS = 20;
-// delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
-constexpr uint32_t NEW_MINING_ALGO_HEIGHT_DELAY = static_cast<uint32_t>(60 / 2.5) * 24 * 2;
 
 /** Modify the extranonce in a block */
 void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
