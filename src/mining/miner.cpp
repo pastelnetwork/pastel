@@ -578,12 +578,17 @@ void static PastelMiner(const int nThreadNo)
     try {
         while (true)
         {
-            if (!masterNodeCtrl.IsMasterNode())
+            // check if we can use new mining 
+            const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
+            const bool bNewMiningAllowed = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
+                (gl_nChainHeight >= nNewMiningAllowedHeight + consensusParams.nNewMiningAlgorithmHeightDelay);
+
+            gl_bEligibleForMiningNextBlock = !bNewMiningAllowed;
+            if (bNewMiningAllowed && !masterNodeCtrl.IsMasterNode())
             {
                 LogFnPrintf("Node is not running in MasterNode mode, exiting CPU miner thread...");
                 break;
             }
-            gl_bEligibleForMiningNextBlock = false;
             if (chainparams.MiningRequiresPeers())
             {
                 // Busy-wait for the network to come online so we don't waste time mining
@@ -613,10 +618,6 @@ void static PastelMiner(const int nThreadNo)
             }
             //<-INGEST!!!
 
-            // check if we can use new mining 
-            const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
-            const bool bNewMiningAllowed = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
-                (gl_nChainHeight >= nNewMiningAllowedHeight + NEW_MINING_ALGO_HEIGHT_DELAY);
 
             // Check if MasterNode is eligible to mine next block - perform only after the masternodes are synced
             opt_string_t sEligiblePastelID;

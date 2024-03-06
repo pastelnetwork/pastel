@@ -66,7 +66,7 @@ constexpr uint32_t DEVNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t DEVNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t DEVNET_CEZANNE_UPGRADE_STARTING_BLOCK = 30;
 constexpr uint32_t DEVNET_MONET_UPGRADE_STARTING_BLOCK = 40;
-constexpr uint32_t DEVNET_VERMEER_UPGRADE_STARTING_BLOCK = 30'000;
+constexpr uint32_t DEVNET_VERMEER_UPGRADE_STARTING_BLOCK = 29'000;
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
@@ -384,6 +384,9 @@ public:
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 5.475;
         consensus.nMiningEligibilityThreshold = 0.75;
+        // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
+        consensus.nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 24 * 2;
+
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("000000000000000000000000000000000000000000000000000000000624f116"); //2702
@@ -497,6 +500,8 @@ public:
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 0.000001616;
         consensus.nMiningEligibilityThreshold = 0.75;
+        // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
+        consensus.nNewMiningAlgorithmHeightDelay = 0;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
@@ -602,6 +607,8 @@ public:
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
         consensus.nMiningEligibilityThreshold = 0.75;
+        // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
+        consensus.nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 4;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
@@ -704,6 +711,7 @@ public:
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
         consensus.nMiningEligibilityThreshold = 0.75;
+        consensus.nNewMiningAlgorithmHeightDelay = 0;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
