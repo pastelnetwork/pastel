@@ -2916,9 +2916,10 @@ bool CheckBlock(
 
     const auto& consensusParams = chainparams.GetConsensus();
 
+    const uint32_t nHeight = pindexPrev ? pindexPrev->nHeight + 1 : 0;
     // check if we can use new mining 
-    const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
-    const bool bNeedSignature = (nNewMiningAllowedHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) && (gl_nChainHeight >= nNewMiningAllowedHeight);
+    const uint32_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
+    const bool bNeedSignature = (nNewMiningAllowedHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) && (nHeight >= nNewMiningAllowedHeight);
 
     if (bHasMnPaymentInCoinbase && bNeedSignature && block.sPastelID.empty())
     {
