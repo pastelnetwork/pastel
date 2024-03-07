@@ -2914,6 +2914,19 @@ bool CheckBlock(
             REJECT_INVALID, "bad-blk-sigops", true, strRejectReasonDetails);
     }
 
+    const auto& consensusParams = chainparams.GetConsensus();
+
+    // check if we can use new mining 
+    const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
+    const bool bNeedSignature = (nNewMiningAllowedHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) && (gl_nChainHeight >= nNewMiningAllowedHeight);
+
+    if (bHasMnPaymentInCoinbase && bNeedSignature && block.sPastelID.empty())
+    {
+        strRejectReasonDetails = "mnid is not defined in the block header";
+		return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+			REJECT_INVALID, "no-mnid-in-block", false, strRejectReasonDetails);
+    }
+
     // check only blocks that were mined/generated recently within last 30 mins
     if (bHasMnPaymentInCoinbase && !fSkipSnEligibilityChecks &&
         (block.GetBlockTime() > (GetTime() - BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS)) &&
