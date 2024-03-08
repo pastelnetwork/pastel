@@ -2914,19 +2914,6 @@ bool CheckBlock(
             REJECT_INVALID, "bad-blk-sigops", true, strRejectReasonDetails);
     }
 
-    const auto& consensusParams = chainparams.GetConsensus();
-
-    // check if we can use new mining 
-    const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
-    const bool bNeedSignature = (nNewMiningAllowedHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) && (gl_nChainHeight >= nNewMiningAllowedHeight);
-
-    if (bHasMnPaymentInCoinbase && bNeedSignature && block.sPastelID.empty())
-    {
-        strRejectReasonDetails = "mnid is not defined in the block header";
-		return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
-			REJECT_INVALID, "no-mnid-in-block", false, strRejectReasonDetails);
-    }
-
     // check only blocks that were mined/generated recently within last 30 mins
     if (bHasMnPaymentInCoinbase && !fSkipSnEligibilityChecks &&
         (block.GetBlockTime() > (GetTime() - BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS)) &&
@@ -2999,11 +2986,14 @@ bool CheckBlockSignature(const CBlockHeader& blockHeader, const CBlockIndex* pin
 
 /**
  * Contextual check of the block header.
+ * Called from:
+ *    - TestBlockValidity - from miner that validates new block
+ *    - AcceptNewBlock - when the block is being accepted to the blockchain
  * 
  * \param block - block header to check
  * \param state - chain state
  * \param chainparams - chain parameters
- * \param pindexPrev - pointer to the previous block index
+ * \param pindexPrev - pointer to the previous block index (should be assigned)
  * \return true if the contextual check passed, false otherwise
  */
 bool ContextualCheckBlockHeader(
@@ -3014,15 +3004,28 @@ bool ContextualCheckBlockHeader(
     CBlockIndex * const pindexPrev)
 {
     const auto& consensusParams = chainparams.GetConsensus();
-    uint256 hash = blockHeader.GetHash();
+    const uint256 hash = blockHeader.GetHash();
     if (hash == consensusParams.hashGenesisBlock)
         return true;
 
     assert(pindexPrev);
 
+    string strRejectReasonDetails;
     const int nHeight = pindexPrev->nHeight + 1;
 
-    string strRejectReasonDetails;
+    // check if we can use new mining 
+    const uint32_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
+    const bool bNeedSignature = (nNewMiningAllowedHeight != Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) && 
+        (static_cast<uint32_t>(nHeight) >= nNewMiningAllowedHeight);
+
+    if (bNeedSignature && blockHeader.sPastelID.empty())
+    {
+        strRejectReasonDetails = strprintf("mnid is not defined in the block header (%s, height=%d)",
+            hash.ToString(), nHeight);
+		return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
+			REJECT_INVALID, "no-mnid-in-block", false, strRejectReasonDetails);
+    }
+
     // Check proof of work
     if (blockHeader.nBits != GetNextWorkRequired(pindexPrev, &blockHeader, consensusParams))
     {
