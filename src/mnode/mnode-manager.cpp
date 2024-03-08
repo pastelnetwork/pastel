@@ -221,7 +221,7 @@ void CMasternodeMan::CheckAndRemove()
             //  - we haven't asked for recovery yet
             const bool bHasPartialMNInfo = pmn->hasPartialInfo();
             const bool fAskForMnbRecovery = (nAskForMnbRecovery > 0) &&
-                        masterNodeCtrl.masternodeSync.IsSynced() &&
+                        masterNodeCtrl.IsSynced() &&
                         (pmn->IsNewStartRequired() || bHasPartialMNInfo)&&
                         !IsMnbRecoveryRequested(hash);
             if (fAskForMnbRecovery)
@@ -1129,7 +1129,7 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        if (!masterNodeCtrl.masternodeSync.IsSynced())
+        if (!masterNodeCtrl.IsSynced())
             return;
 
         CTxIn vin;
@@ -1237,7 +1237,7 @@ void CMasternodeMan::DoFullVerificationStep()
     if (masterNodeCtrl.activeMasternode.outpoint.IsNull())
         return;
 
-    if (!masterNodeCtrl.masternodeSync.IsSynced())
+    if (!masterNodeCtrl.IsSynced())
         return;
 
     masternode_vector_t vSortedByAddr;
@@ -1336,7 +1336,7 @@ void CMasternodeMan::DoFullVerificationStep()
 
 void CMasternodeMan::CheckSameAddr()
 {
-    if (!masterNodeCtrl.masternodeSync.IsSynced() || mapMasternodes.empty())
+    if (!masterNodeCtrl.IsSynced() || mapMasternodes.empty())
         return;
 
     masternode_vector_t vBan;

@@ -95,7 +95,7 @@ bool CMasternodeMessage::CheckSignature(const CPubKey& pubKeyMasternode, int &nD
 void CMasternodeMessage::Relay()
 {
     // Do not relay until fully synced
-    if (!masterNodeCtrl.masternodeSync.IsSynced())
+    if (!masterNodeCtrl.IsSynced())
     {
         LogFnPrintf("won't relay until fully synced");
         return;

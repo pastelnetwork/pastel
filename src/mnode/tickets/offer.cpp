@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <json/json.hpp>
@@ -426,10 +426,10 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
             }
 
             // Validate only if both blockchain and MNs are synced
-            if (!masterNodeCtrl.masternodeSync.IsSynced())
+            if (!masterNodeCtrl.IsSynced())
             {
                 tv1.errorMsg = strprintf(
-                    "Cannot replace the %s ticket as master node not is not synced, txid - [%s], copyNumber [%hu].",
+                    "Cannot replace the %s ticket as masternode is not synced, txid - [%s], copyNumber [%hu].",
                     GetTicketDescription(), t.m_txid, m_nCopyNumber);
                 tv1.state = TICKET_VALIDATION_STATE::INVALID;
                 break;

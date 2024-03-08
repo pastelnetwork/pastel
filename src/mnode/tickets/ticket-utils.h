@@ -109,7 +109,7 @@ ticket_validation_t common_ticket_validation(
         }
         
         // C.1 Something to validate only if NOT Initial Download
-        if (masterNodeCtrl.masternodeSync.IsSynced())
+        if (masterNodeCtrl.IsSynced())
         {
             const auto nActiveChainHeight = gl_nChainHeight + 1;
 

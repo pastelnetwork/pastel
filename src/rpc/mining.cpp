@@ -1105,6 +1105,10 @@ Examples:
     if (!DecodeHexBlk(block, params[0].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
+    if (!masterNodeCtrl.IsSynced())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, 
+            "Your masternode list is not synced yet! Cannot submit a block to the network until the mnsync status (IsSynced=true) shows full sync!");
+
     uint256 hash = block.GetHash();
     bool fBlockPresent = false;
     {
