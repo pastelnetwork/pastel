@@ -34,7 +34,7 @@ using namespace std;
  */
 ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uint8& signature)
 {
-    //  if (!masterNodeCtrl.masternodeSync.IsSynced()) {
+    //  if (!masterNodeCtrl.IsSynced()) {
     //    throw runtime_error("Can not validate transfer ticket as master node is not synced");
     //  }
 

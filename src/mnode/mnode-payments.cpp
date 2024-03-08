@@ -101,7 +101,8 @@ void CMasternodePayments::ProcessMessage(node_t &pfrom, string& strCommand, CDat
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        if (!masterNodeCtrl.masternodeSync.IsSynced()) return;
+        if (!masterNodeCtrl.IsSynced())
+            return;
 
         int nCountNeeded;
         vRecv >> nCountNeeded;
@@ -777,7 +778,7 @@ void CMasternodePayments::CheckPreviousBlockVotes(const int nPrevBlockHeight)
 void CMasternodePaymentVote::Relay()
 {
     // Do not relay until fully synced
-    if (!masterNodeCtrl.masternodeSync.IsSynced())
+    if (!masterNodeCtrl.IsSynced())
     {
         LogFnPrint("mnpayments", "won't relay until fully synced");
         return;

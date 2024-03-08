@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -52,7 +52,7 @@ UniValue mnsync(const UniValue& params, bool fHelp)
         objStatus.pushKV("IsBlockchainSynced", masterNodeCtrl.masternodeSync.IsBlockchainSynced());
         objStatus.pushKV("IsMasternodeListSynced", masterNodeCtrl.masternodeSync.IsMasternodeListSynced());
         objStatus.pushKV("IsWinnersListSynced", masterNodeCtrl.masternodeSync.IsWinnersListSynced());
-        objStatus.pushKV("IsSynced", masterNodeCtrl.masternodeSync.IsSynced());
+        objStatus.pushKV("IsSynced", masterNodeCtrl.IsSynced());
         objStatus.pushKV("IsFailed", masterNodeCtrl.masternodeSync.IsFailed());
         return objStatus;
     }

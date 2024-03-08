@@ -210,7 +210,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
             }
 
             // Check that outpoint belongs to the one of the masternodes
-            if (masterNodeCtrl.masternodeSync.IsSynced())
+            if (masterNodeCtrl.IsSynced())
             {
                 const auto pMN = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
                 if (!pMN)

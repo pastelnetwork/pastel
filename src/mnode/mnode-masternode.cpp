@@ -187,7 +187,7 @@ void CMasterNodePing::Relay() const
 {
     const uint256 hash = GetHash();
     // Do not relay until fully synced
-    if (!masterNodeCtrl.masternodeSync.IsSynced())
+    if (!masterNodeCtrl.IsSynced())
     {
         LogFnPrint("masternode", "won't relay ping '%s' until fully synced", hash.ToString());
         masterNodeCtrl.masternodeManager.ScheduleMnpForRelay(hash, getOutPoint());
@@ -568,7 +568,7 @@ void CMasternode::Check(const bool fForce, const bool bLockMain)
             return;
         }
 
-        const bool fWatchdogActive = masterNodeCtrl.masternodeSync.IsSynced() && masterNodeCtrl.masternodeManager.IsWatchdogActive();
+        const bool fWatchdogActive = masterNodeCtrl.IsSynced() && masterNodeCtrl.masternodeManager.IsWatchdogActive();
         const bool fWatchdogExpired = fWatchdogActive && ((GetAdjustedTime() - nTimeLastWatchdogVote) > masterNodeCtrl.MasternodeWatchdogMaxSeconds);
 
         if (fWatchdogExpired)
@@ -1366,7 +1366,7 @@ void CMasternodeBroadcast::Relay() const
 {
     const uint256 hash = GetHash();
     // Do not relay until fully synced
-    if (!masterNodeCtrl.masternodeSync.IsSynced())
+    if (!masterNodeCtrl.IsSynced())
     {
         LogFnPrint("masternode", "won't relay mnb '%s' until fully synced", hash.ToString());
         masterNodeCtrl.masternodeManager.ScheduleMnbForRelay(hash, getOutPoint());

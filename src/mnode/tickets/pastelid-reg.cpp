@@ -168,7 +168,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
         ToStrStream(ss, false);
 
         // Validate only if both blockchain and MNs are synced
-        if (masterNodeCtrl.masternodeSync.IsSynced())
+        if (masterNodeCtrl.IsSynced())
         { 
             // validations only for MN PastelID
             if (!m_outpoint.IsNull())

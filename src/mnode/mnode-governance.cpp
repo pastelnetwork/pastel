@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -299,7 +299,7 @@ void CMasternodeGovernance::ProcessMessage(node_t& pfrom, string& strCommand, CD
         // Ignore such requests until we are fully synced.
         // We could start processing this after masternode list is synced
         // but this is a heavy one so it's better to finish sync first.
-        if (!masterNodeCtrl.masternodeSync.IsSynced())
+        if (!masterNodeCtrl.IsSynced())
             return;
 
         int nCountNeeded;
@@ -729,7 +729,7 @@ string CGovernanceTicket::ToString()
 void CGovernanceTicket::Relay()
 {
     // Do not relay until fully synced
-    if(!masterNodeCtrl.masternodeSync.IsSynced())
+    if(!masterNodeCtrl.IsSynced())
     {
         LogFnPrintf("won't relay until fully synced");
         return;
@@ -805,7 +805,7 @@ string CGovernanceVote::ToString() const noexcept
 void CGovernanceVote::Relay()
 {
     // Do not relay until fully synced
-    if(!masterNodeCtrl.masternodeSync.IsSynced())
+    if(!masterNodeCtrl.IsSynced())
     {
         LogFnPrintf("won't relay until fully synced");
         return;
