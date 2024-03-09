@@ -34,7 +34,7 @@ extern thread_local CServiceThread *funcThreadObj;
 class CServiceThread
 {
 public:
-    CServiceThread(const char *szThreadName) : 
+    CServiceThread(const char *szThreadName) noexcept: 
         m_bTrace(true),
         m_bRunning(false),
         m_bStopRequested(false)
@@ -181,7 +181,7 @@ private:
 class CStoppableServiceThread : public CServiceThread
 {
 public:
-    CStoppableServiceThread(const char *szThreadName) : 
+    CStoppableServiceThread(const char *szThreadName) noexcept: 
         CServiceThread(szThreadName)
     {}
 

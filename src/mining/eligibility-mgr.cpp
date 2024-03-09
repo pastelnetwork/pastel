@@ -1,8 +1,6 @@
 // Copyright (c) 2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <chrono>
-
 #include <mining/eligibility-mgr.h>
 #include <mining/mining-settings.h>
 #include <mnode/mnode-controller.h>
@@ -12,7 +10,120 @@ using namespace std::chrono_literals;
 
 constexpr auto MINING_ELIGIBILITY_RAISE_TIMEOUT_MINS = 6min;
 
-CMiningEligibilityManager::CMiningEligibilityManager() : 
+void CInvalidEligibilityBlock::Set(const uint256& hash, const uint32_t nHeight, const TxOrigin txOrigin) noexcept
+{
+    m_hash = hash;  
+    m_nHeight = nHeight;
+    m_txOrigin = txOrigin;
+    m_nRetries = 0;
+    m_time = chrono::system_clock::now();
+    SetNextRevalidationTime();
+}
+
+void CInvalidEligibilityBlock::Clear() noexcept
+{
+	m_hash.SetNull();
+	m_nHeight = 0;
+	m_txOrigin = TxOrigin::UNKNOWN;
+	m_nRetries = 0;
+    m_time = chrono::system_clock::time_point();
+    m_NextRevalidationTime = chrono::system_clock::time_point();
+}
+
+void CInvalidEligibilityBlock::SetNextRevalidationTime() noexcept
+{
+    switch (m_nRetries)
+    {
+		case 0:
+			m_NextRevalidationTime = m_time + 6min;
+            break;
+
+		case 1:
+			m_NextRevalidationTime = m_time + 16min;
+            break;
+
+		case 2:
+			m_NextRevalidationTime = m_time + 31min;
+            break;
+
+		default:
+			break;
+	}
+}
+
+CInvalidEligibilityBlock::STATE CInvalidEligibilityBlock::IsReadyForNextRevalidation() const noexcept
+{
+    if (!IsSet())
+        return STATE::NOT_SET;
+
+    if (IsExpiredByHeight())
+		return STATE::EXPIRED_BY_HEIGHT;
+
+    if (IsExceededRetries())
+        return STATE::EXCEEDED_RETRIES;
+
+	if (chrono::system_clock::now() >= m_NextRevalidationTime)
+		return STATE::READY_FOR_NEXT_REVALIDATION;
+
+	return STATE::NOT_READY_FOR_NEXT_REVALIDATION;
+}
+
+bool CInvalidEligibilityBlock::CanTryToRevalidate() noexcept
+{
+    STATE state = IsReadyForNextRevalidation();
+    if (state == STATE::NOT_SET)
+		return false;
+
+    if (state == STATE::EXPIRED_BY_HEIGHT)
+    {
+        Clear();
+        return false;
+    }
+
+    if (state == STATE::EXCEEDED_RETRIES)
+    {
+		LogFnPrint("Invalid MN eligibility block %s at height %u has not been validated after %u retries",
+            			m_hash.ToString(), m_nHeight, MAX_ELIGIBILITY_REVALIDATION_RETRIES);
+        Clear();
+		return false;
+	}
+
+    if (state == STATE::NOT_READY_FOR_NEXT_REVALIDATION)
+        return false;
+
+    ++m_nRetries;
+    SetNextRevalidationTime();
+    return true;
+}
+
+void CInvalidEligibilityBlock::Check()
+{
+    if (!CanTryToRevalidate())
+		return;
+
+    LogFnPrint("Revalidating invalid eligibility block %s at height %d (attempt #%u)",
+        m_hash.ToString(), m_nHeight, m_nRetries);
+
+    CValidationState state(m_txOrigin);
+    {
+        LOCK(cs_main);
+
+        const auto it = mapBlockIndex.find(m_hash);
+        if (it == mapBlockIndex.end())
+        {
+            Clear();
+            return;
+        }
+        ReconsiderBlock(state, it->second);
+    }
+
+    ActivateBestChain(state, Params());
+
+    if (gl_nChainHeight >= m_nHeight)
+        Clear();
+}
+
+CMiningEligibilityManager::CMiningEligibilityManager() noexcept: 
     CStoppableServiceThread("melig"),
     m_bAllMasterNodesAreEligibleForMining(false),
     m_nLastBlockHeight(0)
@@ -41,12 +152,12 @@ void CMiningEligibilityManager::ChangeMiningEligibility(const bool bSet)
 	m_bAllMasterNodesAreEligibleForMining = bSet;
     if (bSet)
     {
-		LogPrint("mining", "No new blocks detected in %d mins. All masternodes are now eligible for mining\n",
+		LogFnPrintf("No new blocks detected in %d mins. All masternodes are now eligible for mining",
             MINING_ELIGIBILITY_RAISE_TIMEOUT_MINS.count());
 	}
     else
     {
-		LogPrint("mining", "All masternodes eligibility for mining is reset\n");
+		LogFnPrintf("All masternodes eligibility for mining is reset");
 	}
 }
 
@@ -73,7 +184,9 @@ void CMiningEligibilityManager::execute_internal()
 				// set mining eligibility for all masternodes
 				ChangeMiningEligibility(true);
 				lastSignalTime = chrono::steady_clock::now();
-			}   
+			}
+
+            m_invalidEligibilityBlock.Check();
         }
     }
 }
@@ -83,10 +196,10 @@ void CMiningEligibilityManager::execute_internal()
  * Number of blocks to check is defined by total number of masternodes with eligible for mining flag set.
  * Also uses threshold consensus parameter (N * consensusParams.nMiningEligibilityThreshold).
  * 
- * \param pindex - block index to start search from
+ * \param pindexPrev - block index to start search from
  * \return map of masternode ids and number of blocks where they were found
  */
-unordered_map<string, uint32_t> CMiningEligibilityManager::GetLastMnIdsWithBlockReward(const CBlockIndex* pindex) const noexcept
+unordered_map<string, uint32_t> CMiningEligibilityManager::GetLastMnIdsWithBlockReward(const CBlockIndex* pindexPrev) const noexcept
 {
     const size_t nEligibleForMiningMnCount = masterNodeCtrl.masternodeManager.CountEligibleForMining();
     const size_t nMnEligibilityThreshold = GetMnEligibilityThreshold(nEligibleForMiningMnCount);
@@ -95,7 +208,7 @@ unordered_map<string, uint32_t> CMiningEligibilityManager::GetLastMnIdsWithBlock
     unordered_map<string, uint32_t> mapMnids;
     mapMnids.reserve(nMnEligibilityThreshold);
     size_t nProcessed = 0;
-    auto pCurIndex = pindex;
+    auto pCurIndex = pindexPrev;
     while (pCurIndex && (nProcessed < nMnEligibilityThreshold))
     {
         if (pCurIndex->nStatus & BlockStatus::BLOCK_ACTIVATES_UPGRADE)
@@ -145,27 +258,31 @@ unordered_map<string, pair<uint32_t, uint256>> CMiningEligibilityManager::GetUni
 /**
  * Check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
  * to mine a new block and receive reward.
- * Algorithm takes N last mined blocks (N is the number of eligible for mining MasterNodes),
+ * Algorithm takes N nodes (number of eligible for mining MasterNodes),
  * then uses threshold consensus parameter (N * consensusParams.nMiningEligibilityThreshold) 
- * to find MNs eligible for mining new block.
+ * to find number of blocks to check.
  * 
- * \param pindex - block index to start search from
+ * \param pindexPrev - block index to start search from
  * \param sGenId - mnid of the masternode eligible for mining
+ * \param nCurBlockTime - current block time
  * \param nMinedBlocks - number of blocks mined by the MasterNode in the last N blocks,
  *    where N is the mining eligibility threshold
  * 
  * \return true if MasterNode is eligible to mine a new block and receive reward
  */
-bool CMiningEligibilityManager::IsMnEligibleForBlockReward(const CBlockIndex* pindex, const string& sGenId,
-    uint32_t &nMinedBlocks) const noexcept
+bool CMiningEligibilityManager::IsMnEligibleForBlockReward(const CBlockIndex* pindexPrev, const string& sGenId,
+    const int64_t nCurBlockTime, uint32_t &nMinedBlocks) const noexcept
 {
-    nMinedBlocks = 0;
-    if (m_bAllMasterNodesAreEligibleForMining)
-        return true;
-
     AssertLockHeld(cs_main);
 
-    auto mapMnids = GetLastMnIdsWithBlockReward(pindex);
+    nMinedBlocks = 0;
+    if (pindexPrev && 
+        nCurBlockTime > pindexPrev->GetBlockTime() &&
+        nCurBlockTime - pindexPrev->GetBlockTime() > 
+            chrono::duration_cast<chrono::seconds>(MINING_ELIGIBILITY_RAISE_TIMEOUT_MINS).count())
+        return true;
+
+    auto mapMnids = GetLastMnIdsWithBlockReward(pindexPrev);
     const auto it = mapMnids.find(sGenId);
     if (it == mapMnids.cend())
         return true;
@@ -176,19 +293,21 @@ bool CMiningEligibilityManager::IsMnEligibleForBlockReward(const CBlockIndex* pi
 /**
  * Check if the current masternode is eligible for mining a new block and receiving reward.
  * 
- * \param pindex - block index to check
+ * \param pindexPrev - block index to check
+ * \param nCurBlockTime - current block time
  * \return true if the current masternode is eligible for mining
  */
-bool CMiningEligibilityManager::IsCurrentMnEligibleForBlockReward(const CBlockIndex* pindex) noexcept
+bool CMiningEligibilityManager::IsCurrentMnEligibleForBlockReward(const CBlockIndex* pindexPrev,
+    const int64_t nCurBlockTime) noexcept
 {
-    if (!pindex)
+    if (!pindexPrev)
     {
         m_hashCheckBlock.SetNull();
         m_bIsCurrentMnEligibleForMining = false;
         return false;
     }
 
-    const auto hashCheckBlock = pindex->GetBlockHash();
+    const auto hashCheckBlock = pindexPrev->GetBlockHash();
     if (hashCheckBlock == m_hashCheckBlock)
         return m_bIsCurrentMnEligibleForMining;
 
@@ -196,7 +315,7 @@ bool CMiningEligibilityManager::IsCurrentMnEligibleForBlockReward(const CBlockIn
     m_bIsCurrentMnEligibleForMining = false;
 
     uint32_t nMinedBlocks = 0;
-    if (IsMnEligibleForBlockReward(pindex, gl_MiningSettings.getGenId(), nMinedBlocks))
+    if (IsMnEligibleForBlockReward(pindexPrev, gl_MiningSettings.getGenId(), nCurBlockTime, nMinedBlocks))
     {
         m_bIsCurrentMnEligibleForMining = true;
         return true;
@@ -276,4 +395,10 @@ void CMiningEligibilityManager::UpdatedBlockTip(const CBlockIndex* pindexNew)
     }
     m_nLastBlockHeight = pindexNew->nHeight;
     m_condVar.notify_one();
+}
+
+void CMiningEligibilityManager::SetInvalidEligibilityBlock(const uint256 &hash, const uint32_t nHeight,
+    const TxOrigin txOrigin)
+{
+    m_invalidEligibilityBlock.Set(hash, nHeight, txOrigin);
 }

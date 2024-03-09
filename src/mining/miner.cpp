@@ -654,7 +654,8 @@ void static PastelMiner(const int nThreadNo)
                         break;
                     {
 						LOCK(cs_main);
-                        if (gl_pMiningEligibilityManager && gl_pMiningEligibilityManager->IsCurrentMnEligibleForBlockReward(chainActive.Tip()))
+                        if (gl_pMiningEligibilityManager && 
+                            gl_pMiningEligibilityManager->IsCurrentMnEligibleForBlockReward(chainActive.Tip(), GetTime()))
 						    sEligiblePastelID = gl_MiningSettings.getGenId();
                         else
                             sEligiblePastelID= nullopt;

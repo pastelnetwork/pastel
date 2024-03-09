@@ -634,7 +634,7 @@ Examples:
     if (mnInfo.getOutPoint() != masterNodeCtrl.activeMasternode.outpoint)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("current masternode info does not match mnid '%s'", sGenId));
 
-    if (gl_pMiningEligibilityManager && !gl_pMiningEligibilityManager->IsCurrentMnEligibleForBlockReward(pChainTip))
+    if (gl_pMiningEligibilityManager && !gl_pMiningEligibilityManager->IsCurrentMnEligibleForBlockReward(pChainTip, GetTime()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not eligible for mining next block");
 
     SecureString sPassPhrase;
@@ -1105,7 +1105,8 @@ Examples:
     if (!DecodeHexBlk(block, params[0].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
-    if (!masterNodeCtrl.IsSynced())
+    const auto& chainparams = Params();
+    if (!chainparams.IsRegTest() && !masterNodeCtrl.IsSynced())
         throw JSONRPCError(RPC_INTERNAL_ERROR, 
             "Your masternode list is not synced yet! Cannot submit a block to the network until the mnsync status (IsSynced=true) shows full sync!");
 
@@ -1132,7 +1133,7 @@ Examples:
     RegisterValidationInterface(&sc);
     {
         auto guard = sg::make_scope_guard([&]() noexcept { UnregisterValidationInterface(&sc); });
-        fAccepted = ProcessNewBlock(state, Params(), nullptr, &block, true, nullptr);
+        fAccepted = ProcessNewBlock(state, chainparams, nullptr, &block, true, nullptr);
     }
     if (fBlockPresent)
     {
