@@ -2939,8 +2939,10 @@ bool CheckBlock(
         // to mine this block and receive rewards
         uint32_t nMinedBlocks = 0;
         if (gl_pMiningEligibilityManager && 
-            !gl_pMiningEligibilityManager->IsMnEligibleForBlockReward(pindexPrev, block.sPastelID, nMinedBlocks))
+            !gl_pMiningEligibilityManager->IsMnEligibleForBlockReward(pindexPrev, 
+                block.sPastelID, block.GetBlockTime(), nMinedBlocks))
 		{
+            gl_pMiningEligibilityManager->SetInvalidEligibilityBlock(hashBlock, static_cast<uint32_t>(pindexPrev->nHeight + 1), state.getTxOrigin());
             strRejectReasonDetails = strprintf("MasterNode '%s' (mnid: %s) is not eligible to mine this block %s (mined blocks: %u)",
                 				mnInfo.GetDesc(), block.sPastelID, hashBlock.ToString(), nMinedBlocks);
 			return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
