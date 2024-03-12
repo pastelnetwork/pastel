@@ -282,6 +282,13 @@ void CActiveMasternode::ManageStateRemote()
             LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
             return;
         }
+        // check if masternode mining eligibility flag has changed
+        if (m_bEligibleForMining != infoMn.IsEligibleForMining())
+        {
+			m_bEligibleForMining = infoMn.IsEligibleForMining();
+            LogFnPrintf("Masternode '%s' mining eligibility flag is %s",
+                outpoint.ToStringShort(), m_bEligibleForMining ? "ON" : "OFF");
+        }
         if (!IsStarted())
         {
             // can assign outpoint - will be used to register mnid
@@ -301,14 +308,12 @@ void CActiveMasternode::ManageStateRemote()
             LogFnPrintf("*** MasterNode '%s' has been STARTED! *** ", outpoint.ToStringShort());
             service = infoMn.get_addr();
             m_bPingerEnabled = true;
-            m_bEligibleForMining = infoMn.IsEligibleForMining();
             nState = ActiveMasternodeState::Started;
             // relay mnb
             auto pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
             if (pmn)
             {
-                if (str_icmp(pmn->getMNPastelID(), gl_MiningSettings.getGenId()))
-                    pmn->SetEligibleForMining(gl_MiningSettings.isEligibleForMining());
+                pmn->SetEligibleForMining(m_bEligibleForMining);
                 LogFnPrint("masternode", "Masternode '%s' was started % " PRId64 " mins ago (eligibleForMining=%d)",
                     pmn->GetDesc(), pmn->GetLastBroadcastAge() / 60, pmn->IsEligibleForMining());
                 CMasterNodePing mnp(outpoint);

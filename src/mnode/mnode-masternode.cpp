@@ -1190,7 +1190,8 @@ CMasternodeBroadcast::MNB_UPDATE_RESULT CMasternodeBroadcast::Update(string& err
         return MNB_UPDATE_RESULT::NOT_FOUND;
     }
     const bool bVersionUpdate = pmn->GetVersion() < GetVersion();
-    const bool bHashUpdate = pmn->GetHash() != GetHash();
+    const auto& hashMNB = GetHash();
+    const bool bHashUpdate = pmn->GetHash() != hashMNB;
     if (pmn->sigTime == sigTime && !fRecovery && !bVersionUpdate && !bHashUpdate)
     {
         // mapSeenMasternodeBroadcast in CMasternodeMan::CheckMnbAndUpdateMasternodeList should filter legit duplicates
@@ -1239,7 +1240,8 @@ CMasternodeBroadcast::MNB_UPDATE_RESULT CMasternodeBroadcast::Update(string& err
     if (!pmn->IsBroadcastedWithin(masterNodeCtrl.MasternodeMinMNBSeconds) || masterNodeCtrl.IsOurMasterNode(pubKeyMasternode))
     {
         // take the newest entry
-        LogFnPrintf("Got UPDATED Masternode '%s' entry: addr=%s (v%hd)", pmn->GetDesc(), m_addr.ToString(), GetVersion());
+        LogFnPrintf("Got UPDATED Masternode '%s' entry: addr=%s (v%hd, mnb '%s')", pmn->GetDesc(), 
+            m_addr.ToString(), GetVersion(), hashMNB.ToString());
         if (pmn->UpdateFromNewBroadcast(*this))
             pmn->Check(true, SKIP_LOCK);
         masterNodeCtrl.masternodeSync.BumpAssetLastTime(__METHOD_NAME__);

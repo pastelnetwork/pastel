@@ -193,7 +193,8 @@ Examples:
                         << setw(8) << sigTime - pmn->sigTime << " " 
                         << setw(10) << pmn->GetLastPaidTime() << " " 
                         << setw(6) << pmn->GetLastPaidBlock() << " " 
-                        << pmn->get_address();
+                        << pmn->get_address() << " "
+                        << pmn->IsEligibleForMining() ? "mining_on" : "mining_off";
                     string strFull = streamFull.str();
                     if (!strFilter.empty() && strFull.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
@@ -394,13 +395,13 @@ UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsC
 
 #ifdef ENABLE_WALLET
 /**
- * Process start-alias RPC command - used from both start-alias and start-all.
+ * Process "masternode activate" RPC command - used from both activate and activate-xxx.
  * 
  * \param mne - MasterNode configuration entry
  * \param statusObj - result status object
- * \return true if start-alias was processed successfully
+ * \return true if the command was processed successfully
  */
-bool process_start_alias(const CMasternodeConfig::CMasternodeEntry &mne, UniValue &statusObj)
+bool process_masternode_activate(const CMasternodeConfig::CMasternodeEntry &mne, UniValue &statusObj)
 {
     string error;
     CMasternodeBroadcast mnb;
@@ -461,7 +462,7 @@ UniValue masternode_activate(const UniValue& params)
         // found MasterNode by alias
         fFound = true;
         string error;
-        if (process_start_alias(mne, statusObj))
+        if (process_masternode_activate(mne, statusObj))
             ++nProcessed;
     }
     if (nProcessed)
@@ -476,14 +477,14 @@ UniValue masternode_activate(const UniValue& params)
     return statusObj;
 }
 
-UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, const bool bStartDisabled)
+UniValue masternode_activate_all(const UniValue& params, const bool bActivateMissing, const bool bActivateDisabled)
 {
     {
         LOCK(pwalletMain->cs_wallet);
         EnsureWalletIsUnlocked();
     }
 
-    if ((bStartMissing || bStartDisabled) && !masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
+    if ((bActivateMissing || bActivateDisabled) && !masterNodeCtrl.masternodeSync.IsMasternodeListSynced())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "You can't use this command until masternode list is synced");
 
     size_t nSuccessful = 0;
@@ -505,13 +506,13 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
         const COutPoint outpoint = mne.getOutPoint();
         masternode_t pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
 
-        if (bStartMissing && pmn)
+        if (bActivateMissing && pmn)
             continue;
-        if (bStartDisabled && pmn && pmn->IsEnabled())
+        if (bActivateDisabled && pmn && pmn->IsEnabled())
             continue;
 
         UniValue statusObj(UniValue::VOBJ);
-        if (process_start_alias(mne, statusObj))
+        if (process_masternode_activate(mne, statusObj))
             ++nSuccessful;
         else
             ++nFailed;
@@ -521,7 +522,7 @@ UniValue masternode_start_all(const UniValue& params, const bool bStartMissing, 
         masterNodeCtrl.LockMnOutpoints(pwalletMain);
 
     UniValue returnObj(UniValue::VOBJ);
-    returnObj.pushKV("overall", strprintf("Successfully started %zu masternodes, failed to start %zu, total %zu",
+    returnObj.pushKV("overall", strprintf("Successfully activated %zu masternodes, failed to activate %zu, total %zu",
         nSuccessful, nFailed, nSuccessful + nFailed));
     returnObj.pushKV("detail", move(resultsObj));
 
@@ -1216,17 +1217,12 @@ UniValue masternode(const UniValue& params, bool fHelp)
 #ifdef ENABLE_WALLET
     RPC_CMD_PARSER(MN, params, init, list, list__conf, count, debug, current, winner, winners,
         genkey, connect, status, top, message, make__conf, pose__ban__score,
-        print__cache, clear__cache, activate,
-        start__many, start__alias, start__all, start__missing, start__disabled, outputs);
+        print__cache, clear__cache, activate, activate__all, activate__missing, activate__disabled,
+        start__alias, start__all, start__missing, start__disabled, outputs);
 #else
     RPC_CMD_PARSER(MN, params, list, list__conf, count, debug, current, winner, winners,
         genkey, connect, status, top, message, make__conf, pose__ban__score,
         print__cache, clear__cache, min__enabled__mn__count, min__enabled__mn__percent);
-#endif // ENABLE_WALLET
-
-#ifdef ENABLE_WALLET
-    if (MN.IsCmd(RPC_CMD_MN::start__many))
-        throw JSONRPCError(RPC_INVALID_PARAMETER, "DEPRECATED, please use start-all instead");
 #endif // ENABLE_WALLET
 
     if (fHelp || !MN.IsCmdSupported())
@@ -1326,8 +1322,12 @@ R"(
         case RPC_CMD_MN::start__all:
         case RPC_CMD_MN::start__missing:
         case RPC_CMD_MN::start__disabled:
-            return masternode_start_all(params, MN.IsCmd(RPC_CMD_MN::start__missing),
-                MN.IsCmd(RPC_CMD_MN::start__disabled));
+        case RPC_CMD_MN::activate__all:
+        case RPC_CMD_MN::activate__missing:
+        case RPC_CMD_MN::activate__disabled:
+            return masternode_activate_all(params, 
+                MN.IsCmdAnyOf(RPC_CMD_MN::start__missing, RPC_CMD_MN::activate__missing),
+                MN.IsCmdAnyOf(RPC_CMD_MN::start__disabled, RPC_CMD_MN::activate__disabled));
 
         case RPC_CMD_MN::outputs:
             return masternode_outputs(params);
