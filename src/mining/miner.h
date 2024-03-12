@@ -30,13 +30,13 @@ struct CBlockTemplate
 };
 
 /** Generate a new block, without valid proof-of-work */
-CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn, const std::string& sEligiblePastelID);
+CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn, const bool v5Block, const std::string& sEligiblePastelID);
 #ifdef ENABLE_WALLET
 std::optional<CScript> GetMinerScriptPubKey(CReserveKey& reservekey, const CChainParams& chainparams);
-CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, const CChainParams& chainparams, const std::string& sEligiblePastelID);
+CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, const CChainParams& chainparams, const bool v5Block, const std::string& sEligiblePastelID);
 #else
 std::optional<CScript> GetMinerScriptPubKey(const CChainParams& chainparams);
-CBlockTemplate* CreateNewBlockWithKey(const CChainParams& chainparams, const std::string& sEligiblePastelID);
+CBlockTemplate* CreateNewBlockWithKey(const CChainParams& chainparams, const bool v5Block, const std::string& sEligiblePastelID);
 #endif
 
 #ifdef ENABLE_MINING
