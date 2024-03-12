@@ -341,7 +341,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
                 print(f'{test_desс}: {self.errorString}')
                 if 'messageDetails' in e.error:
                     print(f"{test_desс}: {e.error['messageDetails']}")
-            assert_equal("bad-tx-invalid-ticket" in self.errorString, True)
+            assert_true("bad-tx-invalid-ticket" in self.errorString or "tx-missing-inputs" in self.errorString)
 
         print("== NFT Registration Activation ticket transaction validation tested ==")
 

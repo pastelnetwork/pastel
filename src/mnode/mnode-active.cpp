@@ -239,8 +239,9 @@ bool CActiveMasternode::CheckMnId(const COutPoint& outPoint)
         nState = ActiveMasternodeState::NeedMnId;
         return false;
     }
+    m_sMNPastelID = mnidTicket.getPastelID();
     LogFnPrint("masternode", "Masternode '%s' has registered Pastel ID (mnid): %s",
-        outPoint.ToStringShort(), mnidTicket.getPastelID());
+        outPoint.ToStringShort(), m_sMNPastelID);
     return true;
 }
 
@@ -249,10 +250,11 @@ void CActiveMasternode::ManageStateRemote()
     LogFnPrint("masternode", "Start status = %s, type = %s, pinger %s, pubKeyMasternode.GetID() = %s",
         GetStatus(), GetTypeString(), m_bPingerEnabled ? "enabled" : "disabled", pubKeyMasternode.GetID().ToString());
 
-    masterNodeCtrl.masternodeManager.CheckMasternode(pubKeyMasternode, true);
-    masternode_info_t infoMn;
     const auto& chainparams = Params();
     const auto& consensusParams = chainparams.GetConsensus();
+    masternode_info_t infoMn;
+
+    masterNodeCtrl.masternodeManager.CheckMasternode(pubKeyMasternode, true);
     const auto lastNetworkUpgrade = consensusParams.GetLastNetworkUpgrade();
     if (masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyMasternode, infoMn))
     {
@@ -280,6 +282,13 @@ void CActiveMasternode::ManageStateRemote()
             LogFnPrintf("%s: %s", GetStateString(), strNotCapableReason);
             return;
         }
+        // check if masternode mining eligibility flag has changed
+        if (m_bEligibleForMining != infoMn.IsEligibleForMining())
+        {
+			m_bEligibleForMining = infoMn.IsEligibleForMining();
+            LogFnPrintf("Masternode '%s' mining eligibility flag is %s",
+                outpoint.ToStringShort(), m_bEligibleForMining ? "ON" : "OFF");
+        }
         if (!IsStarted())
         {
             // can assign outpoint - will be used to register mnid
@@ -304,8 +313,7 @@ void CActiveMasternode::ManageStateRemote()
             auto pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);
             if (pmn)
             {
-                if (str_icmp(pmn->getMNPastelID(), gl_MiningSettings.getGenId()))
-                    pmn->SetEligibleForMining(gl_MiningSettings.isEligibleForMining());
+                pmn->SetEligibleForMining(m_bEligibleForMining);
                 LogFnPrint("masternode", "Masternode '%s' was started % " PRId64 " mins ago (eligibleForMining=%d)",
                     pmn->GetDesc(), pmn->GetLastBroadcastAge() / 60, pmn->IsEligibleForMining());
                 CMasterNodePing mnp(outpoint);

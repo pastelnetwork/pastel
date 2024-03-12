@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2019-2023 The Pastel Core developers
+// Copyright (c) 2019-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
@@ -24,11 +24,12 @@ public:
             std::string extAddress;
             std::string extP2P;
             std::string extCfg;
+            bool bEligibleForMining;
 
         public:
             CMasternodeEntry() noexcept = default;
             CMasternodeEntry(const std::string &alias, std::string &&mnAddress, std::string &&mnPrivKey, std::string &&txHash, 
-                std::string &&outputIndex, std::string &&extAddress, std::string &&extP2P, std::string &&extCfg) noexcept
+                std::string &&outputIndex, std::string &&extAddress, std::string &&extP2P, std::string &&extCfg, bool bEligibleForMining) noexcept
             {
                 this->alias = alias;
                 this->mnAddress = std::move(mnAddress);
@@ -38,6 +39,7 @@ public:
                 this->extAddress = std::move(extAddress);
                 this->extP2P = std::move(extP2P);
                 this->extCfg = std::move(extCfg);
+                this->bEligibleForMining = bEligibleForMining;
             }
 
             const std::string& getAlias() const noexcept { return alias; }
@@ -48,6 +50,7 @@ public:
             const std::string& getExtIp() const noexcept { return extAddress; }
             const std::string& getExtP2P() const noexcept { return extP2P; }
             const std::string& getExtCfg() const noexcept { return extCfg; }
+            bool isEligibleForMining() const noexcept { return bEligibleForMining; }
 
             COutPoint getOutPoint() const noexcept;
     };

@@ -249,12 +249,17 @@ Generate 11 blocks
     UniValue blockHashes(UniValue::VARR);
     unsigned int n = consensusParams.nEquihashN;
     unsigned int k = consensusParams.nEquihashK;
+    const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
+
     while (nHeight < nHeightEnd)
     {
+        const bool bV5Block = (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
+			(gl_nChainHeight >= nNewMiningAllowedHeight);
+
 #ifdef ENABLE_WALLET
-        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams, sEligiblePastelID));
+        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams, bV5Block, sEligiblePastelID));
 #else
-        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams, sEligiblePastelID));
+        unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams, bV5Block, sEligiblePastelID));
 #endif
         if (!pblocktemplate.get())
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Wallet keypool empty");
@@ -638,7 +643,7 @@ Examples:
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not eligible for mining next block");
 
     SecureString sPassPhrase;
-    if (!gl_MiningSettings.getGenIdInfo(sGenId, sPassPhrase))
+    if (!gl_MiningSettings.getGenInfo(sPassPhrase))
     {
 		LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sGenId);
 		throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'", sGenId));
@@ -923,11 +928,15 @@ Examples:
 
         // Create new block
         safe_delete_obj(pblocktemplate);
+
+        const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
+        const bool bV5Block = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
+			(gl_nChainHeight >= nNewMiningAllowedHeight);
 #ifdef ENABLE_WALLET
         CReserveKey reservekey(pwalletMain);
-        pblocktemplate = CreateNewBlockWithKey(reservekey, chainparams, "");
+        pblocktemplate = CreateNewBlockWithKey(reservekey, chainparams, bV5Block, "");
 #else
-        pblocktemplate = CreateNewBlockWithKey(chainparams, "");
+        pblocktemplate = CreateNewBlockWithKey(chainparams, bV5Block, "");
 #endif
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");

@@ -121,7 +121,8 @@ void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, 
         pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, consensusParams);
 }
 
-CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn, const string& sEligiblePastelID)
+CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn, const bool v5Block,
+    const string& sEligiblePastelID)
 {
     // Create new block
     auto pblocktemplate = make_unique<CBlockTemplate>();
@@ -133,6 +134,8 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     // -blockversion=N to test forking scenarios
     if (chainparams.MineBlocksOnDemand())
         pblock->nVersion = gl_MiningSettings.getBlockVersion();
+    else
+        pblock->nVersion = v5Block ? CBlockHeader::VERSION_SIGNED_BLOCK : 4;
 
     // Add dummy coinbase tx as first transaction
     pblock->vtx.push_back(CTransaction());
@@ -391,7 +394,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         if (bTxHasMnOutputs && !sEligiblePastelID.empty())
         {
             SecureString sPassPhrase;
-            if (!gl_MiningSettings.getGenIdInfo(sEligiblePastelID, sPassPhrase))
+            if (!gl_MiningSettings.getGenInfo(sPassPhrase))
             {
 				LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sEligiblePastelID);
 				throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'",
@@ -445,18 +448,18 @@ optional<CScript> GetMinerScriptPubKey(const CChainParams& chainparams)
 }
 
 #ifdef ENABLE_WALLET
-CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, const CChainParams& chainparams, const string& sEligiblePastelID)
+CBlockTemplate* CreateNewBlockWithKey(CReserveKey& reservekey, const CChainParams& chainparams, const bool bV5Block, const string& sEligiblePastelID)
 {
     optional<CScript> scriptPubKey = GetMinerScriptPubKey(reservekey, chainparams);
 #else
-CBlockTemplate* CreateNewBlockWithKey(const CChainParams& chainparams, const string& sEligiblePastelID)
+CBlockTemplate* CreateNewBlockWithKey(const CChainParams& chainparams, const bool bV5Block, const string& sEligiblePastelID)
 {
     optional<CScript> scriptPubKey = GetMinerScriptPubKey(chainparams);
 #endif
 
     if (!scriptPubKey)
         return nullptr;
-    return CreateNewBlock(chainparams, *scriptPubKey, sEligiblePastelID);
+    return CreateNewBlock(chainparams, *scriptPubKey, bV5Block, sEligiblePastelID);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -582,6 +585,8 @@ void static PastelMiner(const int nThreadNo)
             const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
             const bool bNewMiningAllowed = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
                 (gl_nChainHeight >= nNewMiningAllowedHeight + consensusParams.nNewMiningAlgorithmHeightDelay);
+            const bool bV5Block = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
+				(gl_nChainHeight >= nNewMiningAllowedHeight);
 
             gl_bEligibleForMiningNextBlock = !bNewMiningAllowed;
             if (bNewMiningAllowed && !masterNodeCtrl.IsMasterNode())
@@ -621,6 +626,7 @@ void static PastelMiner(const int nThreadNo)
 
             // Check if MasterNode is eligible to mine next block - perform only after the masternodes are synced
             opt_string_t sEligiblePastelID;
+            bool bInvalidMiningSettings = false;
             if (bNewMiningAllowed)
             {
                 miningTimer.stop();
@@ -647,6 +653,13 @@ void static PastelMiner(const int nThreadNo)
                     }
                     fnWaitFor(5);
                 } while (true);
+                string error;
+                if (!gl_MiningSettings.CheckMNSettingsForLocalMining(error))
+                {
+					LogFnPrint("MasterNode settings are not valid for local mining. %s", error);
+                    bInvalidMiningSettings = true;
+					break;
+				}
                 LogFnPrint("mining", "Waiting for MasterNode mining eligibility...");
                 do {
                     const auto sGenId = gl_MiningSettings.getGenId();
@@ -670,6 +683,11 @@ void static PastelMiner(const int nThreadNo)
                 miningTimer.start();
             }
             
+            if (bInvalidMiningSettings)
+            {
+                LogPrintf("Error in PastelMiner: Invalid MasterNode settings for local mining\n");
+                return;
+            }
             //
             // Create new block
             //
@@ -677,9 +695,9 @@ void static PastelMiner(const int nThreadNo)
             auto pindexPrev = chainActive.Tip();
 
 #ifdef ENABLE_WALLET
-            unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams, sEligiblePastelID.value_or("")));
+            unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, chainparams, bV5Block, sEligiblePastelID.value_or("")));
 #else
-            unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams, sEligiblePastelID.value_or("")));
+            unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(chainparams, bV5Block, sEligiblePastelID.value_or("")));
 #endif
             if (!pblocktemplate.get())
             {

@@ -191,9 +191,7 @@ class MasterNodeCommon (PastelTestFramework):
                 datadir.mkdir()
             conf_file = Path(datadir, "pastel.conf")
             with conf_file.open('a') as f:
-                f.write(f"genpastelid={self.mnid}\n")
                 f.write(f"genpassphrase={self.passphrase}\n")
-                f.write("genenablemnmining=1\n")
         
 
         def create_masternode_conf(self, dirname: str, node_index: int):
@@ -230,6 +228,7 @@ class MasterNodeCommon (PastelTestFramework):
             config[name]["extCfg"] = {}
             config[name]["extCfg"]["param1"] = str(random.randint(0, 9))
             config[name]["extCfg"]["param2"] = str(random.randint(0, 9))
+            config[name]["enableMnMining"] = True
 
             print(f"Creating masternode.conf for node {name}...")
             with cfg_file.open('w') as f:

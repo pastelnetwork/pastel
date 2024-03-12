@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2019-2023 The Pastel Core developers
+// Copyright (c) 2019-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <iomanip>
@@ -99,6 +99,13 @@ string get_json_cfg_property(const json& cfg, const string &name)
     return "";
 }
 
+bool get_json_cfg_bool_property(const json& cfg, const string &name, const bool bDefault)
+{
+    if (cfg.count(name) && !cfg.at(name).is_null() && cfg.at(name).is_boolean())
+        return cfg.at(name);
+    return bDefault;
+}
+
 string get_json_cfg_obj_as_string(const json& cfg, const string &name)
 {
     if (cfg.count(name) && !cfg.at(name).is_null() && cfg.at(name).is_object())
@@ -151,7 +158,9 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
                 {"outIndex", ""},
                 {"extAddress", ""},
                 {"extCfg", {}},
-                {"extP2P", ""}
+                {"extP2P", ""},
+                {"enableMnMining", "0"},
+                {"mnPassphrase", ""}
             }}
         };
         pathMasternodeConfigFile += "-sample";
@@ -167,13 +176,13 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
         streamConfig.close();
         LogPrintf("Read MN config from file [%s]\n", pathMasternodeConfigFile.string());
     }
-    catch(const json::exception& e)
+    catch (const json::exception& e)
     {
         streamConfig.close();
         strErr = strprintf("Config file is invalid - %s\n", e.what());
         return false;
     }
-    catch(const exception& e)
+    catch (const exception& e)
     {
         streamConfig.close();
         strErr = strprintf("Error while processing config file - %s\n", e.what());
@@ -186,9 +195,14 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
     unique_lock<mutex> lck(m_mtx);
     for (const auto &[alias, cfg] : jsonObj.items())
     {
-        if (alias.empty() || !cfg.count("mnAddress") || !cfg.count("mnPrivKey") || !cfg.count("txid") || !cfg.count("outIndex"))
+        if (alias.empty())
         {
-            str_append_field(strErr, strprintf("Invalid record - %s", jsonObj.dump()).c_str(), "; ");
+			str_append_field(strErr, "Invalid MasterNode record - empty alias", "; ");
+			continue;
+		}
+        if (!cfg.count("mnAddress") || !cfg.count("mnPrivKey") || !cfg.count("txid") || !cfg.count("outIndex"))
+        {
+            str_append_field(strErr, strprintf("Invalid MasterNode record - %s", jsonObj.dump()).c_str(), "; ");
             continue;
         }
 
@@ -205,7 +219,10 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
         mnPrivKey = get_json_cfg_property(cfg, "mnPrivKey");
         txid = get_json_cfg_property(cfg, "txid");
         outIndex = get_json_cfg_property(cfg, "outIndex");
-
+        const bool bEligibleForMining = get_json_cfg_bool_property(cfg, "enableMnMining", false);
+        if (bEligibleForMining)
+            LogFnPrintf("MasterNode '%s' is eligible for mining", alias);
+        
         if (mnAddress.empty() || mnPrivKey.empty() || txid.empty() || outIndex.empty())
         {
             strWhat = strprintf("Missing mnAddress=%s OR mnPrivKey=%s OR txid=%s OR outIndex=%s", mnAddress, mnPrivKey, txid, outIndex);
@@ -244,7 +261,7 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
             extCfg.erase(1024, string::npos);
 
         CMasternodeEntry cme(alias, move(mnAddress), move(mnPrivKey), move(txid), move(outIndex), 
-            move(extAddress), move(extP2P), move(extCfg));
+            move(extAddress), move(extP2P), move(extCfg), bEligibleForMining);
         m_CfgEntries.emplace(alias_lowercased, cme);
     }
 
