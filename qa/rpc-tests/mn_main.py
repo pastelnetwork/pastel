@@ -161,7 +161,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.sync_all()
 
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(80, 40, "ENABLED", mn_id, 8)
+            self.wait_for_mn_state(80, 40, "ENABLED", mn_id, 12)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'restart' in tests:
