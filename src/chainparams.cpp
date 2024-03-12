@@ -52,7 +52,7 @@ constexpr uint32_t MAINNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t MAINNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK = 337'800;
 constexpr uint32_t MAINNET_MONET_UPGRADE_STARTING_BLOCK = 575'000;
-constexpr uint32_t MAINNET_VERMEER_UPGRADE_STARTING_BLOCK = 647'500;
+constexpr uint32_t MAINNET_VERMEER_UPGRADE_STARTING_BLOCK = 648'500;
 
 // testnet upgrades activation heights
 constexpr uint32_t TESTNET_OVERWINTER_STARTING_BLOCK = 10;
@@ -594,7 +594,7 @@ public:
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
-        consensus.nPowAllowMinDifficultyBlocksAfterHeight = 299'187;
+        consensus.nPowAllowMinDifficultyBlocksAfterHeight = DEVNET_VERMEER_UPGRADE_STARTING_BLOCK;
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::BASE_SPROUT, 170002, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY, 170002, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, DEVNET_OVERWINTER_STARTING_BLOCK);

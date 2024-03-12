@@ -239,8 +239,9 @@ bool CActiveMasternode::CheckMnId(const COutPoint& outPoint)
         nState = ActiveMasternodeState::NeedMnId;
         return false;
     }
+    m_sMNPastelID = mnidTicket.getPastelID();
     LogFnPrint("masternode", "Masternode '%s' has registered Pastel ID (mnid): %s",
-        outPoint.ToStringShort(), mnidTicket.getPastelID());
+        outPoint.ToStringShort(), m_sMNPastelID);
     return true;
 }
 
@@ -249,10 +250,11 @@ void CActiveMasternode::ManageStateRemote()
     LogFnPrint("masternode", "Start status = %s, type = %s, pinger %s, pubKeyMasternode.GetID() = %s",
         GetStatus(), GetTypeString(), m_bPingerEnabled ? "enabled" : "disabled", pubKeyMasternode.GetID().ToString());
 
-    masterNodeCtrl.masternodeManager.CheckMasternode(pubKeyMasternode, true);
-    masternode_info_t infoMn;
     const auto& chainparams = Params();
     const auto& consensusParams = chainparams.GetConsensus();
+    masternode_info_t infoMn;
+
+    masterNodeCtrl.masternodeManager.CheckMasternode(pubKeyMasternode, true);
     const auto lastNetworkUpgrade = consensusParams.GetLastNetworkUpgrade();
     if (masterNodeCtrl.masternodeManager.GetMasternodeInfo(pubKeyMasternode, infoMn))
     {
@@ -299,6 +301,7 @@ void CActiveMasternode::ManageStateRemote()
             LogFnPrintf("*** MasterNode '%s' has been STARTED! *** ", outpoint.ToStringShort());
             service = infoMn.get_addr();
             m_bPingerEnabled = true;
+            m_bEligibleForMining = infoMn.IsEligibleForMining();
             nState = ActiveMasternodeState::Started;
             // relay mnb
             auto pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, outpoint);

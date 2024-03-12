@@ -391,7 +391,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         if (bTxHasMnOutputs && !sEligiblePastelID.empty())
         {
             SecureString sPassPhrase;
-            if (!gl_MiningSettings.getGenIdInfo(sEligiblePastelID, sPassPhrase))
+            if (!gl_MiningSettings.getGenInfo(sPassPhrase))
             {
 				LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sEligiblePastelID);
 				throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'",
@@ -621,6 +621,7 @@ void static PastelMiner(const int nThreadNo)
 
             // Check if MasterNode is eligible to mine next block - perform only after the masternodes are synced
             opt_string_t sEligiblePastelID;
+            bool bInvalidMiningSettings = false;
             if (bNewMiningAllowed)
             {
                 miningTimer.stop();
@@ -647,6 +648,13 @@ void static PastelMiner(const int nThreadNo)
                     }
                     fnWaitFor(5);
                 } while (true);
+                string error;
+                if (!gl_MiningSettings.CheckMNSettingsForLocalMining(error))
+                {
+					LogFnPrint("MasterNode settings are not valid for local mining. %s", error);
+                    bInvalidMiningSettings = true;
+					break;
+				}
                 LogFnPrint("mining", "Waiting for MasterNode mining eligibility...");
                 do {
                     const auto sGenId = gl_MiningSettings.getGenId();
@@ -670,6 +678,11 @@ void static PastelMiner(const int nThreadNo)
                 miningTimer.start();
             }
             
+            if (bInvalidMiningSettings)
+            {
+                LogPrintf("Error in PastelMiner: Invalid MasterNode settings for local mining\n");
+                return;
+            }
             //
             // Create new block
             //

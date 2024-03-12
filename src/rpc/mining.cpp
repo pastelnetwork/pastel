@@ -638,7 +638,7 @@ Examples:
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Masternode is not eligible for mining next block");
 
     SecureString sPassPhrase;
-    if (!gl_MiningSettings.getGenIdInfo(sGenId, sPassPhrase))
+    if (!gl_MiningSettings.getGenInfo(sPassPhrase))
     {
 		LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sGenId);
 		throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'", sGenId));

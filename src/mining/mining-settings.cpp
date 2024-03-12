@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mining/mining-settings.h>
+#include <mnode/mnode-controller.h>
 #include <primitives/block.h>
 #include <pastelid/pastel_key.h>
 #include <main.h>
@@ -15,63 +16,76 @@ CMinerSettings::CMinerSettings() noexcept
 	m_nBlockPrioritySize = DEFAULT_BLOCK_PRIORITY_SIZE;
 	m_nBlockMinSize = DEFAULT_BLOCK_MIN_SIZE;
     m_equihashSolver = EquihashSolver::Default;
-    m_bEligibleForMining = false;
-    m_nGenIdIndex = 0;
     m_bInitialized = false;
+}
+
+std::string CMinerSettings::getGenId() const noexcept
+{
+    return masterNodeCtrl.activeMasternode.getMNPastelID();
+}
+
+bool CMinerSettings::isEligibleForMining() const noexcept
+{
+	return masterNodeCtrl.activeMasternode.isEligibleForMining();
 }
 
 bool CMinerSettings::refreshMnIdInfo(string &error, const bool bRefreshConfig)
 {
-    auto mapLocalPastelIds = CPastelID::GetStoredPastelIDs(true);
-
     unique_lock<mutex> lock(m_mutexGenIds);
 
     if (bRefreshConfig)
         ReadConfigFile(mapArgs, mapMultiArgs, "-gen*");
 
-    // read Pastel ID and passphrases from the config file
-    string sParam = "-genpastelid";
-    m_sGenId = GetArg(sParam, "");
-    trim(m_sGenId);
-
-    sParam = "-genpassphrase";
+    // read MN passphrase from the config file
+    string sParam = "-genpassphrase";
     string sPassphrase = GetArg(sParam, "");
     trim(sPassphrase);
+    m_sGenPassPhrase = sPassphrase;
 
-    if (!m_sGenId.empty())
+    return true;
+}
+
+bool CMinerSettings::CheckMNSettingsForLocalMining(string &error)
+{
+    const bool bLocalMiningEnabled = GetBoolArg("-gen", false);
+
+    if (bLocalMiningEnabled)
     {
-        if (sPassphrase.empty())
+        if (!masterNodeCtrl.IsActiveMasterNode())
         {
-            error = strprintf("Passphrase for Pastel ID '%s' is not defined in [%s] option",
-                m_sGenId, sParam);
+			error = "Local mining is enabled, but the node is not an active masternode";
+			return false;
+		}
+
+        if (m_sGenPassPhrase.empty())
+        {
+            error = "Passphrase for MasterNode's Pastel ID is not defined in [genpassphrase] option";
             return false;
         }
-        if (!mapLocalPastelIds.count(m_sGenId))
+
+        auto mapLocalPastelIds = CPastelID::GetStoredPastelIDs(true);
+
+        string sGenId = getGenId();
+
+        if (!mapLocalPastelIds.count(sGenId))
         {
-            error = strprintf("Secure container for Pastel ID '%s' does not exist locally", m_sGenId);
+            error = strprintf("Secure container for Pastel ID '%s' does not exist locally", sGenId);
             return false;
 		}
-        if (!CPastelID::isValidPassphrase(m_sGenId, SecureString(sPassphrase)))
+
+        if (!CPastelID::isValidPassphrase(sGenId, m_sGenPassPhrase))
 		{
-			error = strprintf("Passphrase for Pastel ID '%s' is not valid", m_sGenId);
+			error = strprintf("Passphrase for Pastel ID '%s' is not valid", sGenId);
 			return false;
 		}
-        m_sGenPassPhrase = sPassphrase;
-    }
-    m_bEligibleForMining = GetBoolArg("-genenablemnmining", false);
-    if (m_bEligibleForMining)
-    {
-        if (m_sGenId.empty() || m_sGenPassPhrase.empty())
+
+        if (!masterNodeCtrl.activeMasternode.isEligibleForMining())
         {
-			error = "No MasterNode Pastel ID (genpastelid) or passphrase (genpassphrase) defined in the config file";
+			error = "Local mining is enabled, but the Active MasterNode's mining eligibility option is not set in masternode.conf";
 			return false;
 		}
-        LogPrintf("MasterNode mining is enabled\n");
-	}
-    else
-    {
-        LogPrintf("MasterNode mining is not enabled (genenablemnmining option), -gen* options are ignored\n");
-	}
+    }
+
     return true;
 }
 
@@ -129,12 +143,8 @@ std::string CMinerSettings::getEquihashSolverName() const noexcept
     }
 }
 
-bool CMinerSettings::getGenIdInfo(const std::string &sMnId, SecureString& sPassPhrase) const noexcept
+bool CMinerSettings::getGenInfo(SecureString& sPassPhrase) const noexcept
 {
-    if (m_sGenId.empty())
-        return false;
-    if (!str_icmp(sMnId, m_sGenId))
-        return false;
 	sPassPhrase = SecureString(m_sGenPassPhrase);
 	return true;
 }

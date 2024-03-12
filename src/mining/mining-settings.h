@@ -33,11 +33,12 @@ public:
     uint32_t getBlockMinSize() const noexcept { return m_nBlockMinSize; }
     EquihashSolver getEquihashSolver() const noexcept { return m_equihashSolver; }
     std::string getEquihashSolverName() const noexcept;
-    bool isEligibleForMining() const noexcept { return m_bEligibleForMining; }
+    bool isEligibleForMining() const noexcept;
 
-    std::string getGenId() const noexcept { return m_sGenId; }
-    bool getGenIdInfo(const std::string &sMnId, SecureString& sPassPhrase) const noexcept;
+    std::string getGenId() const noexcept;
+    bool getGenInfo(SecureString& sPassPhrase) const noexcept;
     bool refreshMnIdInfo(std::string& error, const bool bRefreshConfig);
+	bool CheckMNSettingsForLocalMining(std::string &error);
 
 private:
     bool m_bInitialized;
@@ -47,12 +48,9 @@ private:
     uint32_t m_nBlockPrioritySize;
     uint32_t m_nBlockMinSize;
     EquihashSolver m_equihashSolver;
-    bool m_bEligibleForMining; // genenablemnmining option
 
     std::mutex m_mutexGenIds;
-    std::string m_sGenId; // current masternode's mnid used for mining
     SecureString m_sGenPassPhrase; // current masternode's passphrase used for mining
-    std::atomic_size_t m_nGenIdIndex; // index of the current PastelID in the m_mapGenIds
 };
 
 extern CMinerSettings gl_MiningSettings;

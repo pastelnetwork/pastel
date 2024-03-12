@@ -1099,8 +1099,8 @@ bool CMasternodeBroadcast::InitFromConfig(string &error, const CMasternodeConfig
         // MNID is not registered on first run, will be checked later on
         if (!CheckAndUpdateMNID(error))
             m_ActiveState = MASTERNODE_STATE::PRE_ENABLED;
-        else if (str_icmp(gl_MiningSettings.getGenId(), m_sMNPastelID))
-            SetEligibleForMining(gl_MiningSettings.isEligibleForMining());
+        else if (!m_sMNPastelID.empty())
+            SetEligibleForMining(mne.isEligibleForMining());
         m_nVersion = CMasternode::MASTERNODE_VERSION;
 
         bRet = true;

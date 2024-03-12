@@ -40,29 +40,6 @@ public:
         const char* szState{};
     } ActiveMNStateInfo;
 
-protected:
-    static constexpr std::array<ActiveMNStateInfo, to_integral_type<ActiveMasternodeState>(ActiveMasternodeState::COUNT)> ACTIVE_MN_STATE =
-        {{
-               { ActiveMasternodeState::Initial,         "INITIAL" },
-               { ActiveMasternodeState::SyncInProcess,   "SYNC_IN_PROCESS" },
-               { ActiveMasternodeState::InputTooNew,     "INPUT_TOO_NEW" },
-               { ActiveMasternodeState::NotCapable,      "NOT_CAPABLE" },
-               { ActiveMasternodeState::NeedMnId,        "NEED_MNID" },
-               { ActiveMasternodeState::Started,         "STARTED" }
-        }};
-    
-private:
-    // critical section to protect the inner data structures
-    mutable CCriticalSection cs;
-
-    MasternodeType mnType;
-
-    bool m_bPingerEnabled;
-
-    // Send Masternode Ping
-    bool SendMasternodePing(const bool bForce = false);
-
-public:
     // Keys for the active Masternode
     CPubKey pubKeyMasternode;
     CKey keyMasternode;
@@ -74,9 +51,10 @@ public:
     ActiveMasternodeState nState;
     std::string strNotCapableReason;
 
-    CActiveMasternode() :
+    CActiveMasternode() noexcept :
         mnType(MasternodeType::Unknown),
         m_bPingerEnabled(false),
+        m_bEligibleForMining(false),
         nState(ActiveMasternodeState::Initial)
     {}
 
@@ -96,10 +74,34 @@ public:
     std::string GetTypeString() const noexcept;
     bool IsStarted() const noexcept { return nState == ActiveMasternodeState::Started; }
     bool NeedMnId() const noexcept { return nState == ActiveMasternodeState::NeedMnId; }
+    std::string getMNPastelID() const noexcept { return m_sMNPastelID; }
+    bool isEligibleForMining() const noexcept { return m_bEligibleForMining; }
+
+protected:
+    static constexpr std::array<ActiveMNStateInfo, to_integral_type<ActiveMasternodeState>(ActiveMasternodeState::COUNT)> ACTIVE_MN_STATE =
+        {{
+               { ActiveMasternodeState::Initial,         "INITIAL" },
+               { ActiveMasternodeState::SyncInProcess,   "SYNC_IN_PROCESS" },
+               { ActiveMasternodeState::InputTooNew,     "INPUT_TOO_NEW" },
+               { ActiveMasternodeState::NotCapable,      "NOT_CAPABLE" },
+               { ActiveMasternodeState::NeedMnId,        "NEED_MNID" },
+               { ActiveMasternodeState::Started,         "STARTED" }
+        }};
 
 private:
+    // critical section to protect the inner data structures
+    mutable CCriticalSection cs;
+    MasternodeType mnType;
+    bool m_bPingerEnabled;
+    std::string m_sMNPastelID;
+    bool m_bEligibleForMining;
+
     void ManageStateInitial();
     void ManageStateRemote();
     // check that mnid is registered
     bool CheckMnId(const COutPoint &outPoint);
+
+    // Send Masternode Ping
+    bool SendMasternodePing(const bool bForce = false);
+
 };
