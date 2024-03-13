@@ -584,9 +584,9 @@ void static PastelMiner(const int nThreadNo)
             // check if we can use new mining 
             const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
             const bool bNewMiningAllowed = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
-                (gl_nChainHeight >= nNewMiningAllowedHeight + consensusParams.nNewMiningAlgorithmHeightDelay);
+                (gl_nChainHeight + 1 >= nNewMiningAllowedHeight + consensusParams.nNewMiningAlgorithmHeightDelay);
             const bool bV5Block = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
-				(gl_nChainHeight >= nNewMiningAllowedHeight);
+				(gl_nChainHeight + 1 >= nNewMiningAllowedHeight);
 
             gl_bEligibleForMiningNextBlock = !bNewMiningAllowed;
             if (bNewMiningAllowed && !masterNodeCtrl.IsMasterNode())

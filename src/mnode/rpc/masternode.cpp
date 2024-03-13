@@ -193,8 +193,7 @@ Examples:
                         << setw(8) << sigTime - pmn->sigTime << " " 
                         << setw(10) << pmn->GetLastPaidTime() << " " 
                         << setw(6) << pmn->GetLastPaidBlock() << " " 
-                        << pmn->get_address() << " "
-                        << pmn->IsEligibleForMining() ? "mining_on" : "mining_off";
+                        << pmn->get_address();
                     string strFull = streamFull.str();
                     if (!strFilter.empty() && strFull.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)

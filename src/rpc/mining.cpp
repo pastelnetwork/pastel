@@ -931,7 +931,7 @@ Examples:
 
         const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
         const bool bV5Block = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
-			(gl_nChainHeight >= nNewMiningAllowedHeight);
+			(gl_nChainHeight + 1 >= nNewMiningAllowedHeight);
 #ifdef ENABLE_WALLET
         CReserveKey reservekey(pwalletMain);
         pblocktemplate = CreateNewBlockWithKey(reservekey, chainparams, bV5Block, "");
