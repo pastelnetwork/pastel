@@ -66,7 +66,7 @@ constexpr uint32_t DEVNET_OVERWINTER_STARTING_BLOCK = 10;
 constexpr uint32_t DEVNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t DEVNET_CEZANNE_UPGRADE_STARTING_BLOCK = 30;
 constexpr uint32_t DEVNET_MONET_UPGRADE_STARTING_BLOCK = 40;
-constexpr uint32_t DEVNET_VERMEER_UPGRADE_STARTING_BLOCK = 29'000;
+constexpr uint32_t DEVNET_VERMEER_UPGRADE_STARTING_BLOCK = 28'930;
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
@@ -608,7 +608,7 @@ public:
         consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
-        consensus.nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 4;
+        consensus.nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 1;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
