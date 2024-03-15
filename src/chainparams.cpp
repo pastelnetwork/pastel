@@ -378,7 +378,7 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, MAINNET_MONET_UPGRADE_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_VERMEER, 170011, MAINNET_VERMEER_UPGRADE_STARTING_BLOCK);
-        consensus.nPowAllowMinDifficultyBlocksAfterHeight = MAINNET_VERMEER_UPGRADE_STARTING_BLOCK;
+        consensus.nPowAllowMinDifficultyBlocksAfterHeight = MAINNET_VERMEER_UPGRADE_STARTING_BLOCK - 1;
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
