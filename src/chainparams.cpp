@@ -371,7 +371,6 @@ public:
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
-        consensus.nPowAllowMinDifficultyBlocksAfterHeight = nullopt;
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::BASE_SPROUT, 170002, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY, 170002, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, MAINNET_OVERWINTER_STARTING_BLOCK);
@@ -379,13 +378,14 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, MAINNET_MONET_UPGRADE_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_VERMEER, 170011, MAINNET_VERMEER_UPGRADE_STARTING_BLOCK);
+        consensus.nPowAllowMinDifficultyBlocksAfterHeight = MAINNET_VERMEER_UPGRADE_STARTING_BLOCK;
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 5.475;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
-        consensus.nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 24 * 2;
+        consensus.nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 1;
 
 
         // The best chain should have at least this much work.
@@ -620,7 +620,7 @@ public:
         pchMessageStart[1] = 0xAB;
         pchMessageStart[2] = 0xC1;
         pchMessageStart[3] = 0xD2;
-        vAlertPubKey = ParseHex("0429aff40718031ed61f0166f3e33b5dfb256c78cdbfa916bf6cc9869a40ce1d66ca35b92fe874bd18b69457ecef27bc3a0f089b737b03fb889dc1420b6a6e70cb");
+        vAlertPubKey = ParseHex("048d47a649c94c7c7393a56a76cf3fa215fbd2ff8ed627bb10c2874642f21ed9d94220a30b6177a16d038d6cb99f78946f6fe8fdb15ff34ad59b2a7fc163bf44cb");
         nDefaultPort = DEVNET_DEFAULT_PORT;
         m_nPruneAfterHeight = 1000;
         m_nOfferReplacementAllowedBlocks = 2'880;
