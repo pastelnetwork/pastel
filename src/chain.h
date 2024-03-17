@@ -368,7 +368,7 @@ public:
     {
         CBlockHeader blockHeader = GetBlockHeader();
         blockHeader.hashPrevBlock = hashPrev;
-        return blockHeader.GetHash();
+        return blockHeader.GetHashCurrent();
     }
 
     std::string ToString() const

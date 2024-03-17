@@ -1,11 +1,12 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cassert>
 #include <stdexcept>
+#include <algorithm>
 
 #include <utils/vector_types.h>
 
@@ -68,10 +69,7 @@ public:
 
     bool IsNull() const noexcept
     {
-        for (int i = 0; i < WIDTH; i++)
-            if (data[i] != 0)
-                return false;
-        return true;
+        return std::all_of(data, data + WIDTH, [](const uint8_t x) { return x == 0; });
     }
 
     void SetNull() noexcept

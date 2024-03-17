@@ -131,7 +131,15 @@ bool CheckEquihashSolution(const CBlockHeader* pblock, const Consensus::Params& 
     return true;
 }
 
-bool CheckProofOfWork(const uint256& hash, unsigned int nBits, const Consensus::Params& params)
+/**
+ * Check proof of work for the block.
+ * 
+ * \param hashCanonical - only v4 fields of the block header
+ * \param nBits - difficulty target
+ * \param params - consensus parameters
+ * \return true if the proof of work is correct
+ */
+bool CheckProofOfWork(const uint256& hashCanonical, unsigned int nBits, const Consensus::Params& params)
 {
     bool fNegative;
     bool fOverflow;
@@ -151,9 +159,9 @@ bool CheckProofOfWork(const uint256& hash, unsigned int nBits, const Consensus::
     }
 
     // Check proof of work matches claimed amount
-    if (UintToArith256(hash) > bnTarget) {
+    if (UintToArith256(hashCanonical) > bnTarget) {
         LogPrintf("CheckProofOfWork - hash = %s, bnTarget = %s\n", 
-                hash.ToString(),
+                hashCanonical.ToString(),
                 ArithToUint256(bnTarget).ToString()
                 );
         return false;

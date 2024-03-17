@@ -148,13 +148,13 @@ static void __mineGenBlock(string network, bool tromp, unsigned int n, unsigned 
             // Write the solution to the hash and compute the result.
             pblock->nSolution = soln;
 
-            if (UintToArith256(pblock->GetHash()) > hashTarget) {
+            if (UintToArith256(pblock->GetHash(BLOCK_HASH_CANONICAL)) > hashTarget) {
                 return false;
             }
-            printf("Genesis block for %s found  \n  merkle root hash: %s\n  header hash: %s\n  nonce: %s\n  solution: %s\n",
+            printf("Genesis block for %s found  \n  merkle root hash: %s\n  canonical header hash: %s\n  nonce: %s\n  solution: %s\n",
                                                         network.c_str(),
                                                         pblock->hashMerkleRoot.GetHex().c_str(),
-                                                        pblock->GetHash().GetHex().c_str(), 
+                                                        pblock->GetHash(BLOCK_HASH_CANONICAL).GetHex().c_str(),
                                                         pblock->nNonce.GetHex().c_str(),
                                                         HexStr(pblock->nSolution).c_str());
             exit(0);
@@ -408,7 +408,7 @@ public:
         consensus.nEquihashK = K;
 
         genesis = CreateMainnetGenesisBlock();
-        consensus.hashGenesisBlock = genesis.GetHash();
+        consensus.hashGenesisBlock = genesis.GetHashCurrent();
 #ifndef MINE_GENESIS
         assert(consensus.hashGenesisBlock == MainnetHashGenesisBlock);
         assert(genesis.hashMerkleRoot == MainnetHashMerkleRoot);
@@ -523,7 +523,7 @@ public:
         consensus.nEquihashK = K;
 
         genesis = CreateTestnetGenesisBlock();
-        consensus.hashGenesisBlock = genesis.GetHash();
+        consensus.hashGenesisBlock = genesis.GetHashCurrent();
 #ifndef MINE_GENESIS
         assert(consensus.hashGenesisBlock == TestnetHashGenesisBlock);
 #endif
@@ -630,7 +630,7 @@ public:
         consensus.nEquihashK = K;
 
         genesis = CreateDevnetGenesisBlock();
-        consensus.hashGenesisBlock = genesis.GetHash();
+        consensus.hashGenesisBlock = genesis.GetHashCurrent();
 #ifndef MINE_GENESIS
         assert(consensus.hashGenesisBlock == DevnetHashGenesisBlock);
 #endif
@@ -734,7 +734,7 @@ public:
         consensus.nEquihashK = K;
         
         genesis = CreateRegtestGenesisBlock();
-        consensus.hashGenesisBlock = genesis.GetHash();
+        consensus.hashGenesisBlock = genesis.GetHashCurrent();
 #ifndef MINE_GENESIS
         assert(consensus.hashGenesisBlock == RegtestHashGenesisBlock);
 #endif

@@ -458,7 +458,8 @@ Examples:
 
     LOCK(cs_main);
 
-    if (!mapBlockIndex.count(merkleBlock.header.GetHash()) || !chainActive.Contains(mapBlockIndex[merkleBlock.header.GetHash()]))
+    const auto hashBlock = merkleBlock.header.GetHashCurrent();
+    if (!mapBlockIndex.count(hashBlock) || !chainActive.Contains(mapBlockIndex[hashBlock]))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found in chain");
 
     for (const auto& hash : vMatch)

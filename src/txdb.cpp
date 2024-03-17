@@ -348,15 +348,15 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams)
         pindexNew->assign(diskBlockIndex);
 
         // Consistency checks
-        const auto header = pindexNew->GetBlockHeader();
-        if (header.GetHash() != pindexNew->GetBlockHash())
+        auto header = pindexNew->GetBlockHeader();
+        if (header.GetHashCurrent() != pindexNew->GetBlockHash())
             return error("LoadBlockIndex(): block header inconsistency detected: on-disk = %s, in-memory = %s",
                 diskBlockIndex.ToString(),  pindexNew->ToString());
     
         //INGEST->!!!
         if (chainparams.IsRegTest() || pindexNew->nHeight > TOP_INGEST_BLOCK)
         {
-            if (!CheckProofOfWork(pindexNew->GetBlockHash(), pindexNew->nBits, chainparams.GetConsensus()))
+            if (!CheckProofOfWork(header.GetHash(BLOCK_HASH_CANONICAL), pindexNew->nBits, chainparams.GetConsensus()))
                 return error("LoadBlockIndex(): CheckProofOfWork failed: %s", pindexNew->ToString());
         }
         //<-INGEST!!!

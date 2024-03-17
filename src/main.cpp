@@ -629,7 +629,7 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
                     }
                     if (!bReadFromTxIndex)
                         break;
-                    hashBlock = header.GetHash();
+                    hashBlock = header.GetHashCurrent();
                     if (txOut.GetHash() != txid)
                     {
                         bRet = errorFn(__METHOD_NAME__, "txid mismatch");
@@ -736,11 +736,12 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     }
 
     //INGEST->!!!
+    uint256 hashBlock = block.GetHashCurrent();
     if (!Params().IsRegTest())
     {
         if (!chainActive.Tip() || chainActive.Tip()->nHeight <= TOP_INGEST_BLOCK)
             return true;
-        const auto it = mapBlockIndex.find(block.GetHash());
+        const auto it = mapBlockIndex.find(hashBlock);
         if (it == mapBlockIndex.cend() || it->second->nHeight <= TOP_INGEST_BLOCK)
             return true;
     }
@@ -748,8 +749,8 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     
     // Check the header
     if (!(CheckEquihashSolution(&block, consensusParams) &&
-          CheckProofOfWork(block.GetHash(), block.nBits, consensusParams)))
-        return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
+          CheckProofOfWork(block.GetHash(BLOCK_HASH_CANONICAL), block.nBits, consensusParams)))
+        return error("ReadBlockFromDisk: Errors in block %s header at %s", hashBlock.ToString(), pos.ToString());
 
     return true;
 }
@@ -758,7 +759,7 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus
 {
     if (!ReadBlockFromDisk(block, pindex->GetBlockPos(), consensusParams))
         return false;
-    if (block.GetHash() != pindex->GetBlockHash())
+    if (block.GetHashCurrent() != pindex->GetBlockHash())
         return error("ReadBlockFromDisk(CBlock&, CBlockIndex*): GetHash() doesn't match index for %s at %s",
                 pindex->ToString(), pindex->GetBlockPos().ToString());
     //LogPrintf("%s: block\n%s\n", __func__, block.ToString());
@@ -1456,8 +1457,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     auto verifier = libzcash::ProofVerifier::Strict();
     auto disabledVerifier = libzcash::ProofVerifier::Disabled();
 
+    uint256 hashBlock;
     // Check it again to verify transactions, and in case a previous version let a bad block in
-    if (!CheckBlock(block, state, chainparams, fExpensiveChecks ? verifier : disabledVerifier, 
+    if (!CheckBlock(block, hashBlock, state, chainparams, fExpensiveChecks ? verifier : disabledVerifier, 
         !fJustCheck, !fJustCheck, false, pindex->pprev))
         return false;
 
@@ -1468,7 +1470,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     const auto& consensusParams = chainparams.GetConsensus();
     // Special case for the genesis block, skipping connection of its transactions
     // (its coinbase is unspendable)
-    if (block.GetHash() == consensusParams.hashGenesisBlock)
+    if (hashBlock == consensusParams.hashGenesisBlock)
     {
         if (!fJustCheck)
 	{
@@ -1957,7 +1959,8 @@ static bool ConnectTip(CValidationState& state, const CChainParams& chainparams,
     {
         LogFnPrintf("checking block %s (%d)", pindexNew->GetBlockHashString(), pindexNew->nHeight);
         auto verifier = libzcash::ProofVerifier::Disabled();
-        if (!CheckBlock(*pblock, state, chainparams, verifier, true, true, false, pindexNew->pprev) || 
+        uint256 hashBlock;
+        if (!CheckBlock(*pblock, hashBlock, state, chainparams, verifier, true, true, false, pindexNew->pprev) || 
             !ContextualCheckBlock(*pblock, state, chainparams, pindexNew->pprev))
         {
             if (state.IsInvalid() && !state.CorruptionPossible())
@@ -2301,7 +2304,7 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
             if (!pindexMostWork || pindexMostWork == pindexOldTip)
                 return true;
 
-            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : nullptr))
+            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHashCurrent() == pindexMostWork->GetBlockHash() ? pblock : nullptr))
                 return false;
 
             pindexNewTip = chainActive.Tip();
@@ -2546,8 +2549,8 @@ void ReconsiderBlock(CValidationState& state, CBlockIndex *pindex)
 CBlockIndex* AddToBlockIndex(const CBlockHeader& block, const Consensus::Params& consensusParams)
 {
     // Check for duplicates
-    const uint256 hash = block.GetHash();
-    auto it = mapBlockIndex.find(hash);
+    const uint256 hashBlock = block.GetHashCurrent();
+    auto it = mapBlockIndex.find(hashBlock);
     if (it != mapBlockIndex.end())
         return it->second;
 
@@ -2558,7 +2561,7 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block, const Consensus::Params&
     // to avoid miners withholding blocks but broadcasting headers, to get a
     // competitive advantage.
     pindexNew->nSequenceId = 0;
-    const auto mi = mapBlockIndex.emplace(hash, pindexNew).first;
+    const auto mi = mapBlockIndex.emplace(hashBlock, pindexNew).first;
     pindexNew->phashBlock = &(mi->first);
     auto miPrev = mapBlockIndex.find(block.hashPrevBlock);
     if (miPrev != mapBlockIndex.end())
@@ -2703,12 +2706,14 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
 
 bool CheckBlockHeader(
     const CBlockHeader& block,
-    CValidationState& state,
     uint256& hashBlock,
+    CValidationState& state,
     const CChainParams& chainparams,
     bool fCheckPOW)
 {
     string strRejectReasonDetails;
+    if (hashBlock.IsNull())
+        hashBlock = block.GetHashCurrent();
     // Check block version
     if (block.nVersion < MIN_ALLOWED_BLOCK_VERSION)
     {
@@ -2718,7 +2723,6 @@ bool CheckBlockHeader(
     }
     
     const auto &consensusParams = chainparams.GetConsensus();
-    hashBlock = block.GetHash();
     //INGEST->!!!
     if (chainparams.IsRegTest())
     {
@@ -2773,6 +2777,7 @@ bool CheckBlockHeader(
 
 bool CheckBlock(
     const CBlock& block,
+    uint256& hashBlock,
     CValidationState& state,
     const CChainParams& chainparams,
     libzcash::ProofVerifier& verifier,
@@ -2785,8 +2790,7 @@ bool CheckBlock(
 
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.
-    uint256 hashBlock;
-    if (!CheckBlockHeader(block, state, hashBlock, chainparams, fCheckPOW))
+    if (!CheckBlockHeader(block, hashBlock, state, chainparams, fCheckPOW))
         return false;
 
     string strRejectReasonDetails;
@@ -2796,7 +2800,7 @@ bool CheckBlock(
 /*
         CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
         stream << block;
-        LogPrintf("CBlock(%s, size=%zu): %s\n", block.GetHash().ToString(), stream.size(), HexStr(stream.cbegin(), stream.cend()));
+        LogPrintf("CBlock(%s, size=%zu): %s\n", hashBlock.ToString(), stream.size(), HexStr(stream.cbegin(), stream.cend()));
  */
         bool bMutated = false;
         // calculate merkle root for this block and compare with the value in the block
@@ -3000,14 +3004,14 @@ bool CheckBlockSignature(const CBlockHeader& blockHeader, const CBlockIndex* pin
  */
 bool ContextualCheckBlockHeader(
     const CBlockHeader& blockHeader,
+    const uint256& hashBlock,
     CValidationState& state,
     const CChainParams& chainparams,
     const bool bGenesisBlock,
     CBlockIndex * const pindexPrev)
 {
     const auto& consensusParams = chainparams.GetConsensus();
-    const uint256 hash = blockHeader.GetHash();
-    if (hash == consensusParams.hashGenesisBlock)
+    if (hashBlock == consensusParams.hashGenesisBlock)
         return true;
 
     assert(pindexPrev);
@@ -3023,7 +3027,7 @@ bool ContextualCheckBlockHeader(
     if (bNeedSignature && blockHeader.sPastelID.empty())
     {
         strRejectReasonDetails = strprintf("mnid is not defined in the block header (%s, height=%d)",
-            hash.ToString(), nHeight);
+            hashBlock.ToString(), nHeight);
 		return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
 			REJECT_INVALID, "no-mnid-in-block", false, strRejectReasonDetails);
     }
@@ -3031,7 +3035,7 @@ bool ContextualCheckBlockHeader(
     // Check proof of work
     if (blockHeader.nBits != GetNextWorkRequired(pindexPrev, &blockHeader, consensusParams))
     {
-        strRejectReasonDetails = strprintf("incorrect proof of work for block %s", hash.ToString());
+        strRejectReasonDetails = strprintf("incorrect proof of work for block %s", hashBlock.ToString());
         return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
             REJECT_INVALID, "bad-diffbits", false, strRejectReasonDetails);
     }
@@ -3039,7 +3043,7 @@ bool ContextualCheckBlockHeader(
     // Check timestamp against prev
     if (blockHeader.GetBlockTime() <= pindexPrev->GetMedianTimePast())
     {
-        strRejectReasonDetails = strprintf("block's timestamp is too early for block %s", hash.ToString());
+        strRejectReasonDetails = strprintf("block's timestamp is too early for block %s", hashBlock.ToString());
         return state.Invalid(error("%s: %s", __func__, strRejectReasonDetails),
             REJECT_INVALID, "time-too-old", strRejectReasonDetails);
     }
@@ -3050,7 +3054,8 @@ bool ContextualCheckBlockHeader(
         auto pcheckpoint = Checkpoints::GetLastCheckpoint(chainparams.Checkpoints());
         if (pcheckpoint && nHeight < pcheckpoint->nHeight)
         {
-            return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d)", __func__, nHeight));
+            return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d, %s)", 
+                __func__, nHeight, hashBlock.ToString()));
         }
     }
 
@@ -3089,9 +3094,9 @@ bool AcceptBlockHeader(
 
     string strRejectReasonDetails;
     // Check for duplicate
-    uint256 hash = block.GetHash();
+    uint256 hashBlock = block.GetHashCurrent();
     CBlockIndex* pindex = nullptr;
-    auto miSelf = mapBlockIndex.find(hash);
+    auto miSelf = mapBlockIndex.find(hashBlock);
     if (miSelf != mapBlockIndex.end())
     {
         // Block header is already known.
@@ -3107,23 +3112,23 @@ bool AcceptBlockHeader(
         }
         // if previous block has failed contextual validation - add it to unlinked block map as well
         if (gl_BlockCache.check_prev_block(pindex))
-            LogFnPrint("net", "block %s (height=%d) added to cached unlinked map", hash.ToString(), pindex->nHeight);
+            LogFnPrint("net", "block %s (height=%d) added to cached unlinked map", hashBlock.ToString(), pindex->nHeight);
         return true;
     }
 
-    if (!CheckBlockHeader(block, state, hash, chainparams))
+    if (!CheckBlockHeader(block, hashBlock, state, chainparams))
         return false;
 
     // Get prev block index
     CBlockIndex* pindexPrev = nullptr;
     const auto &consensusParams = chainparams.GetConsensus();
-    const bool bGenesisBlock = hash == consensusParams.hashGenesisBlock;
+    const bool bGenesisBlock = hashBlock == consensusParams.hashGenesisBlock;
     if (!bGenesisBlock)
     {
         const auto mi = mapBlockIndex.find(block.hashPrevBlock);
         if (mi == mapBlockIndex.cend())
         {
-            strRejectReasonDetails = strprintf("previous block (%s) not found for block %s", hash.ToString());
+            strRejectReasonDetails = strprintf("previous block (%s) not found for block %s", hashBlock.ToString());
             return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
                 0, "bad-prevblk", false, strRejectReasonDetails);
         }
@@ -3137,7 +3142,7 @@ bool AcceptBlockHeader(
         }
     }
 
-    if (!ContextualCheckBlockHeader(block, state, chainparams, bGenesisBlock, pindexPrev))
+    if (!ContextualCheckBlockHeader(block, hashBlock, state, chainparams, bGenesisBlock, pindexPrev))
         return false;
 
     if (!pindex)
@@ -3202,7 +3207,8 @@ bool AcceptBlock(
 
     // See method docstring for why this is always disabled
     auto verifier = libzcash::ProofVerifier::Disabled();
-    if (!CheckBlock(block, state, chainparams, verifier, true, true, false, pindex->pprev) || 
+    uint256 hashBlock;
+    if (!CheckBlock(block, hashBlock, state, chainparams, verifier, true, true, false, pindex->pprev) || 
         !ContextualCheckBlock(block, state, chainparams, pindex->pprev))
     {
         if (state.IsInvalid() && !state.CorruptionPossible())
@@ -3297,17 +3303,19 @@ bool ProcessNewBlock(CValidationState &state, const CChainParams& chainparams,
 {
     // Preliminary checks
     auto verifier = libzcash::ProofVerifier::Disabled();
-    const bool bBlockChecked = CheckBlock(*pblock, state, chainparams, verifier, true, true, true);
+    uint256 hashBlock;
+    const bool bBlockChecked = CheckBlock(*pblock, hashBlock, state, chainparams, verifier, true, true, true);
 
     const auto &consensusParams = chainparams.GetConsensus();
     {
         LOCK(cs_main);
-        bool fRequested = MarkBlockAsReceived(pblock->GetHash());
+        bool fRequested = MarkBlockAsReceived(hashBlock);
         fRequested |= fForceProcessing;
         if (!bBlockChecked)
         {
             if (!state.GetRejectReason().empty())
-                return error("%s: CheckBlock FAILED, reject reason: %s", __func__, state.GetRejectReason());
+                return error("%s: CheckBlock %s FAILED, reject reason: %s", 
+                    __func__, hashBlock.ToString(), state.GetRejectReason());
 
             return error("%s: CheckBlock FAILED", __func__);
         }
@@ -3324,9 +3332,10 @@ bool ProcessNewBlock(CValidationState &state, const CChainParams& chainparams,
             if (state.IsRejectCode(REJECT_MISSING_INPUTS))
                 return false;
             if (!state.GetRejectReason().empty())
-                return error("%s: AcceptBlock FAILED, reject reason: %s", __func__, state.GetRejectReason());
+                return error("%s: AcceptBlock %s FAILED, reject reason: %s", 
+                    __func__, hashBlock.ToString(), state.GetRejectReason());
 
-            return error("%s: AcceptBlock FAILED", __func__);
+            return error("%s: AcceptBlock %s FAILED", __func__, hashBlock.ToString());
         }
     }
     // set new block header tip and send notifications
@@ -3361,9 +3370,10 @@ bool TestBlockValidity(
     auto verifier = libzcash::ProofVerifier::Disabled();
 
     // NOTE: CheckBlockHeader is called by CheckBlock
-    if (!ContextualCheckBlockHeader(block, state, chainparams, false, pindexPrev))
+    uint256 hashBlock = block.GetHashCurrent();
+    if (!ContextualCheckBlockHeader(block, hashBlock, state, chainparams, false, pindexPrev))
         return false;
-    if (!CheckBlock(block, state, chainparams, verifier, fCheckPOW, fCheckMerkleRoot, false, pindexPrev))
+    if (!CheckBlock(block, hashBlock, state, chainparams, verifier, fCheckPOW, fCheckMerkleRoot, false, pindexPrev))
         return false;
     if (!ContextualCheckBlock(block, state, chainparams, pindexPrev))
         return false;
@@ -3725,7 +3735,8 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         if (!ReadBlockFromDisk(block, pindex, consensusParams))
             return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
         // check level 1: verify block validity
-        if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams, verifier, true, true, false, pindex->pprev))
+        uint256 hashBlock;
+        if (nCheckLevel >= 1 && !CheckBlock(block, hashBlock, state, chainparams, verifier, true, true, false, pindex->pprev))
             return errorFn(__METHOD_NAME__, "*** found bad block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex)
@@ -4423,7 +4434,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
 
                 // detect out of order blocks (if we can't find a parent block with hashPrevBlock)
                 // store them in mapBlocksUnknownParent to process later 
-                const uint256 hash = block.GetHash();
+                const uint256 hash = block.GetHashCurrent();
                 const bool bIsGenesisBlock = hash == consensusParams.hashGenesisBlock;
                 if (!bIsGenesisBlock && mapBlockIndex.find(block.hashPrevBlock) == mapBlockIndex.end())
                 {
@@ -4460,12 +4471,13 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                         auto it = range.first;
                         if (ReadBlockFromDisk(block, it->second, consensusParams))
                         {
-                            LogPrintf("%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(), head.ToString());
+                            const uint256 hashBlock = block.GetHashCurrent();
+                            LogPrintf("%s: Processing out of order child %s of %s\n", __func__, hashBlock.ToString(), head.ToString());
                             CValidationState dummy(TxOrigin::LOADED_BLOCK);
                             if (ProcessNewBlock(dummy, chainparams, nullptr, &block, true, &it->second))
                             {
                                 nLoaded++;
-                                queue.push_back(block.GetHash());
+                                queue.push_back(hashBlock);
                             }
                         }
                         range.first = mapBlocksUnknownParent.erase(it);
@@ -5588,7 +5600,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
         CBlock block;
         vRecv >> block;
 
-        CInv inv(MSG_BLOCK, block.GetHash());
+        CInv inv(MSG_BLOCK, block.GetHashCurrent());
         LogFnPrint("net", "received block %s, peer=%d", inv.hash.ToString(), pfrom->id);
 
         pfrom->AddInventoryKnown(inv);

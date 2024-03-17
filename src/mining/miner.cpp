@@ -509,19 +509,20 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
         reservekey.KeepKey();
     }
 
+    const uint256 hashBlock = pblock->GetHashCurrent();
     // Track how many getdata requests this block gets
     {
         LOCK(wallet.cs_wallet);
-        wallet.mapRequestCount[pblock->GetHash()] = 0;
+        wallet.mapRequestCount[hashBlock] = 0;
     }
 #endif
 
     // Process this block the same as if we had received it from another node
     CValidationState state(TxOrigin::MINED_BLOCK);
     if (!ProcessNewBlock(state, chainparams, nullptr, pblock, true, nullptr))
-        return error("PastelMiner: ProcessNewBlock, block not accepted");
+        return error("PastelMiner: ProcessNewBlock, block %s not accepted", hashBlock.ToString());
 
-    TrackMinedBlock(pblock->GetHash());
+    TrackMinedBlock(hashBlock);
 
     return true;
 }
@@ -759,14 +760,21 @@ void static PastelMiner(const int nThreadNo)
                     pblock->nSolution = soln;
                     solutionTargetChecks.increment();
 
-                    if (UintToArith256(pblock->GetHash()) > hashTarget)
+                    const uint256 hashCanonical = pblock->GetHash(BLOCK_HASH_CANONICAL);
+                    if (UintToArith256(hashCanonical) > hashTarget)
                         return false;
 
                     // Found a solution
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     LogPrintf("PastelMiner:\n");
-                    LogPrintf("proof-of-work found\n    hash: %s\n  target: %s\n%s", 
-                        pblock->GetHash().GetHex(), hashTarget.GetHex(),
+                    LogPrintf(R"(proof-of-work found
+    canonical hash: %s
+	    block hash: %s
+            target: %s
+%s)", 
+                        hashCanonical.GetHex(), 
+                        pblock->GetHashCurrent().GetHex(),
+                        hashTarget.GetHex(),
                         pblock->sPastelID.empty() ? "" : strprintf("    mnid: %s\n", pblock->sPastelID));
 #ifdef ENABLE_WALLET
                     if (ProcessBlockFound(pblock, chainparams, *pwallet, reservekey))

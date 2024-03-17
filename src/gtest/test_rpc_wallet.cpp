@@ -894,7 +894,7 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
     block.hashPrevBlock = chainActive.Tip()->GetBlockHash();
     block.vtx.push_back(wtx);
     block.hashMerkleRoot = block.BuildMerkleTree();
-    auto blockHash = block.GetHash();
+    auto blockHash = block.GetHashCurrent();
     CBlockIndex fakeIndex {block};
     fakeIndex.nHeight = 1;
     mapBlockIndex.emplace(blockHash, &fakeIndex);

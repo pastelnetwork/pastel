@@ -14,7 +14,17 @@
 
 using namespace std;
 
-uint256 CBlockHeader::GetHash() const noexcept
+uint256 CBlockHeader::GetHash(const bool bCanonical) noexcept
+{
+    uint32_t nSavedVersion = nVersion;
+    if (bCanonical && (nVersion != CBlockHeader::VERSION_CANONICAL))
+        nVersion =  CBlockHeader::VERSION_CANONICAL;
+    uint256 hash = SerializeHash(*this);
+    nVersion = nSavedVersion;
+    return hash;
+}
+
+uint256 CBlockHeader::GetHashCurrent() const noexcept
 {
     return SerializeHash(*this);
 }
@@ -131,7 +141,7 @@ string CBlock::ToString() const
 {
     stringstream s;
     s << strprintf("CBlock(hash=%s, ver=%d, hashPrevBlock=%s, hashMerkleRoot=%s, hashFinalSaplingRoot=%s, nTime=%u, nBits=%08x, nNonce=%s, vtx=%u)\n",
-        GetHash().ToString(),
+        GetHashCurrent().ToString(),
         nVersion,
         hashPrevBlock.ToString(),
         hashMerkleRoot.ToString(),

@@ -184,7 +184,7 @@ bool CZMQPublishRawBlockNotifier::NotifyBlock(const CBlockIndex *pindex)
 
 bool CZMQPublishCheckedBlockNotifier::NotifyBlock(const CBlock& block)
 {
-    LogPrint("zmq", "zmq: Publish checkedblock %s\n", block.GetHash().GetHex());
+    LogPrint("zmq", "zmq: Publish checkedblock %s\n", block.GetHashCurrent().GetHex());
 
     CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
     {
