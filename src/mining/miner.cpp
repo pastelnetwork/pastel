@@ -509,7 +509,7 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
         reservekey.KeepKey();
     }
 
-    const uint256 hashBlock = pblock->GetHashCurrent();
+    const uint256 hashBlock = pblock->GetHash();
     // Track how many getdata requests this block gets
     {
         LOCK(wallet.cs_wallet);
@@ -760,22 +760,20 @@ void static PastelMiner(const int nThreadNo)
                     pblock->nSolution = soln;
                     solutionTargetChecks.increment();
 
-                    const uint256 hashCanonical = pblock->GetHash(BLOCK_HASH_CANONICAL);
-                    if (UintToArith256(hashCanonical) > hashTarget)
+                    const uint256 hash = pblock->GetHash();
+                    if (UintToArith256(hash) > hashTarget)
                         return false;
 
                     // Found a solution
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     LogPrintf("PastelMiner:\n");
                     LogPrintf(R"(proof-of-work found
-    canonical hash: %s
 	    block hash: %s
             target: %s
 %s)", 
-                        hashCanonical.GetHex(), 
-                        pblock->GetHashCurrent().GetHex(),
+                        hash.GetHex(), 
                         hashTarget.GetHex(),
-                        pblock->sPastelID.empty() ? "" : strprintf("    mnid: %s\n", pblock->sPastelID));
+                        pblock->sPastelID.empty() ? "" : strprintf("              mnid: %s\n", pblock->sPastelID));
 #ifdef ENABLE_WALLET
                     if (ProcessBlockFound(pblock, chainparams, *pwallet, reservekey))
 #else

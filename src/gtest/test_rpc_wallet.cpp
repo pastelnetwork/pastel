@@ -1,5 +1,5 @@
 // Copyright (c) 2013-2014 The Bitcoin Core developers
-// Copyright (c) 2021-2023 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
@@ -894,7 +894,7 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
     block.hashPrevBlock = chainActive.Tip()->GetBlockHash();
     block.vtx.push_back(wtx);
     block.hashMerkleRoot = block.BuildMerkleTree();
-    auto blockHash = block.GetHashCurrent();
+    auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
     fakeIndex.nHeight = 1;
     mapBlockIndex.emplace(blockHash, &fakeIndex);

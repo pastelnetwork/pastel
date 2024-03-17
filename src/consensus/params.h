@@ -86,6 +86,8 @@ struct Params
     unsigned int nEquihashK = 0;
     uint256 powLimit;
     std::optional<uint32_t> nPowAllowMinDifficultyBlocksAfterHeight;
+    // set minimum difficulty at the specified height for nPowAveragingWindow blocks
+    std::optional<uint32_t> nPowSetMinDifficultyAfterHeight;
     int64_t nPowAveragingWindow = 0;
     int64_t nPowMaxAdjustDown = 0;
     int64_t nPowMaxAdjustUp = 0;

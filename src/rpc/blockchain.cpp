@@ -136,12 +136,7 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
 UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool txDetails = false)
 {
     UniValue result(UniValue::VOBJ);
-    result.pushKV("hash", block.GetHashCurrent().GetHex());
-    if (block.nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
-    {
-        CBlockHeader blockHeader = block.GetBlockHeader();
-        result.pushKV("hashCanonical", blockHeader.GetHash(BLOCK_HASH_CANONICAL).GetHex());
-    }
+    result.pushKV("hash", block.GetHash().GetHex());
     int confirmations = -1;
     // Only report confirmations if the block is on the main chain
     if (chainActive.Contains(blockindex))
@@ -1123,12 +1118,7 @@ Examples:
 UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
 {
     UniValue result(UniValue::VOBJ);
-    result.pushKV("hash", block.GetHashCurrent().GetHex());
-    if (block.nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
-    {
-        CBlockHeader blockHeader = block.GetBlockHeader();
-        result.pushKV("hashCanonical", blockHeader.GetHash(BLOCK_HASH_CANONICAL).GetHex());
-    }
+    result.pushKV("hash", block.GetHash().GetHex());
     // Only report confirmations if the block is on the main chain
     if (!chainActive.Contains(blockindex))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block is an orphan");

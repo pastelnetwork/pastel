@@ -129,13 +129,13 @@ public:
         READWRITE(hashFinalSaplingRoot);
         READWRITE(nTime);
         READWRITE(nBits);
-        READWRITE(nNonce);
-        READWRITE(nSolution);
         if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
         {
             READWRITE(sPastelID);
             READWRITE(prevMerkleRootSignature);
         }
+        READWRITE(nNonce);
+        READWRITE(nSolution);
     }
 
     void Clear() noexcept
@@ -154,16 +154,12 @@ public:
 
     bool IsNull() const noexcept { return (nBits == 0); }
 
-    uint256 GetHash(const bool bCanonical) noexcept;
-    uint256 GetHashCurrent() const noexcept;
+    uint256 GetHash() const noexcept;
     int64_t GetBlockTime() const noexcept { return static_cast<int64_t>(nTime); }
     // check if the block header contains Pastel ID and signature of the 
     // previous block merkle root
     bool HasPrevBlockSignature() const noexcept;
 };
-
-constexpr bool BLOCK_HASH_CANONICAL = true;
-constexpr bool BLOCK_HASH_CURRENT = false;
 
 /**
 * Block class, contains header and transactions.
@@ -272,9 +268,14 @@ public:
         READWRITE(hashFinalSaplingRoot);
         READWRITE(nTime);
         READWRITE(nBits);
+        if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
+        {
+            READWRITE(sPastelID);
+            READWRITE(prevMerkleRootSignature);
+        }
     }
 
-    constexpr size_t GetReserveSize(bool bIncludeV5Fields = false) const noexcept
+    constexpr size_t GetReserveSize() const noexcept
     {
         size_t nReserveSize = sizeof(nVersion) +
             sizeof(hashPrevBlock) +
@@ -282,10 +283,12 @@ public:
             sizeof(hashFinalSaplingRoot) +
             sizeof(nTime) +
             sizeof(nBits);
-        if (bIncludeV5Fields)
-			nReserveSize += 
+        if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
+        {
+            nReserveSize +=
                 87 + // 86-bytes Pastel ID + 1-byte size
-			    115;  // 114-bytes prev merkle root signature + 1-byte size
+                115;  // 114-bytes prev merkle root signature + 1-byte size
+        }
         return nReserveSize;
 	}
 };

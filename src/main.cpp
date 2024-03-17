@@ -629,7 +629,7 @@ bool GetTransaction(const uint256 &txid, CTransaction &txOut, const Consensus::P
                     }
                     if (!bReadFromTxIndex)
                         break;
-                    hashBlock = header.GetHashCurrent();
+                    hashBlock = header.GetHash();
                     if (txOut.GetHash() != txid)
                     {
                         bRet = errorFn(__METHOD_NAME__, "txid mismatch");
@@ -736,7 +736,7 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     }
 
     //INGEST->!!!
-    uint256 hashBlock = block.GetHashCurrent();
+    uint256 hashBlock = block.GetHash();
     if (!Params().IsRegTest())
     {
         if (!chainActive.Tip() || chainActive.Tip()->nHeight <= TOP_INGEST_BLOCK)
@@ -749,7 +749,7 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus:
     
     // Check the header
     if (!(CheckEquihashSolution(&block, consensusParams) &&
-          CheckProofOfWork(block.GetHash(BLOCK_HASH_CANONICAL), block.nBits, consensusParams)))
+          CheckProofOfWork(hashBlock, block.nBits, consensusParams)))
         return error("ReadBlockFromDisk: Errors in block %s header at %s", hashBlock.ToString(), pos.ToString());
 
     return true;
@@ -759,7 +759,7 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus
 {
     if (!ReadBlockFromDisk(block, pindex->GetBlockPos(), consensusParams))
         return false;
-    if (block.GetHashCurrent() != pindex->GetBlockHash())
+    if (block.GetHash() != pindex->GetBlockHash())
         return error("ReadBlockFromDisk(CBlock&, CBlockIndex*): GetHash() doesn't match index for %s at %s",
                 pindex->ToString(), pindex->GetBlockPos().ToString());
     //LogPrintf("%s: block\n%s\n", __func__, block.ToString());
@@ -2304,7 +2304,7 @@ bool ActivateBestChain(CValidationState &state, const CChainParams& chainparams,
             if (!pindexMostWork || pindexMostWork == pindexOldTip)
                 return true;
 
-            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHashCurrent() == pindexMostWork->GetBlockHash() ? pblock : nullptr))
+            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : nullptr))
                 return false;
 
             pindexNewTip = chainActive.Tip();
@@ -2549,7 +2549,7 @@ void ReconsiderBlock(CValidationState& state, CBlockIndex *pindex)
 CBlockIndex* AddToBlockIndex(const CBlockHeader& block, const Consensus::Params& consensusParams)
 {
     // Check for duplicates
-    const uint256 hashBlock = block.GetHashCurrent();
+    const uint256 hashBlock = block.GetHash();
     auto it = mapBlockIndex.find(hashBlock);
     if (it != mapBlockIndex.end())
         return it->second;
@@ -2713,7 +2713,7 @@ bool CheckBlockHeader(
 {
     string strRejectReasonDetails;
     if (hashBlock.IsNull())
-        hashBlock = block.GetHashCurrent();
+        hashBlock = block.GetHash();
     // Check block version
     if (block.nVersion < MIN_ALLOWED_BLOCK_VERSION)
     {
@@ -3094,7 +3094,7 @@ bool AcceptBlockHeader(
 
     string strRejectReasonDetails;
     // Check for duplicate
-    uint256 hashBlock = block.GetHashCurrent();
+    uint256 hashBlock = block.GetHash();
     CBlockIndex* pindex = nullptr;
     auto miSelf = mapBlockIndex.find(hashBlock);
     if (miSelf != mapBlockIndex.end())
@@ -3370,7 +3370,7 @@ bool TestBlockValidity(
     auto verifier = libzcash::ProofVerifier::Disabled();
 
     // NOTE: CheckBlockHeader is called by CheckBlock
-    uint256 hashBlock = block.GetHashCurrent();
+    uint256 hashBlock = block.GetHash();
     if (!ContextualCheckBlockHeader(block, hashBlock, state, chainparams, false, pindexPrev))
         return false;
     if (!CheckBlock(block, hashBlock, state, chainparams, verifier, fCheckPOW, fCheckMerkleRoot, false, pindexPrev))
@@ -4434,7 +4434,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
 
                 // detect out of order blocks (if we can't find a parent block with hashPrevBlock)
                 // store them in mapBlocksUnknownParent to process later 
-                const uint256 hash = block.GetHashCurrent();
+                const uint256 hash = block.GetHash();
                 const bool bIsGenesisBlock = hash == consensusParams.hashGenesisBlock;
                 if (!bIsGenesisBlock && mapBlockIndex.find(block.hashPrevBlock) == mapBlockIndex.end())
                 {
@@ -4471,7 +4471,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
                         auto it = range.first;
                         if (ReadBlockFromDisk(block, it->second, consensusParams))
                         {
-                            const uint256 hashBlock = block.GetHashCurrent();
+                            const uint256 hashBlock = block.GetHash();
                             LogPrintf("%s: Processing out of order child %s of %s\n", __func__, hashBlock.ToString(), head.ToString());
                             CValidationState dummy(TxOrigin::LOADED_BLOCK);
                             if (ProcessNewBlock(dummy, chainparams, nullptr, &block, true, &it->second))
@@ -5600,7 +5600,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
         CBlock block;
         vRecv >> block;
 
-        CInv inv(MSG_BLOCK, block.GetHashCurrent());
+        CInv inv(MSG_BLOCK, block.GetHash());
         LogFnPrint("net", "received block %s, peer=%d", inv.hash.ToString(), pfrom->id);
 
         pfrom->AddInventoryKnown(inv);

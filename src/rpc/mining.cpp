@@ -299,7 +299,7 @@ Generate 11 blocks
             {
                 pblock->nSolution = soln;
                 solutionTargetChecks.increment();
-                return CheckProofOfWork(pblock->GetHash(BLOCK_HASH_CANONICAL), pblock->nBits, Params().GetConsensus());
+                return CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus());
             };
             const bool bFound = EhBasicSolveUncancellable(n, k, curr_state, validBlock);
             ehSolverRuns.increment();
@@ -311,7 +311,7 @@ Generate 11 blocks
         if (!ProcessNewBlock(state, chainparams, nullptr, pblock, true, nullptr))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
-        blockHashes.push_back(pblock->GetHashCurrent().GetHex());
+        blockHashes.push_back(pblock->GetHash().GetHex());
     }
     return blockHashes;
 }
@@ -825,7 +825,7 @@ Examples:
             if (!DecodeHexBlk(block, dataval.get_str()))
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
-            uint256 hash = block.GetHashCurrent();
+            uint256 hash = block.GetHash();
             const auto mi = mapBlockIndex.find(hash);
             if (mi != mapBlockIndex.cend())
             {
@@ -1072,7 +1072,7 @@ public:
 protected:
     void BlockChecked(const CBlock& block, const CValidationState& stateIn) override
     {
-        if (block.GetHashCurrent() != hash)
+        if (block.GetHash() != hash)
             return;
         bFound = true;
         state = stateIn;
@@ -1119,7 +1119,7 @@ Examples:
         throw JSONRPCError(RPC_INTERNAL_ERROR, 
             "Your masternode list is not synced yet! Cannot submit a block to the network until the mnsync status (IsSynced=true) shows full sync!");
 
-    uint256 hashBlock = block.GetHashCurrent();
+    uint256 hashBlock = block.GetHash();
     bool fBlockPresent = false;
     {
         LOCK(cs_main);

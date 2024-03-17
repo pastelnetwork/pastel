@@ -1,8 +1,10 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cstdint>
+
 #include <utils/uint256.h>
 #include <utils/util.h>
 #include <utils/streams.h>
@@ -36,16 +38,23 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     //<-INGEST!!!
     
     {
+        const uint32_t nCurrentHeight = static_cast<uint32_t>(pindexLast->nHeight);
         // Comparing to pindexLast->nHeight with >= because this function
         // returns the work required for the block after pindexLast.
         if (params.nPowAllowMinDifficultyBlocksAfterHeight.has_value() &&
-            static_cast<unsigned int>(pindexLast->nHeight) >= params.nPowAllowMinDifficultyBlocksAfterHeight.value())
+            nCurrentHeight >= params.nPowAllowMinDifficultyBlocksAfterHeight.value())
         {
             // Special difficulty rule for testnet:
             // If the new block's timestamp is more than 6 * 2.5 minutes
             // then allow mining of a min-difficulty block.
             if (pblock && pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing * 6)
                 return nProofOfWorkLimit;
+        }
+        if (params.nPowSetMinDifficultyAfterHeight.has_value() &&
+            nCurrentHeight >= params.nPowSetMinDifficultyAfterHeight.value() &&
+            nCurrentHeight <= params.nPowSetMinDifficultyAfterHeight.value() + params.nPowAveragingWindow)
+        {
+            return nProofOfWorkLimit;
         }
     }
 
@@ -159,8 +168,9 @@ bool CheckProofOfWork(const uint256& hashCanonical, unsigned int nBits, const Co
     }
 
     // Check proof of work matches claimed amount
-    if (UintToArith256(hashCanonical) > bnTarget) {
-        LogPrintf("CheckProofOfWork - hash = %s, bnTarget = %s\n", 
+    if (UintToArith256(hashCanonical) > bnTarget)
+    {
+        LogPrintf("CheckProofOfWork - hashCanonical = %s, bnTarget = %s\n", 
                 hashCanonical.ToString(),
                 ArithToUint256(bnTarget).ToString()
                 );

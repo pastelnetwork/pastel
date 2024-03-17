@@ -148,13 +148,18 @@ static void __mineGenBlock(string network, bool tromp, unsigned int n, unsigned 
             // Write the solution to the hash and compute the result.
             pblock->nSolution = soln;
 
-            if (UintToArith256(pblock->GetHash(BLOCK_HASH_CANONICAL)) > hashTarget) {
+            if (UintToArith256(pblock->GetHash()) > hashTarget) {
                 return false;
             }
-            printf("Genesis block for %s found  \n  merkle root hash: %s\n  canonical header hash: %s\n  nonce: %s\n  solution: %s\n",
+            printf(R"(Genesis block for %s found
+       merkle root hash: %s
+      block header hash: %s
+                  nonce: %s
+               solution: %s
+)",
                                                         network.c_str(),
                                                         pblock->hashMerkleRoot.GetHex().c_str(),
-                                                        pblock->GetHash(BLOCK_HASH_CANONICAL).GetHex().c_str(),
+                                                        pblock->GetHash().GetHex().c_str(),
                                                         pblock->nNonce.GetHex().c_str(),
                                                         HexStr(pblock->nSolution).c_str());
             exit(0);
@@ -378,14 +383,14 @@ public:
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_CEZANNE, 170009, MAINNET_CEZANNE_UPGRADE_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_MONET, 170010, MAINNET_MONET_UPGRADE_STARTING_BLOCK);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_VERMEER, 170011, MAINNET_VERMEER_UPGRADE_STARTING_BLOCK);
-        consensus.nPowAllowMinDifficultyBlocksAfterHeight = MAINNET_VERMEER_UPGRADE_STARTING_BLOCK - 1;
+        consensus.nPowSetMinDifficultyAfterHeight = MAINNET_VERMEER_UPGRADE_STARTING_BLOCK - 1;
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
         consensus.nGlobalFeeAdjustmentMultiplier = 5.475;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
-        consensus.nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 1;
+        consensus.nNewMiningAlgorithmHeightDelay = 0;
 
 
         // The best chain should have at least this much work.
@@ -408,7 +413,7 @@ public:
         consensus.nEquihashK = K;
 
         genesis = CreateMainnetGenesisBlock();
-        consensus.hashGenesisBlock = genesis.GetHashCurrent();
+        consensus.hashGenesisBlock = genesis.GetHash();
 #ifndef MINE_GENESIS
         assert(consensus.hashGenesisBlock == MainnetHashGenesisBlock);
         assert(genesis.hashMerkleRoot == MainnetHashMerkleRoot);
@@ -523,7 +528,7 @@ public:
         consensus.nEquihashK = K;
 
         genesis = CreateTestnetGenesisBlock();
-        consensus.hashGenesisBlock = genesis.GetHashCurrent();
+        consensus.hashGenesisBlock = genesis.GetHash();
 #ifndef MINE_GENESIS
         assert(consensus.hashGenesisBlock == TestnetHashGenesisBlock);
 #endif
@@ -594,7 +599,6 @@ public:
         consensus.nPowMaxAdjustDown = 32; // 32% adjustment down
         consensus.nPowMaxAdjustUp = 16; // 16% adjustment up
         consensus.nPowTargetSpacing = static_cast<int64_t>(2.5 * 60);
-        consensus.nPowAllowMinDifficultyBlocksAfterHeight = DEVNET_VERMEER_UPGRADE_STARTING_BLOCK;
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::BASE_SPROUT, 170002, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_TESTDUMMY, 170002, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
         consensus.AddNetworkUpgrade(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, 170005, DEVNET_OVERWINTER_STARTING_BLOCK);
@@ -630,7 +634,7 @@ public:
         consensus.nEquihashK = K;
 
         genesis = CreateDevnetGenesisBlock();
-        consensus.hashGenesisBlock = genesis.GetHashCurrent();
+        consensus.hashGenesisBlock = genesis.GetHash();
 #ifndef MINE_GENESIS
         assert(consensus.hashGenesisBlock == DevnetHashGenesisBlock);
 #endif
@@ -734,7 +738,7 @@ public:
         consensus.nEquihashK = K;
         
         genesis = CreateRegtestGenesisBlock();
-        consensus.hashGenesisBlock = genesis.GetHashCurrent();
+        consensus.hashGenesisBlock = genesis.GetHash();
 #ifndef MINE_GENESIS
         assert(consensus.hashGenesisBlock == RegtestHashGenesisBlock);
 #endif

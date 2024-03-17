@@ -3946,7 +3946,7 @@ int CMerkleTx::SetMerkleBranch(const CBlock& block)
     CBlock blockTmp;
 
     // Update the tx's hashBlock
-    hashBlock = block.GetHashCurrent();
+    hashBlock = block.GetHash();
 
     // Locate the transaction
     for (nIndex = 0; nIndex < static_cast<int>(block.vtx.size()); nIndex++)

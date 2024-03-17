@@ -458,7 +458,7 @@ Examples:
 
     LOCK(cs_main);
 
-    const auto hashBlock = merkleBlock.header.GetHashCurrent();
+    const auto hashBlock = merkleBlock.header.GetHash();
     if (!mapBlockIndex.count(hashBlock) || !chainActive.Contains(mapBlockIndex[hashBlock]))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found in chain");
 

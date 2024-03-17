@@ -266,7 +266,7 @@ TEST(WalletTests, GetConflictedSaplingNotes)
     CBlock block;
     block.vtx.push_back(wtx);
     block.hashMerkleRoot = block.BuildMerkleTree();
-    auto blockHash = block.GetHashCurrent();
+    auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
     mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
@@ -394,7 +394,7 @@ TEST(WalletTests, SaplingNullifierIsSpent) {
     CBlock block;
     block.vtx.push_back(wtx);
     block.hashMerkleRoot = block.BuildMerkleTree();
-    auto blockHash = block.GetHashCurrent();
+    auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
     mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
@@ -462,7 +462,7 @@ TEST(WalletTests, NavigateFromSaplingNullifierToNote) {
     CBlock block;
     block.vtx.push_back(wtx);
     block.hashMerkleRoot = block.BuildMerkleTree();
-    auto blockHash = block.GetHashCurrent();
+    auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
     mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
@@ -558,7 +558,7 @@ TEST(WalletTests, SpentSaplingNoteIsFromMe) {
     CBlock block;
     block.vtx.push_back(wtx);
     block.hashMerkleRoot = block.BuildMerkleTree();
-    auto blockHash = block.GetHashCurrent();
+    auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
     mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
@@ -631,7 +631,7 @@ TEST(WalletTests, SpentSaplingNoteIsFromMe) {
     block2.vtx.push_back(wtx2);
     block2.hashMerkleRoot = block2.BuildMerkleTree();
     block2.hashPrevBlock = blockHash;
-    auto blockHash2 = block2.GetHashCurrent();
+    auto blockHash2 = block2.GetHash();
     CBlockIndex fakeIndex2 {block2};
     mapBlockIndex.emplace(blockHash2, &fakeIndex2);
     fakeIndex2.nHeight = 1;
@@ -711,7 +711,7 @@ TEST(WalletTests, UpdatedSaplingNoteData)
     CBlock block;
     block.vtx.push_back(wtx);
     block.hashMerkleRoot = block.BuildMerkleTree();
-    auto blockHash = block.GetHashCurrent();
+    auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
     mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
@@ -831,7 +831,7 @@ TEST(WalletTests, MarkAffectedSaplingTransactionsDirty) {
     CBlock block;
     block.vtx.push_back(wtx);
     block.hashMerkleRoot = block.BuildMerkleTree();
-    auto blockHash = block.GetHashCurrent();
+    auto blockHash = block.GetHash();
     CBlockIndex fakeIndex {block};
     mapBlockIndex.emplace(blockHash, &fakeIndex);
     chainActive.SetTip(&fakeIndex);
