@@ -612,7 +612,8 @@ public:
         consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
-        consensus.nNewMiningAlgorithmHeightDelay = static_cast<uint32_t>(60 / 2.5) * 1;
+        consensus.nNewMiningAlgorithmHeightDelay = 0;
+        consensus.nPowSetMinDifficultyAfterHeight = DEVNET_VERMEER_UPGRADE_STARTING_BLOCK - 1;
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("0x00");
