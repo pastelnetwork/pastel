@@ -121,7 +121,7 @@ void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, 
         pblock->nBits = GetNextWorkRequired(pindexPrev, pblock, consensusParams);
 }
 
-CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn, const bool v5Block,
+CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn, const bool bV5Block,
     const string& sEligiblePastelID)
 {
     // Create new block
@@ -135,7 +135,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
     if (chainparams.MineBlocksOnDemand())
         pblock->nVersion = gl_MiningSettings.getBlockVersion();
     else
-        pblock->nVersion = v5Block ? CBlockHeader::VERSION_SIGNED_BLOCK : 4;
+        pblock->nVersion = bV5Block ? CBlockHeader::VERSION_SIGNED_BLOCK : 4;
 
     // Add dummy coinbase tx as first transaction
     pblock->vtx.push_back(CTransaction());
@@ -379,10 +379,6 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         nonce >>= 16;
         pblock->nNonce = ArithToUint256(nonce);
 
-        bool bTxHasMnOutputs = false;
-        if (masterNodeCtrl.IsSynced())
-            bTxHasMnOutputs = masterNodeCtrl.masternodeManager.IsTxHasMNOutputs(txNew);
-
         // Fill in header
         pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
         pblock->hashFinalSaplingRoot   = sapling_tree.root();
@@ -391,19 +387,24 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         pblock->nSolution.clear();
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
-        if (bTxHasMnOutputs && !sEligiblePastelID.empty())
+        if (bV5Block)
         {
-            SecureString sPassPhrase;
-            if (!gl_MiningSettings.getGenInfo(sPassPhrase))
+            if (!sEligiblePastelID.empty())
             {
-				LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sEligiblePastelID);
-				throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'",
-                    sEligiblePastelID));
-			}
-            string sPrevMerkleRoot(pindexPrev->hashMerkleRoot.cbegin(), pindexPrev->hashMerkleRoot.cend());
-            string sPrevMerkelRootSignature = CPastelID::Sign(sPrevMerkleRoot, sEligiblePastelID, move(sPassPhrase));
-            pblock->sPastelID = sEligiblePastelID;
-            pblock->prevMerkleRootSignature = string_to_vector(sPrevMerkelRootSignature);
+                SecureString sPassPhrase;
+                if (!gl_MiningSettings.getGenInfo(sPassPhrase))
+                {
+                    LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sEligiblePastelID);
+                    throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'",
+                        sEligiblePastelID));
+                }
+                string sPrevMerkleRoot(pindexPrev->hashMerkleRoot.cbegin(), pindexPrev->hashMerkleRoot.cend());
+                string sPrevMerkelRootSignature = CPastelID::Sign(sPrevMerkleRoot, sEligiblePastelID, move(sPassPhrase));
+                pblock->sPastelID = sEligiblePastelID;
+                pblock->prevMerkleRootSignature = string_to_vector(sPrevMerkelRootSignature);
+            }
+            else
+                LogFnPrint("mining", "WARNING ! v5 block cannot be signed by MasterNode: mnid is empty");
         }
         CValidationState state(TxOrigin::MINED_BLOCK);
         if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false))
@@ -678,7 +679,7 @@ void static PastelMiner(const int nThreadNo)
                         break;
                     fnWaitFor(5);
                 } while (true);
-                LogFnPrint("mining", "MasterNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value_or("not defined"));
+                LogFnPrint("MasterNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value_or("not defined"));
 
                 gl_bEligibleForMiningNextBlock = true;
                 miningTimer.start();
@@ -768,7 +769,7 @@ void static PastelMiner(const int nThreadNo)
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     LogPrintf("PastelMiner:\n");
                     LogPrintf(R"(proof-of-work found
-	    block hash: %s
+        block hash: %s
             target: %s
 %s)", 
                         hash.GetHex(), 

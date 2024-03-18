@@ -2891,7 +2891,6 @@ bool CheckBlock(
     // Check transactions
     size_t nCoinBaseTransactions = 0;
     unsigned int nSigOps = 0;
-    bool bHasMnPaymentInCoinbase = false;
     const bool bSnEligibilityCheckAllowed = masterNodeCtrl.SnEligibilityCheckAllowed();
     for (const auto& tx : block.vtx)
     {
@@ -2903,8 +2902,6 @@ bool CheckBlock(
                 return state.DoS(100, error("%s: %s", __func__, strRejectReasonDetails),
                     REJECT_INVALID, "bad-cb-multiple", false, strRejectReasonDetails);
             }
-            if (bSnEligibilityCheckAllowed && !fSkipSnEligibilityChecks && block.HasPrevBlockSignature())
-                bHasMnPaymentInCoinbase = masterNodeCtrl.masternodeManager.IsTxHasMNOutputs(tx);
         }
         if (!CheckTransaction(tx, state, verifier))
             return error("%s: CheckTransaction failed", __func__);
@@ -2919,7 +2916,7 @@ bool CheckBlock(
     }
 
     // check only blocks that were mined/generated recently within last 30 mins
-    if (bHasMnPaymentInCoinbase && !fSkipSnEligibilityChecks &&
+    if (block.HasPrevBlockSignature() && !fSkipSnEligibilityChecks &&
         (block.GetBlockTime() > (GetTime() - BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS)) &&
         is_enum_any_of(state.getTxOrigin(), TxOrigin::MINED_BLOCK, TxOrigin::MSG_BLOCK, TxOrigin::GENERATED))
     {
