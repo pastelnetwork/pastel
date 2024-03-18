@@ -388,13 +388,14 @@ bool ConnectBlock(
 /** Context-independent validity checks */
 bool CheckBlockHeader(
     const CBlockHeader& block,
-    CValidationState& state,
     uint256& hashBlock,
+    CValidationState& state,
     const CChainParams& chainparams,
     bool fCheckPOW = true);
 
 bool CheckBlock(
     const CBlock& block,
+    uint256& hashBlock,
     CValidationState& state,
     const CChainParams& chainparams,
     libzcash::ProofVerifier& verifier,
@@ -408,6 +409,7 @@ bool CheckBlock(
  *  UTXO-related validity checks are done in ConnectBlock(). */
 bool ContextualCheckBlockHeader(
     const CBlockHeader& block,
+    const uint256& hashBlock,
     CValidationState& state,
     const CChainParams& chainparams,
     const bool bGenesisBlock,

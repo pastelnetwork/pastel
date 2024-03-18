@@ -341,7 +341,7 @@ TEST(Miner, CreateNewBlock_validity)
         CValidationState state(TxOrigin::MINED_BLOCK);
         EXPECT_TRUE(ProcessNewBlock(state, nullptr, pblock, true, nullptr));
         EXPECT_TRUE(state.IsValid()) << state.GetRejectReason();
-        pblock->hashPrevBlock = pblock->GetHash();
+        pblock->hashPrevBlock = pblock->GetHash(BLOCK_HASH_CURRENT);
 
         // Need to recreate the template each round because of mining slow start
         delete pblocktemplate;

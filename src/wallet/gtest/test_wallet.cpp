@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021-2023 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <set>
@@ -226,7 +226,8 @@ TEST(WalletTests, FindMySaplingNotes) {
 }
 
 // Generate note A and spend to create note B, from which we spend to create two conflicting transactions
-TEST(WalletTests, GetConflictedSaplingNotes) {
+TEST(WalletTests, GetConflictedSaplingNotes)
+{
     SelectParams(ChainNetwork::REGTEST);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::ALWAYS_ACTIVE);

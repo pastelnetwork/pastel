@@ -1119,11 +1119,11 @@ Examples:
         throw JSONRPCError(RPC_INTERNAL_ERROR, 
             "Your masternode list is not synced yet! Cannot submit a block to the network until the mnsync status (IsSynced=true) shows full sync!");
 
-    uint256 hash = block.GetHash();
+    uint256 hashBlock = block.GetHash();
     bool fBlockPresent = false;
     {
         LOCK(cs_main);
-        const auto mi = mapBlockIndex.find(hash);
+        const auto mi = mapBlockIndex.find(hashBlock);
         if (mi != mapBlockIndex.cend())
         {
             CBlockIndex *pindex = mi->second;
@@ -1137,7 +1137,7 @@ Examples:
     }
 
     CValidationState state(TxOrigin::MINED_BLOCK);
-    submitblock_StateCatcher sc(block.GetHash());
+    submitblock_StateCatcher sc(hashBlock);
     bool fAccepted = false;
     RegisterValidationInterface(&sc);
     {

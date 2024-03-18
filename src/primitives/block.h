@@ -52,6 +52,7 @@ public:
 
     // current version of the block header
     static constexpr int32_t CURRENT_VERSION = 5;
+    static constexpr int32_t VERSION_CANONICAL = 4;
     static constexpr int32_t VERSION_SIGNED_BLOCK = 5;
 
     CBlockHeader() noexcept
@@ -128,13 +129,13 @@ public:
         READWRITE(hashFinalSaplingRoot);
         READWRITE(nTime);
         READWRITE(nBits);
-        READWRITE(nNonce);
-        READWRITE(nSolution);
         if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
         {
             READWRITE(sPastelID);
             READWRITE(prevMerkleRootSignature);
         }
+        READWRITE(nNonce);
+        READWRITE(nSolution);
     }
 
     void Clear() noexcept
@@ -267,18 +268,28 @@ public:
         READWRITE(hashFinalSaplingRoot);
         READWRITE(nTime);
         READWRITE(nBits);
+        if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
+        {
+            READWRITE(sPastelID);
+            READWRITE(prevMerkleRootSignature);
+        }
     }
 
     constexpr size_t GetReserveSize() const noexcept
     {
-		return sizeof(nVersion) +
-			sizeof(hashPrevBlock) +
-			sizeof(hashMerkleRoot) +
-			sizeof(hashFinalSaplingRoot) +
-			sizeof(nTime) +
-			sizeof(nBits) +
-			87 + // 86-bytes Pastel ID + 1-byte size
-			115;  // 114-bytes prev merkle root signature + 1-byte size
+        size_t nReserveSize = sizeof(nVersion) +
+            sizeof(hashPrevBlock) +
+            sizeof(hashMerkleRoot) +
+            sizeof(hashFinalSaplingRoot) +
+            sizeof(nTime) +
+            sizeof(nBits);
+        if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
+        {
+            nReserveSize +=
+                87 + // 86-bytes Pastel ID + 1-byte size
+                115;  // 114-bytes prev merkle root signature + 1-byte size
+        }
+        return nReserveSize;
 	}
 };
 

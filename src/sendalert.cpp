@@ -75,15 +75,15 @@ void ThreadSendAlert()
     CAlert alert;
     alert.nRelayUntil   = GetTime() + 15 * 60;
     alert.nExpiration   = GetTime() + 10 * 365 * DAYS;
-    alert.nID           = 1007;  // alert ID
-    alert.nCancel       = 1006;  // cancels previous messages up to this ID number
+    alert.nID           = 1012;  // alert ID
+    alert.nCancel       = 1011;  // cancels previous messages up to this ID number
 
     // These versions are protocol versions
     // 170002 : 1.0.0
     // 170006 : 1.1.2
     // 170007 : 2.0.0
     alert.nMinVer       = 170002;
-    alert.nMaxVer       = 170008;
+    alert.nMaxVer       = 170010;
 
     //
     // main.cpp:
@@ -93,7 +93,7 @@ void ThreadSendAlert()
     //  4000 or higher will put the RPC into safe mode
     alert.nPriority     = ALERT_PRIORITY_SAFE_MODE;
     alert.strComment    = "";
-    alert.strStatusBar  = "Your pasteld client version has degraded networking behavior. Please update to the most recent version of Pastel (1.1.2 or later).";
+    alert.strStatusBar  = "WARNING: You are running a version that is no longer compatible-- upgrade your node here, or you won't be able to connect to the network: https://github.com/PastelNetwork/Pastel";
     alert.strRPCError   = alert.strStatusBar;
 
     // Set specific client version/versions here. If setSubVer is empty, no filtering on subver is done:

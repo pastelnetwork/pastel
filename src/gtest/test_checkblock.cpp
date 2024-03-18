@@ -21,7 +21,8 @@ TEST(CheckBlock, VersionTooLow)
 
     MockCValidationState state(TxOrigin::UNKNOWN);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "version-too-low", false, Ne(""))).Times(1);
-    EXPECT_FALSE(CheckBlock(block, state, Params(), verifier, false, false));
+    uint256 hashBlock;
+    EXPECT_FALSE(CheckBlock(block, hashBlock, state, Params(), verifier, false, false));
 }
 
 
@@ -57,7 +58,8 @@ TEST(CheckBlock, BlockSproutRejectsBadVersion)
     auto verifier = libzcash::ProofVerifier::Strict();
 
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-version-too-low", false, Ne(""))).Times(1);
-    EXPECT_FALSE(CheckBlock(block, state, chainparams, verifier, false, false));
+    uint256 hashBlock;
+    EXPECT_FALSE(CheckBlock(block, hashBlock, state, chainparams, verifier, false, false));
 }
 
 
@@ -368,7 +370,8 @@ TEST(test_checkblock, May15)
         // After May 15'th, big blocks are OK:
         forkingBlock.nTime = tMay15; // Invalidates PoW
         auto verifier = libzcash::ProofVerifier::Strict();
-        EXPECT_TRUE(CheckBlock(forkingBlock, state, Params(), verifier, false, false));
+        uint256 hashBlock;
+        EXPECT_TRUE(CheckBlock(forkingBlock, hashBlock, state, Params(), verifier, false, false));
     }
 
     SetMockTime(0);    
