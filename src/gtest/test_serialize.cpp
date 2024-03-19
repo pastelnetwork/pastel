@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2021-2023 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or httpd://www.opensource.org/licenses/mit-license.php.
 #include <array>
@@ -24,16 +24,16 @@ void check_ser_rep(T thing, v_uint8 expected)
     CDataStream ss(SER_DISK, 0);
     ss << thing;
 
-    EXPECT_EQ(GetSerializeSize(thing, 0, 0) , ss.size());
+    EXPECT_EQ(GetSerializeSize(thing, 0, 0), ss.size());
 
     v_uint8 serialized_representation(ss.begin(), ss.end());
 
-    EXPECT_EQ(serialized_representation , expected);
+    EXPECT_EQ(serialized_representation, expected);
 
     T thing_deserialized;
     ss >> thing_deserialized;
 
-    EXPECT_EQ(thing_deserialized , thing);
+    EXPECT_EQ(thing_deserialized, thing);
 }
 
 class CSerializeMethodsTestSingle
@@ -109,7 +109,7 @@ TEST(test_serialize, arrays)
 
     auto hash = Hash(ss.begin(), ss.end());
 
-    EXPECT_EQ("037a75620362617a" , HexStr(ss.begin(), ss.end()))<< HexStr(ss.begin(), ss.end());
+    EXPECT_EQ("037a75620362617a", HexStr(ss.begin(), ss.end())) << HexStr(ss.begin(), ss.end());
     EXPECT_EQ(hash , uint256S("13cb12b2dd098dced0064fe4897c97f907ba3ed36ae470c2e7fc2b1111eba35a"))<< "actually got: " << hash.ToString();
 
     {
@@ -645,4 +645,121 @@ TEST(test_serialize, protected_serialization)
 	}
 
     EXPECT_EQ(objWrite.num3, objRead.num3);
+}
+
+class CSerializeMethodsTestChecked : public Test
+{
+public:
+    CSerializeMethodsTestChecked() noexcept: 
+        m_nMaxSize(0),
+        m_nTestField(0)
+    {}
+
+    void SetMaxSize(const size_t nMaxSize) noexcept
+    {
+		m_nMaxSize = nMaxSize;
+	}
+
+    void SetTestField(const int nTestField) noexcept
+    {
+        m_nTestField = nTestField;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
+        switch (m_nTestField)
+        {
+            case 1:
+                READWRITE_CHECKED(m_str, m_nMaxSize);
+				break;
+
+            case 2:
+				READWRITE_CHECKED(m_vch, m_nMaxSize);
+                break;
+
+				default:
+                    break;
+        }
+    }
+
+protected:
+    string m_str;   // #1
+    v_uint8 m_vch;  // #2
+
+private:
+    int m_nTestField;
+    size_t m_nMaxSize;
+};
+
+TEST_F(CSerializeMethodsTestChecked, basic_string)
+{
+    SetTestField(1);
+	SetMaxSize(10);
+
+    // test succesfull read/write
+    string str = "123";
+    CDataStream ss(SER_DISK, PROTOCOL_VERSION);
+    ss << str;
+    ss >> *this;
+
+    ss.clear();
+    ss << *this;
+    str.clear();
+    ss >> str;
+    EXPECT_STREQ("123", str.c_str());
+
+    str = "1234567890";
+    ss.clear();
+    ss << str;
+    ss >> *this;
+
+    ss.clear();
+    ss << *this;
+    str.clear();
+    ss >> str;
+    EXPECT_STREQ("1234567890", str.c_str());
+
+    // test failed read/write
+    str = "12345678901";
+    ss.clear();
+    ss << str;
+    EXPECT_THROW(ss >> *this, ios_base::failure);
+
+    m_str = "12345678901";
+    SetMaxSize(10);
+    ss.clear();
+    EXPECT_THROW(ss << *this, ios_base::failure);
+}
+
+TEST_F(CSerializeMethodsTestChecked, vector)
+{
+    SetTestField(2);
+    CDataStream ss(SER_DISK, PROTOCOL_VERSION);
+
+    // test v_uint8
+    SetMaxSize(4);
+    v_uint8 vch = {1, 2, 3, 4};
+    ss.clear();
+    ss << vch;
+    ss >> *this;
+    EXPECT_EQ(vch, m_vch);
+
+    ss.clear();
+    ss << *this;
+    vch.clear();
+    ss >> vch;
+    EXPECT_EQ(m_vch, vch);
+
+    vch = {1, 2, 3, 4, 5};
+    ss.clear();
+    ss << vch;
+    EXPECT_THROW(ss >> *this, ios_base::failure);
+
+    m_vch = {1, 2, 3, 4, 5};
+    SetMaxSize(3);
+    ss.clear();
+    EXPECT_THROW(ss << *this, ios_base::failure);
 }
