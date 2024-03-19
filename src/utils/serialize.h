@@ -1,13 +1,14 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <compat.h>
 #include <compat/endian.h>
 
+#include <cinttypes>
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -209,9 +210,10 @@ enum
     SER_GETHASH         = (1 << 2), // to get hash of object
 };
 
-#define READWRITE(obj)              (::SerReadWrite(s, (obj), ser_action))
-#define READWRITE_PROTECTED(obj)    (::SerReadWriteProtected(s, (obj), ser_action))
-#define READWRITEMANY(...)          (::SerReadWriteMany(s, ser_action, __VA_ARGS__))
+#define READWRITE(obj)                  (::SerReadWrite(s, (obj), ser_action))
+#define READWRITE_PROTECTED(obj)        (::SerReadWriteProtected(s, (obj), ser_action))
+#define READWRITE_CHECKED(obj, maxsize) (::SerReadWriteChecked(s, (obj), ser_action, maxsize))
+#define READWRITEMANY(...)              (::SerReadWriteMany(s, ser_action, __VA_ARGS__))
 
 /** 
  * Implement three methods for serializable objects. These are actually wrappers over
@@ -637,6 +639,26 @@ void Unserialize(Stream& is, std::basic_string<C>& str)
         is.read((char*)&str[0], nSize * sizeof(str[0]));
 }
 
+template<typename Stream, typename C>
+void Serialize_Checked(Stream& os, const std::basic_string<C>& str, const size_t nMaxSize)
+{
+    if (str.size() > nMaxSize)
+        throw std::ios_base::failure(strprintf("string size %zu exceeds limit %zu chars", str.size(), nMaxSize));
+    Serialize(os, str);
+}
+
+template<typename Stream, typename C>
+void Unserialize_Checked(Stream& is, std::basic_string<C>& str, const size_t nMaxSize)
+{
+    const uint64_t nStrSize = ReadCompactSize(is);
+    // Limit size per read so bogus size value won't cause out of memory
+    if (nStrSize > nMaxSize)
+        throw std::ios_base::failure(strprintf("string size %" PRIu64 " exceeds limit %zu chars", nStrSize, nMaxSize));
+    str.resize(nStrSize);
+    if (nStrSize != 0)
+        is.read((char*)&str[0], nStrSize * sizeof(str[0]));
+}
+
 /**
  * prevector
  */
@@ -720,6 +742,7 @@ void Serialize_impl(Stream& os, const std::vector<T, A>& v, const std::shared_pt
     for (typename std::vector<T, A>::const_iterator vi = v.begin(); vi != v.end(); ++vi)
         ::Serialize(os, (*vi));
 }
+
 template<typename Stream, typename T, typename A, typename V>
 void Serialize_impl(Stream& os, const std::vector<T, A>& v, const V&)
 {
@@ -732,6 +755,20 @@ template<typename Stream, typename T, typename A>
 inline void Serialize(Stream& os, const std::vector<T, A>& v)
 {
     Serialize_impl(os, v, T());
+}
+
+template<typename Stream, typename T, typename A, typename V>
+void Serialize_Checked_impl(Stream& os, const std::vector<T, A>& v, const V&, const size_t nMaxSize)
+{
+    if (v.size() > nMaxSize)
+		throw std::ios_base::failure(strprintf("vector size %zu exceeds limit %zu elements", v.size(), nMaxSize));  
+    Serialize_impl(os, v, V()); 
+}
+
+template<typename Stream, typename T, typename A>
+inline void Serialize_Checked(Stream& os, const std::vector<T, A>& v, const size_t nMaxSize)
+{
+    Serialize_Checked_impl(os, v, T(), nMaxSize);
 }
 
 template<typename Stream, typename T, typename A>
@@ -772,6 +809,32 @@ template<typename Stream, typename T, typename A>
 inline void Unserialize(Stream& is, std::vector<T, A>& v)
 {
     Unserialize_impl(is, v, T());
+}
+
+template<typename Stream, typename T, typename A, typename V>
+void Unserialize_Checked_impl(Stream& is, std::vector<T, A>& v, const V&, const size_t nMaxSize)
+{
+    v.clear();
+    const uint64_t nSize = ReadCompactSize(is);
+    if (nSize > nMaxSize)
+		throw std::ios_base::failure(strprintf("vector size %" PRIu64 " exceeds limit %zu elements", nSize, nMaxSize));
+    uint64_t i = 0;
+    uint64_t nMid = 0;
+    while (nMid < nSize)
+    {
+        nMid += 5000000 / sizeof(T);
+        if (nMid > nSize)
+            nMid = nSize;
+        v.resize(nMid);
+        for (; i < nMid; i++)
+            Unserialize(is, v[i]);
+    }
+}
+
+template<typename Stream, typename T, typename A>
+inline void Unserialize_Checked(Stream& is, std::vector<T, A>& v, const size_t nMaxSize)
+{
+    Unserialize_Checked_impl(is, v, T(), nMaxSize);
 }
 
 /**
@@ -1257,6 +1320,24 @@ inline void SerReadWrite(Stream& s, _T& obj, const SERIALIZE_ACTION ser_action)
 }
 
 template <typename Stream, typename _T>
+inline void SerReadWriteChecked(Stream& s, _T& obj, const SERIALIZE_ACTION ser_action, const size_t nMaxSize)
+{
+    switch (ser_action)
+    {
+    case SERIALIZE_ACTION::Read:
+        ::Unserialize_Checked(s, obj, nMaxSize);
+        break;
+
+    case SERIALIZE_ACTION::Write:
+        ::Serialize_Checked(s, obj, nMaxSize);
+        break;
+
+    default:
+        break;
+    }
+}
+
+template <typename Stream, typename _T>
 inline void SerReadWriteProtected(Stream& s, _T& obj, const SERIALIZE_ACTION ser_action)
 {
     switch (ser_action)
@@ -1332,8 +1413,7 @@ public:
 
 template<typename Stream>
 void SerializeMany(Stream& s)
-{
-}
+{}
 
 template<typename Stream, typename Arg>
 void SerializeMany(Stream& s, Arg&& arg)
@@ -1350,8 +1430,7 @@ void SerializeMany(Stream& s, Arg&& arg, Args&&... args)
 
 template<typename Stream>
 inline void UnserializeMany(Stream& s)
-{
-}
+{}
 
 template<typename Stream, typename Arg>
 inline void UnserializeMany(Stream& s, Arg& arg)

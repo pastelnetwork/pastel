@@ -3125,7 +3125,8 @@ bool AcceptBlockHeader(
         const auto mi = mapBlockIndex.find(block.hashPrevBlock);
         if (mi == mapBlockIndex.cend())
         {
-            strRejectReasonDetails = strprintf("previous block (%s) not found for block %s", hashBlock.ToString());
+            strRejectReasonDetails = strprintf("previous block (%s) not found for block %s", 
+                block.hashPrevBlock.ToString(), hashBlock.ToString());
             return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
                 0, "bad-prevblk", false, strRejectReasonDetails);
         }

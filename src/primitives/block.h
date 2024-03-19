@@ -131,8 +131,8 @@ public:
         READWRITE(nBits);
         if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
         {
-            READWRITE(sPastelID);
-            READWRITE(prevMerkleRootSignature);
+            READWRITE_CHECKED(sPastelID, 100);
+            READWRITE_CHECKED(prevMerkleRootSignature, 200);
         }
         READWRITE(nNonce);
         READWRITE(nSolution);
@@ -270,8 +270,8 @@ public:
         READWRITE(nBits);
         if (nVersion >= CBlockHeader::VERSION_SIGNED_BLOCK)
         {
-            READWRITE(sPastelID);
-            READWRITE(prevMerkleRootSignature);
+            READWRITE_CHECKED(sPastelID, 100);
+            READWRITE_CHECKED(prevMerkleRootSignature, 200);
         }
     }
 
