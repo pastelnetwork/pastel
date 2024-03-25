@@ -85,19 +85,19 @@ static constexpr signed char p_util_hexdigit[] =
   -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
   -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, };
 
-signed char HexDigit(char c)
+inline signed char HexDigit(const char c) noexcept
 {
-    return p_util_hexdigit[(unsigned char)c];
+    return p_util_hexdigit[static_cast<unsigned char>(c)];
 }
 
-bool IsHex(const string& str)
+bool IsHex(const string& str) noexcept
 {
-    for(std::string::const_iterator it(str.begin()); it != str.end(); ++it)
+    for (const char &ch : str)
     {
-        if (HexDigit(*it) < 0)
+        if (HexDigit(ch) < 0)
             return false;
     }
-    return (str.size() > 0) && (str.size()%2 == 0);
+    return (str.size() > 0) && (str.size() % 2 == 0);
 }
 
 v_uint8 ParseHex(const char* psz)
@@ -108,7 +108,7 @@ v_uint8 ParseHex(const char* psz)
     vch.reserve(nLength / 2);
     while (true)
     {
-        while (isspace(*psz))
+        while (isspaceex(*psz))
             psz++;
         signed char c = HexDigit(*psz++);
         if (c == (signed char)-1)

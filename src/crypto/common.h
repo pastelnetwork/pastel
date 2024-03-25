@@ -8,8 +8,8 @@
 #endif
 
 #include <cstdint>
-#include <assert.h>
-#include <string.h>
+#include <cassert>
+#include <cstring>
 
 #include <sodium.h>
 #include <compat/endian.h>

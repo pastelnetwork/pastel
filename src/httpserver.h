@@ -1,10 +1,10 @@
 #pragma once
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
-#include <stdint.h>
+#include <cstdint>
 #include <functional>
 
 constexpr int DEFAULT_HTTP_THREADS = 4;
@@ -61,7 +61,8 @@ public:
     HTTPRequest(struct evhttp_request* req);
     virtual ~HTTPRequest();
 
-    enum RequestMethod {
+    enum RequestMethod
+    {
         UNKNOWN,
         GET,
         POST,
@@ -119,7 +120,7 @@ class HTTPClosure
 {
 public:
     virtual void operator()() = 0;
-    virtual ~HTTPClosure() {}
+    virtual ~HTTPClosure() noexcept = default;
 };
 
 /** Event class. This can be used either as an cross-thread trigger or as a timer.

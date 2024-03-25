@@ -28,6 +28,7 @@
 #include <optional>
 #include <stdexcept>
 
+#include <utils/tinyformat.h>
 #include <utils/enum_util.h>
 #include <utils/prevector.h>
 
