@@ -85,7 +85,7 @@ static constexpr signed char p_util_hexdigit[] =
   -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
   -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, };
 
-inline signed char HexDigit(const char c) noexcept
+signed char HexDigit(const char c) noexcept
 {
     return p_util_hexdigit[static_cast<const unsigned char>(c)];
 }
