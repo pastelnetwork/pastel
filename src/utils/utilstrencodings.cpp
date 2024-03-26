@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdlib>
@@ -87,7 +87,7 @@ static constexpr signed char p_util_hexdigit[] =
 
 inline signed char HexDigit(const char c) noexcept
 {
-    return p_util_hexdigit[static_cast<unsigned char>(c)];
+    return p_util_hexdigit[static_cast<const unsigned char>(c)];
 }
 
 bool IsHex(const string& str) noexcept
@@ -106,15 +106,17 @@ v_uint8 ParseHex(const char* psz)
     v_uint8 vch;
     const size_t nLength = psz ? strlen(psz) : 0;
     vch.reserve(nLength / 2);
-    while (true)
+    while (psz)
     {
         while (isspaceex(*psz))
             psz++;
-        signed char c = HexDigit(*psz++);
-        if (c == (signed char)-1)
+        signed char c = HexDigit(*psz);
+        psz++;
+        if (c == static_cast<signed char>(-1))
             break;
         unsigned char n = (c << 4);
-        c = HexDigit(*psz++);
+        c = HexDigit(*psz);
+        psz++;
         if (c == (signed char)-1)
             break;
         n |= c;
