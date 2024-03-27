@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdio>
@@ -9,6 +9,7 @@
 #include <utils/tinyformat.h>
 #include <utils/uint256.h>
 #include <utils/utilstrencodings.h>
+#include <utils/str_utils.h>
 
 using namespace std;
 
@@ -24,7 +25,13 @@ string base_blob<BITS>::GetHex() const
 {
     char psz[sizeof(data) * 2 + 1];
     for (unsigned int i = 0; i < sizeof(data); i++)
+    {
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+        sprintf_s(psz + i * 2, sizeof(psz) - i * 2, "%02x", data[sizeof(data) - i - 1]);
+#else
         sprintf(psz + i * 2, "%02x", data[sizeof(data) - i - 1]);
+#endif
+    }
     return string(psz, psz + sizeof(data) * 2);
 }
 
@@ -34,7 +41,7 @@ void base_blob<BITS>::SetHex(const char* psz)
     memset(data, 0, sizeof(data));
 
     // skip leading spaces
-    while (isspace(*psz))
+    while (isspaceex(*psz))
         psz++;
 
     // skip 0x
@@ -46,12 +53,16 @@ void base_blob<BITS>::SetHex(const char* psz)
     while (::HexDigit(*psz) != -1)
         psz++;
     psz--;
-    unsigned char* p1 = (unsigned char*)data;
+    unsigned char* p1 = static_cast<unsigned char*>(data);
     unsigned char* pend = p1 + WIDTH;
-    while (psz >= pbegin && p1 < pend) {
-        *p1 = ::HexDigit(*psz--);
-        if (psz >= pbegin) {
-            *p1 |= ((unsigned char)::HexDigit(*psz--) << 4);
+    while (psz >= pbegin && p1 < pend)
+    {
+        *p1 = ::HexDigit(*psz);
+        psz--;
+        if (psz >= pbegin)
+        {
+            *p1 |= ((unsigned char)::HexDigit(*psz) << 4);
+            psz--;
             p1++;
         }
     }

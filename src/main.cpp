@@ -2867,10 +2867,10 @@ bool CheckBlock(
     }
 
     // checks for the block mined by MasterNode with signature of the previous block's merkle root
+    CPastelIDRegTicket mnidTicket;
     if (!block.sPastelID.empty())
     {
         string sPastelID = block.sPastelID;
-        CPastelIDRegTicket mnidTicket;
         mnidTicket.SetKeyOne(move(sPastelID));
 
         // check that this Pastel ID is registered by MasterNode (mnid)
@@ -2921,14 +2921,8 @@ bool CheckBlock(
         is_enum_any_of(state.getTxOrigin(), TxOrigin::MINED_BLOCK, TxOrigin::MSG_BLOCK, TxOrigin::GENERATED))
     {
         // signature validation of the previous block's merkle root is already done in CheckBlockHeader
-        // so here we need to check that PastelID (mnid) of the signer is registered
-        masternode_info_t mnInfo;
-        if (!masterNodeCtrl.masternodeManager.GetAndCacheMasternodeInfo(block.sPastelID, mnInfo))
-        {
-            strRejectReasonDetails = strprintf("MasterNode with mnid='%s' is not in the list", block.sPastelID);
-            return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
-                REJECT_INVALID, "mn-not-listed", false, strRejectReasonDetails);
-        }
+        // so here we need to check that PastelID (mnid) of the signer was eligible to mine the block
+        // mnid ticket is already checked above
 
         if (!pindexPrev)
         {
@@ -2945,7 +2939,7 @@ bool CheckBlock(
 		{
             gl_pMiningEligibilityManager->SetInvalidEligibilityBlock(hashBlock, static_cast<uint32_t>(pindexPrev->nHeight + 1), state.getTxOrigin());
             strRejectReasonDetails = strprintf("MasterNode '%s' (mnid: %s) is not eligible to mine this block %s (mined blocks: %u)",
-                				mnInfo.GetDesc(), block.sPastelID, hashBlock.ToString(), nMinedBlocks);
+                				mnidTicket.getOutpoint().ToStringShort(), block.sPastelID, hashBlock.ToString(), nMinedBlocks);
 			return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
                 REJECT_INVALID, "mnid-not-eligible", false, strRejectReasonDetails);
 		}

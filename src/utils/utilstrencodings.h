@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -41,8 +41,8 @@ std::string HexInt(uint32_t val);
 uint32_t ParseHexToUInt32(const std::string& str);
 v_uint8 ParseHex(const char* psz);
 v_uint8 ParseHex(const std::string& str);
-signed char HexDigit(char c);
-bool IsHex(const std::string& str);
+signed char HexDigit(const char c) noexcept;
+bool IsHex(const std::string& str) noexcept;
 v_uint8 DecodeAscii85(const char* p, bool* pfInvalid = nullptr) noexcept;
 std::string DecodeAscii85(const std::string& str, bool* pfInvalid = nullptr) noexcept;
 std::string EncodeAscii85(const unsigned char* pch, size_t len) noexcept;
