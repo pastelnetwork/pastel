@@ -219,7 +219,7 @@ public:
     const_iterator cend() const                      { return vch.cend(); }
     iterator end() { return vch.end(); }
     size_type size() const noexcept                  { return vch.size() - nReadPos; }
-    bool empty() const noexcept                      { return vch.size() == nReadPos; }
+    bool empty() const noexcept                      { return vch.empty() ? true : (nReadPos >= vch.size() - 1); }
     void resize(size_type n, value_type c = 0)         { vch.resize(n + nReadPos, c); }
     void reserve(size_type n)                        { vch.reserve(n + nReadPos); }
     const_reference operator[](size_type pos) const  { return vch[pos + nReadPos]; }

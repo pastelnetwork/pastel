@@ -18,15 +18,16 @@
 // the i*n 0s, each bucket having 4 * 2^RESTBITS slots,
 // twice the number of subtrees expected to land there.
 
-#include "pow/tromp/equi.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cassert>
 #ifdef _MSC_VER
-#include "cyclicbarrier/cyclicbarrier.hpp"
+#include <cyclicbarrier/cyclicbarrier.hpp>
 #else
 #include <pthread.h>
 #endif
+
+#include <mining/pow/tromp/equi.h>
 
 typedef uint16_t u16;
 typedef uint64_t u64;
@@ -51,39 +52,42 @@ typedef u32 au32;
 #define SAVEMEM 1
 #elif RESTBITS >= 8
 // take advantage of law of large numbers (sum of 2^8 random numbers)
-// this reduces (200,9) memory to under 144MB, with negligible discarding
+// this reduces (200,9) memory to under 144MB,  ,
 #define SAVEMEM 9/14
 #endif
 #endif
 
 // number of buckets
-static const u32 NBUCKETS = 1<<BUCKBITS;
+static constexpr u32 NBUCKETS = 1<<BUCKBITS;
 // 2_log of number of slots per bucket
-static const u32 SLOTBITS = RESTBITS+1+1;
-static const u32 SLOTRANGE = 1<<SLOTBITS;
-static const u32 SLOTMSB = 1<<(SLOTBITS-1);
+static constexpr u32 SLOTBITS = RESTBITS+1+1;
+static constexpr u32 SLOTRANGE = 1<<SLOTBITS;
+static constexpr u32 SLOTMSB = 1<<(SLOTBITS-1);
 // number of slots per bucket
-static const u32 NSLOTS = SLOTRANGE * SAVEMEM;
+static constexpr u32 NSLOTS = SLOTRANGE * SAVEMEM;
 // number of per-xhash slots
-static const u32 XFULL = 16;
+static constexpr u32 XFULL = 16;
 // SLOTBITS mask
-static const u32 SLOTMASK = SLOTRANGE-1;
+static constexpr u32 SLOTMASK = SLOTRANGE-1;
 // number of possible values of xhash (rest of n) bits
-static const u32 NRESTS = 1<<RESTBITS;
+static constexpr u32 NRESTS = 1<<RESTBITS;
 // number of blocks of hashes extracted from single 512 bit blake2b output
-static const u32 NBLOCKS = (NHASHES+HASHESPERBLAKE-1)/HASHESPERBLAKE;
+static constexpr u32 NBLOCKS = (NHASHES+HASHESPERBLAKE-1)/HASHESPERBLAKE;
 // nothing larger found in 100000 runs
-static const u32 MAXSOLS = 8;
+static constexpr u32 MAXSOLS = 8;
 
 // tree node identifying its children as two different slots in
 // a bucket on previous layer with the same rest bits (x-tra hash)
-struct tree {
+struct tree
+{
   u32 bid_s0_s1; // manual bitfields
 
-  tree(const u32 idx) {
+  tree(const u32 idx) noexcept
+  {
     bid_s0_s1 = idx;
   }
-  tree(const u32 bid, const u32 s0, const u32 s1) {
+  tree(const u32 bid, const u32 s0, const u32 s1) noexcept 
+  {
 #ifdef SLOTDIFF
     u32 ds10 = (s1 - s0) & SLOTMASK;
     if (ds10 & SLOTMSB) {
@@ -95,24 +99,28 @@ struct tree {
     bid_s0_s1 = (((bid << SLOTBITS) | s0) << SLOTBITS) | s1;
 #endif
   }
-  u32 getindex() const {
+  u32 getindex() const noexcept 
+  {
     return bid_s0_s1;
   }
-  u32 bucketid() const {
+  u32 bucketid() const noexcept
+  {
 #ifdef SLOTDIFF
     return bid_s0_s1 >> (2 * SLOTBITS - 1);
 #else
     return bid_s0_s1 >> (2 * SLOTBITS);
 #endif
   }
-  u32 slotid0() const {
+  u32 slotid0() const noexcept 
+  {
 #ifdef SLOTDIFF
     return (bid_s0_s1 >> (SLOTBITS-1)) & SLOTMASK;
 #else
     return (bid_s0_s1 >> SLOTBITS) & SLOTMASK;
 #endif
   }
-  u32 slotid1() const {
+  u32 slotid1() const noexcept 
+  {
 #ifdef SLOTDIFF
     return (slotid0() + 1 + (bid_s0_s1 & (SLOTMASK>>1))) & SLOTMASK;
 #else
@@ -121,7 +129,8 @@ struct tree {
   }
 };
 
-union hashunit {
+union hashunit
+{
   u32 word;
   uchar bytes[sizeof(u32)];
 };
@@ -154,12 +163,14 @@ u32 hashsize(const u32 r) {
   return (hashbits + 7) / 8;
 }
 
-u32 hashwords(u32 bytes) {
+u32 hashwords(u32 bytes)
+{
   return (bytes + 3) / 4;
 }
 
 // manages hash and tree data
-struct htalloc {
+struct htalloc
+{
   u32 *heap0;
   u32 *heap1;
   bucket0 *trees0[(WK+1)/2];
@@ -203,11 +214,13 @@ struct htalloc {
 
 typedef au32 bsizes[NBUCKETS];
 
-u32 min(const u32 a, const u32 b) {
+u32 min(const u32 a, const u32 b)
+{
   return a < b ? a : b;
 }
 
-struct equi {
+struct equi
+{
   crypto_generichash_blake2b_state blake_ctx;
   htalloc hta;
   bsizes *nslots; // PUT IN BUCKET STRUCT

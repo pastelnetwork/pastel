@@ -18,6 +18,7 @@
 #include <key_io.h>
 #include <init.h>
 #include <accept_to_mempool.h>
+#include <txdb.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/tickets-all.h>
 #include <mnode/mnode-controller.h>
@@ -632,9 +633,10 @@ bool CPastelTicketProcessor::SerializeTicketToStream(const uint256& txid, string
  *  - not supported ticket (new nodes introduced new ticket types)
  * 
  * \param txid - ticket transaction id
+ * \param pBlockHash - optional parameter to return block hash
  * \return created unique_ptr for Pastel ticket by txid
  */
-unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
+unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid, uint256* pBlockHash)
 {
     string error;
     ticket_parse_data_t data;
@@ -661,6 +663,8 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid)
                         data.nTicketHeight = pindex->nHeight;
                 }
             }
+            if (pBlockHash)
+				*pBlockHash = data.hashBlock;
         } else
             data.nTicketHeight = numeric_limits<uint32_t>::max();
 
@@ -2287,45 +2291,87 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
 {
     bool bTicketFound = true;
     const uint256 txid = uint256S(ticket.GetTxId());
-    try {
-        const auto pTicket = CPastelTicketProcessor::GetTicket(txid);
-        if (pTicket)
+    bool bHaveToEraseFromDB = false;
+    do
+    {
+        try
         {
-            if (pTicket->GetBlock() == numeric_limits<uint32_t>::max())
+            uint256 blockHash;
+            const auto pTicket = CPastelTicketProcessor::GetTicket(txid, &blockHash);
+            if (pTicket)
             {
-                CTransaction tx;
-                if (mempool.lookup(txid, tx))
-                    sMessage += " found in mempool.";
+                if (pTicket->GetBlock() == numeric_limits<uint32_t>::max())
+                {
+                    CTransaction tx;
+                    if (mempool.lookup(txid, tx))
+                        sMessage += " found in mempool.";
+                    else
+                    {
+                        bHaveToEraseFromDB = true;
+                        sMessage += " found in stale block";
+                        break;
+                    }
+                }
                 else
                 {
-                    bTicketFound = false;
-                    bool bErasedFromDb = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-                    sMessage += strprintf(" found in stale block. %s from Ticket DB",
-                                        bErasedFromDb ? "Successfully removed" : "Failed to remove");
-                }
-            } else {
-                sMessage += " already exists in blockchain.";
-                if (!bAllowDuplicates)
-                {
-                    CTransaction new_tx;
-                    if (mempool.lookup(uint256S(new_txid), new_tx))
+                    // this transaction may be still left in the transaction index after chain rewind (not erased yet)
+                    // check if it really exists in the blockchain
+                    if (!blockHash.IsNull())
+					{
+                        const auto mi = mapBlockIndex.find(blockHash);
+						if (mi == mapBlockIndex.cend() || !(mi->second))
+                        {
+							bHaveToEraseFromDB = true;
+							sMessage += " found ticket transaction, but tx block index does not exist";
+							break;
+						}
+						const auto pindex = mi->second;
+                        if (!chainActive.Contains(pindex))
+                        {
+                            bHaveToEraseFromDB = true;
+							sMessage += " found ticket transaction, but the block in not in the active chain";
+                            block_index_cvector_t vBlocksToRemove;
+                            vBlocksToRemove.push_back(pindex);
+                            if (!gl_pBlockTreeDB->EraseBatchSync(vBlocksToRemove))
+                                LogFnPrintf("ERROR! Failed to erase stale block index '%s' from database",
+                                    blockHash.ToString());
+                            else
+                            {
+                                EraseBlockIndices(vBlocksToRemove);
+                                LogFnPrintf("Erased stale block index '%s' from the tx index database", blockHash.ToString());
+                            }
+							break;
+                        }
+					}
+                    sMessage += " already exists in blockchain.";
+                    if (!bAllowDuplicates)
                     {
-                        sMessage += strprintf(" Removing new [%s] from mempool.", new_txid);
-                        mempool.remove(new_tx, false);
+                        CTransaction new_tx;
+                        if (mempool.lookup(uint256S(new_txid), new_tx))
+                        {
+                            sMessage += strprintf(" Removing new [%s] from mempool.", new_txid);
+                            mempool.remove(new_tx, false);
+                        }
                     }
                 }
             }
-        } else {
-            bTicketFound = false;
-            bool bErasedFromDb = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-            sMessage += strprintf(" found in Ticket DB, but not in blockchain. %s from Ticket DB",
-                                 bErasedFromDb ? "Successfully removed" : "Failed to remove");
+            else
+            {
+                bHaveToEraseFromDB = true;
+                sMessage += " found in Ticket DB, but not in blockchain";
+                break;
+            }
+        } catch (...)
+        {
+            bHaveToEraseFromDB = true;
+            sMessage += " found in Ticket DB, but not in blockchain (bad transaction?)";
         }
-    } catch (...) {
+    } while (false);
+    if (bHaveToEraseFromDB)
+    {
         bTicketFound = false;
         bool bErasedFromDb = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-        sMessage += strprintf(" found in Ticket DB, but not in blockchain (bad transaction?). %s from Ticket DB",
-                             bErasedFromDb ? "Successfully removed" : "Failed to remove");
+        sMessage += strprintf(". %s from Ticket DB", bErasedFromDb ? "Successfully removed" : "Failed to remove");
     }
     sMessage += strprintf(" [%sfound ticket block=%u, txid=%s]",
                         bPreReg ? "" : strprintf("this ticket block=%u, txid=%s; ", nNewHeight, new_txid),

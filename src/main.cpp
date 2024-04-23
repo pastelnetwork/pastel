@@ -31,7 +31,6 @@
 #include <merkleblock.h>
 #include <metrics.h>
 #include <net.h>
-#include <pow.h>
 #include <txdb.h>
 #include <txmempool.h>
 #include <accept_to_mempool.h>
@@ -48,6 +47,7 @@
 #include <netmsg/nodemanager.h>
 #include <netmsg/fork-switch-tracker.h>
 #include <mining/eligibility-mgr.h>
+#include <mining/pow.h>
 
 //MasterNode
 #include <mnode/mnode-controller.h>
@@ -1271,15 +1271,20 @@ bool DisconnectBlock(
     // undo transactions in reverse order
     if (!block.vtx.empty())
     {
+        CSerializeData vTicketData;
+        string error;
         for (size_t i = block.vtx.size(); i-- > 0;)
         {
             const CTransaction& tx = block.vtx[i];
-            const uint256 &hash = tx.GetHash();
+            const uint256 &txid = tx.GetHash();
+
+            // if this is P2FMS transaction with the ticket - erase it from the DB
+            masterNodeCtrl.masternodeTickets.EraseIfTicketTransaction(txid, error);
 
             // Check that all outputs are available and match the outputs in the block itself
             // exactly.
             {
-                CCoinsModifier outs = view.ModifyCoins(hash);
+                CCoinsModifier outs = view.ModifyCoins(txid);
                 // mark the outputs as unspendable
                 outs->ClearUnspendable();
 

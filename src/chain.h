@@ -1,9 +1,9 @@
-#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 Pastel Core developers
+// Copyright (c) 2018-2024 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#pragma once
 #include <atomic>
 
 #include <utils/vector_types.h>
@@ -11,7 +11,7 @@
 #include <utils/uint256.h>
 #include <arith_uint256.h>
 #include <primitives/block.h>
-#include <pow.h>
+#include <mining/pow.h>
 
 constexpr int SPROUT_VALUE_VERSION = 1001400;
 constexpr int SAPLING_VALUE_VERSION = 1010100;

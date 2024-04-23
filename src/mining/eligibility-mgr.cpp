@@ -101,7 +101,7 @@ void CInvalidEligibilityBlock::Check()
     if (!CanTryToRevalidate())
 		return;
 
-    LogFnPrint("Revalidating invalid eligibility block %s at height %d (attempt #%u)",
+    LogFnPrintf("Revalidating invalid eligibility block %s at height %d (attempt #%u)",
         m_hash.ToString(), m_nHeight, m_nRetries);
 
     CValidationState state(m_txOrigin);
@@ -128,7 +128,6 @@ CMiningEligibilityManager::CMiningEligibilityManager() noexcept:
     m_bAllMasterNodesAreEligibleForMining(false),
     m_nLastBlockHeight(0)
 {
-    m_bAllMasterNodesAreEligibleForMining = false;
     m_bIsCurrentMnEligibleForMining = false;
 }
 
@@ -314,6 +313,11 @@ bool CMiningEligibilityManager::IsCurrentMnEligibleForBlockReward(const CBlockIn
     m_hashCheckBlock = hashCheckBlock;
     m_bIsCurrentMnEligibleForMining = false;
 
+    if (m_bAllMasterNodesAreEligibleForMining)
+    {
+        m_bIsCurrentMnEligibleForMining = true;
+        return true;
+    }
     uint32_t nMinedBlocks = 0;
     if (IsMnEligibleForBlockReward(pindexPrev, gl_MiningSettings.getGenId(), nCurBlockTime, nMinedBlocks))
     {

@@ -15,7 +15,7 @@
 #include <mining/mining-settings.h>
 #include <mining/eligibility-mgr.h>
 #ifdef ENABLE_MINING
-#include <pow/tromp/equi_miner.h>
+#include <mining/pow/tromp/equi_miner.h>
 #endif
 
 #include <utils/util.h>
@@ -34,7 +34,7 @@
 #include <accept_to_mempool.h>
 #include <metrics.h>
 #include <net.h>
-#include <pow.h>
+#include <mining/pow.h>
 #include <primitives/transaction.h>
 #include <random.h>
 #include <timedata.h>
@@ -585,9 +585,9 @@ void static PastelMiner(const int nThreadNo)
         {
             // check if we can use new mining 
             const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
-            const bool bNewMiningAllowed = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
+            const bool bNewMiningAllowed = (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
                 (gl_nChainHeight + 1 >= nNewMiningAllowedHeight + consensusParams.nNewMiningAlgorithmHeightDelay);
-            const bool bV5Block = chainparams.IsTestNet() || (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
+            const bool bV5Block = (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) || 
 				(gl_nChainHeight + 1 >= nNewMiningAllowedHeight);
 
             gl_bEligibleForMiningNextBlock = !bNewMiningAllowed;
@@ -658,7 +658,7 @@ void static PastelMiner(const int nThreadNo)
                 string error;
                 if (!gl_MiningSettings.CheckMNSettingsForLocalMining(error))
                 {
-					LogFnPrint("MasterNode settings are not valid for local mining. %s", error);
+					LogFnPrintf("MasterNode settings are not valid for local mining. %s", error);
                     bInvalidMiningSettings = true;
 					break;
 				}
@@ -679,7 +679,7 @@ void static PastelMiner(const int nThreadNo)
                         break;
                     fnWaitFor(5);
                 } while (true);
-                LogFnPrint("MasterNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value_or("not defined"));
+                LogFnPrintf("MasterNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value_or("not defined"));
 
                 gl_bEligibleForMiningNextBlock = true;
                 miningTimer.start();
@@ -814,7 +814,7 @@ void static PastelMiner(const int nThreadNo)
                     eq.digit0(0);
                     eq.xfull = eq.bfull = eq.hfull = 0;
                     eq.showbsizes(0);
-                    for (u32 r = 1; r < WK; r++) {
+                    for (uint32_t r = 1; r < WK; r++) {
                         (r&1) ? eq.digitodd(r, 0) : eq.digiteven(r, 0);
                         eq.xfull = eq.bfull = eq.hfull = 0;
                         eq.showbsizes(r);

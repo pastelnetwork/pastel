@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <fstream>
@@ -158,7 +158,7 @@ public:
  *    ]
  * }
  *
- * json structire for secure items, stored as msgpack:
+ * json structure for secure items, stored as msgpack:
  * {
  *     "version":1,
  *     "timestamp": int64_t,

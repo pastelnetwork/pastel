@@ -205,7 +205,7 @@ public:
 
     static std::tuple<std::string, std::string> SendTicket(const CPastelTicket& ticket, const opt_string_t& sFundingAddress = std::nullopt);
 
-    static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid);
+    static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid, uint256* pBlockHash = nullptr);
     static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);
     static std::string GetTicketJSON(const uint256 &txid, const bool bDecodeProperties = false);
 

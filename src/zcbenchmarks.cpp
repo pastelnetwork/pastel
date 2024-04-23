@@ -18,7 +18,7 @@
 #include <consensus/validation.h>
 #include <main.h>
 #include <mining/miner.h>
-#include <pow.h>
+#include <mining/pow.h>
 #include <rpc/server.h>
 #include <script/sign.h>
 #include <sodium.h>

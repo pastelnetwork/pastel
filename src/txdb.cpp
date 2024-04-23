@@ -10,7 +10,7 @@
 #include <chainparams.h>
 #include <hash.h>
 #include <main.h>
-#include <pow.h>
+#include <mining/pow.h>
 #include <script/scripttype.h>
 
 using namespace std;

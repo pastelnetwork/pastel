@@ -35,6 +35,12 @@
     <Filter Include="Source Files\mining">
       <UniqueIdentifier>{e316a9c8-ccb8-42cb-85aa-33762d86a239}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\mining\pow">
+      <UniqueIdentifier>{d6bc6ab2-14e2-4807-80e4-29226aeac356}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\mining\pow\tromp">
+      <UniqueIdentifier>{e3bac48b-ebee-45eb-8049-f714583aa511}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -90,9 +96,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\policy\fees.cpp">
       <Filter>Source Files\policy</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\pow.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\rest.cpp">
       <Filter>Source Files</Filter>
@@ -358,6 +361,9 @@
     <ClCompile Include="..\..\..\src\rpc\chain-rpc-utils.cpp">
       <Filter>Source Files\rpc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\mining\pow.cpp">
+      <Filter>Source Files\mining</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -410,9 +416,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\policy\fees.h">
       <Filter>Source Files\policy</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\pow.h">
-      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\rpc\server.h">
       <Filter>Source Files\rpc</Filter>
@@ -731,6 +734,18 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\rpc\chain-rpc-utils.h">
       <Filter>Source Files\rpc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mining\pow\tromp\equi.h">
+      <Filter>Source Files\mining\pow\tromp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mining\pow\tromp\equi_miner.h">
+      <Filter>Source Files\mining\pow\tromp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mining\pow\tromp\osx_barrier.h">
+      <Filter>Source Files\mining\pow\tromp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mining\pow.h">
+      <Filter>Source Files\mining</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
