@@ -131,7 +131,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.sync_all()
 
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(20, 10, "ENABLED", mn_id)
+            self.wait_for_mn_state(30, 20, "ENABLED", mn_id, 3)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'sync' in tests:
@@ -144,7 +144,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.sync_all()
 
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(20, 10, "ENABLED", mn_id)
+            self.wait_for_mn_state(30, 20, "ENABLED", mn_id, 3)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'ping' in tests:

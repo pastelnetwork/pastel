@@ -6,7 +6,7 @@
 
 #include <sodium.h>
 #ifdef __APPLE__
-#include <pow/tromp/osx_barrier.h>
+#include <mining/pow/tromp/osx_barrier.h>
 #endif
 #include <compat/endian.h>
 
