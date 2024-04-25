@@ -52,7 +52,8 @@ void CPastelTicketProcessor::InitTicketDB()
     for (uint8_t id = to_integral_type(TicketID::PastelID); id != to_integral_type(TicketID::COUNT); ++id)
         dbs.emplace(static_cast<TicketID>(id), make_unique<CDBWrapper>(ticketsDir / TICKET_INFO[id].szDBSubFolder, nTicketDBCache, false, fReindex));
 
-    LogFnPrintf("...ticket database has been initialized (%hhu ticket types)", to_integral_type(TicketID::COUNT));
+    LogFnPrintf("...ticket database has been initialized (%hhu ticket types%s)",
+        to_integral_type(TicketID::COUNT), fReindex ? ", clean db" : "");
     m_bTicketDBInitialized = true;
 }
 
@@ -710,13 +711,13 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid,
     return ticket;
 }
 
-bool CPastelTicketProcessor::EraseIfTicketTransaction(const uint256& txid, string& error)
+EraseTicketResult CPastelTicketProcessor::EraseIfTicketTransaction(const uint256& txid, string& error)
 {
     ticket_parse_data_t data;
     if (!SerializeTicketToStream(txid, error, data, true))
     {
         error = strprintf("Failed to get ticket by txid=%s. ERROR: %s.", txid.GetHex(), error);
-        return false;
+        return EraseTicketResult::NotFound;
     }
 
     // create Pastel ticket by id
@@ -724,7 +725,7 @@ bool CPastelTicketProcessor::EraseIfTicketTransaction(const uint256& txid, strin
     if (!ticket)
     {
         error = strprintf("Failed to create ticket by id=%hhu.", to_integral_type<TicketID>(data.ticket_id));
-        return false;
+        return EraseTicketResult::CreateTicketError;
     }
 
     // deserialize data to ticket object
@@ -732,9 +733,9 @@ bool CPastelTicketProcessor::EraseIfTicketTransaction(const uint256& txid, strin
     if (!EraseTicketFromDB(*ticket))
     {
         error = strprintf("Failed to erase ticket from DB by txid=%s.", txid.GetHex());
-		return false;
+		return EraseTicketResult::EraseFromDBError;
     }
-    return true;
+    return EraseTicketResult::Success;
 }
 
 /**
@@ -833,7 +834,7 @@ size_t CPastelTicketProcessor::EraseTicketsFromDbByList(const block_index_cvecto
 
         for (const auto& tx : block.vtx)
         {
-            if (EraseIfTicketTransaction(tx.GetHash(), error))
+            if (EraseIfTicketTransaction(tx.GetHash(), error) == EraseTicketResult::Success)
                 ++nErasedCount;
         }
 	}

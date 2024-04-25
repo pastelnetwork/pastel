@@ -1278,9 +1278,6 @@ bool DisconnectBlock(
             const CTransaction& tx = block.vtx[i];
             const uint256 &txid = tx.GetHash();
 
-            // if this is P2FMS transaction with the ticket - erase it from the DB
-            masterNodeCtrl.masternodeTickets.EraseIfTicketTransaction(txid, error);
-
             // Check that all outputs are available and match the outputs in the block itself
             // exactly.
             {
@@ -1891,6 +1888,16 @@ static bool DisconnectTip(CValidationState &state, const CChainParams& chainpara
     if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_IF_NEEDED))
         return false;
 
+    // remove tickets
+    string strError;
+    for (const auto& tx : block.vtx)
+    {
+        const uint256 &txid = tx.GetHash();
+        // if this is P2FMS transaction with the ticket - erase it from the DB
+        auto eraseResult = masterNodeCtrl.masternodeTickets.EraseIfTicketTransaction(txid, strError);
+        if (!is_enum_any_of(eraseResult, EraseTicketResult::Success, EraseTicketResult::NotFound))
+            return error("DisconnectTip(): Failed to erase ticket by txid=%s. %s", txid.ToString(), strError);
+    }
     if (!fBare)
     {
         // Resurrect mempool transactions from the disconnected block.

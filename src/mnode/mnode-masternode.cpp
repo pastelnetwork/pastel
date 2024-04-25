@@ -579,7 +579,9 @@ void CMasternode::Check(const bool fForce, const bool bLockMain)
             return;
         }
 
-        if (!IsPingedWithin(masterNodeCtrl.MasternodeExpirationSeconds, -1, &sReason))
+        // do not set state to EXPIRED if we're active masternode but not yet registered MNID
+        if (!IsPingedWithin(masterNodeCtrl.MasternodeExpirationSeconds, -1, &sReason) &&
+            (!fOurMasterNode || !masterNodeCtrl.activeMasternode.NeedMnId()))
         {
             SetState(MASTERNODE_STATE::EXPIRED, __METHOD_NAME__, sReason.c_str());
             return;

@@ -35,7 +35,7 @@ class MasterNodeMiningTest (MasterNodeCommon):
 
     def setup_network(self, split=False):
         self.nodes = []
-        self.setup_masternodes_network("masternode")
+        self.setup_masternodes_network("masternode,pow,mining")
 
 
     def test_sn_block_signing(self):

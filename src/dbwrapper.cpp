@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
@@ -31,16 +31,18 @@ static leveldb::Options GetOptions(size_t nCacheSize)
     return options;
 }
 
-CDBWrapper::CDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe)
+CDBWrapper::CDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe) :
+    pdb(nullptr),
+    penv(nullptr)
 {
-    penv = nullptr;
     readoptions.verify_checksums = true;
     iteroptions.verify_checksums = true;
     iteroptions.fill_cache = false;
     syncoptions.sync = true;
     options = GetOptions(nCacheSize);
     options.create_if_missing = true;
-    if (fMemory) {
+    if (fMemory)
+    {
         penv = leveldb::NewMemEnv(leveldb::Env::Default());
         options.env = penv;
     } else {
@@ -59,26 +61,23 @@ CDBWrapper::CDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bo
 
 CDBWrapper::~CDBWrapper()
 {
-    delete pdb;
-    pdb = nullptr;
-    delete options.filter_policy;
-    options.filter_policy = nullptr;
-    delete options.block_cache;
-    options.block_cache = nullptr;
-    delete penv;
+    safe_delete_obj(pdb);
+    safe_delete_obj(options.filter_policy);
+    safe_delete_obj(options.block_cache);
+    safe_delete_obj(penv);
     options.env = nullptr;
 }
 
 bool CDBWrapper::WriteBatch(CDBBatch& batch, bool fSync)
 {
-    leveldb::Status status = pdb->Write(fSync ? syncoptions : writeoptions, &batch.batch);
+    const auto status = pdb->Write(fSync ? syncoptions : writeoptions, &batch.batch);
     dbwrapper_private::HandleError(status);
     return true;
 }
 
 bool CDBWrapper::IsEmpty()
 {
-    unique_ptr<CDBIterator> it = NewIterator();
+    auto it = NewIterator();
     it->SeekToFirst();
     return !(it->Valid());
 }

@@ -231,5 +231,8 @@
     <ClInclude Include="..\..\..\src\clientversion.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\streams.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

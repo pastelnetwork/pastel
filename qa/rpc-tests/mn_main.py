@@ -102,7 +102,7 @@ class MasterNodeMainTest (MasterNodeCommon):
 
         #print("Test sync after crash")
         # 1. kill (not gracefully) node0 (masternode)
-        # 2. start node0 again 
+        # 2. start node0 again
         # 3. Check all nodes
         # self.wait_for_mn_state(120, 20, "ENABLED", self.nodes[0:self.total_number_of_nodes], mn_id)
 
@@ -131,7 +131,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.sync_all()
 
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(30, 20, "ENABLED", mn_id, 3)
+            self.wait_for_mn_state(60, 20, "ENABLED", mn_id, 7)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'sync' in tests:
@@ -144,7 +144,7 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.sync_all()
 
             print(f"Waiting for {mn.alias} ENABLED state...")
-            self.wait_for_mn_state(30, 20, "ENABLED", mn_id, 3)
+            self.wait_for_mn_state(60, 20, "ENABLED", mn_id, 7)
 
         # tests = ['cache', 'sync', 'ping', 'restart', 'spent', "fee"]
         if 'ping' in tests:

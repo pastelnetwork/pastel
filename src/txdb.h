@@ -63,16 +63,16 @@ public:
 
     bool WriteBatchSync(const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const block_index_cvector_t& blockinfo);
     bool EraseBatchSync(const block_index_cvector_t& blockinfo);
-    bool ReadBlockFileInfo(int nFile, CBlockFileInfo &fileinfo);
-    bool ReadLastBlockFile(int &nFile);
+    bool ReadBlockFileInfo(int nFile, CBlockFileInfo &fileinfo) const;
+    bool ReadLastBlockFile(int &nFile) const;
     bool WriteReindexing(bool fReindex);
-    bool ReadReindexing(bool &fReindex);
-    bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+    bool ReadReindexing(bool &fReindex) const;
+    bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const;
     bool ReadTxIndex(const uint256 &txid, CDiskTxPos &pos);
     bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> > &list);
     bool WriteFlag(const std::string &name, bool fValue);
-    bool ReadFlag(const std::string &name, bool &fValue);
-    bool ReadFlag(const std::string &name, std::atomic_bool &fValue);
+    bool ReadFlag(const std::string &name, bool &fValue) const;
+    bool ReadFlag(const std::string &name, std::atomic_bool &fValue) const;
     bool LoadBlockIndexGuts(const CChainParams& chainparams);
 
 private:

@@ -196,29 +196,34 @@ bool CCoinsViewDB::BatchWrite(CCoinsMap &mapCoins,
 }
 
 CBlockTreeDB::CBlockTreeDB(size_t nCacheSize, bool fMemory, bool fWipe) : CDBWrapper(GetDataDir() / "blocks" / "index", nCacheSize, fMemory, fWipe) {
-}
+}   
 
-bool CBlockTreeDB::ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) {
+bool CBlockTreeDB::ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const
+{
     return Read(make_pair(DB_SPENTINDEX, key), value);
 }
 
-bool CBlockTreeDB::ReadBlockFileInfo(int nFile, CBlockFileInfo &info) {
+bool CBlockTreeDB::ReadBlockFileInfo(int nFile, CBlockFileInfo &info) const
+{
     return Read(make_pair(DB_BLOCK_FILES, nFile), info);
 }
 
-bool CBlockTreeDB::WriteReindexing(bool fReindexing) {
+bool CBlockTreeDB::WriteReindexing(bool fReindexing)
+{
     if (fReindexing)
         return Write(DB_REINDEX_FLAG, '1');
     else
         return Erase(DB_REINDEX_FLAG);
 }
 
-bool CBlockTreeDB::ReadReindexing(bool &fReindexing) {
+bool CBlockTreeDB::ReadReindexing(bool &fReindexing) const
+{
     fReindexing = Exists(DB_REINDEX_FLAG);
     return true;
 }
 
-bool CBlockTreeDB::ReadLastBlockFile(int &nFile) {
+bool CBlockTreeDB::ReadLastBlockFile(int &nFile) const
+{
     return Read(DB_LAST_BLOCK, nFile);
 }
 
@@ -276,8 +281,13 @@ bool CBlockTreeDB::WriteBatchSync(const vector<pair<int, const CBlockFileInfo*> 
     for (const auto& [nFile, pBlockFileInfo] : fileInfo)
         batch.Write(make_pair(DB_BLOCK_FILES, nFile), *pBlockFileInfo);
     batch.Write(DB_LAST_BLOCK, nLastFile);
-    for (const auto pBlockIndex : blockinfo)
-        batch.Write(make_pair(DB_BLOCK_INDEX, pBlockIndex->GetBlockHash()), CDiskBlockIndex(pBlockIndex));
+    try
+    {
+        for (const auto pBlockIndex : blockinfo)
+            batch.Write(make_pair(DB_BLOCK_INDEX, pBlockIndex->GetBlockHash()), CDiskBlockIndex(pBlockIndex));
+    } catch (const runtime_error&) {
+		return false;
+	}
     return WriteBatch(batch, true);
 }
 
@@ -307,7 +317,7 @@ bool CBlockTreeDB::WriteFlag(const string &name, bool fValue)
     return Write(make_pair(DB_FLAG, name), fValue ? '1' : '0');
 }
 
-bool CBlockTreeDB::ReadFlag(const string &name, bool &fValue)
+bool CBlockTreeDB::ReadFlag(const string &name, bool &fValue) const
 {
     char ch;
     if (!Read(make_pair(DB_FLAG, name), ch))
@@ -316,7 +326,7 @@ bool CBlockTreeDB::ReadFlag(const string &name, bool &fValue)
     return true;
 }
 
-bool CBlockTreeDB::ReadFlag(const string& name, atomic_bool& fValue)
+bool CBlockTreeDB::ReadFlag(const string& name, atomic_bool& fValue) const
 {
     bool fTempValue;
     if (!ReadFlag(name, fTempValue))

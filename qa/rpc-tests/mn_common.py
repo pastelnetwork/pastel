@@ -404,6 +404,7 @@ class MasterNodeCommon (PastelTestFramework):
             # create & register mnid
             for mn in self.mn_nodes:
                 mn.mnid, mn.lrKey = self.create_pastelid(mn.index)
+                print(f"mn{mn.index} ({mn.alias}) created mnid: {mn.mnid}")
                 if mn.index >= self.number_of_cold_nodes:
                     continue
                 # get new address and send some coins for mnid registration
@@ -432,6 +433,7 @@ class MasterNodeCommon (PastelTestFramework):
                 initial_wait = 0
                 
             # register mnids
+            print("Registering mnids...")
             for mn in self.mn_nodes:
                 if mn.index >= self.number_of_cold_nodes:
                     continue
@@ -443,6 +445,7 @@ class MasterNodeCommon (PastelTestFramework):
                         self.nodes[mn.index].tickets, "register", TicketType.MNID.type_name, mn.mnid,
                         self.passphrase, mn.mnid_reg_address)
                 mn.mnid_reg_txid = result["txid"]
+                print(f"mn{mn.index} ({mn.alias}) mnid registration txid: {mn.mnid_reg_txid}")
                 self.generate_and_sync_inc(1, self.mining_node_num)
             # wait for ticket transactions
             time.sleep(10)

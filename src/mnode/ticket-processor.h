@@ -31,6 +31,14 @@ constexpr auto TICKET_MVKEY_PREFIX = "@M@";
 // tuple <item id, item registration txid, transfer ticket txid>
 using reg_transfer_txid_t = std::tuple<TicketID, std::string, std::string>;
 
+typedef enum class _EraseTicketResultEnum
+{
+    NotFound = 1,
+    Success = 0,
+    CreateTicketError = -1,
+    EraseFromDBError = -2,
+} EraseTicketResult;
+
 // structure used by 'tickets tools searchthumbids' rpc
 typedef struct _search_thumbids_t
 {
@@ -112,7 +120,7 @@ public:
     bool CheckTicketExist(const CPastelTicket& ticket) const;
     bool FindTicket(CPastelTicket& ticket) const;
     bool EraseTicketFromDB(const CPastelTicket& ticket) const;
-    bool EraseIfTicketTransaction(const uint256& txid, std::string &error);
+    EraseTicketResult EraseIfTicketTransaction(const uint256& txid, std::string &error);
     size_t EraseTicketsFromDbByList(const block_index_cvector_t& vBlockIndex);
     void RepairTicketDB(const bool bUpdateUI);
 
