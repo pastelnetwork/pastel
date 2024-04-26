@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers7
-// Copyright (c) 2018-2023 The Pastel Core developers7
+// Copyright (c) 2018-2024 The Pastel Core developers7
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -219,7 +219,7 @@ public:
     const_iterator cend() const                      { return vch.cend(); }
     iterator end() { return vch.end(); }
     size_type size() const noexcept                  { return vch.size() - nReadPos; }
-    bool empty() const noexcept                      { return vch.size() == nReadPos; }
+    bool empty() const noexcept                      { return vch.empty() ? true : (nReadPos >= vch.size()); }
     void resize(size_type n, value_type c = 0)         { vch.resize(n + nReadPos, c); }
     void reserve(size_type n)                        { vch.reserve(n + nReadPos); }
     const_reference operator[](size_type pos) const  { return vch[pos + nReadPos]; }

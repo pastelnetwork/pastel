@@ -151,6 +151,7 @@
     <ClInclude Include="..\..\..\src\utils\scope_guard.hpp" />
     <ClInclude Include="..\..\..\src\utils\serialize.h" />
     <ClInclude Include="..\..\..\src\utils\set_types.h" />
+    <ClInclude Include="..\..\..\src\utils\streams.h" />
     <ClInclude Include="..\..\..\src\utils\str_types.h" />
     <ClInclude Include="..\..\..\src\utils\str_utils.h" />
     <ClInclude Include="..\..\..\src\utils\svc_thread.h" />

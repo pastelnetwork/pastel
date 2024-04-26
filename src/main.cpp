@@ -31,7 +31,6 @@
 #include <merkleblock.h>
 #include <metrics.h>
 #include <net.h>
-#include <pow.h>
 #include <txdb.h>
 #include <txmempool.h>
 #include <accept_to_mempool.h>
@@ -48,6 +47,7 @@
 #include <netmsg/nodemanager.h>
 #include <netmsg/fork-switch-tracker.h>
 #include <mining/eligibility-mgr.h>
+#include <mining/pow.h>
 
 //MasterNode
 #include <mnode/mnode-controller.h>
@@ -1271,15 +1271,17 @@ bool DisconnectBlock(
     // undo transactions in reverse order
     if (!block.vtx.empty())
     {
+        CSerializeData vTicketData;
+        string error;
         for (size_t i = block.vtx.size(); i-- > 0;)
         {
             const CTransaction& tx = block.vtx[i];
-            const uint256 &hash = tx.GetHash();
+            const uint256 &txid = tx.GetHash();
 
             // Check that all outputs are available and match the outputs in the block itself
             // exactly.
             {
-                CCoinsModifier outs = view.ModifyCoins(hash);
+                CCoinsModifier outs = view.ModifyCoins(txid);
                 // mark the outputs as unspendable
                 outs->ClearUnspendable();
 
@@ -1886,6 +1888,16 @@ static bool DisconnectTip(CValidationState &state, const CChainParams& chainpara
     if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_IF_NEEDED))
         return false;
 
+    // remove tickets
+    string strError;
+    for (const auto& tx : block.vtx)
+    {
+        const uint256 &txid = tx.GetHash();
+        // if this is P2FMS transaction with the ticket - erase it from the DB
+        auto eraseResult = masterNodeCtrl.masternodeTickets.EraseIfTicketTransaction(txid, strError);
+        if (!is_enum_any_of(eraseResult, EraseTicketResult::Success, EraseTicketResult::NotFound))
+            return error("DisconnectTip(): Failed to erase ticket by txid=%s. %s", txid.ToString(), strError);
+    }
     if (!fBare)
     {
         // Resurrect mempool transactions from the disconnected block.

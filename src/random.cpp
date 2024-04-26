@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #ifdef WIN32
@@ -16,6 +16,7 @@
 #include <utils/utilstrencodings.h> // for GetTime()
 #include <utils/serialize.h>              // for begin_ptr(vec)
 #include <random.h>
+#include <random>
 #include <support/cleanse.h>
 
 using namespace std;
@@ -70,6 +71,22 @@ uint256 GetRandHash()
     return hash;
 }
 
+// Returns a reference to a thread-local random number generator.
+// The generator is seeded upon the first use in each thread.
+static mt19937_64 &random_engine()
+{
+    static thread_local random_device rd;
+    static thread_local mt19937_64 generator(rd());
+    return generator;
+}
+
+// Generates a random uint32_t value.
+uint32_t random_uint32(const uint32_t nMaxValue)
+{
+    auto &gen = random_engine();
+    uniform_int_distribution<uint32_t> dist(0, nMaxValue);
+    return dist(gen);
+}
 /**
 * generate random string and return base85 encoded.
 * 

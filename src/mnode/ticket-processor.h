@@ -31,6 +31,14 @@ constexpr auto TICKET_MVKEY_PREFIX = "@M@";
 // tuple <item id, item registration txid, transfer ticket txid>
 using reg_transfer_txid_t = std::tuple<TicketID, std::string, std::string>;
 
+typedef enum class _EraseTicketResultEnum
+{
+    NotFound = 1,
+    Success = 0,
+    CreateTicketError = -1,
+    EraseFromDBError = -2,
+} EraseTicketResult;
+
 // structure used by 'tickets tools searchthumbids' rpc
 typedef struct _search_thumbids_t
 {
@@ -112,7 +120,7 @@ public:
     bool CheckTicketExist(const CPastelTicket& ticket) const;
     bool FindTicket(CPastelTicket& ticket) const;
     bool EraseTicketFromDB(const CPastelTicket& ticket) const;
-    bool EraseIfTicketTransaction(const uint256& txid, std::string &error);
+    EraseTicketResult EraseIfTicketTransaction(const uint256& txid, std::string &error);
     size_t EraseTicketsFromDbByList(const block_index_cvector_t& vBlockIndex);
     void RepairTicketDB(const bool bUpdateUI);
 
@@ -205,7 +213,7 @@ public:
 
     static std::tuple<std::string, std::string> SendTicket(const CPastelTicket& ticket, const opt_string_t& sFundingAddress = std::nullopt);
 
-    static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid);
+    static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid, uint256* pBlockHash = nullptr);
     static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);
     static std::string GetTicketJSON(const uint256 &txid, const bool bDecodeProperties = false);
 

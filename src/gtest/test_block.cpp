@@ -2,7 +2,7 @@
 
 #include <utils/utilstrencodings.h>
 #include <chainparams.h>
-#include <pow.h>
+#include <mining/pow.h>
 #include <primitives/block.h>
 #include <version.h>
 

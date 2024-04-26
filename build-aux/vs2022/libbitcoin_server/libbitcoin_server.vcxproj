@@ -105,6 +105,7 @@
     <ClCompile Include="..\..\..\src\mining\eligibility-mgr.cpp" />
     <ClCompile Include="..\..\..\src\mining\miner.cpp" />
     <ClCompile Include="..\..\..\src\mining\mining-settings.cpp" />
+    <ClCompile Include="..\..\..\src\mining\pow.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-active.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-config.cpp" />
     <ClCompile Include="..\..\..\src\mnode\mnode-controller.cpp" />
@@ -175,7 +176,6 @@
     <ClCompile Include="..\..\..\src\pastelid\pastel_key.cpp" />
     <ClCompile Include="..\..\..\src\pastelid\secure_container.cpp" />
     <ClCompile Include="..\..\..\src\policy\fees.cpp" />
-    <ClCompile Include="..\..\..\src\pow.cpp" />
     <ClCompile Include="..\..\..\src\rest.cpp" />
     <ClCompile Include="..\..\..\src\rpc\blockchain.cpp" />
     <ClCompile Include="..\..\..\src\rpc\chain-rpc-utils.cpp" />
@@ -227,6 +227,10 @@
     <ClInclude Include="..\..\..\src\mining\eligibility-mgr.h" />
     <ClInclude Include="..\..\..\src\mining\miner.h" />
     <ClInclude Include="..\..\..\src\mining\mining-settings.h" />
+    <ClInclude Include="..\..\..\src\mining\pow.h" />
+    <ClInclude Include="..\..\..\src\mining\pow\tromp\equi.h" />
+    <ClInclude Include="..\..\..\src\mining\pow\tromp\equi_miner.h" />
+    <ClInclude Include="..\..\..\src\mining\pow\tromp\osx_barrier.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h" />
     <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\generate-report.h" />
@@ -308,7 +312,6 @@
     <ClInclude Include="..\..\..\src\pastelid\pastel_key.h" />
     <ClInclude Include="..\..\..\src\pastelid\secure_container.h" />
     <ClInclude Include="..\..\..\src\policy\fees.h" />
-    <ClInclude Include="..\..\..\src\pow.h" />
     <ClInclude Include="..\..\..\src\reverselock.h" />
     <ClInclude Include="..\..\..\src\rpc\chain-rpc-utils.h" />
     <ClInclude Include="..\..\..\src\rpc\coin-supply.h" />

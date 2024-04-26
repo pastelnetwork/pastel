@@ -25,8 +25,8 @@
 #include <mining/miner.h>
 #include <mining/mining-settings.h>
 #include <mining/eligibility-mgr.h>
+#include <mining/pow.h>
 #include <net.h>
-#include <pow.h>
 #include <rpc/server.h>
 #include <rpc/rpc-utils.h>
 #include <rpc/rpc_parser.h>
@@ -451,10 +451,11 @@ Get only masternodes eligible for mining next block:
         if (mnEligibility.nLastMinedBlockHeight >= 0)
         {
             node.pushKV("lastMinedBlockHash", mnEligibility.lastMinedBlockHash.GetHex());
-            node.pushKV("blocksSinceLastSigned", static_cast<uint64_t>(nNewBlockHeight - mnEligibility.nLastMinedBlockHeight - 1));
+            const uint64_t nBlocksSinceLastSigned = static_cast<uint64_t>(nNewBlockHeight - mnEligibility.nLastMinedBlockHeight - 1);
+            node.pushKV("blocksSinceLastSigned", nBlocksSinceLastSigned);
+            if (!mnEligibility.bEligibleForMining)
+                node.pushKV("blocksUntilEligibilityRestored", nMnEligibilityThreshold - nBlocksSinceLastSigned);
         }
-        if (!mnEligibility.bEligibleForMining)
-            node.pushKV("blocksUntilEligibilityRestored", static_cast<uint64_t>(nMnEligibilityThreshold - mnEligibility.nMinedBlockCount));
 		nodes.push_back(move(node));
 	}
     obj.pushKV("nodes", move(nodes));

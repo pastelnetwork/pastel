@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2016 Jack Grigg
 // Copyright (c) 2016 The Zcash developers
-// Copyright (c) 2021-2023 The Pastel Core developers
+// Copyright (c) 2021-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -148,33 +148,53 @@ class EhSolverCancelledException : public std::exception
     }
 };
 
-inline constexpr const size_t max(const size_t A, const size_t B) { return A > B ? A : B; }
-
 inline constexpr size_t equihash_solution_size(unsigned int N, unsigned int K) {
     return (1 << K)*(N/(K+1)+1)/8;
 }
 
+/**
+ * The Equihash class provides a set of constants and functions for the Equihash proof-of-work algorithm.
+ * 
+ * \param N - Represents the bit length of the hash output used in the puzzle. It determines the overall size of 
+   the hashing problem and, indirectly, the amount of memory required to store the hash outputs generated during the solving process.
+ * \param K -  work factor used in the proof-of-work algorithm. The number of hashing rounds and the complexity of finding a solution.
+   It influences the number of hash pairs that must be XORed together to find a solution that meets the algorithm's requirements.
+ */
 template<unsigned int N, unsigned int K>
 class Equihash
 {
 private:
-    static_assert(K < N);
-    static_assert(N % 8 == 0);
-    static_assert((N / (K + 1)) + 1 < 8 * sizeof(eh_index));
+    static_assert(K < N, "K must be less than N.");
+    static_assert(N % 8 == 0, "N must be a multiple of 8.");
+    static_assert((N / (K + 1)) + 1 < 8 * sizeof(eh_index), "Size of eh_index must be sufficient to represent indices.");
 
 public:
-    static inline constexpr size_t IndicesPerHashOutput = 512 / N;
-    static inline constexpr size_t HashOutput = IndicesPerHashOutput * N / 8;
-    static inline constexpr size_t CollisionBitLength = N / (K + 1);
-    static inline constexpr size_t CollisionByteLength=(CollisionBitLength+7)/8;
-    static inline constexpr size_t HashLength=(K+1)*CollisionByteLength;
-    static inline constexpr size_t FullWidth=2*CollisionByteLength+sizeof(eh_index)*(1 << (K-1));
-    static inline constexpr size_t FinalFullWidth=2*CollisionByteLength+sizeof(eh_index)*(1 << (K));
-    static inline constexpr size_t TruncatedWidth=max(HashLength+sizeof(eh_trunc), 2*CollisionByteLength+sizeof(eh_trunc)*(1 << (K-1)));
-    static inline constexpr size_t FinalTruncatedWidth=max(HashLength+sizeof(eh_trunc), 2*CollisionByteLength+sizeof(eh_trunc)*(1 << (K)));
-    static inline constexpr size_t SolutionWidth=(1 << K)*(CollisionBitLength+1)/8;
+    // the number of indices in one equihash solution (2 ^ K)
+    static inline constexpr uint32_t ProofSize = 1 << K;
+    // The number of hash outputs that can be indexed per each hash operation based on N.
+     static inline constexpr uint32_t IndicesPerHashOutput = 512 / N;
+    // The output size of the blake2b hash in bytes
+    static inline constexpr uint32_t HashOutput = IndicesPerHashOutput * N / 8;
+    // The number of 32-bit words needed to store the hash output
+    static inline constexpr uint32_t HashWords = (HashOutput + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+    // The number of bits used to represent a single digit in the Equihash solution
+    static inline constexpr uint32_t CollisionBitLength = N / (K + 1);
+    // The number of bytes used to store a single digit of the collision bits.
+    static inline constexpr uint32_t CollisionByteLength=(CollisionBitLength + 7) / 8;
+    // The length in bytes of a hash used during the (K+1)-th collision round.
+    static inline constexpr uint32_t HashLength=(K + 1) * CollisionByteLength;
+    // The full width in bytes of a list entry before the final round, including collision data and indices.
+    static inline constexpr uint32_t FullWidth=2 * CollisionByteLength+sizeof(eh_index)*(1 << (K - 1));
+    // The full width in bytes of a list entry during the final round, including collision data and indices.
+    static inline constexpr uint32_t FinalFullWidth=2*CollisionByteLength+sizeof(eh_index)*ProofSize;
+    // The maximum width in bytes of a list entry before the final round when using truncated hash representations.
+    static inline constexpr uint32_t TruncatedWidth=std::max<uint32_t>(HashLength+sizeof(eh_trunc), 2*CollisionByteLength+sizeof(eh_trunc)*(1 << (K - 1)));
+    // The maximum width in bytes of a list entry during the final round when using truncated hash representations.
+    static inline constexpr uint32_t FinalTruncatedWidth=std::max<uint32_t>(HashLength+sizeof(eh_trunc), 2*CollisionByteLength+sizeof(eh_trunc)*ProofSize);
+    // The width in bytes of the serialized solution that satisfies the Equihash puzzle.
+    static inline constexpr uint32_t SolutionWidth=ProofSize*(CollisionBitLength + 1)/8;
 
-    Equihash() { }
+    Equihash() noexcept = default;
 
     int InitialiseState(eh_HashState& base_state);
 #ifdef ENABLE_MINING

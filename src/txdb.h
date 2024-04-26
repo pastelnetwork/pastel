@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <map>
@@ -60,22 +60,23 @@ class CBlockTreeDB : public CDBWrapper
 {
 public:
     CBlockTreeDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
-private:
-    CBlockTreeDB(const CBlockTreeDB&);
-    void operator=(const CBlockTreeDB&);
-public:
+
     bool WriteBatchSync(const std::vector<std::pair<int, const CBlockFileInfo*> >& fileInfo, int nLastFile, const block_index_cvector_t& blockinfo);
     bool EraseBatchSync(const block_index_cvector_t& blockinfo);
-    bool ReadBlockFileInfo(int nFile, CBlockFileInfo &fileinfo);
-    bool ReadLastBlockFile(int &nFile);
+    bool ReadBlockFileInfo(int nFile, CBlockFileInfo &fileinfo) const;
+    bool ReadLastBlockFile(int &nFile) const;
     bool WriteReindexing(bool fReindex);
-    bool ReadReindexing(bool &fReindex);
-    bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+    bool ReadReindexing(bool &fReindex) const;
+    bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const;
     bool ReadTxIndex(const uint256 &txid, CDiskTxPos &pos);
     bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> > &list);
     bool WriteFlag(const std::string &name, bool fValue);
-    bool ReadFlag(const std::string &name, bool &fValue);
-    bool ReadFlag(const std::string &name, std::atomic_bool &fValue);
+    bool ReadFlag(const std::string &name, bool &fValue) const;
+    bool ReadFlag(const std::string &name, std::atomic_bool &fValue) const;
     bool LoadBlockIndexGuts(const CChainParams& chainparams);
+
+private:
+    CBlockTreeDB(const CBlockTreeDB&);
+    void operator=(const CBlockTreeDB&);
 };
 

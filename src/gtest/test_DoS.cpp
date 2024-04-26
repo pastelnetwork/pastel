@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021-2022 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -16,7 +16,7 @@
 #include <keystore.h>
 #include <main.h>
 #include <net.h>
-#include <pow.h>
+#include <mining/pow.h>
 #include <script/sign.h>
 #include <orphan-tx.h>
 

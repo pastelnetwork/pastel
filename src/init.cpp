@@ -1472,8 +1472,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 #endif
 
     // ********************************************************* Step 7: load block chain
-
     fReindex = GetBoolArg("-reindex", false);
+    if (fReindex)
+        LogPrintf("Reindexing mode\n");
 
     // Upgrading to 0.8; hard-link the old blknnnn.dat files into /blocks/
     fs::path blocksDir = GetDataDir() / "blocks";

@@ -532,6 +532,7 @@ uint32_t IncBlockSequenceId();
 void AddBlockUnlinked(CBlockIndex* pindex);
 void ExtractUnlinkedBlocks(std::deque<CBlockIndex*>& queue, CBlockIndex* pindex);
 void AddBlockIndexCandidate(CBlockIndex* pindex);
+void EraseBlockIndices(const block_index_cvector_t& vBlocksToRemove);
 
 /** Mark a block as invalid. */
 bool InvalidateBlock(CValidationState& state, const CChainParams& chainparams, CBlockIndex *pindex);

@@ -342,6 +342,7 @@ BITCOIN_CORE_H = \
   mining/eligibility-mgr.h \
   mining/miner.h \
   mining/mining-settings.h \
+  mining/pow.h \
   mruset.h \
   netmsg/bloom.h \
   netmsg/block-cache.h \
@@ -358,7 +359,6 @@ BITCOIN_CORE_H = \
   orphan-tx.h\
   policy/fees.h \
   port_config.h \
-  pow.h \
   primitives/block.h \
   primitives/transaction.h \
   protocol.h \
@@ -447,6 +447,7 @@ libbitcoin_server_a_SOURCES = \
   mining/eligibility-mgr.cpp \
   mining/miner.cpp \
   mining/mining-settings.cpp \
+  mining/pow.cpp \
   netmsg/bloom.cpp \
   netmsg/block-cache.cpp \
   netmsg/fork-switch-tracker.cpp \
@@ -459,7 +460,6 @@ libbitcoin_server_a_SOURCES = \
   noui.cpp \
   orphan-tx.cpp \
   policy/fees.cpp \
-  pow.cpp \
   rest.cpp \
   rpc/blockchain.cpp \
   rpc/chain-rpc-utils.cpp \
@@ -543,9 +543,9 @@ crypto_libbitcoin_crypto_a_SOURCES = \
 
 if ENABLE_MINING
 EQUIHASH_TROMP_SOURCES = \
-  pow/tromp/equi_miner.h \
-  pow/tromp/equi.h \
-  pow/tromp/osx_barrier.h
+  mining/pow/tromp/equi_miner.h \
+  mining/pow/tromp/equi.h \
+  mining/pow/tromp/osx_barrier.h
 
 crypto_libbitcoin_crypto_a_CPPFLAGS += \
   -DEQUIHASH_TROMP_ATOMIC

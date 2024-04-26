@@ -13,8 +13,6 @@
 
 #include <json/json.hpp>
 
-#include <json/json.hpp>
-
 #include <utils/util.h>
 #include <utils/str_utils.h>
 #include <addrman.h>

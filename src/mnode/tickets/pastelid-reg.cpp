@@ -52,7 +52,7 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&&
         {
             masternode_t pmn = masterNodeCtrl.masternodeManager.Get(USE_LOCK, masterNodeCtrl.activeMasternode.outpoint);
             if (!pmn)
-                throw runtime_error("This is not a active masternode. Only active MN can register its Pastel ID");
+                throw runtime_error("This is not an active masternode. Only active MN can register its Pastel ID");
 
             // get collateral address if not passed via parameter
             KeyIO keyIO(Params());
