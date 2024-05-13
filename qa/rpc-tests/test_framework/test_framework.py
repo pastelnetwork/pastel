@@ -35,7 +35,7 @@ class BitcoinTestFramework(object):
     _coin       = Decimal('100000')
     _maxmoney   = Decimal('21000000000')
 
-    # 6250
+    # Block reward in PSL
     _reward     = Decimal('6250')
     _reward00   = Decimal('6250.00')
     _highfee    = Decimal('1')

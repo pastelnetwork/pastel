@@ -49,34 +49,34 @@ class MnFeeType(Enum):
     TICKET_CHAIN_STORAGE_FEE_PER_KB = 2,  200, "getticketfee",          "ticketChainStorageFeePerKb", "localTicketChainStorageFeePerKb", "ticket"
     SENSE_COMPUTE_FEE               = 3, 5000, "getsensecomputefee",    "senseComputeFee",            "localSenseComputeFee",            "sense-compute"
     SENSE_PROCESSING_FEE_PER_MB     = 4,   50, "getsenseprocessingfee", "senseProcessingFeePerMb",    "localSenseProcessingFeePerMb",    "sense-processing"
-    
+
     def __init__(self, _: int, fee: int, getfee_rpc_command: str, option_name: str, local_option_name: str, setfee_rpc_command: str):
         self._fee = fee
         self._getfee_rpc_command = getfee_rpc_command
         self._option_name = option_name
         self._local_option_name = local_option_name
         self._setfee_rpc_command = setfee_rpc_command
-    
+
     def __new__(cls, *args, **kwds):
         obj = object.__new__(cls)
         obj._value_ = args[0]
         return obj
-    
+
     def __str__(self):
         return self.name
 
     @property
     def fee(self) -> int:
         return self._fee
-    
+
     @property
     def getfee_rpc_command(self) -> str:
         return self._getfee_rpc_command
-    
+
     @property
     def option_name(self) -> str:
         return self._option_name
-    
+
     @property
     def local_option_name(self) -> str:
         return self._local_option_name
@@ -84,30 +84,30 @@ class MnFeeType(Enum):
     @property
     def setfee_rpc_command(self) -> str:
         return self._setfee_rpc_command
-    
-    
+
+
 class TicketData:
     def __init__(self):
-        self.reg_ticket = None                  # Registration ticket json (not encoded)
-        self.reg_ticket_base64_encoded = None   # Registration ticket json base64-encoded
-        self.reg_txid: Optional[str]            # Registration ticket txid
-        self.reg_height: Optional[int]          # Registration ticket block height
-        self.reg_node_id: Optional[int]         # Node where ticket was registered
-        self.reg_pastelid: Optional[str]        # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
-        self.pastelid_node_id: Optional[int]    # Node where reg_pastelid is created
+        self.reg_ticket = None                      # Registration ticket json (not encoded)
+        self.reg_ticket_base64_encoded = None       # Registration ticket json base64-encoded
+        self.reg_txid: Optional[str] = None         # Registration ticket txid
+        self.reg_height: Optional[int] = None       # Registration ticket block height
+        self.reg_node_id: Optional[int] = None      # Node where ticket was registered
+        self.reg_pastelid: Optional[str] = None     # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
+        self.pastelid_node_id: Optional[int] = None # Node where reg_pastelid is created
 
-        self.act_txid: Optional[str]            # Activation ticket txid
-        self.act_height: Optional[int]          # Activation ticket block height
+        self.act_txid: Optional[str] = None         # Activation ticket txid
+        self.act_height: Optional[int] = None       # Activation ticket block height
 
-        self.offer_txid: Optional[str]          # Offer ticket txid
-        self.accept_txid: Optional[str]         # Accept ticket txid
-        self.transfer_txid: Optional[str]       # Transfer ticket txid
+        self.offer_txid: Optional[str] = None       # Offer ticket txid
+        self.accept_txid: Optional[str] = None      # Accept ticket txid
+        self.transfer_txid: Optional[str] = None    # Transfer ticket txid
 
-        self.label: Optional[str]               # unique label
-        self.item_price: int = 0                # item price
-        self.ticket_price: int = 10             # ticket price
-        self.royalty_address: Optional[str]     # NFT Royalty address
-        self.address = None                     # address that can be used in a ticket
+        self.label: Optional[str] = None            # unique label
+        self.item_price: int = 0                    # item price
+        self.ticket_price: int = 10                 # ticket price
+        self.royalty_address: Optional[str]         # NFT Royalty address
+        self.address = None                         # address that can be used in a ticket
 
     def set_reg_ticket(self, reg_ticket: str):
         self.reg_ticket = reg_ticket
@@ -290,7 +290,7 @@ class MasterNodeCommon (PastelTestFramework):
             int: total number of nodes
         """
         return self.number_of_master_nodes + self.number_of_simple_nodes
-    
+
 
     def get_mnid(self, mn_no: int) -> str:
         """ Get mnid (Pastel ID of the MasterNode).
@@ -333,7 +333,7 @@ class MasterNodeCommon (PastelTestFramework):
         """
         timer = Timer()
         timer.start()
-        
+
         # create list of mns
         # start only non-mn nodes
         for index in range(self.total_number_of_nodes):
@@ -344,7 +344,7 @@ class MasterNodeCommon (PastelTestFramework):
             else:
                 print(f"starting non-mn{index} node")
                 self.nodes.append(start_node(index, self.options.tmpdir, [f"-debug={debug_flags}"]))
-       
+
         # connect non-mn nodes
         for pair in itertools.combinations(range(self.number_of_master_nodes, self.total_number_of_nodes), 2):
             connect_nodes_bi(self.nodes, pair[0], pair[1])
