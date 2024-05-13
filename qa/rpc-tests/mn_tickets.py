@@ -2261,7 +2261,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         # create item of the given type
         if item_type == TicketType.NFT:
             self.create_nft_ticket_v2(self.non_mn3, None, False, copies, self.royalty, self.is_green)
-        elif action_type:
+        elif action_type != ActionType.UNKNOWN:
             self.create_action_ticket(self.non_mn3, action_type, self.action_caller_pastelid)
 
         # register item

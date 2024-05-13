@@ -16,6 +16,7 @@ class TicketType(Enum):
     """ Pastel ticket types.
     TicketTypeName          | ID | Description | TypeName | TicketName | FolderName | Ticket Price
     """
+    UNKNOWN                 = 0, "Unknown", "", "", None, 0
     ID                      = 1, "Pastel ID", "id", "pastelid", None, 10
     MNID                    = 2, "MasterNode's Pastel ID", "mnid", "pastelid", None, 10
     NFT                     = 3, "NFT", "nft", "nft-reg", None, 10
@@ -119,6 +120,7 @@ class ActionType(Enum):
     """Pastel action types.
     ActionTypeName    | ID | RegTicketType | ActTicketType
     """
+    UNKNOWN = 0, TicketType.
     SENSE   = 1, TicketType.SENSE_ACTION,   TicketType.SENSE_ACTION_ACTIVATE
     CASCADE = 2, TicketType.CASCADE_ACTION, TicketType.CASCADE_ACTION_ACTIVATE
 
@@ -175,7 +177,7 @@ def get_action_type(item_type: TicketType) -> ActionType:
     elif item_type == TicketType.CASCADE_ACTION:
         action_type = ActionType.CASCADE
     else:
-        raise ValueError(f"Unsupported item type: {item_type}")
+        action_type = ActionType.UNKNOWN
     return action_type
 
 
@@ -197,7 +199,7 @@ def get_activation_type(item_type: TicketType) -> TicketType:
     elif item_type == TicketType.COLLECTION:
         act_type = TicketType.COLLECTION_ACTIVATE
     else:
-        raise ValueError(f"Unsupported item type: {item_type}")
+        act_type = TicketType.UNKNOWN
     return act_type
 
 
