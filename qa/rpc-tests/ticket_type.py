@@ -120,7 +120,7 @@ class ActionType(Enum):
     """Pastel action types.
     ActionTypeName    | ID | RegTicketType | ActTicketType
     """
-    UNKNOWN = 0, TicketType.
+    UNKNOWN = 0, TicketType.UNKNOWN, TicketType.UNKNOWN
     SENSE   = 1, TicketType.SENSE_ACTION,   TicketType.SENSE_ACTION_ACTIVATE
     CASCADE = 2, TicketType.CASCADE_ACTION, TicketType.CASCADE_ACTION_ACTIVATE
 
