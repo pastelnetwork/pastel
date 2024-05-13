@@ -183,8 +183,8 @@ class MasterNodeMainTest (MasterNodeCommon):
             self.reconnect_node(self.cold_node_num)
             self.sync_all()
 
-            print("Enabling node 0 as MN again (start-alias from node 2)...")
-            res = self.nodes[self.hot_node_num].masternode("start-alias", mn.alias)
+            print("Enabling node 0 as MN again (activate from node 2)...")
+            res = self.nodes[self.hot_node_num].masternode("activate", mn.alias)
             print(res)
             assert_equal(res["alias"], mn.alias)
             assert_equal(res["result"], "successful")

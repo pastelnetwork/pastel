@@ -115,7 +115,7 @@ class TicketData:
 
 
 class TopMN:
-    def __init__(self, index: int, pastelid: Optional[str]):
+    def __init__(self, index: int, pastelid: Optional[str] = None):
         self._index_ = index
         self._pastelid_ = pastelid
         self._signature_ = None
@@ -151,11 +151,11 @@ class MasterNodeCommon (PastelTestFramework):
         lrKey: Optional[str]         # generated LegRoast key
         privKey: Optional[str]       # generated private key
         port: Optional[int]
-        collateral_address: Optional[str]
-        collateral_txid: Optional[str]
-        collateral_index: Optional[int]
-        mnid_reg_address: Optional[str] # address for mnid registration
-        mnid_reg_txid: Optional[str]    # txid for mnid registration
+        collateral_address: Optional[str] = None
+        collateral_txid: Optional[str] = None
+        collateral_index: Optional[int] = None
+        mnid_reg_address: Optional[str] = None # address for mnid registration
+        mnid_reg_txid: Optional[str] = None   # txid for mnid registration
 
         def __init__(self, index, passphrase):
             self.index = index
@@ -170,7 +170,9 @@ class MasterNodeCommon (PastelTestFramework):
             Returns:
                 str: masternode collateral id (txid-index)
             """
-            return str(self.collateral_txid) + "-" + str(self.collateral_index)
+            if (self.collateral_txid is not None) and (self.collateral_index is not None):
+                return self.collateral_txid + "-" + str(self.collateral_index)
+            return ""
 
 
         @property
@@ -214,7 +216,7 @@ class MasterNodeCommon (PastelTestFramework):
             if not regtestdir.is_dir():
                 regtestdir.mkdir()
             cfg_file = regtestdir / "masternode.conf"
-        
+
             config = {}
             if cfg_file.is_file():
                 with cfg_file.open() as json_file:
@@ -254,20 +256,20 @@ class MasterNodeCommon (PastelTestFramework):
         self.collateral = int(1000)
         # flag to use new "masternode init" API
         self.use_masternode_init = False
-        
+
         # dict for fast search of the MN by outpoint (txid-index)
         self.mn_outpoints = {}
-        
+
         # list of 3 TopMNs
         self.top_mns = [TopMN(i) for i in range(3)]
         self.non_top_mns = []
-        
+
         self.signatures_dict = None
         self.same_mns_signatures_dict = None
         self.not_top_mns_signatures_dict = None
         # dict of all principal signatures for validation: 'principal Pastel ID' -> 'signature'
         self.principal_signatures_dict = {}
-        
+
         self.royalty = 0.075                        # default royalty fee 7.5%
         self.is_green = True                        # is green fee payment?
         self.green_address = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6"
@@ -316,7 +318,7 @@ class MasterNodeCommon (PastelTestFramework):
             - all MNs are started and connected with each other and simple nodes
             - Pastel IDs are created on all MNs
             - coins required for mnid registration sent to all MNs
-            - Hot node calls "masternode start-alias" to start all MNs
+            - Hot node calls "masternode activate" to start all MNs
             - wait for PRE_ENABLED status for all MNs
             - register mnids on all MNs
             - wait for ENABLED status for all MNs
@@ -417,12 +419,12 @@ class MasterNodeCommon (PastelTestFramework):
                 mn.add_mnid_conf(self.options.tmpdir)
             self.generate_and_sync_inc(1, self.mining_node_num)
 
-            # send "masternode start-alias <alias>" for all cold nodes
+            # send "masternode activate <alias>" for all cold nodes
             for mn in self.mn_nodes:
                 if mn.index >= self.number_of_cold_nodes:
                     continue
                 print(f"Enabling master node: {mn.alias}...")
-                res = self.nodes[self.hot_node_num].masternode("start-alias", mn.alias)
+                res = self.nodes[self.hot_node_num].masternode("activate", mn.alias)
                 print(res)
                 assert_equal(res["alias"], mn.alias)
                 assert_equal(res["result"], "successful")
@@ -434,7 +436,7 @@ class MasterNodeCommon (PastelTestFramework):
                     continue
                 self.wait_for_mn_state(initial_wait, 20, "PRE_ENABLED", mn.index, 6)
                 initial_wait = 0
-                
+
             # register mnids
             print("Registering mnids...")
             for mn in self.mn_nodes:
@@ -525,7 +527,7 @@ class MasterNodeCommon (PastelTestFramework):
         for i in range(len(self.nodes)):
             if i != index:
                 connect_nodes_bi(self.nodes, index, i)
-    
+
     def wait_for_mn_state(self, init_wait: int, more_wait: int, wait_for_state: str, mn_index: int, repeat_count: int = 1, node_list = None):
         """Wait for the specific MN state.
 
@@ -540,9 +542,10 @@ class MasterNodeCommon (PastelTestFramework):
         debug = False
         timer = Timer()
         timer.start()
-        
-        print(f'Waiting {init_wait} seconds...')
-        time.sleep(init_wait)
+
+        if init_wait > 0:
+            print(f'Waiting {init_wait} seconds...')
+            time.sleep(init_wait)
 
         if node_list is None:
             node_list = self.nodes
