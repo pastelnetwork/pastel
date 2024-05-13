@@ -465,7 +465,13 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
     return tv;
 }
 
-string COfferTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json COfferTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
@@ -487,7 +493,18 @@ string COfferTicket::ToJSON(const bool bDecodeProperties) const noexcept
             }
         }
     };
-    return jsonObj.dump(4);
+    return jsonObj;
+}
+
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json string
+ */
+string COfferTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 bool COfferTicket::FindTicketInDb(const string& key, COfferTicket& ticket)

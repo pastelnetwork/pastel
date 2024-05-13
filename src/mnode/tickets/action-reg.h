@@ -1,9 +1,7 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <json/json.hpp>
-
 #include <mnode/tickets/ticket.h>
 #include <mnode/tickets/ticket_signing.h>
 #include <mnode/tickets/collection-item.h>
@@ -111,6 +109,7 @@ public:
     std::string MVKeyThree() const noexcept override { return m_label; }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
+    nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
     ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
     // check if given Pastel ID is the action caller

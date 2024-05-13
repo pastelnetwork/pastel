@@ -1,8 +1,6 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <json/json.hpp>
-
 #include <init.h>
 #include <key_io.h>
 #include <pastelid/common.h>
@@ -116,7 +114,7 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
                 !existingTicket.IsTxId(m_txid))
             {
                 string sMessage = strprintf( "The Activation ticket for the Registration ticket with txid [%s]", m_regTicketTxId);
-                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
+                const bool bTicketFound = masterNodeCtrl.masternodeTickets.FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
                 // for testnet: if the ticket was accepted to the blockchain (not bPreReg) - accept duplicate ticket (though it was probably done by mistake)
                 if (bTicketFound && !(Params().IsTestNet() && !bPreReg))
                 {
@@ -277,7 +275,13 @@ CAmount CNFTActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     return nAllAmount;
 }
 
-string CNFTActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json CNFTActivateTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
@@ -296,8 +300,18 @@ string CNFTActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
             }
         }
     };
+    return jsonObj;
+}
 
-    return jsonObj.dump(4);
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json string
+ */
+string CNFTActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 bool CNFTActivateTicket::FindTicketInDb(const string& key, CNFTActivateTicket& ticket)

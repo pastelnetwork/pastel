@@ -123,6 +123,10 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ti
         ticket = make_unique<CActionActivateTicket>();
         break;
 
+    case TicketID::Contract:
+        ticket = make_unique<CContractTicket>();
+		break;
+
     default: // to suppress compiler warning for not handling TicketID::COUNT
         break;
     }
@@ -203,13 +207,15 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
  * \return - true if ticket was parsed successfully
  */
 bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream,
-    TicketID& ticket_id, string& error, const bool bLog, const bool bUncompressData)
+    TicketID& ticket_id, string& error, 
+    uint32_t &nMultiSigOutputsCount, CAmount &nMultiSigTxTotalFee,
+    const bool bLog, const bool bUncompressData)
 {
     CSerializeData vOutputData;
     bool bRet = false;
     do
     {
-        if (!ParseP2FMSTransaction(tx, vOutputData, error))
+        if (!ParseP2FMSTransaction(tx, vOutputData, error, nMultiSigOutputsCount, nMultiSigTxTotalFee))
             break;
         if (vOutputData.empty())
         {
@@ -334,6 +340,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
                 TicketID::Accept,
                 TicketID::Royalty,
                 TicketID::Username,
+                TicketID::Contract,
                 TicketID::EthereumAddress,
                 TicketID::ActionReg,
                 TicketID::CollectionReg
@@ -490,10 +497,13 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
     ticket_validation_t tv;
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
+    uint32_t nMultiSigOutputsCount;
+    CAmount nMultiSigTxTotalFee;
 
     do
     {
-        if (!preParseTicket(tx, data_stream, ticket_id, tv.errorMsg, false))
+        if (!preParseTicket(tx, data_stream, ticket_id, tv.errorMsg, 
+            nMultiSigOutputsCount, nMultiSigTxTotalFee, false))
         {
             // this is not a ticket
             tv.state = TICKET_VALIDATION_STATE::NOT_TICKET;
@@ -523,6 +533,8 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
             data_stream >> *ticket;
             ticket->SetTxId(move(ticketBlockTxIdStr));
             ticket->SetBlock(nHeight);
+            ticket->SetMultiSigOutputsCount(nMultiSigOutputsCount);
+            ticket->SetMultiSigTxTotalFee(nMultiSigTxTotalFee);
             // ticket validation
             tv = ticket->IsValid(state.getTxOrigin(), 0);
             if (tv.IsNotValid())
@@ -559,8 +571,11 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
     string error_ret;
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
+    uint32_t nMultiSigOutputsCount;
+    CAmount nMultiSigTxTotalFee;
 
-    if (!preParseTicket(tx, data_stream, ticket_id, error_ret))
+    if (!preParseTicket(tx, data_stream, ticket_id, error_ret, 
+        nMultiSigOutputsCount, nMultiSigTxTotalFee))
         return false;
 
     try
@@ -577,6 +592,8 @@ bool CPastelTicketProcessor::ParseTicketAndUpdateDB(CMutableTransaction& tx, con
         {
             data_stream >> *ticket;
             ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
+            ticket->SetMultiSigOutputsCount(nMultiSigOutputsCount);
+            ticket->SetMultiSigTxTotalFee(nMultiSigTxTotalFee);
             if (data_stream.IsCompressed())
                 ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());           
             return UpdateDB(*ticket, txid, nBlockHeight);
@@ -618,7 +635,8 @@ bool CPastelTicketProcessor::SerializeTicketToStream(const uint256& txid, string
     data.mtx = make_unique<CMutableTransaction>(data.tx);
 
     // parse ticket transaction into data_stream
-    if (!preParseTicket(*data.mtx, data.data_stream, data.ticket_id, error, true, bUncompressData))
+    if (!preParseTicket(*data.mtx, data.data_stream, data.ticket_id, error, 
+        data.nMultiSigOutputsCount, data.nMultiSigTxTotalFee, true, bUncompressData))
     {
         error = strprintf("Failed to parse P2FMS transaction from data provided. %s", error);
         return false;
@@ -678,6 +696,8 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid,
             ticket->SetTxId(move(sTxId));
             ticket->SetBlock(data.nTicketHeight);
             ticket->SetSerializedSize(data.data_stream.GetSavedDecompressedSize());
+            ticket->SetMultiSigOutputsCount(data.nMultiSigOutputsCount);
+            ticket->SetMultiSigTxTotalFee(data.nMultiSigTxTotalFee);
             if (data.data_stream.IsCompressed())
                 ticket->SetCompressedSize(data.data_stream.GetSavedCompressedSize());
         }
@@ -971,6 +991,7 @@ template ChangeUsernameTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CCha
 template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const string&);
 template ActionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionRegTicket>(const string&);
 template ActionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionActivateTicket>(const string&);
+template ContractTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CContractTicket>(const string&);
 
 v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
@@ -1050,6 +1071,10 @@ template <> struct TicketTypeMapper<TicketID::CollectionReg>
 template <> struct TicketTypeMapper<TicketID::CollectionAct>
 {
 	using TicketType = CollectionActivateTicket;
+};
+template <> struct TicketTypeMapper<TicketID::Contract>
+{
+	using TicketType = CContractTicket;
 };
 
 template <TicketID ID>
@@ -1180,6 +1205,12 @@ bool CPastelTicketProcessor::ProcessAllTickets(TicketID id, process_ticket_data_
 				if (ReadTicketFromDB<TicketID::CollectionAct>(pcursor, sKey, ticket))
 					ticketFunctor(move(sKey), ticket);
 			} break;
+
+            case TicketID::Contract:
+            {
+				if (ReadTicketFromDB<TicketID::Contract>(pcursor, sKey, ticket))
+					ticketFunctor(move(sKey), ticket);
+			} break;
 		}
 		pcursor->Next();
 	}
@@ -1235,6 +1266,7 @@ template string CPastelTicketProcessor::ListTickets<CChangeUsernameTicket>(const
 template string CPastelTicketProcessor::ListTickets<CChangeEthereumAddressTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CActionRegTicket>(const uint32_t nMinHeight) const;
 template string CPastelTicketProcessor::ListTickets<CActionActivateTicket>(const uint32_t nMinHeight) const;
+template string CPastelTicketProcessor::ListTickets<CContractTicket>(const uint32_t nMinHeight) const;
 
 template <class _TicketType, typename F>
 string CPastelTicketProcessor::filterTickets(F f, const uint32_t nMinHeight, const bool bCheckConfirmation) const
@@ -1253,7 +1285,7 @@ string CPastelTicketProcessor::filterTickets(F f, const uint32_t nMinHeight, con
         jArray.push_back(json::parse(ticket.ToJSON()));
         return true;
     }, nMinHeight);
-    return jArray.dump();
+    return jArray.dump(4);
 }
 
 /**
@@ -1412,6 +1444,27 @@ string CPastelTicketProcessor::ListFilterActionTickets(const uint32_t nMinHeight
                 return false; //don't skip inactive
             return true;
         }, nMinHeight);
+}
+
+string CPastelTicketProcessor::ListFilterContractTickets(const uint32_t nMinHeight, const string& subtype) const
+{
+    ContractTickets_t vTickets;
+    ProcessTicketsByMVKey<CContractTicket>(subtype,
+        [&](const CContractTicket& ticket) -> bool
+        {
+            if ((ticket.getSubType() == subtype) &&
+                ticket.IsBlockEqualOrNewerThan(nMinHeight))
+				vTickets.emplace_back(ticket);
+            return true;
+        });
+
+    json jArray = json::array();
+    jArray.get_ptr<json::array_t*>()->reserve(vTickets.size());
+
+    for (const auto& ticket : vTickets)
+		jArray.emplace_back(ticket.getJSON(true));
+
+	return jArray.dump(4);
 }
 
 // 1 - available;      2 - transferred|sold
@@ -1980,12 +2033,15 @@ bool CPastelTicketProcessor::StoreP2FMSTransaction(const CMutableTransaction& tx
  * \param tx_in - transaction
  * \param output_string - output string
  * \param error - returns an error sMessage if any
+ * \param nMultiSigOutputsCount - number of multisig outputs found in the transaction
+ * \param nMultiSigTxTotalFee - total fee of multisig outputs
  * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output string
  */
-bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, string& output_string, string& error)
+bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, string& output_string, 
+    string& error, uint32_t &nMultiSigOutputsCount, CAmount &nMultiSigTxTotalFee)
 {
     CSerializeData output_data;
-    const bool bOk = ParseP2FMSTransaction(tx_in, output_data, error);
+    const bool bOk = ParseP2FMSTransaction(tx_in, output_data, error, nMultiSigOutputsCount, nMultiSigTxTotalFee);
     if (bOk)
         output_string = vector_to_string(output_data);
     return bOk;
@@ -1997,13 +2053,17 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
  * \param tx_in - transaction
  * \param output_data - output byte vector
  * \param error_ret - returns an error if any
+ * \param nMultiSigOutputsCount - number of multisig outputs found in the transaction
+ * \param nMultiSigTxTotalFee - total fee of multisig outputs
  * \return true if P2FMS was found in the transaction and successfully parsed, validated and copied to the output data
  */
-bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, string& error_ret)
+bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, 
+    string& error_ret, uint32_t &nMultiSigOutputsCount, CAmount &nMultiSigTxTotalFee)
 {
-    bool bFoundMS = false;
     // reuse vector to process tx outputs
     vector<v_uint8> vSolutions;
+    nMultiSigOutputsCount = 0;
+    nMultiSigTxTotalFee = 0;
 
     for (const auto& vout : tx_in.vout)
     {
@@ -2013,7 +2073,8 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
         if (!Solver(vout.scriptPubKey, typeRet, vSolutions) || typeRet != TX_MULTISIG)
             continue;
 
-        bFoundMS = true;
+        ++nMultiSigOutputsCount;
+        nMultiSigTxTotalFee += vout.nValue;
         size_t nReserve = 0;
         for (size_t i = 1; vSolutions.size() - 1 > i; i++)
             nReserve += vSolutions[i].size();
@@ -2026,7 +2087,7 @@ bool CPastelTicketProcessor::ParseP2FMSTransaction(const CMutableTransaction& tx
     do
     {
         error_ret.clear();
-        if (!bFoundMS)
+        if (nMultiSigOutputsCount == 0)
         {
             error_ret = "No data multisigs found in transaction";
             break;

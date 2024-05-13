@@ -91,6 +91,7 @@ public:
     const std::vector<CDNSSeedData>& DNSSeeds() const noexcept { return vSeeds; }
     const std::vector<SeedSpec6>& FixedSeeds() const noexcept { return vFixedSeeds; }
     const CCheckpointData& Checkpoints() const noexcept { return checkpointData; }
+    const std::string getPastelBurnAddress() const noexcept { return m_sPastelBurnAddress; }
 
     CChainParams(ChainNetwork network) :
         consensus(network)
@@ -120,6 +121,7 @@ protected:
     std::vector<CDNSSeedData> vSeeds;
     std::string strNetworkID;
     std::string strCurrencyUnits;
+    std::string m_sPastelBurnAddress;
     uint32_t bip44CoinType = 0;
     CBlock genesis;
     std::vector<SeedSpec6> vFixedSeeds;

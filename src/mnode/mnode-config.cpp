@@ -115,7 +115,7 @@ string get_json_cfg_obj_as_string(const json& cfg, const string &name)
 
 bool CMasternodeConfig::AliasExists(const std::string& alias) const noexcept
 {
-    unique_lock<mutex> lck(m_mtx);
+    unique_lock lck(m_mtx);
     const auto it = m_CfgEntries.find(lowercase(alias));
     return it != m_CfgEntries.cend();
 }
@@ -129,7 +129,7 @@ bool CMasternodeConfig::AliasExists(const std::string& alias) const noexcept
  */
 bool CMasternodeConfig::GetEntryByAlias(const std::string& alias, CMasternodeConfig::CMasternodeEntry &mne) const noexcept
 {
-    unique_lock<mutex> lck(m_mtx);
+    unique_lock lck(m_mtx);
 
     const auto it = m_CfgEntries.find(lowercase(alias));
     if (it != m_CfgEntries.cend())
@@ -192,7 +192,7 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
     string strWhat;
     string alias_lowercased, mnAddress, mnPrivKey, txid, outIndex, extAddress, extCfg, extP2P;
 
-    unique_lock<mutex> lck(m_mtx);
+    unique_lock lck(m_mtx);
     for (const auto &[alias, cfg] : jsonObj.items())
     {
         if (alias.empty())
@@ -276,13 +276,13 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
 
 int CMasternodeConfig::getCount() const noexcept
 {
-    unique_lock<mutex> lck(m_mtx);
+    unique_lock lck(m_mtx);
     return (int)m_CfgEntries.size();
 }
 
 string CMasternodeConfig::getAlias(const COutPoint &outpoint) const noexcept
 {
-    unique_lock<mutex> lck(m_mtx);
+    unique_lock lck(m_mtx);
     string sAlias;
     const auto it = find_if(m_CfgEntries.cbegin(), m_CfgEntries.cend(), [&](const auto& pair)
         {

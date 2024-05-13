@@ -515,14 +515,15 @@ Examples:
 
 UniValue getblockmininginfo(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.empty() || params.size() > 2)
+    if (fHelp || params.empty() || params.size() > 3)
         throw runtime_error(
-R"(getblockmininginfo "block_hash|block_height" (block_count)
+R"(getblockmininginfo "block_hash|block_height" (block_count) (filter)
 Returns information about blocks mined and signed by masternodes.
 
 Arguments:
 1. "block_hash|block_height"   (string or numeric, required) The block hash or height to start from
 2. block_count                 (numeric, optional, default=1) The number of blocks to return backwards
+3. filter                      (string, optional) filter results by masternode collateral id (txid-vout) or mnid
 
 Result:
 [
@@ -548,6 +549,9 @@ Examples:
         rpc_check_unsigned_param<uint32_t>("block_count", nParamValue);
         nBlockCount = static_cast<uint32_t>(nParamValue);
     }
+    string sFilter;
+    if (params.size() > 2)
+		sFilter = params[2].getValStr();
 
     uint256 hashBlock;
     LOCK(cs_main);
@@ -582,10 +586,17 @@ Examples:
         const auto mnid = pBlockIndex->sPastelID;
         if (mnid.has_value())
         {
-            obj.pushKV("mnid", mnid.value());
             masternode_info_t mnInfo;
             if (masterNodeCtrl.masternodeManager.GetAndCacheMasternodeInfo(mnid.value(), mnInfo))
+            {
+                if (!sFilter.empty() && (mnid.value() != sFilter) && (mnInfo.getOutPoint().ToStringShort() != sFilter))
+                {
+                    pBlockIndex = pBlockIndex->pprev;
+                    continue;
+                }
                 obj.pushKV("collateralid", mnInfo.GetDesc());
+            }
+            obj.pushKV("mnid", mnid.value());
         }
 		retObj.push_back(move(obj));
 

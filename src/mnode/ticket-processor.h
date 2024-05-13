@@ -81,6 +81,8 @@ typedef struct _ticket_parse_data_t
     uint32_t nTicketHeight = std::numeric_limits<uint32_t>::max();
     TicketID ticket_id = TicketID::InvalidID;
     CCompressedDataStream data_stream;
+    uint32_t nMultiSigOutputsCount = 0;
+    CAmount nMultiSigTxTotalFee = 0;
 
     _ticket_parse_data_t() :
         data_stream(SER_NETWORK, DATASTREAM_VERSION)
@@ -191,6 +193,7 @@ public:
     std::string ListFilterAcceptTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const;   // 0 - all, 1 - transferred; 2 - expired
     std::string ListFilterTransferTickets(const uint32_t nMinHeight, const short filter = 0, const std::string& pastelID = "") const; // 0 - all, 1 - available; 2 - transferred
     std::string ListFilterActionTickets(const uint32_t nMinHeight, const short filter = 0) const; // 1 - active;    2 - inactive
+    std::string ListFilterContractTickets(const uint32_t nMinHeight, const std::string& subtype) const;
 
     // search for NFT registration tickets, calls functor for each matching ticket
     void SearchForNFTs(const search_thumbids_t &p, std::function<size_t(const CPastelTicket *, const nlohmann::json &)> &fnMatchFound) const;
@@ -206,8 +209,10 @@ public:
     static bool CreateP2FMSTransaction(const CDataStream& input_stream, CMutableTransaction& tx_out, 
         const CAmount nPricePSL, const opt_string_t& sFundingAddress, std::string& error_ret);
 #endif // ENABLE_WALLET
-    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, std::string& error_ret);
-    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret);
+    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, CSerializeData& output_data, std::string& error_ret,
+        uint32_t &nMultiSigOutputsCount, CAmount &nMultiSigTxTotalFee);
+    static bool ParseP2FMSTransaction(const CMutableTransaction& tx_in, std::string& output_string, std::string& error_ret,
+        uint32_t &nMultiSigOutputsCount, CAmount &nMultiSigTxTotalFee);
     // Add P2FMS transaction to the memory pool
     static bool StoreP2FMSTransaction(const CMutableTransaction& tx_out, std::string& error_ret);
 
@@ -238,7 +243,8 @@ public:
 
     // Reads P2FMS (Pay-to-Fake-Multisig) transaction into CCompressedDataStream object.
     static bool preParseTicket(const CMutableTransaction& tx, CCompressedDataStream& data_stream,
-        TicketID& ticket_id, std::string& error, const bool bLog = true, const bool bUncompressData = true);
+        TicketID& ticket_id, std::string& error, uint32_t &nMultiSigOutputsCount, CAmount &nMultiSigTxTotalFee,
+        const bool bLog = true, const bool bUncompressData = true);
 
     // Get mempool tracker for ticket transactions
     static tx_mempool_tracker_t GetTxMemPoolTracker();

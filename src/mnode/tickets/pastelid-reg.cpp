@@ -245,7 +245,13 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
     return tv;
 }
 
-string CPastelIDRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json CPastelIDRegTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     json jsonObj 
     {
@@ -269,7 +275,18 @@ string CPastelIDRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
     if (!m_outpoint.IsNull())
         jsonObj["ticket"]["outpoint"] = m_outpoint.ToStringShort();
 
-    return jsonObj.dump(4);
+    return jsonObj;
+}
+
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json string
+ */
+string CPastelIDRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 bool CPastelIDRegTicket::FindTicketInDb(const string& key, CPastelIDRegTicket& ticket)

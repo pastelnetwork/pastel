@@ -1,26 +1,36 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 import hashlib
 import string
 import random
+from collections import namedtuple
+
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_true,
 )
 from ticket_type import TicketType
 
-
 # ===============================================================================================================
+RegisterResultInfo = namedtuple('RegisterResultInfo',
+    ['txid', 'key'],
+    defaults=['', ''])
+
 class PastelTestFramework (BitcoinTestFramework):
+    """
+    Common class for testing Pastel Framework.
+    """
+
     passphrase = "passphrase"
     new_passphrase = "new passphrase"
 
     # error strings
     ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file"
     ERR_INVALID_PASS = "Passphrase is invalid"
+
 
     def __init__(self):
         super().__init__()

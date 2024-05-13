@@ -86,6 +86,7 @@ public:
     void SetKeyOne(std::string&& sValue) override { m_offerTxId = std::move(sValue); }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
+    nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
     ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }

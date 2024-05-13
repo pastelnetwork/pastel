@@ -2,7 +2,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
-#include <json/json.hpp>
 
 #include <init.h>
 #include <pastelid/common.h>
@@ -18,7 +17,13 @@ using json = nlohmann::json;
 using namespace std;
 
 // CChangeEthereumAddressTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-string CChangeEthereumAddressTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json CChangeEthereumAddressTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj =
     {
@@ -35,8 +40,18 @@ string CChangeEthereumAddressTicket::ToJSON(const bool bDecodeProperties) const 
             }
         }
     };
+    return jsonObj;
+}
 
-    return jsonObj.dump(4);
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json string
+ */
+string CChangeEthereumAddressTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 string CChangeEthereumAddressTicket::ToStr() const noexcept

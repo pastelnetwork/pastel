@@ -57,7 +57,7 @@ void CScheduler::add_workers(const size_t nThreadCount)
  */
 void CScheduler::serviceQueue()
 {
-    unique_lock<mutex> lock(m_newTaskMutex);
+    unique_lock lock(m_newTaskMutex);
     {
         ++m_nThreadsServicingQueue;
         auto guard = sg::make_scope_guard([this]() noexcept
@@ -120,7 +120,7 @@ void CScheduler::serviceQueue()
 // thread-safe check if queue is empty
 bool CScheduler::empty() const noexcept
 {
-    unique_lock<mutex> lock(m_newTaskMutex);
+    unique_lock lock(m_newTaskMutex);
     return m_taskQueue.empty();
 }
 
@@ -132,7 +132,7 @@ bool CScheduler::empty() const noexcept
 void CScheduler::stop(bool bDrain)
 {
     {
-        unique_lock<mutex> lock(m_newTaskMutex);
+        unique_lock lock(m_newTaskMutex);
         if (bDrain)
             m_bStopWhenEmpty = true;
         else
@@ -146,7 +146,7 @@ void CScheduler::stop(bool bDrain)
 // reset scheduler if task queue is empty
 void CScheduler::reset()
 {
-    unique_lock<mutex> lock(m_newTaskMutex);
+    unique_lock lock(m_newTaskMutex);
     if (m_taskQueue.empty())
     {
         m_bStopWhenEmpty = false;
@@ -157,7 +157,7 @@ void CScheduler::reset()
 void CScheduler::schedule(CScheduler::Function f, const chrono::system_clock::time_point t)
 {
     {
-        unique_lock<mutex> lock(m_newTaskMutex);
+        unique_lock lock(m_newTaskMutex);
         m_taskQueue.emplace(t, f);
     }
     m_newTaskScheduled.notify_one();
@@ -189,7 +189,7 @@ void CScheduler::scheduleEvery(CScheduler::Function f, const int64_t nDeltaSecon
 size_t CScheduler::getQueueInfo(chrono::system_clock::time_point &first,
                                 chrono::system_clock::time_point &last) const noexcept
 {
-    unique_lock<mutex> lock(m_newTaskMutex);
+    unique_lock lock(m_newTaskMutex);
     const size_t nQueueSize = m_taskQueue.size();
     if (!m_taskQueue.empty())
     {

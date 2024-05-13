@@ -137,8 +137,8 @@ bool IsStandardTx(const CTransaction& tx, string& reason, const CChainParams& ch
  * 
  * \param tx - transaction to check
  * \param nBlockHeight - current block height
- * \param nBlockTime
- * \return 
+ * \param nBlockTime - current block time
+ * \return - true if the transaction is final, false otherwise
  */
 bool IsFinalTx(const CTransaction& tx, const uint32_t nBlockHeight, int64_t nBlockTime)
 {

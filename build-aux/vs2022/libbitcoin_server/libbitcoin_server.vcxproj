@@ -147,6 +147,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\action-act.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\action-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\collection-item.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\contract.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\ethereum-address-change.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-act.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\accept.cpp" />
@@ -155,7 +156,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-reg.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\nft-royalty.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\offer.cpp" />
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-take-down.cpp" />
+    <ClCompile Include="..\..\..\src\mnode\tickets\take-down.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\ticket-key.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\transfer.cpp" />
     <ClCompile Include="..\..\..\src\mnode\tickets\pastelid-reg.cpp" />
@@ -273,6 +274,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\action-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\action-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\collection-item.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\contract.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ethereum-address-change.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\collection-act.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\collection-reg.h" />
@@ -284,7 +286,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-royalty.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\offer.h" />
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-take-down.h" />
+    <ClInclude Include="..\..\..\src\mnode\tickets\take-down.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\transfer.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\pastelid-reg.h" />
     <ClInclude Include="..\..\..\src\mnode\tickets\ticket-types.h" />

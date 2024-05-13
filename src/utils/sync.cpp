@@ -245,7 +245,7 @@ static void push_lock(void* c, CLockLocation&& lockLocation, const bool fTry)
     }
 
     lockid_t currentLock = { c, lockLocation.GetLockType()};
-    unique_lock<mutex> lock(dd_mutex);
+    unique_lock lock(dd_mutex);
 
     // register the lock in a thread-local stack
     gl_LockStack->emplace_back(currentLock, lockLocation);
@@ -271,13 +271,13 @@ static void push_lock(void* c, CLockLocation&& lockLocation, const bool fTry)
 
 static void pop_lock()
 {
-    unique_lock<mutex> lock(dd_mutex);
+    unique_lock lock(dd_mutex);
     gl_LockStack->pop_back();
 }
 
 void CleanupLockOrders(const void* lock)
 {
-    unique_lock<mutex> lck(dd_mutex);
+    unique_lock lck(dd_mutex);
     for (auto it = gl_LockOrders.begin(); it != gl_LockOrders.end();)
     {
         const auto& key = it->first;

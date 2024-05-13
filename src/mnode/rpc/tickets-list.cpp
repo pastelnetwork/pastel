@@ -17,7 +17,8 @@ UniValue tickets_list(const UniValue& params)
 {
     RPC_CMD_PARSER2(LIST, params, id, nft, collection, collection__act, act, 
         sell, offer, buy, accept, trade, transfer,
-        down, royalty, username, ethereumaddress, action, action__act);
+        down, royalty, username, ethereumaddress, 
+        action, action__act, contract);
     if ((params.size() < 2 || params.size() > 4) || !LIST.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
 R"(tickets list "type" ("filter") ("minheight")
@@ -86,6 +87,10 @@ Available types:
   action-act - List action activation tickets. Without filter parameter lists ALL activation tickets.
             Filter:
               all       - lists all Act tickets (including non-confirmed). Default.
+  contract   - List ALL contract tickets. Without filter parameter lists ALL contract tickets.
+			Filter:
+			  all       - lists all contract tickets. Default.
+              "subtype" - lists only contract tickets of the specified subtype.
 
 Arguments:
 1. minheight	 - (optional) minimum height for returned tickets (only tickets registered after this height will be returned).
@@ -328,6 +333,14 @@ As json rpc
         if (filter == "all")
             obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CActionActivateTicket>(minheight));
         break;
+
+    case RPC_CMD_LIST::contract:
+    {
+		if (filter == "all")
+			obj.read(masterNodeCtrl.masternodeTickets.ListTickets<CContractTicket>(minheight));
+		else
+			obj.read(masterNodeCtrl.masternodeTickets.ListFilterContractTickets(minheight, filter));
+	} break;
 
     default:
         break;

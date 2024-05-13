@@ -86,3 +86,40 @@ bool get_bool_value(const UniValue& v)
         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid bool value: %s", sValue));
     return bValue;
 }
+
+/**
+ * Convert UniValue to double.
+ * 
+ * \param v - input UniValue
+ * \return double value
+ * \throw JSONRPCError if the value cannot be converted to double
+ */
+double rpc_get_double(const UniValue& v)
+{
+    double fValue;
+    string sValue;
+    bool bInvalidValue = false;
+    do
+    {
+        if (v.isNum())
+        {
+            fValue = v.get_real();
+            break;
+        }
+        if (v.isStr())
+        {
+            sValue = v.get_str();
+            fValue = atof(sValue.c_str());
+            if (fValue == 0.0f && errno == ERANGE)
+            {
+                bInvalidValue = true;
+                break;
+            }
+        }
+        bInvalidValue = true;
+        sValue = v.getValStr();
+    } while (false);
+    if (bInvalidValue)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid double value: %s", sValue));
+    return fValue;
+}

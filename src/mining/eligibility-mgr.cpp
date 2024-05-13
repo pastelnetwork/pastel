@@ -166,7 +166,7 @@ void CMiningEligibilityManager::execute_internal()
 
     while (!shouldStop())
     {
-        unique_lock<mutex> lck(m_mutex);
+        unique_lock lck(m_mutex);
         if (m_condVar.wait_for(lck, 2s) == cv_status::no_timeout)
         {
             // condition variable was signaled - can be either stop or new block
@@ -196,15 +196,15 @@ void CMiningEligibilityManager::execute_internal()
  * Also uses threshold consensus parameter (N * consensusParams.nMiningEligibilityThreshold).
  * 
  * \param pindexPrev - block index to start search from
- * \return map of masternode ids and number of blocks where they were found
+ * \return map of masternode ids to the number of blocks where they were found and the last mined block height
  */
-unordered_map<string, uint32_t> CMiningEligibilityManager::GetLastMnIdsWithBlockReward(const CBlockIndex* pindexPrev) const noexcept
+unordered_map<string, pair<uint32_t, uint32_t> > CMiningEligibilityManager::GetLastMnIdsWithBlockReward(const CBlockIndex* pindexPrev) const noexcept
 {
     const size_t nEligibleForMiningMnCount = masterNodeCtrl.masternodeManager.CountEligibleForMining();
     const size_t nMnEligibilityThreshold = GetMnEligibilityThreshold(nEligibleForMiningMnCount);
     LogFnPrint("mining", "nEligibleForMiningMnCount=%zu, nMnEligibilityThreshold=%zu", nEligibleForMiningMnCount, nMnEligibilityThreshold);
 
-    unordered_map<string, uint32_t> mapMnids;
+    unordered_map<string, pair<uint32_t, uint32_t> > mapMnids;
     mapMnids.reserve(nMnEligibilityThreshold);
     size_t nProcessed = 0;
     auto pCurIndex = pindexPrev;
@@ -217,9 +217,14 @@ unordered_map<string, uint32_t> CMiningEligibilityManager::GetLastMnIdsWithBlock
             LogFnPrint("mining", "mined block: height=%d, mnid='%s'", pCurIndex->nHeight, pCurIndex->sPastelID.value());
             auto it = mapMnids.find(pCurIndex->sPastelID.value());
             if (it == mapMnids.cend())
-                mapMnids.emplace(pCurIndex->sPastelID.value(), 1);
+                mapMnids.emplace(pCurIndex->sPastelID.value(), make_pair(1U, static_cast<uint32_t>(pCurIndex->nHeight)));
             else
-                it->second++;
+            {
+                auto &pair = it->second;
+                pair.first++;
+                if (pair.second < static_cast<uint32_t>(pCurIndex->nHeight))
+                    pair.second = static_cast<uint32_t>(pCurIndex->nHeight);
+            }
         }
         ++nProcessed;
         pCurIndex = pCurIndex->pprev;
@@ -266,11 +271,12 @@ unordered_map<string, pair<uint32_t, uint256>> CMiningEligibilityManager::GetUni
  * \param nCurBlockTime - current block time
  * \param nMinedBlocks - number of blocks mined by the MasterNode in the last N blocks,
  *    where N is the mining eligibility threshold
+ * \param nLastMinedBlockHeight - height of the last mined block by the MasterNode
  * 
  * \return true if MasterNode is eligible to mine a new block and receive reward
  */
 bool CMiningEligibilityManager::IsMnEligibleForBlockReward(const CBlockIndex* pindexPrev, const string& sGenId,
-    const int64_t nCurBlockTime, uint32_t &nMinedBlocks) const noexcept
+    const int64_t nCurBlockTime, uint32_t &nMinedBlocks, uint32_t &nLastMinedBlockHeight) const noexcept
 {
     AssertLockHeld(cs_main);
 
@@ -285,7 +291,9 @@ bool CMiningEligibilityManager::IsMnEligibleForBlockReward(const CBlockIndex* pi
     const auto it = mapMnids.find(sGenId);
     if (it == mapMnids.cend())
         return true;
-    nMinedBlocks = it->second;
+    const auto &pair = it->second;
+    nMinedBlocks = pair.first;
+    nLastMinedBlockHeight = pair.second;
     return false;
 }
 
@@ -319,7 +327,9 @@ bool CMiningEligibilityManager::IsCurrentMnEligibleForBlockReward(const CBlockIn
         return true;
     }
     uint32_t nMinedBlocks = 0;
-    if (IsMnEligibleForBlockReward(pindexPrev, gl_MiningSettings.getGenId(), nCurBlockTime, nMinedBlocks))
+    uint32_t nLastMinedBlockHeight = 0;
+    if (IsMnEligibleForBlockReward(pindexPrev, gl_MiningSettings.getGenId(), nCurBlockTime, 
+            nMinedBlocks, nLastMinedBlockHeight))
     {
         m_bIsCurrentMnEligibleForMining = true;
         return true;
@@ -339,7 +349,7 @@ mining_eligibility_vector_t CMiningEligibilityManager::GetMnEligibilityInfo(uint
     uint32_t &nNewBlockHeight, const optional<bool> &eligibilityFilter) noexcept
 {
     mining_eligibility_vector_t vMnEligibility;
-    unordered_map<string, uint32_t> mapMnids;
+    unordered_map<string, pair<uint32_t, uint32_t> > mapMnids;
     unordered_map<string, pair<uint32_t, uint256>> mapMnidsLastMined;
     {
         LOCK(cs_main);
@@ -365,7 +375,7 @@ mining_eligibility_vector_t CMiningEligibilityManager::GetMnEligibilityInfo(uint
             if (it == mapMnids.cend())
 				bEligibleForMining = true;
             else
-				nBlocksMined = it->second;
+				nBlocksMined = it->second.first;
             if (eligibilityFilter.has_value() && (bEligibleForMining != eligibilityFilter.value()))
 				return;
             int nLastMinedBlockHeight = -1;

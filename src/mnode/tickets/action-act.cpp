@@ -1,8 +1,6 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <json/json.hpp>
-
 #include <utils/tinyformat.h>
 #include <init.h>
 #include <key_io.h>
@@ -44,7 +42,13 @@ void CActionActivateTicket::Clear() noexcept
     m_signature.clear();
 }
 
-string CActionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json CActionActivateTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
@@ -63,7 +67,19 @@ string CActionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcep
             }
         }
     };
-    return jsonObj.dump(4);
+    return jsonObj;
+}
+
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json string
+ */
+
+string CActionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 string CActionActivateTicket::ToStr() const noexcept
@@ -147,7 +163,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
                 !existingTicket.IsTxId(m_txid))
             {
                 string message = strprintf( "The Activation ticket for the Registration ticket with txid [%s]", m_regTicketTxId);
-                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+                const bool bTicketFound = masterNodeCtrl.masternodeTickets.FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
                 // for testnet: if the ticket was accepted to the blockchain (not bPreReg) - accept duplicate ticket (though it was probably done by mistake)
                 if (bTicketFound && !(Params().IsTestNet() && !bPreReg))
                 {

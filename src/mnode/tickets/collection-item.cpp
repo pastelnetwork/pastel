@@ -1,8 +1,7 @@
-// Copyright (c) 2022-2023 The Pastel Core Developers
+// Copyright (c) 2022-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <utils/uint256.h>
-
 #include <mnode/tickets/collection-item.h>
 #include <mnode/tickets/collection-reg.h>
 #include <mnode/tickets/collection-act.h>

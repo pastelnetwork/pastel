@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
@@ -51,6 +51,8 @@ public:
     virtual TicketID ID() const noexcept = 0;
     // get json representation
     virtual std::string ToJSON(const bool bDecodeProperties = false) const noexcept = 0;
+    // get json
+    virtual nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept = 0;
     virtual std::string ToStr() const noexcept = 0;
     /**
      * Return information about ticket tx:
@@ -61,7 +63,7 @@ public:
     virtual nlohmann::json get_txinfo_json() const noexcept
     {
         nlohmann::json::object_t j;
-        j["size"] = m_nSerializedSize;
+        j["uncompressed_size"] = m_nSerializedSize;
         const bool bCompressed = m_nCompressedSize > 0;
         j["is_compressed"] = bCompressed;
         if (bCompressed)
@@ -76,6 +78,8 @@ public:
             }
                 
         }
+        j["multisig_outputs_count"] = m_nMultiSigOutputsCount;
+        j["multisig_tx_total_fee"] = m_nMultiSigTxTotalFee;
         return j;
     }
     /**
@@ -98,6 +102,8 @@ public:
     
     void SetSerializedSize(const size_t nSize) noexcept { m_nSerializedSize = static_cast<uint32_t>(nSize); }
     void SetCompressedSize(const size_t nSize) noexcept { m_nCompressedSize = static_cast<uint32_t>(nSize); }
+    void SetMultiSigOutputsCount(const uint32_t nCount) noexcept { m_nMultiSigOutputsCount = nCount; }
+    void SetMultiSigTxTotalFee(const CAmount nFee) noexcept { m_nMultiSigTxTotalFee = nFee; }
         
     /**
      * if preReg = true - validate pre-registration conditions.
@@ -112,6 +118,7 @@ public:
     std::int64_t GetTimestamp() const noexcept { return m_nTimestamp; }
     bool IsBlock(const unsigned int nBlock) const noexcept { return m_nBlock == nBlock; }
     bool IsBlockNewerThan(const uint32_t nBlockHeight) const noexcept { return m_nBlock > nBlockHeight; }
+    bool IsBlockEqualOrNewerThan(const uint32_t nBlockHeight) const noexcept { return m_nBlock >= nBlockHeight; }
     auto GetTicketName() const noexcept
     {
         return TICKET_INFO[to_integral_type(ID())].szName;
@@ -173,7 +180,6 @@ public:
     void SetBlock(const uint32_t nBlockHeight) noexcept { m_nBlock = nBlockHeight; }
 
     virtual CAmount GetStorageFee() const noexcept { return 0; }
-
     virtual CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const { return 0; }
 
     // ticket object serialization/deserialization
@@ -223,8 +229,10 @@ protected:
     short m_nVersion{ -1 };      // stored ticket version
     
     // memory only fields
-    uint32_t m_nSerializedSize{0};           // ticket data serialized size in bytes
+    uint32_t m_nSerializedSize{0}; // ticket data serialized size in bytes
     uint32_t m_nCompressedSize{0}; // ticket data serialized size in bytes after compression
+    uint32_t m_nMultiSigOutputsCount { 0 }; // number of multisig outputs in the ticket
+    CAmount m_nMultiSigTxTotalFee { 0 }; // sum of the multisig ticket transaction fees
 
     std::int64_t GenerateTimestamp() noexcept
     {

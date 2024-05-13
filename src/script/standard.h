@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 Pastel Core developers
+// Copyright (c) 2018-2024 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
@@ -94,7 +94,7 @@ bool IsKeyDestination(const CTxDestination& dest) noexcept;
 bool IsScriptDestination(const CTxDestination& dest) noexcept;
 
 /** Get the name of a txnouttype as a C string, or nullptr if unknown. */
-const char* GetTxnOutputType(txnouttype t);
+const char* GetTxnOutputType(const txnouttype t);
 
 using txdest_vector_t = std::vector<CTxDestination>;
 
@@ -118,7 +118,7 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType);
  * scripts (that can have multiple destination addresses), instead use ExtractDestinations. 
  * Currently only works for P2PK, P2PKH, and P2SH scripts.
  */
-bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet);
+bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet, txnouttype* pScriptType = nullptr);
 
 /**
  * Parse a standard scriptPubKey with one or more destination addresses. For

@@ -98,7 +98,7 @@ public:
 	CMiningEligibilityManager() noexcept;
 
     bool IsMnEligibleForBlockReward(const CBlockIndex *pindexPrev, const std::string &sGenId,
-        const int64_t nCurBlockTime, uint32_t &nMinedBlocks) const noexcept;
+        const int64_t nCurBlockTime, uint32_t &nMinedBlocks, uint32_t &nLastMinedBlockHeight) const noexcept;
     bool IsCurrentMnEligibleForBlockReward(const CBlockIndex *pindexPrev, const int64_t nCurBlockTime) noexcept;
     mining_eligibility_vector_t GetMnEligibilityInfo(uint64_t &nMiningEnabledCount, uint32_t &nHeight,
         const std::optional<bool> &eligibilityFilter = std::nullopt) noexcept;
@@ -118,7 +118,7 @@ private:
     CInvalidEligibilityBlock m_invalidEligibilityBlock;
 
     void execute_internal();
-	std::unordered_map<std::string, uint32_t> GetLastMnIdsWithBlockReward(const CBlockIndex* pindexPrev) const noexcept;
+	std::unordered_map<std::string, std::pair<uint32_t, uint32_t> > GetLastMnIdsWithBlockReward(const CBlockIndex* pindexPrev) const noexcept;
     std::unordered_map<std::string, std::pair<uint32_t, uint256>> GetUniqueMnIdsWithBlockReward(const CBlockIndex* pindex, const uint32_t nBlocksToScan) noexcept;
     void ChangeMiningEligibility(const bool bSet);
 };

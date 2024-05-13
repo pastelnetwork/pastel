@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <univalue.h>
@@ -489,9 +489,12 @@ As json rpc
 
     string sTicketJSON, error;
     TicketID ticket_id;
+    uint32_t nMultiSigOutputsCount = 0;
+    CAmount nMultiSigTxTotalFee = 0;
 
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
-    if (!CPastelTicketProcessor::preParseTicket(tx, data_stream, ticket_id, error, true, true))
+    if (!CPastelTicketProcessor::preParseTicket(tx, data_stream, ticket_id, error, 
+        nMultiSigOutputsCount, nMultiSigTxTotalFee, true, true))
 		throw JSONRPCError(RPC_DESERIALIZATION_ERROR,
             strprintf("Failed to parse raw hex transaction data. %s", error));
     unique_ptr<CPastelTicket> ticket = CPastelTicketProcessor::CreateTicket(ticket_id);
@@ -501,6 +504,8 @@ As json rpc
     // deserialize ticket data
     data_stream >> *ticket;
     ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
+    ticket->SetMultiSigOutputsCount(nMultiSigOutputsCount);
+    ticket->SetMultiSigTxTotalFee(nMultiSigTxTotalFee);
     if (data_stream.IsCompressed())
         ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());
 	return ticket->ToJSON();

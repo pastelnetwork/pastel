@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2023 The Pastel Core developers
+// Copyright (c) 2022-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <rpc/rpc_parser.h>
@@ -22,7 +22,7 @@ void ListTicketsByLabel(const string& label, UniValue &vOut)
 
 UniValue tickets_findbylabel(const UniValue& params)
 {
-    RPC_CMD_PARSER2(FIND, params, nft, collection, action);
+    RPC_CMD_PARSER2(FIND, params, nft, collection, action, contract);
 
     if (!FIND.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -33,6 +33,7 @@ Available ticket types:
   nft        - Find NFT registration tickets by label.
   action     - Find action registration tickets by label.
   collection - Find collection registration tickets by label.
+  contract   - Find contract tickets by label (secondary key).
 
 Arguments:
 1. "label"   (string, required) The label to use for ticket search. See types above...
@@ -60,6 +61,18 @@ As json rpc
         case RPC_CMD_FIND::action: 
             ListTicketsByLabel<CActionRegTicket>(label, tktArray);
             break;
+
+        case RPC_CMD_FIND::contract:
+        {
+            CContractTicket contractTicket;
+            if (CContractTicket::FindTicketInDbBySecondaryKey(label, contractTicket))
+            {
+                UniValue obj(UniValue::VOBJ);
+                obj.read(contractTicket.ToJSON());
+                tktArray.push_back(move(obj));
+            }
+        }   
+		break;
 
         default:
             break;

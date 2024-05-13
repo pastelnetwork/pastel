@@ -7,26 +7,13 @@
 #include <rpc/rpc_consts.h>
 #include <rpc/rpc-utils.h>
 #include <rpc/server.h>
+#include <rpc/chain-rpc-utils.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/tickets/action-reg.h>
 
 using namespace std;
 
 constexpr auto ERRMSG_MASTER_NODE_NOT_FOUND = "Masternode is not found!";
-
-uint32_t get_height_param(const UniValue& params, size_t no = 2)
-{
-    uint32_t nChainHeight = gl_nChainHeight;
-    if (params.size() > no)
-    {
-        const int64_t nHeight = get_long_number(params[no]);
-        if (nHeight < 0 || nHeight >= numeric_limits<uint32_t>::max())
-            throw JSONRPCError(RPC_INVALID_PARAMETER, "<height> parameter cannot be negative or greater than " + to_string(numeric_limits<uint32_t>::max()));
-        if (nHeight != 0)
-            nChainHeight = static_cast<uint32_t>(nHeight);
-    }
-    return nChainHeight;
-}
 
 typedef struct _MNFeeInfo
 {
@@ -144,6 +131,7 @@ UniValue storagefee_setfee(const UniValue& params)
     else if (params[1].isNum())
     {
         fee = params[1].get_int64();
+        feeType = MN_FEE::StorageFeePerMB;
     } else
         throw JSONRPCError(RPC_INVALID_PARAMETER, strInvalidFeeType);
 
@@ -158,7 +146,7 @@ UniValue storagefee_setfee(const UniValue& params)
 UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
 {
     UniValue retObj(UniValue::VOBJ);
-    const uint32_t nChainHeight = get_height_param(params, 2);
+    const uint32_t nChainHeight = rpc_get_height_param(params, 2);
     const auto &consensusParams = Params().GetConsensus();
     const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
     const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
@@ -197,7 +185,7 @@ UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
 UniValue storagefee_getfees(const UniValue& params)
 {
     UniValue retObj(UniValue::VOBJ);
-    const uint32_t nChainHeight = get_height_param(params);
+    const uint32_t nChainHeight = rpc_get_height_param(params);
     const auto &consensusParams = Params().GetConsensus();
     const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
     const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
@@ -260,7 +248,7 @@ Returns:
     if (nDataSizeInMB == 0)
         nDataSizeInMB = 1;
 
-    const uint32_t nChainHeight = get_height_param(params, 2);
+    const uint32_t nChainHeight = rpc_get_height_param(params, 2);
     const auto &consensusParams = Params().GetConsensus();
     const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
     const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);

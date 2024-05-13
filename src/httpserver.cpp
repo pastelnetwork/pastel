@@ -1,5 +1,5 @@
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <signal.h>
@@ -82,12 +82,12 @@ private:
         WorkQueue &wq;
         ThreadCounter(WorkQueue &w): wq(w)
         {
-            unique_lock<mutex> lock(wq.cs);
+            unique_lock lock(wq.cs);
             wq.numThreads += 1;
         }
         ~ThreadCounter()
         {
-            unique_lock<mutex> lock(wq.cs);
+            unique_lock lock(wq.cs);
             wq.numThreads -= 1;
             wq.cond.notify_all();
         }
@@ -113,7 +113,7 @@ public:
     /** Enqueue a work item */
     bool Enqueue(WorkItem* item)
     {
-        unique_lock<mutex> lock(cs);
+        unique_lock lock(cs);
         if (queue.size() >= maxDepth) {
             return false;
         }
@@ -144,7 +144,7 @@ public:
     /** Interrupt and exit loops */
     void Interrupt()
     {
-        unique_lock<mutex> lock(cs);
+        unique_lock lock(cs);
         running = false;
         cond.notify_all();
     }
@@ -159,7 +159,7 @@ public:
     /** Return current depth of queue */
     size_t Depth()
     {
-        unique_lock<mutex> lock(cs);
+        unique_lock lock(cs);
         return queue.size();
     }
 };

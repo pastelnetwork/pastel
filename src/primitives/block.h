@@ -156,6 +156,7 @@ public:
 
     uint256 GetHash() const noexcept;
     int64_t GetBlockTime() const noexcept { return static_cast<int64_t>(nTime); }
+    std::string GetBlockTimeStr() const noexcept;
     // check if the block header contains Pastel ID and signature of the 
     // previous block merkle root
     bool HasPrevBlockSignature() const noexcept;

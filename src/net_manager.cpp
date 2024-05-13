@@ -65,7 +65,7 @@ void CNetManagerThread::execute()
     chrono::seconds check_period = ACTIVE_CHECK_PERIOD_SECS;
     while (!shouldStop())
     {
-        unique_lock<mutex> lck(m_mutex);
+        unique_lock lck(m_mutex);
         if (m_condVar.wait_for(lck, check_period) == cv_status::no_timeout)
             continue;
         check_period = checkNetworkConnectivity();

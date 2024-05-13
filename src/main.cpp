@@ -2928,7 +2928,7 @@ bool CheckBlock(
     }
 
     // check only blocks that were mined/generated recently within last 30 mins
-    if (block.HasPrevBlockSignature() && !fSkipSnEligibilityChecks &&
+    if (bSnEligibilityCheckAllowed && block.HasPrevBlockSignature() && !fSkipSnEligibilityChecks &&
         (block.GetBlockTime() > (GetTime() - BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS)) &&
         is_enum_any_of(state.getTxOrigin(), TxOrigin::MINED_BLOCK, TxOrigin::MSG_BLOCK, TxOrigin::GENERATED))
     {
@@ -2945,13 +2945,17 @@ bool CheckBlock(
         // check that MasterNode with Pastel ID (mnid specified in the block header) is eligible
         // to mine this block and receive rewards
         uint32_t nMinedBlocks = 0;
+        uint32_t nLastMinedBlockHeight = 0;
         if (gl_pMiningEligibilityManager && 
             !gl_pMiningEligibilityManager->IsMnEligibleForBlockReward(pindexPrev, 
-                block.sPastelID, block.GetBlockTime(), nMinedBlocks))
+                block.sPastelID, block.GetBlockTime(), nMinedBlocks, nLastMinedBlockHeight))
 		{
-            gl_pMiningEligibilityManager->SetInvalidEligibilityBlock(hashBlock, static_cast<uint32_t>(pindexPrev->nHeight + 1), state.getTxOrigin());
-            strRejectReasonDetails = strprintf("MasterNode '%s' (mnid: %s) is not eligible to mine this block %s (mined blocks: %u)",
-                				mnidTicket.getOutpoint().ToStringShort(), block.sPastelID, hashBlock.ToString(), nMinedBlocks);
+            const uint32_t nBlockHeight = static_cast<uint32_t>(pindexPrev->nHeight + 1);
+            gl_pMiningEligibilityManager->SetInvalidEligibilityBlock(hashBlock, nBlockHeight, state.getTxOrigin());
+            strRejectReasonDetails = strprintf(
+                "MasterNode '%s' (mnid: %s) is not eligible to mine this block %s (block time: %s, height: %u), mined info (blocks: %u, last mined block: %u)",
+                mnidTicket.getOutpoint().ToStringShort(), block.sPastelID, hashBlock.ToString(),
+                block.GetBlockTimeStr(), nBlockHeight, nMinedBlocks, nLastMinedBlockHeight);
 			return state.DoS(10, error("%s: %s", __func__, strRejectReasonDetails),
                 REJECT_INVALID, "mnid-not-eligible", false, strRejectReasonDetails);
 		}

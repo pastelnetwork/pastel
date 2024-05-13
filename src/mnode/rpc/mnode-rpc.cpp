@@ -165,15 +165,17 @@ R"(chaindata retrieve "txid"
 Retrieve "data" from the blockchain by "txid".)"
 );
 
-        uint256 hash = ParseHashV(params[1], "\"txid\"");
+        const uint256 txid = ParseHashV(params[1], "\"txid\"");
 
         CTransaction tx;
         uint256 hashBlock;
-        if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
+        if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, true))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
         string error, output_data;
-        if (!CPastelTicketProcessor::ParseP2FMSTransaction(tx, output_data, error))
+        uint32_t nMultiSigOutputsCount;
+        CAmount nMultiSigTxTotalFee;
+        if (!CPastelTicketProcessor::ParseP2FMSTransaction(tx, output_data, error, nMultiSigOutputsCount, nMultiSigTxTotalFee))
             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("\"Failed to create P2FMS from data provided - %s", error));
 
         return output_data;

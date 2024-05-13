@@ -154,7 +154,8 @@ STAGE_COMMANDS = {
     'univalue': ['make', '-C', repofile('src/univalue'), 'check'],
     'rpc-common': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScripts'],
     'rpc-ext': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScriptsExt'],
-    'rpc-mn': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScriptsMN'],
+    'rpc-mn1': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScriptsMN1'],
+    'rpc-mn2': [repofile('qa/pull-tester/rpc-tests.sh'), '--group=testScriptsMN2'],
     'rpc-mn-main': [repofile('qa/pull-tester/rpc-tests.sh'), '--name=mn_main.py'],
     'rpc-mn-tickets': [repofile('qa/pull-tester/rpc-tests.sh'), '--name=mn_tickets.py'],
 }

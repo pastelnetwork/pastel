@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -17,7 +17,7 @@ unsigned nMaxDatacarrierBytes = MAX_OP_RETURN_RELAY;
 
 CScriptID::CScriptID(const CScript& in) : uint160(Hash160(in.begin(), in.end())) {}
 
-const char* GetTxnOutputType(txnouttype t)
+const char* GetTxnOutputType(const txnouttype t)
 {
     switch (t)
     {
@@ -198,12 +198,24 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType)
     return whichType != TX_NONSTANDARD;
 }
 
-bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
+/**
+ * Extract destination address from a standard scriptPubKey.
+ * 
+ * \param scriptPubKey - script to parse
+ * \param addressRet - (return) destination address
+ * \param pScriptType - (return, optional) script type 
+ * \return true if address was successfully extracted, false otherwise
+ */
+bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet, txnouttype* pScriptType)
 {
     vector<v_uint8> vSolutions;
     txnouttype whichType;
     if (!Solver(scriptPubKey, whichType, vSolutions))
+    {
+        if (pScriptType)
+			*pScriptType = whichType;
         return false;
+    }
 
     bool bRet = false;
     switch (whichType)
@@ -231,6 +243,8 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
             break;
     }
 
+    if (pScriptType)
+		*pScriptType = whichType;
     // Multisig txns have more than one address...
     return bRet;
 }

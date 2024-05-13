@@ -2,7 +2,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
-#include <json/json.hpp>
 
 #include <utils/str_utils.h>
 #include <init.h>
@@ -61,7 +60,13 @@ void CChangeUsernameTicket::set_signature(const std::string& sSignature)
 }
 
 // CChangeUsernameTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-string CChangeUsernameTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json CChangeUsernameTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
@@ -79,8 +84,18 @@ string CChangeUsernameTicket::ToJSON(const bool bDecodeProperties) const noexcep
             }
         }
     };
+    return jsonObj;
+}
 
-    return jsonObj.dump(4);
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json string
+ */
+string CChangeUsernameTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 string CChangeUsernameTicket::ToStr() const noexcept

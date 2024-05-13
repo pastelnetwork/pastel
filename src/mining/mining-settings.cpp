@@ -31,7 +31,7 @@ bool CMinerSettings::isEligibleForMining() const noexcept
 
 bool CMinerSettings::refreshMnIdInfo(string &error, const bool bRefreshConfig)
 {
-    unique_lock<mutex> lock(m_mutexGenIds);
+    unique_lock lock(m_mutexGenIds);
 
     if (bRefreshConfig)
         ReadConfigFile(mapArgs, mapMultiArgs, "-gen*");
@@ -64,7 +64,6 @@ bool CMinerSettings::CheckMNSettingsForLocalMining(string &error)
         }
 
         auto mapLocalPastelIds = CPastelID::GetStoredPastelIDs(true);
-
         string sGenId = getGenId();
 
         if (!mapLocalPastelIds.count(sGenId))

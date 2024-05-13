@@ -250,7 +250,7 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\transfer.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\mnode\tickets\nft-take-down.cpp">
+    <ClCompile Include="..\..\..\src\mnode\tickets\take-down.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\tickets\action-reg.cpp">
@@ -363,6 +363,9 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\mining\pow.cpp">
       <Filter>Source Files\mining</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\mnode\tickets\contract.cpp">
+      <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -594,7 +597,7 @@
     <ClInclude Include="..\..\..\src\mnode\tickets\transfer.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mnode\tickets\nft-take-down.h">
+    <ClInclude Include="..\..\..\src\mnode\tickets\take-down.h">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\nft-royalty.h">
@@ -746,6 +749,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mining\pow.h">
       <Filter>Source Files\mining</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\mnode\tickets\contract.h">
+      <Filter>Source Files\mnode\tickets</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

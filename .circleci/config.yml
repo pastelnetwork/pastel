@@ -268,7 +268,7 @@ jobs:
           no_output_timeout: 30m
           command: |
             ./rpc-tests.sh --name=mn_main.py
-  test_group_mn:
+  test_group_mn1:
     executor: pastel-builder    
     working_directory: /pastel
     steps:
@@ -280,12 +280,30 @@ jobs:
             cp -r /tmp/ws/{src,qa}/ /pastel/
             cp -r /tmp/ws/.pastel-params $HOME/
       - run:
-          name: Tests - rpc-mn
+          name: Tests - rpc-mn1
           working_directory: qa/test-suite
           no_output_timeout: 45m
           command: |
             export PYTHONUNBUFFERED=1
-            ./full_test_suite.py rpc-mn
+            ./full_test_suite.py rpc-mn1
+  test_group_mn2:
+    executor: pastel-builder    
+    working_directory: /pastel
+    steps:
+      - attach_workspace:
+          at: /tmp/ws
+      - run:
+          name: Setting up test environment
+          command: |
+            cp -r /tmp/ws/{src,qa}/ /pastel/
+            cp -r /tmp/ws/.pastel-params $HOME/
+      - run:
+          name: Tests - rpc-mn2
+          working_directory: qa/test-suite
+          no_output_timeout: 45m
+          command: |
+            export PYTHONUNBUFFERED=1
+            ./full_test_suite.py rpc-mn2
   test_group_mn_tickets:
     executor: pastel-builder    
     working_directory: /pastel
@@ -394,8 +412,15 @@ workflows:
             filters:
               tags:
                 ignore: /^v.*/
-        - test_group_mn:
-            name: Tests (MN fast)
+        - test_group_mn1:
+            name: Tests (MN group 1)
+            requires:
+              - Build Pastel for Linux platform (debug)
+            filters:
+              tags:
+                ignore: /^v.*/
+        - test_group_mn2:
+            name: Tests (MN group 2)
             requires:
               - Build Pastel for Linux platform (debug)
             filters:

@@ -13,6 +13,7 @@ import shutil
 import tempfile
 import traceback
 import argparse
+from decimal import Decimal, getcontext
 
 from .authproxy import JSONRPCException
 from .util import (
@@ -28,8 +29,6 @@ from .util import (
     initialize_chain_clean,
 )
 
-
-from decimal import Decimal, getcontext, ROUND_DOWN
 getcontext().prec = 16
 
 class BitcoinTestFramework(object):
@@ -56,6 +55,7 @@ class BitcoinTestFramework(object):
         self.num_nodes = 4
         self.setup_clean_chain = False
         self.nodes = None
+        self.is_network_split = False
 
     def run_test(self):
         for node in self.nodes:
@@ -226,6 +226,7 @@ class BitcoinTestFramework(object):
             sys.exit(0)
         else:
             print("<<< !!! TEST FAILED !!! >>>")
+
             sys.exit(1)
 
 

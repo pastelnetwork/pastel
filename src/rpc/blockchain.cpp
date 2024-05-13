@@ -346,22 +346,31 @@ Examples:
 
 UniValue getblockhash(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() != 1)
+    if (fHelp || (params.size() > 2) || params.empty())
         throw runtime_error(
-R"(getblockhash index
-
-Returns hash of block in best-block-chain at index provided.
+R"(getblockhash height ( count )
+Returns hashes of blocks in best-block-chain at the heights range provided.
 
 Arguments:
-1. index         (numeric, required) The block index
+1. height (numeric, required) The starting block height
+2. count  (numeric, optional) Number of block hashes to return. Default is 1.
+                              -1: all blocks up to the current tip
+Result (no "count" parameter):
+  "hash"  (string) The block hash
 
-Result:
-  "hash"         (string) The block hash
+Result (with "count" parameter):
+[		   (json array of objects)
+  {
+	"height": n,    (numeric) The block height
+	"hash": "xxxxx" (string) The block hash
+  },
+  ...
+]
 
 Examples:
 )"
-+ HelpExampleCli("getblockhash", "1000")
-+ HelpExampleRpc("getblockhash", "1000")
++ HelpExampleCli("getblockhash", "1000 5")
++ HelpExampleRpc("getblockhash", "1000 5")
 );
 
     const uint32_t nCurrentHeight = gl_nChainHeight;
@@ -369,9 +378,36 @@ Examples:
     if (nHeight < 0 || static_cast<uint32_t>(nHeight) > nCurrentHeight)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
 
+    bool bUseNewOutputFormat = false;
+    int nCount = 1;
+    if (params.size() > 1)
+    {
+        bUseNewOutputFormat = true;
+		nCount = params[1].get_int();
+		if (nCount < -1)
+			throw JSONRPCError(RPC_INVALID_PARAMETER, "Block count out of range");
+	}
+
     LOCK(cs_main);
-    CBlockIndex* pblockindex = chainActive[nHeight];
-    return pblockindex->GetBlockHash().GetHex();
+    if (!bUseNewOutputFormat)
+    {
+        CBlockIndex* pblockindex = chainActive[nHeight];
+        return pblockindex->GetBlockHash().GetHex();
+    }
+
+    UniValue result(UniValue::VARR);
+    if (nCount == -1)
+		nCount = nCurrentHeight - nHeight + 1;
+    result.reserve(nCount);
+    for (int i = 0; i < nCount; ++i)
+    {
+		CBlockIndex* pblockindex = chainActive[nHeight + i];
+		UniValue entry(UniValue::VOBJ);
+		entry.pushKV("height", pblockindex->nHeight);
+		entry.pushKV("hash", pblockindex->GetBlockHash().GetHex());
+		result.push_back(move(entry));
+	}
+    return result;
 }
 
 UniValue getblockheader(const UniValue& params, bool fHelp)
@@ -1307,7 +1343,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "gettxout",               &gettxout,               true  },
     { "blockchain",         "gettxoutsetinfo",        &gettxoutsetinfo,        true  },
     { "blockchain",         "verifychain",            &verifychain,            true  },
-    { "blockchain",         "get-total-coin-supply",  &getTotalCoinSupply,     true  },
+    { "blockchain",         "get-total-coin-supply",  &getTotalCoinSupply,     false },
 
     // insightexplorer
     { "blockchain",         "getblockdeltas",         &getblockdeltas,         false },    

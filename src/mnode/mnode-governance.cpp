@@ -621,7 +621,7 @@ bool CGovernanceTicket::AddVote(CGovernanceVote& voteNew, string& error)
     }
 
     {
-        unique_lock<mutex> lock(m_sigVotesMapLock);
+        unique_lock lock(m_sigVotesMapLock);
         if (m_sigVotesMap.count(voteNew.vchSig))
         {
             error = strprintf("signature already exists: MN has already voted for this ticket = %s", voteId.ToString());
@@ -676,14 +676,14 @@ bool CGovernanceTicket::VoteOpen()
  */
 void CGovernanceTicket::ForEachVote(const std::function<void(const CGovernanceVote&)>& fnProcessVote) const
 {
-    unique_lock<mutex> lck(m_sigVotesMapLock);
+    unique_lock lck(m_sigVotesMapLock);
     for (const auto& [signature, vote] : m_sigVotesMap)
         fnProcessVote(vote);
 }
 
 size_t CGovernanceTicket::GetVoteCount() const
 {
-    unique_lock<mutex> lck(m_sigVotesMapLock);
+    unique_lock lck(m_sigVotesMapLock);
     return m_sigVotesMap.size();
 }
 
@@ -691,7 +691,8 @@ void CGovernanceTicket::InvalidateVote(const CGovernanceVote& vote)
 {
     if (!vote.IsVerified())
         return;
-    unique_lock<mutex> lck(m_sigVotesMapLock);
+
+    unique_lock lck(m_sigVotesMapLock);
     auto it = m_sigVotesMap.find(vote.vchSig);
     if (it != m_sigVotesMap.end())
     {

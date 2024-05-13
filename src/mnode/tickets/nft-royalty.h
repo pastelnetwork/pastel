@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mnode/tickets/ticket.h>
@@ -61,6 +61,7 @@ public:
     void GenerateKeyOne() override;
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept final;
+    nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept final;
     ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }

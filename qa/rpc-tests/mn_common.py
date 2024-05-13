@@ -2,7 +2,10 @@
 # Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
-from typing import Dict
+from typing import (
+    Dict,
+    Optional,
+)
 from pathlib import Path
 from enum import Enum
 import time
@@ -47,7 +50,7 @@ class MnFeeType(Enum):
     SENSE_COMPUTE_FEE               = 3, 5000, "getsensecomputefee",    "senseComputeFee",            "localSenseComputeFee",            "sense-compute"
     SENSE_PROCESSING_FEE_PER_MB     = 4,   50, "getsenseprocessingfee", "senseProcessingFeePerMb",    "localSenseProcessingFeePerMb",    "sense-processing"
     
-    def __init__(self, _: str, fee: int, getfee_rpc_command: str, option_name: str, local_option_name: str, setfee_rpc_command: str):
+    def __init__(self, _: int, fee: int, getfee_rpc_command: str, option_name: str, local_option_name: str, setfee_rpc_command: str):
         self._fee = fee
         self._getfee_rpc_command = getfee_rpc_command
         self._option_name = option_name
@@ -87,23 +90,23 @@ class TicketData:
     def __init__(self):
         self.reg_ticket = None                  # Registration ticket json (not encoded)
         self.reg_ticket_base64_encoded = None   # Registration ticket json base64-encoded
-        self.reg_txid: str = None               # Registration ticket txid
-        self.reg_height: int = None             # Registration ticket block height
-        self.reg_node_id: int = None            # Node where ticket was registered
-        self.reg_pastelid: str = None           # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
-        self.pastelid_node_id: int = None       # Node where reg_pastelid is created
+        self.reg_txid: Optional[str]            # Registration ticket txid
+        self.reg_height: Optional[int]          # Registration ticket block height
+        self.reg_node_id: Optional[int]         # Node where ticket was registered
+        self.reg_pastelid: Optional[str]        # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
+        self.pastelid_node_id: Optional[int]    # Node where reg_pastelid is created
 
-        self.act_txid: str = None               # Activation ticket txid
-        self.act_height: int = None             # Activation ticket block height
+        self.act_txid: Optional[str]            # Activation ticket txid
+        self.act_height: Optional[int]          # Activation ticket block height
 
-        self.offer_txid: str = None             # Offer ticket txid
-        self.accept_txid: str = None            # Accept ticket txid
-        self.transfer_txid: str = None          # Transfer ticket txid
+        self.offer_txid: Optional[str]          # Offer ticket txid
+        self.accept_txid: Optional[str]         # Accept ticket txid
+        self.transfer_txid: Optional[str]       # Transfer ticket txid
 
-        self.label: str = None                  # unique label
+        self.label: Optional[str]               # unique label
         self.item_price: int = 0                # item price
         self.ticket_price: int = 10             # ticket price
-        self.royalty_address: str = None        # NFT Royalty address
+        self.royalty_address: Optional[str]     # NFT Royalty address
         self.address = None                     # address that can be used in a ticket
 
     def set_reg_ticket(self, reg_ticket: str):
@@ -112,7 +115,7 @@ class TicketData:
 
 
 class TopMN:
-    def __init__(self, index: int, pastelid: str = None):
+    def __init__(self, index: int, pastelid: Optional[str]):
         self._index_ = index
         self._pastelid_ = pastelid
         self._signature_ = None
@@ -122,11 +125,11 @@ class TopMN:
         return self._index_
 
     @property
-    def pastelid(self) -> str:
+    def pastelid(self) -> Optional[str]:
         return self._pastelid_
 
     @property
-    def signature(self) -> str:
+    def signature(self) -> Optional[str]:
         return self._signature_
 
     @signature.setter
@@ -142,17 +145,17 @@ class MasterNodeCommon (PastelTestFramework):
     """ Class to represent MasterNode.
     """
     class MasterNode:
-        index: int = None            # masternode index
-        passphrase: str = None       # passphrase to access secure container data
-        mnid: str = None             # generated Pastel ID
-        lrKey: str = None            # generated LegRoast key
-        privKey: str = None          # generated private key
-        port: int = None
-        collateral_address: str = None
-        collateral_txid: str = None
-        collateral_index: int = None
-        mnid_reg_address: str = None # address for mnid registration
-        mnid_reg_txid: str = None    # txid for mnid registration
+        index: Optional[int]         # masternode index
+        passphrase: Optional[str]    # passphrase to access secure container data
+        mnid: Optional[str]          # generated Pastel ID
+        lrKey: Optional[str]         # generated LegRoast key
+        privKey: Optional[str]       # generated private key
+        port: Optional[int]
+        collateral_address: Optional[str]
+        collateral_txid: Optional[str]
+        collateral_index: Optional[int]
+        mnid_reg_address: Optional[str] # address for mnid registration
+        mnid_reg_txid: Optional[str]    # txid for mnid registration
 
         def __init__(self, index, passphrase):
             self.index = index

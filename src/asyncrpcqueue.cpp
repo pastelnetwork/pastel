@@ -1,4 +1,4 @@
-// Copyright (c) 2018 The Pastel developers
+// Copyright (c) 2018-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -33,15 +33,13 @@ void AsyncRPCQueue::run(size_t workerId) {
         AsyncRPCOperationId key;
         shared_ptr<AsyncRPCOperation> operation;
         {
-            unique_lock<mutex> guard(lock_);
-            while (operation_id_queue_.empty() && !isClosed() && !isFinishing()) {
+            unique_lock guard(lock_);
+            while (operation_id_queue_.empty() && !isClosed() && !isFinishing())
                 this->condition_.wait(guard);
-            }
 
             // Exit if the queue is empty and we are finishing up
-            if (isFinishing() && operation_id_queue_.empty()) {
+            if (isFinishing() && operation_id_queue_.empty())
                 break;
-            }
 
             // Exit if the queue is closing.
             if (isClosed()) {

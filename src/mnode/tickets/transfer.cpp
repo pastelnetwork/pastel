@@ -3,8 +3,6 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <optional>
 
-#include <json/json.hpp>
-
 #include <init.h>
 #include <key_io.h>
 #include <pastelid/common.h>
@@ -312,7 +310,7 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
                 !existingTicket.IsBlock(m_nBlock))
             {
                 string sMessage;
-                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
+                const bool bTicketFound = masterNodeCtrl.masternodeTickets.FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
                 if (bTicketFound)
                 {
                     tv.errorMsg = strprintf(
@@ -336,7 +334,7 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
                 !existingTicket.IsBlock(m_nBlock))
             {
                 string sMessage;
-                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
+                const bool bTicketFound = masterNodeCtrl.masternodeTickets.FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, sMessage);
                 if (bTicketFound)
                 {
                     tv.errorMsg = strprintf(
@@ -510,7 +508,13 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     return nPriceAmount + nRoyaltyAmount + nGreenNFTAmount;
 }
 
-string CTransferTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json CTransferTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
@@ -531,7 +535,18 @@ string CTransferTicket::ToJSON(const bool bDecodeProperties) const noexcept
             }
         }
     };
-    return jsonObj.dump(4);
+    return jsonObj;
+}
+
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json string
+ */
+string CTransferTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 bool CTransferTicket::FindTicketInDb(const string& key, CTransferTicket& ticket)

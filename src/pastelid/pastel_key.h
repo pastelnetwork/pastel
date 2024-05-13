@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <unordered_map>
@@ -57,10 +57,11 @@ protected:
     // encode/decode LegRoast public key
     static std::string EncodeLegRoastPubKey(const std::string& sPubKey);
     static bool DecodeLegRoastPubKey(const std::string& sLRKey, v_uint8& vData);
+    static bool CheckPastelKeysDirectory(fs::path &pathPastelKeys, const bool bCreateDirs = true);
 
 private:
     // get full path for the secure container based on Pastel ID
-    static fs::path GetSecureContFilePathEx(const std::string& sPastelID, const bool bCreateDirs = false);
+    static fs::path GetSecureContFilePathEx(const std::string& sPastelID, const bool bCreateDirs = true);
     // get full path for the secure container based on Pastel ID
-    static std::string GetSecureContFilePath(const std::string& sPastelID, const bool bCreateDirs = false);
+    static std::string GetSecureContFilePath(const std::string& sPastelID, const bool bCreateDirs = true);
 };
