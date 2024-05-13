@@ -289,7 +289,7 @@ class TicketUserNameChangeTest(PastelTestFramework):
         print(f"tx_fee5: {tx_fee5}")
         amounts = self.nodes[1].listaddressamounts(False, "all")
         t2 -= self.USERNAME_CHANGE_FEE_SECOND_TIME + float(tx_fee5)
-        assert_true(math.isclose(nT2, amounts[n1_taddr2], rel_tol=1e-5), "node1 taddr2 amount does not match")
+        assert_true(math.isclose(t2, amounts[n1_taddr2], rel_tol=1e-5), "node1 taddr2 amount does not match")
 
         print(" - UserName validation")
         # too short

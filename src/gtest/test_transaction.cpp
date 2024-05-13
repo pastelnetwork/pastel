@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2021-2023 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -33,6 +33,7 @@
 #include <script/sign.h>
 #include <script_check.h>
 #include <main.h>
+#include <chain_options.h>
 #include <primitives/transaction.h>
 #include <json_test_vectors.h>
 
@@ -532,7 +533,7 @@ TEST(test_transaction, test_IsStandard)
     string reason;
     EXPECT_TRUE(IsStandardTx(t, reason, chainparams));
 
-    t.vout[0].nValue = 53; // dust
+    t.vout[0].nValue = (DEFAULT_MIN_RELAY_TX_FEE / 3) - 1; // dust
     EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
 
     t.vout[0].nValue = 2730; // not dust
@@ -595,7 +596,7 @@ TEST(test_transaction, test_IsStandardV2)
     EXPECT_TRUE(IsStandardTx(t, reason, chainparams));
 
     // v2 transactions can still be non-standard for the same reasons as v1.
-    t.vout[0].nValue = 53; // dust
+    t.vout[0].nValue = (DEFAULT_MIN_RELAY_TX_FEE / 3) - 1; // dust
     EXPECT_TRUE(!IsStandardTx(t, reason, chainparams));
 
     // v3 is not standard.
