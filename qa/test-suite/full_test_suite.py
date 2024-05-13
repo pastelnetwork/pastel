@@ -139,7 +139,8 @@ STAGES = [
     'univalue',
     'rpc-common',
     'rpc-ext',
-    'rpc-mn',
+    'rpc-mn1',
+    'rpc-mn2',
     'rpc-mn-main',
     'rpc-mn-tickets'
 ]
