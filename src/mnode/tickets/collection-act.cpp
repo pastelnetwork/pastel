@@ -1,8 +1,6 @@
-// Copyright (c) 2022-2023 The Pastel Core Developers
+// Copyright (c) 2022-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <json/json.hpp>
-
 #include <init.h>
 #include <key_io.h>
 #include <pastelid/common.h>
@@ -117,7 +115,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
                 !existingTicket.IsTxId(m_txid))
             {
                 string message = strprintf( "The Activation ticket for the Collection Registration ticket with txid [%s]", m_regTicketTxId);
-                const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+                const bool bTicketFound = masterNodeCtrl.masternodeTickets.FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
                 // for testnet: if the ticket was accepted to the blockchain (not bPreReg) - accept duplicate ticket (though it was probably done by mistake)
                 if (bTicketFound && !(Params().IsTestNet() && !bPreReg))
                 {
@@ -215,7 +213,13 @@ CAmount CollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     return nAllAmount;
 }
 
-string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json CollectionActivateTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     string error;
     bool bInvalidTxId = false;
@@ -259,8 +263,19 @@ string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noex
             }
         }
     };
+    return jsonObj;
+}
 
-    return jsonObj.dump(4);
+
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json string
+ */
+string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 bool CollectionActivateTicket::FindTicketInDb(const string& key, CollectionActivateTicket& ticket)

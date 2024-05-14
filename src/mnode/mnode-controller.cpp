@@ -878,7 +878,7 @@ void CMnbRequestConnectionsThread::execute()
 
     while (!shouldStop())
     {
-        unique_lock<mutex> lck(m_mutex);
+        unique_lock lck(m_mutex);
         if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
             continue;
 
@@ -927,7 +927,7 @@ void CMasterNodeMaintenanceThread::execute_internal()
 
     while (!shouldStop())
     {
-        unique_lock<mutex> lck(m_mutex);
+        unique_lock lck(m_mutex);
         if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
             continue;
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mutex>
@@ -23,7 +23,7 @@ unique_ptr<COrphanTxManager> gl_pOrphanTxManager;
  */
 bool COrphanTxManager::AddOrphanTx(const CTransaction& tx, const NodeId peer)
 {
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
 
     const uint256 txid = tx.GetHash();
     // do not keep duplicate transactions
@@ -67,7 +67,7 @@ void COrphanTxManager::EraseOrphansFor(const NodeId nodeid)
 {
     size_t nErased = 0;
 
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
     auto iter = m_mapOrphanTransactions.begin();
     while (iter != m_mapOrphanTransactions.end())
     {
@@ -115,7 +115,7 @@ size_t COrphanTxManager::LimitOrphanTxSize(const size_t nMaxOrphans)
 {
     size_t nEvicted = 0;
 
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
     while (m_mapOrphanTransactions.size() > nMaxOrphans)
     {
         // Evict a random orphan
@@ -132,7 +132,7 @@ size_t COrphanTxManager::LimitOrphanTxSize(const size_t nMaxOrphans)
 // clear orphan maps
 void COrphanTxManager::clear()
 {
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
     m_mapOrphanTransactions.clear();
     m_mapOrphanTransactionsByPrev.clear();
 }
@@ -145,7 +145,7 @@ void COrphanTxManager::clear()
  */
 bool COrphanTxManager::exists(const uint256 & txid) const noexcept
 {
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
     return m_mapOrphanTransactions.find(txid) != m_mapOrphanTransactions.cend();
 }
 
@@ -156,13 +156,13 @@ bool COrphanTxManager::exists(const uint256 & txid) const noexcept
  */
 size_t COrphanTxManager::size() const noexcept
 {
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
     return m_mapOrphanTransactions.size();
 }
 
 size_t COrphanTxManager::sizePrev() const noexcept
 {
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
     return m_mapOrphanTransactionsByPrev.size();
 }
 
@@ -174,7 +174,7 @@ size_t COrphanTxManager::sizePrev() const noexcept
  */
 CTransaction COrphanTxManager::getTxOrFirst(const uint256 & txid) const noexcept
 {
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
     auto it = m_mapOrphanTransactions.find(txid);
     if (it == m_mapOrphanTransactions.cend())
     {
@@ -202,7 +202,7 @@ void COrphanTxManager::ProcessOrphanTxs(const CChainParams& chainparams,
     workQueue.push_back(txid);
 
     // Recursively process any orphan transactions that depended on this one
-    unique_lock<mutex> lck(m_mutex);
+    unique_lock lck(m_mutex);
     while (!workQueue.empty())
     {
         const auto &prevTxId = workQueue.front();

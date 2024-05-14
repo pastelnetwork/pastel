@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <utils/str_utils.h>
@@ -259,7 +259,7 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
 }
 
 /**
-* Get Pastel IDs stored locally in pastelkeys (pastelkeysdir option).
+* Get Pastel IDs stored locally in pastelkeys directory.
 * 
 * \param bPastelIdOnly - return Pastel IDs only, otherwise returns PastelIDs along with associated keys
 *                        read from the secure container
@@ -269,13 +269,12 @@ bool CPastelID::Verify(const string& sText, const string& sSignature, const stri
 pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, const string& sFilterPastelID)
 {
     string error;
-    fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
-    // use net-specific data dir
-    pathPastelKeys = GetDataDir(true) / pathPastelKeys;
-
+    fs::path pathPastelKeys;
     pastelid_store_t resultMap;
-    if (fs::exists(pathPastelKeys))
-    {
+
+    if (!CheckPastelKeysDirectory(pathPastelKeys))
+        return resultMap;
+
         string sPastelID, sLegRoastKey;
         v_uint8 vData;
         for (const auto& p : fs::directory_iterator(pathPastelKeys))
@@ -298,7 +297,6 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, const s
             }
             resultMap.emplace(move(sPastelID), move(sLegRoastKey));
         }
-    }
     return resultMap;
 }
 
@@ -402,6 +400,28 @@ bool CPastelID::DecodeLegRoastPubKey(const string& sLRKey, v_uint8& vData)
     return true;
 }
 
+bool CPastelID::CheckPastelKeysDirectory(fs::path &pathPastelKeys, const bool bCreateDirs)
+{
+    pathPastelKeys = fs::path(GetArg("-pastelkeysdir", "pastelkeys"));
+
+    // use net-specific data dir
+    pathPastelKeys = GetDataDir(true) / pathPastelKeys;
+
+    if (bCreateDirs && (!fs::exists(pathPastelKeys) || !fs::is_directory(pathPastelKeys)))
+    {
+        try
+        {
+            if (fs::create_directory(pathPastelKeys))
+                LogFnPrintf("Pastel keys directory created: [%s]", pathPastelKeys.string());
+        } catch (const fs::filesystem_error & e)
+        {
+            return error("Failed to create pastel keys directory [%s]. %s",
+                pathPastelKeys.string(), e.what());
+        }
+   }
+    return fs::exists(pathPastelKeys);
+}
+
 /**
  * Get full path of the secure container (returns filesystem object).
  * 
@@ -411,12 +431,8 @@ bool CPastelID::DecodeLegRoastPubKey(const string& sLRKey, v_uint8& vData)
  */
 fs::path CPastelID::GetSecureContFilePathEx(const string& sPastelID, const bool bCreateDirs)
 {
-    fs::path pathPastelKeys(GetArg("-pastelkeysdir", "pastelkeys"));
-    pathPastelKeys = GetDataDir() / pathPastelKeys;
-
-    if (bCreateDirs && (!fs::exists(pathPastelKeys) || !fs::is_directory(pathPastelKeys)))
-        fs::create_directories(pathPastelKeys);
-
+    fs::path pathPastelKeys;
+    CheckPastelKeysDirectory(pathPastelKeys, bCreateDirs);
     return pathPastelKeys / sPastelID;
 }
 

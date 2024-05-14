@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2022-2023 The Pastel Core Developers
+﻿// Copyright (c) 2022-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -351,7 +351,7 @@ ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const 
         {
             string message = strprintf("This %s collection '%s' is already registered in blockchain [key=%s; label=%s]",
                                        getCollectionItemDesc(), m_sCollectionName, m_keyOne, KeyTwo());
-            const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+            const bool bTicketFound = masterNodeCtrl.masternodeTickets.FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
             if (bTicketFound)
             {
                 tv.errorMsg = message;
@@ -423,12 +423,12 @@ void CollectionRegTicket::Clear() noexcept
 }
 
 /**
-* Get json string representation of the ticket.
+* Get json representation of the ticket.
 * 
 * \param bDecodeProperties - if true, then decode collection_ticket and its properties
-* \return json string
+* \return json object
 */
-string CollectionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
+json CollectionRegTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     const json collection_ticket_json = json::parse(m_sCollectionTicket);
     const json jsonObj
@@ -450,8 +450,18 @@ string CollectionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
             }
         }
     };
+    return jsonObj;
+}
 
-    return jsonObj.dump(4);
+/**
+* Get json string representation of the ticket.
+* 
+* \param bDecodeProperties - if true, then decode collection_ticket and its properties
+* \return json string
+*/
+string CollectionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 /**

@@ -365,6 +365,7 @@ public:
     {
         strNetworkID = "main";
         strCurrencyUnits = "PSL";
+        m_sPastelBurnAddress = "PtpasteLBurnAddressXXXXXXXXXXbJ5ndd";
         bip44CoinType = 133; // As registered in https://github.com/patoshilabs/slips/blob/master/slip-0044.md
         consensus.nSubsidyHalvingInterval = 840'000;
         consensus.nMajorityEnforceBlockUpgrade = 750;
@@ -388,11 +389,10 @@ public:
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
-        consensus.nGlobalFeeAdjustmentMultiplier = 0.00003;
+        consensus.nGlobalFeeAdjustmentMultiplier = 0.000026;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
         consensus.nNewMiningAlgorithmHeightDelay = 0;
-
 
         // The best chain should have at least this much work.
         consensus.nMinimumChainWork = uint256S("000000000000000000000000000000000000000000000000000000000624f116"); //2702
@@ -482,6 +482,7 @@ public:
     {
         strNetworkID = "test";
         strCurrencyUnits = "LSP";
+        m_sPastelBurnAddress = "tPpasteLBurnAddressXXXXXXXXXXX3wy7u";
         bip44CoinType = 1;
         consensus.nSubsidyHalvingInterval = 840'000;
         consensus.nMajorityEnforceBlockUpgrade = 51;
@@ -504,7 +505,7 @@ public:
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
-        consensus.nGlobalFeeAdjustmentMultiplier = 0.000001616;
+        consensus.nGlobalFeeAdjustmentMultiplier = 0.000706;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
         consensus.nNewMiningAlgorithmHeightDelay = 0;
@@ -568,7 +569,6 @@ public:
         fMineBlocksOnDemand = false;
         fTestnetToBeDeprecatedFieldRPC = true;
 
-
         checkpointData.mapCheckpoints = {
             {0, consensus.hashGenesisBlock},
             { 101'400,    uint256S("0000007f4e352e90fd23200eeaabfea5b4df772ba8021845ee2b404d8894f7aa") },
@@ -589,6 +589,7 @@ public:
     {
         strNetworkID = "devnet";
         strCurrencyUnits = "DEV";
+        m_sPastelBurnAddress = "44oUgmZSL997veFEQDq569wv5tsT6KXf9QY7";
         bip44CoinType = 1;
         consensus.nSubsidyHalvingInterval = 840'000;
         consensus.nMajorityEnforceBlockUpgrade = 51;

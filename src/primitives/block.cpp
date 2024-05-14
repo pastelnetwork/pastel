@@ -6,6 +6,7 @@
 #include <utils/tinyformat.h>
 #include <utils/uint256.h>
 #include <utils/utilstrencodings.h>
+#include <utiltime.h>
 
 #include <primitives/block.h>
 #include <hash.h>
@@ -31,6 +32,11 @@ bool CBlockHeader::HasPrevBlockSignature() const noexcept
     if (nVersion < CBlockHeader::VERSION_SIGNED_BLOCK)
         return false;
     return !sPastelID.empty() && !prevMerkleRootSignature.empty();
+}
+
+string CBlockHeader::GetBlockTimeStr() const noexcept
+{
+    return DateTimeStrFormat("%Y-%m-%d %H:%M:%S", nTime);
 }
 
 uint256 CBlock::BuildMerkleTree(bool* pbMutated) const
@@ -146,3 +152,4 @@ string CBlock::ToString() const
     s << "\n";
     return s.str();
 }
+

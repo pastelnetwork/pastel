@@ -1,30 +1,15 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <rpc/rpc_parser.h>
 #include <rpc/server.h>
 #include <mnode/tickets/tickets-all.h>
 #include <mnode/rpc/tickets-find.h>
+#include <mnode/rpc/mnode-rpc-utils.h>
 
 using namespace std;
 
 constexpr auto MSG_KEY_NOT_FOUND = "Key is not found";
-
-template <class TicketType>
-static UniValue getJSONforTickets(const vector<TicketType> &vTickets)
-{
-    if (vTickets.empty())
-        return NullUniValue;
-	UniValue tArray(UniValue::VARR);
-    for (const auto& tkt : vTickets)
-    {
-		UniValue obj(UniValue::VOBJ);
-		obj.read(tkt.ToJSON());
-		tArray.push_back(obj);
-	}
-	return tArray;
-}
 
 template <class T, class T2 = const string&, typename Lambda = function<vector<T>(T2)>>
 static UniValue getTickets(const string& key, T2 key2 = "", Lambda otherFunc = nullptr)
@@ -53,9 +38,11 @@ static UniValue getTickets(const string& key, T2 key2 = "", Lambda otherFunc = n
 
 UniValue tickets_find(const UniValue& params)
 {
-    RPC_CMD_PARSER2(FIND, params, id, nft, collection, collection__act, act, 
+    RPC_CMD_PARSER2(FIND, params, id, nft, 
+        collection, collection__act, act, 
         sell, offer, buy, accept, trade, transfer,
-        down, royalty, username, ethereumaddress, action, action__act);
+        down, royalty, username, ethereumaddress, 
+        action, action__act, contract);
 
     if (!FIND.IsCmdSupported())
         throw JSONRPCError(RPC_INVALID_PARAMETER,
@@ -98,6 +85,8 @@ Available types:
              The "key" is 'Action Registration ticket txid' OR 'Caller's Pastel ID' OR
              'called-At height (block height at what original Action registration ticket was created)' OR
              'Collection Activation ticket txid'
+  contract - Find contract ticket.
+             The "key" is 'Primary generated key' OR 'ticket sub type' OR 'secondary key'
 
 Arguments:
 1. "key"    (string, required) The Key to use for ticket search. See types above...
@@ -220,6 +209,21 @@ As json rpc
         }
         return obj;
     }
+
+    case RPC_CMD_FIND::contract:
+    {
+		CContractTicket ticket;
+        if (CContractTicket::FindTicketInDb(key, ticket))
+        {
+			UniValue obj(UniValue::VOBJ);
+			obj.read(ticket.ToJSON());
+			return obj;
+		}
+        // if it is not primary or secondary keys, then it could be ticket sub type
+        ContractTickets_t vTickets = masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CContractTicket>(key);
+        UniValue tArray = getJSONforTickets<CContractTicket>(vTickets);
+        return tArray.isNull() ? MSG_KEY_NOT_FOUND : tArray;
+	} break;
 
     default:
         break;

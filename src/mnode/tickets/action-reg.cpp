@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -282,12 +282,12 @@ uint32_t CActionRegTicket::CountItemsInCollection() const
 }
 
 /**
- * Get json string representation of the ticket.
+ * Get json representation of the ticket.
  * 
- * \param bDecodeProperties - if true, then decode action_ticket and its properties
- * \return json string
+ * \param bDecodeProperties - if true, then decode api_ticket and its properties
+ * \return json object
  */
-string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
+json CActionRegTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     json action_ticket_json;
     if (bDecodeProperties)
@@ -334,8 +334,18 @@ string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
             }
         }
     };
+    return jsonObj;
+}
 
-    return jsonObj.dump(4);
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - if true, then decode action_ticket and its properties
+ * \return json string
+ */
+string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 /**
@@ -399,7 +409,7 @@ ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uin
              !existingTicket.IsTxId(m_txid)))
         {
             string message = strprintf("This Action is already registered in blockchain [key=%s; label=%s]", m_keyOne, KeyTwo());
-            const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+            const bool bTicketFound = masterNodeCtrl.masternodeTickets.FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
             if (bTicketFound)
             {
                 tv.errorMsg = message;

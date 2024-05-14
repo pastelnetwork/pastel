@@ -24,6 +24,7 @@
 #include <coincontrol.h>
 #include <rpc/server.h>
 #include <rpc/rpc-utils.h>
+#include <rpc/chain-rpc-utils.h>
 #include <timedata.h>
 #include <transaction_builder.h>
 #include <utilmoneystr.h>
@@ -1415,9 +1416,9 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
         bool fIsWatchonly = false;
         if (it != mapTally.end())
         {
-            nAmount = (*it).second.nAmount;
-            nConf = (*it).second.nConf;
-            fIsWatchonly = (*it).second.fIsWatchonly;
+            nAmount = it->second.nAmount;
+            nConf = it->second.nConf;
+            fIsWatchonly = it->second.fIsWatchonly;
         }
 
         if (fByAccounts)
@@ -4700,7 +4701,7 @@ As json rpc:
     CAmount nDebit = 0;
     unordered_map<uint256, CTransaction> txMap;
     uint256 prevHashBlock, prevTxHash;
-    for (const CTxIn& txin : tx.vin)
+    for (const auto& txin : tx.vin)
     {
         prevTxHash = txin.prevout.hash;
         const auto &it = txMap.find(prevTxHash);
@@ -4810,6 +4811,231 @@ As json rpc:
 	return ScanWalletForMissingTransactions(nStartingHeight, true, bTxOnlyInvolvingMe);
 }
 
+UniValue scanBurnTransactions(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() > 2 || params.empty())
+        throw runtime_error(
+R"(scanburntransactions "from_taddress" ( hash|height )
+Scan for the transactions from the given taddress to the burn address.
+
+Arguments:
+1. "from_taddress" (string, required) The transparent address that the transactions are sent from.
+                   If '*' is given, will scan for transactions from all addresses.
+2. hash|height     (string or numeric, optional) The block hash or height to start scanning from. 
+                   If not provided, the scan starts from the genesis block.
+
+Result:
+[
+  {
+	 "txid": "hashvalue", 	   (string)  The transaction id
+	 "blockhash": "hashvalue", (string)  The hash of the block containing the transaction
+	 "blockindex": n,          (numeric) The height of the block containing the transaction
+     "timestamp": nnn,         (numeric) The timestamp of the block containing the transaction
+     "from_address": "xxx",    (string)  The transparent address that the transaction is sent from
+     "confirmations": n,       (numeric) The number of confirmations of the block containing the transaction
+	 "amount": nnn,            (numeric) The amount of the transaction in PSL
+	 "amountPat": nnn          (numeric) The amount of the transaction in patoshis
+  },
+  ...
+]
+
+Examples:
+)" 
+    + HelpExampleCli("scanburntransactions", "\"PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n\" 100000")
+    + HelpExampleRpc("scanburntransactions", "\"PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n\", 100000"));
+
+    const auto &chainparams = Params();
+    KeyIO keyIO(chainparams);
+    string sFromAddress = params[0].get_str();
+    CTxDestination destTrackingAddress;
+    const bool bScanAllAddresses = (sFromAddress == "*");
+    if (!bScanAllAddresses)
+    {
+        destTrackingAddress = keyIO.DecodeDestination(params[0].get_str());
+        if (!IsValidDestination(destTrackingAddress))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel transparent address");
+    }
+    CTxDestination destBurnAddress = keyIO.DecodeDestination(chainparams.getPastelBurnAddress());
+    if (!IsValidDestination(destBurnAddress))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel burn address");
+
+    variant<uint32_t, uint256> block_id;
+    if (params.size() > 1)
+        block_id = rpc_get_block_hash_or_height(params[1]);
+    else
+        block_id = 0U;
+
+    const uint32_t nCurrentHeight = gl_nChainHeight;
+    uint256 hashStartBlock;
+    {
+        LOCK(cs_main);
+        if (holds_alternative<uint32_t>(block_id))
+        {
+            const uint32_t nBlockHeight = get<uint32_t>(block_id);
+            // chain length could have changed since the block_id was parsed
+            if (nBlockHeight > nCurrentHeight)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Block height %u out of range [0..%u]", 
+                    nBlockHeight, nCurrentHeight));
+            hashStartBlock = chainActive[nBlockHeight]->GetBlockHash();
+        }
+        else
+            hashStartBlock = get<uint256>(block_id);
+
+        auto it = mapBlockIndex.find(hashStartBlock);
+        if (it == mapBlockIndex.end())
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Block %s not found in index", hashStartBlock.ToString()));
+    }
+
+    UniValue resultObj(UniValue::VARR);
+    mutex resultMutex;
+    CBlockScanner blockScanner(hashStartBlock);
+    blockScanner.execute("burn-txs", [&](BlockScannerTask* pTask)
+    {
+        UniValue resultObjLocal(UniValue::VARR);
+
+        // read blocks from disk and process
+        for (size_t i = pTask->nBlockOffsetIndexStart;
+            i < min(pTask->nBlockOffsetIndexStart + pTask->nBlockOffsetIndexCount, pTask->vBlockOffsets.size()); ++i)
+        {
+            CDiskBlockPos blockPos(pTask->nBlockFile, pTask->vBlockOffsets[i]);
+            CBlock block;
+            if (!ReadBlockFromDisk(block, blockPos, pTask->consensusParams))
+                throw JSONRPCError(RPC_MISC_ERROR, "ReadBlockFromDisk failed");
+
+            if (block.vtx.empty())
+                continue;
+
+            uint256 hashBlock;
+            uint32_t nBlockHeight;
+            for (const auto& tx : block.vtx)
+            {
+                if (tx.IsCoinBase())
+                    continue;
+
+                for (const auto& txout : tx.vout)
+                {
+                    CTxDestination address;
+                    if (!ExtractDestination(txout.scriptPubKey, address))
+                        continue;
+
+                    if (address != destBurnAddress)
+                        continue;
+
+                    for (const auto& txin : tx.vin)
+                    {
+                        if (txin.prevout.IsNull())
+                            continue;
+
+                        CTransaction prevTx;
+                        uint256 hashInputBlock;
+                        if (!GetTransaction(txin.prevout.hash, prevTx, pTask->consensusParams, hashInputBlock, true))
+                            continue;
+                        if (prevTx.vout.size() <= txin.prevout.n)
+							continue;
+                        const auto &prevTxOut = prevTx.vout[txin.prevout.n];
+                        if (!ExtractDestination(prevTxOut.scriptPubKey, address))
+                            continue;
+
+                        if (!bScanAllAddresses && (address != destTrackingAddress))
+                            continue;
+
+                        if (hashBlock.IsNull())
+                        {
+                            hashBlock = block.GetHash();
+                            LOCK(cs_main);
+                            const CBlockIndex* pindex = mapBlockIndex[hashBlock];
+                            if (pindex)
+                                nBlockHeight = pindex->nHeight;
+                        }
+
+                        UniValue txObj(UniValue::VOBJ);
+                        txObj.pushKV("txid", tx.GetHash().GetHex());
+                        txObj.pushKV("blockhash", hashBlock.GetHex());
+                        txObj.pushKV("blockindex", static_cast<uint64_t>(nBlockHeight));
+                        txObj.pushKV("confirmations", static_cast<uint64_t>(nCurrentHeight - nBlockHeight + 1));
+                        txObj.pushKV("timestamp", block.GetBlockTime());
+                        txObj.pushKV("from_address", keyIO.EncodeDestination(address));
+                        txObj.pushKV("amount", ValueFromAmount(txout.nValue));
+                        txObj.pushKV("amountPat", txout.nValue);
+                        resultObjLocal.push_back(move(txObj));
+                    }
+                }
+            }
+        }
+        {
+            unique_lock lock(resultMutex);
+            resultObj.reserve(resultObj.size() + resultObjLocal.size() + 10);
+            for (size_t i = 0; i < resultObjLocal.size(); ++i)
+                resultObj.push_back(move(resultObjLocal[i]));
+            resultObjLocal.clear();
+        }
+    });
+    // sort results by block height
+    vector<pair<uint32_t, uint32_t> > vHeights;
+    vHeights.reserve(resultObj.size());
+    for (uint32_t i = 0; i < resultObj.size(); ++i)
+    {
+		const UniValue &txObj = resultObj[i];
+		vHeights.emplace_back(static_cast<uint32_t>(txObj["blockindex"].get_int64()), i);
+	}
+    sort(vHeights.begin(), vHeights.end());
+    UniValue resultObjSorted(UniValue::VARR);
+    resultObjSorted.reserve(vHeights.size());
+    for (const auto &heightIndex : vHeights)
+		resultObjSorted.push_back(move(resultObj[heightIndex.second]));
+    resultObj.clear();
+    // scan mempool transactions
+    {
+        LOCK2(cs_main, mempool.cs);
+        for (const auto& entry : mempool.mapTx)
+        {
+			const auto &tx = entry.GetTx();
+			if (tx.IsCoinBase())
+				continue;
+
+            for (const auto& txout : tx.vout)
+            {
+				CTxDestination address;
+				if (!ExtractDestination(txout.scriptPubKey, address))
+					continue;
+
+				if (address != destBurnAddress)
+					continue;
+
+                for (const auto& txin : tx.vin)
+                {
+					if (txin.prevout.IsNull())
+						continue;
+
+					CTransaction prevTx;
+					uint256 hashInputBlock;
+					if (!GetTransaction(txin.prevout.hash, prevTx, chainparams.GetConsensus(), hashInputBlock, true))
+						continue;
+					if (prevTx.vout.size() <= txin.prevout.n)
+						continue;
+					const auto &prevTxOut = prevTx.vout[txin.prevout.n];
+					if (!ExtractDestination(prevTxOut.scriptPubKey, address))
+						continue;
+					if (!bScanAllAddresses && (address != destTrackingAddress))
+						continue;
+
+					UniValue txObj(UniValue::VOBJ);
+					txObj.pushKV("txid", tx.GetHash().GetHex());
+                    txObj.pushKV("blockhash", "NA");
+					txObj.pushKV("blockindex", 0);
+					txObj.pushKV("confirmations", 0);
+					txObj.pushKV("timestamp", 0);
+					txObj.pushKV("from_address", keyIO.EncodeDestination(address));
+					txObj.pushKV("amount", ValueFromAmount(txout.nValue));
+					txObj.pushKV("amountPat", txout.nValue);
+					resultObjSorted.push_back(move(txObj));
+				}
+			}
+		}
+    }
+    return resultObjSorted;
+}
+
 extern UniValue dumpprivkey(const UniValue& params, bool fHelp); // in rpcdump.cpp
 extern UniValue importprivkey(const UniValue& params, bool fHelp);
 extern UniValue importaddress(const UniValue& params, bool fHelp);
@@ -4861,6 +5087,8 @@ static const CRPCCommand commands[] =
     { "wallet",             "lockunspent",              &lockunspent,              true  },
     { "wallet",             "move",                     &movecmd,                  false },
     { "wallet",             "scanformissingtxs",        &scanForMissingTransactions, false },
+    { "wallet",             "scanburntransactions",     &scanBurnTransactions,     false },
+
     { "wallet",             "sendfrom",                 &sendfrom,                 false },
     { "wallet",             "sendmany",                 &sendmany,                 false },
     { "wallet",             "sendtoaddress",            &sendtoaddress,            false },

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 from math import isclose
@@ -29,7 +29,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
     def __init__(self):
         super().__init__()
-        
+
         self.number_of_master_nodes = 12
         self.number_of_cold_nodes = self.number_of_master_nodes - 1
         self.number_of_simple_nodes = 6
@@ -45,7 +45,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.mining_node_num = self.number_of_master_nodes   # same as non_mn1
         self.hot_node_num = self.number_of_master_nodes + 1  # same as non_mn2
-        
+
         self.errorString = ""
         self.is_network_split = False
         self.nodes = []
@@ -92,7 +92,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         # generate pastelIDs & send coins
         self.creator_pastelid1 = self.create_pastelid(self.non_mn3)[0]
-        
+
         print(f'Creator Pastel ID: {self.creator_pastelid1}')
         self.nonmn3_pastelid1 = self.create_pastelid(self.non_mn3)[0]
         self.nonmn3_address1 = self.nodes[self.non_mn3].getnewaddress()
@@ -133,7 +133,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         pose_ban_score = out["pose-ban-score"]
         assert_equal(0, pose_ban_score)
         assert_false(out["pose-banned"])
-        
+
         current_height = self.nodes[mn2.index].getblockcount()
         print(f"current height - {current_height}")
         # now increment PoSe ban score 5 times for mn5
@@ -159,7 +159,7 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         pose_ban_score = out["pose-ban-score"]
         assert_equal(4, pose_ban_score)
         assert_false(out["pose-banned"])
-            
+
 
     def ticket_intended_for_expiration_tests(self):
         """
@@ -171,9 +171,9 @@ class MasterNodeTicketsTest(MasterNodeCommon):
 
         self.register_nft_act_ticket()
         self.wait_for_min_confirmations()
-        
+
         nft_ticket = self.tickets[TicketType.NFT]
-        
+
         # tickets register offer "nft-txid" "price" "PastelID" "passphrase" [valid-after] [valid-before] [copy-number] ["address"] ["intendedFor"]
         current_height = self.nodes[self.non_mn3].getblockcount()
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "ticket with the specified intended recipient cannot expire",

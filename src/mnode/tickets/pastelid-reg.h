@@ -94,6 +94,7 @@ public:
     void clearOutPoint() noexcept { m_outpoint.SetNull(); }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
+    nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
     void ToStrStream(std::stringstream& ss, const bool bIncludeMNsignature = true) const noexcept;
     ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;

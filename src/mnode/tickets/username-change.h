@@ -65,6 +65,7 @@ public:
     std::string getPastelID() const noexcept { return m_sPastelID; }
 
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
+    nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
 
     // get ticket price in PSL

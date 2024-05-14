@@ -308,7 +308,7 @@ void CSocketHandlerThread::execute()
             }
             FD_ZERO(&fdsetSend);
             FD_ZERO(&fdsetError);
-            unique_lock<mutex> lck(m_mutex);
+            unique_lock lck(m_mutex);
             if (m_condVar.wait_for(lck, chrono::milliseconds(timeout.tv_usec / 1000)) == cv_status::no_timeout)
             {
                 if (shouldStop())
@@ -452,7 +452,7 @@ public:
         if ((addrman.size() > 0) &&
             (!GetBoolArg("-forcednsseed", false)))
         {
-            unique_lock<mutex> lck(m_mutex);
+            unique_lock lck(m_mutex);
             if (m_condVar.wait_for(lck, 11s) == cv_status::no_timeout)
             {
                 if (shouldStop())
@@ -543,7 +543,7 @@ public:
         // Connect to specific addresses
         if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
         {
-            unique_lock<mutex> lck(m_mutex);
+            unique_lock lck(m_mutex);
             for (int64_t nLoop = 0;; nLoop++)
             {
                 ProcessOneShot();
@@ -576,7 +576,7 @@ public:
         int64_t nStart = GetTime();
         while (!shouldStop())
         {
-            unique_lock<mutex> lck(m_mutex);
+            unique_lock lck(m_mutex);
             ProcessOneShot();
 
             if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
@@ -662,7 +662,7 @@ public:
             // Retry every 2 minutes
             while(!shouldStop())
             {
-                unique_lock<mutex> lck(m_mutex);
+                unique_lock lck(m_mutex);
                 list<string> lAddresses(0);
                 {
                     LOCK(cs_vAddedNodes);
@@ -742,7 +742,7 @@ public:
             if (shouldStop())
                 return;
 
-            unique_lock<mutex> lck(m_mutex);
+            unique_lock lck(m_mutex);
             for (const auto &vserv : lservAddressesToAdd)
             {
                 CSemaphoreGrant grant(*semOutbound);
@@ -806,7 +806,7 @@ public:
         SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
         while (!shouldStop())
         {
-            unique_lock<mutex> lock(m_mutex);
+            unique_lock lock(m_mutex);
 
             node_vector_t vNodesCopy = gl_NodeManager.CopyNodes();
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2023 The Pastel Core developers
+// Copyright (c) 2021-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <mnode/ticket-txmempool.h>
@@ -16,9 +16,12 @@ void CTicketTxMemPoolTracker::processTransaction(const CTxMemPoolEntry& entry, [
 {
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     TicketID ticket_id;
+    uint32_t nMultiSigOutputsCount;
+    CAmount nMultiSigTxTotalFee;
     string error;
     const auto& tx = entry.GetTx();
-    if (!CPastelTicketProcessor::preParseTicket(tx, data_stream, ticket_id, error))
+    if (!CPastelTicketProcessor::preParseTicket(tx, data_stream, ticket_id, error, 
+        nMultiSigOutputsCount, nMultiSigTxTotalFee))
         return;
     {
         EXCLUSIVE_LOCK(m_rwMemPoolLock);

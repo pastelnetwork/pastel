@@ -106,15 +106,19 @@ declare -a testScriptsToFix=(
     'rpcbind_test.py'
 )
 
-declare -a testScriptsMN=(
-    'secure_container.py'
-    'mn_tickets_username_change.py'
-    'mn_tickets_validation.py'
+declare -a testScriptsMN1=(
     'mn_messaging.py'
     'mn_payment.py'
     'mn_bugs.py'
     'mn_expiration.py'
+)
+
+declare -a testScriptsMN2=(
+    'secure_container.py'
+    'mn_tickets_username_change.py'
+    'mn_tickets_contract.py'
     'mn_mining.py'
+    'mn_tickets_validation.py'
 )
 
 declare -a testScriptsMNslow=(
@@ -289,7 +293,8 @@ elif test -n "$testScriptName"; then
 else
     runTestGroup "testScripts"
     runTestGroup "testScriptsExt"
-    runTestGroup "testScriptsMN"
+    runTestGroup "testScriptsMN1"
+    runTestGroup "testScriptsMN2"
     runTestGroup "testScriptsMNslow"
 fi
 

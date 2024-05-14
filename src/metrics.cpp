@@ -1,5 +1,5 @@
 // Copyright (c) 2016 The Zcash developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
@@ -30,7 +30,7 @@ using namespace std;
 
 void AtomicTimer::start()
 {
-    unique_lock<mutex> lock(mtx);
+    unique_lock lock(mtx);
     if (threads < 1)
         start_time = GetTime();
     ++threads;
@@ -38,7 +38,7 @@ void AtomicTimer::start()
 
 void AtomicTimer::stop()
 {
-    unique_lock<mutex> lock(mtx);
+    unique_lock lock(mtx);
     // Ignore excess calls to stop()
     if (threads > 0)
     {
@@ -53,19 +53,19 @@ void AtomicTimer::stop()
 
 bool AtomicTimer::running()
 {
-    unique_lock<mutex> lock(mtx);
+    unique_lock lock(mtx);
     return threads > 0;
 }
 
 uint64_t AtomicTimer::threadCount()
 {
-    unique_lock<mutex> lock(mtx);
+    unique_lock lock(mtx);
     return threads;
 }
 
 double AtomicTimer::rate(const AtomicCounter& count)
 {
-    unique_lock<mutex> lock(mtx);
+    unique_lock lock(mtx);
     int64_t duration = total_time;
     if (threads > 0)
     {

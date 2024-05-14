@@ -290,7 +290,6 @@ private:
     friend class CMasternodeSync;
 
     bool GetMasternodeScores(std::string &error, const uint256& blockHash, score_pair_vec_t& vecMasternodeScoresRet, int nMinProtocol = 0) const noexcept;
-    std::unordered_map<std::string, uint32_t> GetLastMnIdsWithBlockReward(const CBlockIndex *pindex) noexcept;
 
     bool ProcessRecoveryReply(const uint256 &hashMNB, const node_t& pfrom, const CMasternodeBroadcast &mnb, masternode_t &pmn);
     void PopulateMasternodeRecoveryList(recovery_masternodes_t &mapRecoveryMasternodes) const;

@@ -98,6 +98,42 @@ As json rpc:
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(pastelIDRegTicket, sFundingAddress));
 }
 
+UniValue tickets_register_contract(const UniValue& params)
+{
+    if (params.size() < 4 || params.size() > 6)
+        throw JSONRPCError(RPC_INVALID_PARAMETER,
+R"(tickets register contract "{contract-ticket}" "subtype" ["secondary_key"] ["address"]
+Register new contract ticket. If successful, method returns "txid".
+
+Arguments:
+1. "{contract-ticket}"	(string, required) Base64 encoded contract ticket (binary or json).
+2. "subtype"			(string, required) Contract ticket subtype.
+3. "secondary_key"		(string, optional) Secondary key for the contract ticket.
+4. "address"			(string, optional) The Pastel blockchain t-address to use for funding the registration.
+
+Register Contract Ticket:
+)" + HelpExampleCli("tickets register contract", R"("base64-encoded-contract-ticket" "subtype")") +
+R"(
+As json rpc:
+)" + HelpExampleRpc("tickets", R"("register", "contract", "base64-encoded-contract-ticket" "subtype")")
+);
+
+    if (fImporting || fReindex)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Initial blocks download. Re-try later");
+
+    string sContractTicket = params[2].get_str();
+    string sContractSubType = params[3].get_str();
+    string sSecondaryKey;
+    if (params.size() >= 5)
+        sSecondaryKey = params[4].getValStr();
+    opt_string_t sFundingAddress;
+    if (params.size() >= 6)
+		sFundingAddress = params[5].get_str();
+
+    const auto ContractTicket = CContractTicket::Create(move(sContractTicket), move(sContractSubType), move(sSecondaryKey));
+    return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(ContractTicket, sFundingAddress));
+}
+
 /**
 * Register NFT ticket.
 * 
@@ -786,6 +822,7 @@ Available types:
   action     - Register new Action ticket.
   action-act - Send activation for the new registered Action ticket.
                Same as "tickets activate action...".
+  contract   - Register new contract ticket.
 )");
 }
 
@@ -793,7 +830,8 @@ UniValue tickets_register(const UniValue& params)
 {
     RPC_CMD_PARSER2(REGISTER, params, mnid, id, nft, act, nft__act,
         sell, offer, buy, accept, trade, transfer,
-        down, royalty, username, ethereumaddress, action, action__act, collection, collection__act);
+        down, royalty, username, ethereumaddress, action, action__act, 
+        collection, collection__act, contract);
 
     if (!REGISTER.IsCmdSupported())
         tickets_register_help();
@@ -865,6 +903,10 @@ UniValue tickets_register(const UniValue& params)
         case RPC_CMD_REGISTER::collection__act:
             result = tickets_activate_collection(params, true);
             break;
+
+        case RPC_CMD_REGISTER::contract:
+			result = tickets_register_contract(params);
+			break;
 
         default:
             break;

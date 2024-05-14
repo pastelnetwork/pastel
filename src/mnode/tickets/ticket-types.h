@@ -23,6 +23,7 @@ constexpr auto TICKET_NAME_ACTION_REG               = "action-reg";             
 constexpr auto TICKET_NAME_ACTION_ACT               = "action-act";             // Action activation ticket
 constexpr auto TICKET_NAME_COLLECTION_REG           = "collection-reg";         // Collection registration ticket
 constexpr auto TICKET_NAME_COLLECTION_ACT           = "collection-act";         // Collection activation ticket
+constexpr auto TICKET_NAME_CONTRACT				    = "contract";               // Contract ticket
 
 // collection item type names
 constexpr auto COLLECTION_ITEM_TYPE_NFT             = "nft";
@@ -54,6 +55,7 @@ enum class TicketID : uint8_t
     ActionActivate,     // Action activation ticket
     CollectionReg,      // Collection registration ticket
     CollectionAct,      // Collection activation ticket
+    Contract,           // Contract ticket
 
     COUNT, // number of ticket types
     InvalidID = std::numeric_limits<uint8_t>::max()
@@ -91,7 +93,8 @@ static constexpr std::array<TicketInfo, to_integral_type(TicketID::COUNT)> TICKE
         { TicketID::ActionReg,         "Action Registration",          TICKET_NAME_ACTION_REG,              1,       "actreg",       10   },
         { TicketID::ActionActivate,    "Action Activation",            TICKET_NAME_ACTION_ACT,              1,       "actcnf",       10   },
         { TicketID::CollectionReg,     "Collection Registration",      TICKET_NAME_COLLECTION_REG,          1,       "collreg",      10   }, // collection_ticket version 1
-        { TicketID::CollectionAct,     "Collection Activation",        TICKET_NAME_COLLECTION_ACT,          1,       "collact",      10   }
+        { TicketID::CollectionAct,     "Collection Activation",        TICKET_NAME_COLLECTION_ACT,          1,       "collact",      10   },
+        { TicketID::Contract,          "Contract",                     TICKET_NAME_CONTRACT,                1,       "contract",     10   },
     }};
 
 inline std::string GetTicketName(const TicketID id) noexcept

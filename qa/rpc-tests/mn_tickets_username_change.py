@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-# Copyright (c) 2021-2022 The Pastel Core developers
+# Copyright (c) 2021-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
-from decimal import getcontext, Decimal
+import math
+from itertools import combinations
+from decimal import getcontext
 
 from test_framework.util import (
     assert_equal,
@@ -13,13 +15,12 @@ from test_framework.util import (
     start_nodes,
     connect_nodes_bi
 )
-import math
 from pastel_test_framework import PastelTestFramework
 import test_framework.rpc_consts as rpc
 
 getcontext().prec = 16
 
-class UserNameChangeTest(PastelTestFramework):
+class TicketUserNameChangeTest(PastelTestFramework):
     """
     Test Pastel change-username tickets
     """
@@ -32,16 +33,14 @@ class UserNameChangeTest(PastelTestFramework):
     n1_pastelid2 = None
     n2_pastelid = None
     n3_pastelid = None
-    node1_balancer = None
+    node1_balance = 0
 
-    def setup_network(self):
+    def setup_network(self, split = False):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,
                                  extra_args=[['-debug=compress']] * self.num_nodes)
-        connect_nodes_bi(self.nodes,0,1)
-        connect_nodes_bi(self.nodes,1,2)
-        connect_nodes_bi(self.nodes,0,2)
-        connect_nodes_bi(self.nodes,0,3)
-        self.is_network_split=False
+        for pair in combinations(range(self.num_nodes), 2):
+            connect_nodes_bi(self.nodes, pair[0], pair[1])
+        self.is_network_split = False
         self.sync_all()
 
     def list_username_tickets(self, nExpectedCount):
@@ -73,10 +72,10 @@ class UserNameChangeTest(PastelTestFramework):
         self.node1_balance = newbalance
 
 
-    def validate_username(self, username, errmsg, isBad = True):
+    def validate_username(self, username, errmsg, is_bad = True):
         result = self.nodes[1].tickets("tools", "validateusername", username)
         print(result)
-        assert_equal(result["isBad"], isBad, f"username [{username}] validation failed")
+        assert_equal(result["isBad"], is_bad, f"username [{username}] validation failed")
         assert_true(errmsg in result["validationError"], f"username [{username}] error message validation failed")
 
 
@@ -120,10 +119,10 @@ class UserNameChangeTest(PastelTestFramework):
         self.list_username_tickets(0)
 
         # missing pastel id - returns rpc command help
-        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "tickets register username", 
+        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "tickets register username",
             self.nodes[1].tickets, "register", "username", "neo")
         # missing passphrase - returns rpc command help
-        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "tickets register username", 
+        assert_raises_rpc(rpc.RPC_INVALID_PARAMETER, "tickets register username",
             self.nodes[1].tickets, "register", "username", "neo", self.n1_pastelid1)
         # too short username < 4 chars
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Invalid size of username", 
@@ -239,20 +238,20 @@ class UserNameChangeTest(PastelTestFramework):
         print(" - UserName registration with address parameter")
         n1_taddr2 = self.nodes[1].getnewaddress()
         # amounts to send
-        nT1 = self.USERNAME_CHANGE_FEE_SECOND_TIME*1.5
-        nT2 = self.USERNAME_CHANGE_FEE_SECOND_TIME*2
+        t1 = self.USERNAME_CHANGE_FEE_SECOND_TIME*1.5
+        t2 = self.USERNAME_CHANGE_FEE_SECOND_TIME*2
         result = self.nodes[0].z_sendmanywithchangetosender(addr[0],
             [
-                {'address': addr[1], 'amount': nT1 },
-                {'address': n1_taddr2, 'amount': nT2 },
+                {'address': addr[1], 'amount': t1 },
+                {'address': n1_taddr2, 'amount': t2 },
             ], 0, 0)
         wait_and_assert_operationid_status(self.nodes[0], result)
         self.generate_and_sync_inc(1)
 
         amounts = self.nodes[1].listaddressamounts(False, "all")
         print(f"node1 addresses:\ncoinbase={coinbase_addr[1]}\ntaddr1={addr[1]}\ntaddr2={n1_taddr2}\nall_amounts:\n{amounts}")
-        assert_equal(nT1, amounts[addr[1]], "node1 taddr1 amount does not match")
-        assert_equal(nT2, amounts[n1_taddr2], "node1 taddr2 amount does not match")
+        assert_equal(t1, amounts[addr[1]], "node1 taddr1 amount does not match")
+        assert_equal(t2, amounts[n1_taddr2], "node1 taddr2 amount does not match")
         # invalid funding address
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "Not a valid transparent address", 
             self.nodes[1].tickets, "register", "username", username5, self.n1_pastelid2, self.passphrase, "invalid_address")
@@ -267,12 +266,12 @@ class UserNameChangeTest(PastelTestFramework):
         self.generate_and_sync_inc(1)
         tx_fee4 = self.nodes[1].gettxfee(txid4)["txFee"]
         print(f"tx_fee4: {tx_fee4}")
-        
+
         self.list_username_tickets(4)
         self.check_username_change_ticket(txid4, username5, self.n1_pastelid2, self.USERNAME_CHANGE_FEE_SECOND_TIME)
         amounts = self.nodes[1].listaddressamounts(False, "all")
-        nT1 -= self.USERNAME_CHANGE_FEE_SECOND_TIME + float(tx_fee4)
-        assert_true(math.isclose(nT1, amounts[addr[1]], rel_tol=1e-5), "node1 taddr1 amount does not match")
+        t1 -= self.USERNAME_CHANGE_FEE_SECOND_TIME + float(tx_fee4)
+        assert_true(math.isclose(t1, amounts[addr[1]], rel_tol=1e-5), "node1 taddr1 amount does not match")
         self.generate_and_sync_inc(10) # allow next username change
         # not enough funds on the address
         assert_raises_rpc(rpc.RPC_MISC_ERROR, "No unspent transaction found for address", 
@@ -289,8 +288,8 @@ class UserNameChangeTest(PastelTestFramework):
         tx_fee5 = self.nodes[1].gettxfee(txid5)["txFee"]
         print(f"tx_fee5: {tx_fee5}")
         amounts = self.nodes[1].listaddressamounts(False, "all")
-        nT2 -= self.USERNAME_CHANGE_FEE_SECOND_TIME + float(tx_fee5)
-        assert_true(math.isclose(nT2, amounts[n1_taddr2], rel_tol=1e-5), "node1 taddr2 amount does not match")
+        t2 -= self.USERNAME_CHANGE_FEE_SECOND_TIME + float(tx_fee5)
+        assert_true(math.isclose(t2, amounts[n1_taddr2], rel_tol=1e-5), "node1 taddr2 amount does not match")
 
         print(" - UserName validation")
         # too short
@@ -311,4 +310,4 @@ class UserNameChangeTest(PastelTestFramework):
         print("---- UserName-Change Ticket tests FINISHED ----")
 
 if __name__ == '__main__':
-    UserNameChangeTest().main()
+    TicketUserNameChangeTest().main()

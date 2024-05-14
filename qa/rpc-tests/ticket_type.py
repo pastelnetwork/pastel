@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 from enum import Enum
+from typing import Optional
 
 # switch to use either:
 #       sell|buy|trade (False)
@@ -15,6 +16,7 @@ class TicketType(Enum):
     """ Pastel ticket types.
     TicketTypeName          | ID | Description | TypeName | TicketName | FolderName | Ticket Price
     """
+    UNKNOWN                 = 0, "Unknown", "", "", None, 0
     ID                      = 1, "Pastel ID", "id", "pastelid", None, 10
     MNID                    = 2, "MasterNode's Pastel ID", "mnid", "pastelid", None, 10
     NFT                     = 3, "NFT", "nft", "nft-reg", None, 10
@@ -32,14 +34,15 @@ class TicketType(Enum):
     CASCADE_ACTION_ACTIVATE = 15, "Cascade Action Activation", "action-act", "action-act", "cascade-act", 10
     COLLECTION              = 16, "Collection", "collection", "collection-reg", None, 10
     COLLECTION_ACTIVATE     = 17, "Collection Activation", "collection-act", "collection-act", None, 10
+    CONTRACT                = 18, "Contract", "contract", "contract", None, 10
 
     def __new__(cls, *args, **kwds):
         obj = object.__new__(cls)
         obj._value_ = args[0]
         return obj
 
-    def __init__(self, _: str, description: str, type_name: str = None, ticket_name: str = None,
-        folder_name: str = None, ticket_price: int = 10):
+    def __init__(self, _: int, description: str, type_name: Optional[str], ticket_name: Optional[str],
+        folder_name: Optional[str], ticket_price: int = 10):
         """ Initialize enum member.
             First parameters is ingnored since it' already set by __new__.
 
@@ -73,7 +76,7 @@ class TicketType(Enum):
 
 
     @property
-    def type_name(self) -> str:
+    def type_name(self) -> Optional[str]:
         """ Returns ticket type name as used in pasteld.
 
         Returns:
@@ -83,7 +86,7 @@ class TicketType(Enum):
 
 
     @property
-    def ticket_name(self) -> str:
+    def ticket_name(self) -> Optional[str]:
         """ Returns ticket name as used in pasteld.
 
         Returns:
@@ -93,7 +96,7 @@ class TicketType(Enum):
 
 
     @property
-    def folder_name(self) -> str:
+    def folder_name(self) -> Optional[str]:
         """ Returns name of the storage folder for this ticket type.
 
         Returns:
@@ -117,6 +120,7 @@ class ActionType(Enum):
     """Pastel action types.
     ActionTypeName    | ID | RegTicketType | ActTicketType
     """
+    UNKNOWN = 0, TicketType.UNKNOWN, TicketType.UNKNOWN
     SENSE   = 1, TicketType.SENSE_ACTION,   TicketType.SENSE_ACTION_ACTIVATE
     CASCADE = 2, TicketType.CASCADE_ACTION, TicketType.CASCADE_ACTION_ACTIVATE
 
@@ -126,7 +130,7 @@ class ActionType(Enum):
         return obj
 
 
-    def __init__(self, _: str, reg_ticket_type: TicketType, act_ticket_type: TicketType):
+    def __init__(self, _: int, reg_ticket_type: TicketType, act_ticket_type: TicketType):
         """ Initialize enum member.
             First parameters is ingnored since it' already set by __new__.
 
@@ -173,7 +177,7 @@ def get_action_type(item_type: TicketType) -> ActionType:
     elif item_type == TicketType.CASCADE_ACTION:
         action_type = ActionType.CASCADE
     else:
-        action_type = None
+        action_type = ActionType.UNKNOWN
     return action_type
 
 
@@ -194,6 +198,8 @@ def get_activation_type(item_type: TicketType) -> TicketType:
         act_type = TicketType.CASCADE_ACTION_ACTIVATE
     elif item_type == TicketType.COLLECTION:
         act_type = TicketType.COLLECTION_ACTIVATE
+    else:
+        act_type = TicketType.UNKNOWN
     return act_type
 
 
@@ -210,7 +216,7 @@ class CollectionItemType(Enum):
         obj._value_ = args[0]
         return obj
 
-    def __init__(self, _: str, type_description: str, type_name: str, reg_ticket_type: TicketType, act_ticket_type: TicketType):
+    def __init__(self, _: int, type_description: str, type_name: str, reg_ticket_type: TicketType, act_ticket_type: TicketType):
         """ Initialize enum member.
             First parameters is ingnored since it' already set by __new__.
 

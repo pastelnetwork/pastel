@@ -2,7 +2,10 @@
 # Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
-from typing import Dict
+from typing import (
+    Dict,
+    Optional,
+)
 from pathlib import Path
 from enum import Enum
 import time
@@ -46,34 +49,34 @@ class MnFeeType(Enum):
     TICKET_CHAIN_STORAGE_FEE_PER_KB = 2,  200, "getticketfee",          "ticketChainStorageFeePerKb", "localTicketChainStorageFeePerKb", "ticket"
     SENSE_COMPUTE_FEE               = 3, 5000, "getsensecomputefee",    "senseComputeFee",            "localSenseComputeFee",            "sense-compute"
     SENSE_PROCESSING_FEE_PER_MB     = 4,   50, "getsenseprocessingfee", "senseProcessingFeePerMb",    "localSenseProcessingFeePerMb",    "sense-processing"
-    
-    def __init__(self, _: str, fee: int, getfee_rpc_command: str, option_name: str, local_option_name: str, setfee_rpc_command: str):
+
+    def __init__(self, _: int, fee: int, getfee_rpc_command: str, option_name: str, local_option_name: str, setfee_rpc_command: str):
         self._fee = fee
         self._getfee_rpc_command = getfee_rpc_command
         self._option_name = option_name
         self._local_option_name = local_option_name
         self._setfee_rpc_command = setfee_rpc_command
-    
+
     def __new__(cls, *args, **kwds):
         obj = object.__new__(cls)
         obj._value_ = args[0]
         return obj
-    
+
     def __str__(self):
         return self.name
 
     @property
     def fee(self) -> int:
         return self._fee
-    
+
     @property
     def getfee_rpc_command(self) -> str:
         return self._getfee_rpc_command
-    
+
     @property
     def option_name(self) -> str:
         return self._option_name
-    
+
     @property
     def local_option_name(self) -> str:
         return self._local_option_name
@@ -81,30 +84,30 @@ class MnFeeType(Enum):
     @property
     def setfee_rpc_command(self) -> str:
         return self._setfee_rpc_command
-    
-    
+
+
 class TicketData:
     def __init__(self):
-        self.reg_ticket = None                  # Registration ticket json (not encoded)
-        self.reg_ticket_base64_encoded = None   # Registration ticket json base64-encoded
-        self.reg_txid: str = None               # Registration ticket txid
-        self.reg_height: int = None             # Registration ticket block height
-        self.reg_node_id: int = None            # Node where ticket was registered
-        self.reg_pastelid: str = None           # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
-        self.pastelid_node_id: int = None       # Node where reg_pastelid is created
+        self.reg_ticket = None                      # Registration ticket json (not encoded)
+        self.reg_ticket_base64_encoded = None       # Registration ticket json base64-encoded
+        self.reg_txid: Optional[str] = None         # Registration ticket txid
+        self.reg_height: Optional[int] = None       # Registration ticket block height
+        self.reg_node_id: Optional[int] = None      # Node where ticket was registered
+        self.reg_pastelid: Optional[str] = None     # Pastel ID of the Registration ticket NFT Creator/Action Caller, etc..
+        self.pastelid_node_id: Optional[int] = None # Node where reg_pastelid is created
 
-        self.act_txid: str = None               # Activation ticket txid
-        self.act_height: int = None             # Activation ticket block height
+        self.act_txid: Optional[str] = None         # Activation ticket txid
+        self.act_height: Optional[int] = None       # Activation ticket block height
 
-        self.offer_txid: str = None             # Offer ticket txid
-        self.accept_txid: str = None            # Accept ticket txid
-        self.transfer_txid: str = None          # Transfer ticket txid
+        self.offer_txid: Optional[str] = None       # Offer ticket txid
+        self.accept_txid: Optional[str] = None      # Accept ticket txid
+        self.transfer_txid: Optional[str] = None    # Transfer ticket txid
 
-        self.label: str = None                  # unique label
-        self.item_price: int = 0                # item price
-        self.ticket_price: int = 10             # ticket price
-        self.royalty_address: str = None        # NFT Royalty address
-        self.address = None                     # address that can be used in a ticket
+        self.label: Optional[str] = None            # unique label
+        self.item_price: int = 0                    # item price
+        self.ticket_price: int = 10                 # ticket price
+        self.royalty_address: Optional[str]         # NFT Royalty address
+        self.address = None                         # address that can be used in a ticket
 
     def set_reg_ticket(self, reg_ticket: str):
         self.reg_ticket = reg_ticket
@@ -112,7 +115,7 @@ class TicketData:
 
 
 class TopMN:
-    def __init__(self, index: int, pastelid: str = None):
+    def __init__(self, index: int, pastelid: Optional[str] = None):
         self._index_ = index
         self._pastelid_ = pastelid
         self._signature_ = None
@@ -122,11 +125,11 @@ class TopMN:
         return self._index_
 
     @property
-    def pastelid(self) -> str:
+    def pastelid(self) -> Optional[str]:
         return self._pastelid_
 
     @property
-    def signature(self) -> str:
+    def signature(self) -> Optional[str]:
         return self._signature_
 
     @signature.setter
@@ -142,17 +145,17 @@ class MasterNodeCommon (PastelTestFramework):
     """ Class to represent MasterNode.
     """
     class MasterNode:
-        index: int = None            # masternode index
-        passphrase: str = None       # passphrase to access secure container data
-        mnid: str = None             # generated Pastel ID
-        lrKey: str = None            # generated LegRoast key
-        privKey: str = None          # generated private key
-        port: int = None
-        collateral_address: str = None
-        collateral_txid: str = None
-        collateral_index: int = None
-        mnid_reg_address: str = None # address for mnid registration
-        mnid_reg_txid: str = None    # txid for mnid registration
+        index: Optional[int]         # masternode index
+        passphrase: Optional[str]    # passphrase to access secure container data
+        mnid: Optional[str]          # generated Pastel ID
+        lrKey: Optional[str]         # generated LegRoast key
+        privKey: Optional[str]       # generated private key
+        port: Optional[int]
+        collateral_address: Optional[str] = None
+        collateral_txid: Optional[str] = None
+        collateral_index: Optional[int] = None
+        mnid_reg_address: Optional[str] = None # address for mnid registration
+        mnid_reg_txid: Optional[str] = None   # txid for mnid registration
 
         def __init__(self, index, passphrase):
             self.index = index
@@ -167,7 +170,9 @@ class MasterNodeCommon (PastelTestFramework):
             Returns:
                 str: masternode collateral id (txid-index)
             """
-            return str(self.collateral_txid) + "-" + str(self.collateral_index)
+            if (self.collateral_txid is not None) and (self.collateral_index is not None):
+                return self.collateral_txid + "-" + str(self.collateral_index)
+            return ""
 
 
         @property
@@ -211,7 +216,7 @@ class MasterNodeCommon (PastelTestFramework):
             if not regtestdir.is_dir():
                 regtestdir.mkdir()
             cfg_file = regtestdir / "masternode.conf"
-        
+
             config = {}
             if cfg_file.is_file():
                 with cfg_file.open() as json_file:
@@ -251,20 +256,20 @@ class MasterNodeCommon (PastelTestFramework):
         self.collateral = int(1000)
         # flag to use new "masternode init" API
         self.use_masternode_init = False
-        
+
         # dict for fast search of the MN by outpoint (txid-index)
         self.mn_outpoints = {}
-        
+
         # list of 3 TopMNs
         self.top_mns = [TopMN(i) for i in range(3)]
         self.non_top_mns = []
-        
+
         self.signatures_dict = None
         self.same_mns_signatures_dict = None
         self.not_top_mns_signatures_dict = None
         # dict of all principal signatures for validation: 'principal Pastel ID' -> 'signature'
         self.principal_signatures_dict = {}
-        
+
         self.royalty = 0.075                        # default royalty fee 7.5%
         self.is_green = True                        # is green fee payment?
         self.green_address = "tPj5BfCrLfLpuviSJrD3B1yyWp3XkgtFjb6"
@@ -285,7 +290,7 @@ class MasterNodeCommon (PastelTestFramework):
             int: total number of nodes
         """
         return self.number_of_master_nodes + self.number_of_simple_nodes
-    
+
 
     def get_mnid(self, mn_no: int) -> str:
         """ Get mnid (Pastel ID of the MasterNode).
@@ -313,7 +318,7 @@ class MasterNodeCommon (PastelTestFramework):
             - all MNs are started and connected with each other and simple nodes
             - Pastel IDs are created on all MNs
             - coins required for mnid registration sent to all MNs
-            - Hot node calls "masternode start-alias" to start all MNs
+            - Hot node calls "masternode activate" to start all MNs
             - wait for PRE_ENABLED status for all MNs
             - register mnids on all MNs
             - wait for ENABLED status for all MNs
@@ -328,7 +333,7 @@ class MasterNodeCommon (PastelTestFramework):
         """
         timer = Timer()
         timer.start()
-        
+
         # create list of mns
         # start only non-mn nodes
         for index in range(self.total_number_of_nodes):
@@ -339,7 +344,7 @@ class MasterNodeCommon (PastelTestFramework):
             else:
                 print(f"starting non-mn{index} node")
                 self.nodes.append(start_node(index, self.options.tmpdir, [f"-debug={debug_flags}"]))
-       
+
         # connect non-mn nodes
         for pair in itertools.combinations(range(self.number_of_master_nodes, self.total_number_of_nodes), 2):
             connect_nodes_bi(self.nodes, pair[0], pair[1])
@@ -414,12 +419,12 @@ class MasterNodeCommon (PastelTestFramework):
                 mn.add_mnid_conf(self.options.tmpdir)
             self.generate_and_sync_inc(1, self.mining_node_num)
 
-            # send "masternode start-alias <alias>" for all cold nodes
+            # send "masternode activate <alias>" for all cold nodes
             for mn in self.mn_nodes:
                 if mn.index >= self.number_of_cold_nodes:
                     continue
                 print(f"Enabling master node: {mn.alias}...")
-                res = self.nodes[self.hot_node_num].masternode("start-alias", mn.alias)
+                res = self.nodes[self.hot_node_num].masternode("activate", mn.alias)
                 print(res)
                 assert_equal(res["alias"], mn.alias)
                 assert_equal(res["result"], "successful")
@@ -431,7 +436,7 @@ class MasterNodeCommon (PastelTestFramework):
                     continue
                 self.wait_for_mn_state(initial_wait, 20, "PRE_ENABLED", mn.index, 6)
                 initial_wait = 0
-                
+
             # register mnids
             print("Registering mnids...")
             for mn in self.mn_nodes:
@@ -522,7 +527,7 @@ class MasterNodeCommon (PastelTestFramework):
         for i in range(len(self.nodes)):
             if i != index:
                 connect_nodes_bi(self.nodes, index, i)
-    
+
     def wait_for_mn_state(self, init_wait: int, more_wait: int, wait_for_state: str, mn_index: int, repeat_count: int = 1, node_list = None):
         """Wait for the specific MN state.
 
@@ -537,9 +542,10 @@ class MasterNodeCommon (PastelTestFramework):
         debug = False
         timer = Timer()
         timer.start()
-        
-        print(f'Waiting {init_wait} seconds...')
-        time.sleep(init_wait)
+
+        if init_wait > 0:
+            print(f'Waiting {init_wait} seconds...')
+            time.sleep(init_wait)
 
         if node_list is None:
             node_list = self.nodes

@@ -1995,7 +1995,8 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
     bool isFromMyTaddr = nDebit > 0; // debit>0 means we signed/sent this transaction
 
     // Compute fee if we sent this transaction.
-    if (isFromMyTaddr) {
+    if (isFromMyTaddr)
+    {
         CAmount nValueOut = GetValueOut();  // transparent outputs plus all negative Sapling valueBalance
         CAmount nValueIn = GetShieldedValueIn();
         nFee = nDebit - nValueOut + nValueIn;
@@ -2003,8 +2004,10 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 
     // If we sent utxos from this transaction, create output for value taken from (negative valueBalance)
     // or added (positive valueBalance) to the transparent value pool by Sapling shielding and unshielding.
-    if (isFromMyTaddr) {
-        if (valueBalance < 0) {
+    if (isFromMyTaddr)
+    {
+        if (valueBalance < 0)
+        {
             COutputEntry output = {CNoDestination(), -valueBalance, (int) vout.size()};
             listSent.push_back(output);
         } else if (valueBalance > 0) {
@@ -2032,10 +2035,15 @@ void CWalletTx::GetAmounts(list<COutputEntry>& listReceived,
 
         // In either case, we need to get the destination address
         CTxDestination address;
-        if (!ExtractDestination(txout.scriptPubKey, address))
+        txnouttype scriptType = TX_NONSTANDARD;
+        if (!ExtractDestination(txout.scriptPubKey, address, &scriptType))
         {
-            LogFnPrintf("Unknown transaction type found, txid '%s', out #%u",
-                     this->GetHash().ToString(), i);
+            // skip multisig outputs (P2FMS - ticket tx)
+            if (scriptType != TX_MULTISIG)
+            {
+                LogFnPrintf("Unknown transaction type found (%s), txid '%s', out #%u",
+                    GetTxnOutputType(scriptType), this->GetHash().ToString(), i);
+            }
             address = CNoDestination();
         }
 

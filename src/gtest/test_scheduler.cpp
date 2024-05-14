@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <random>
@@ -15,7 +15,7 @@ using namespace testing;
 static void microTask(CScheduler &scheduler, mutex& mtx, int& counter, const int delta, const chrono::system_clock::time_point rescheduleTime)
 {
     {
-        unique_lock<mutex> lock(mtx);
+        unique_lock lock(mtx);
         counter += delta;
     }
     const chrono::system_clock::time_point noTime = chrono::system_clock::time_point::min();

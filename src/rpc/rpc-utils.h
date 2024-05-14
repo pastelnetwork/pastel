@@ -14,7 +14,7 @@ int64_t get_long_number(const UniValue& v);
 int64_t get_long_number_checked(const UniValue& v, const std::string& sParamName);
 // convert UniValue to bool
 bool get_bool_value(const UniValue& v);
-
+double rpc_get_double(const UniValue& v);
 /**
 * Check numeric rpc parameter - expected type _ExpectedType.
 * Throws JSONRPCError if the parameter value is invalid:

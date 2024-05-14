@@ -1003,7 +1003,7 @@ void CFlushWalletDBThread::execute_internal()
     int64_t nLastWalletUpdate = GetTime();
     while (!shouldStop())
     {
-        unique_lock<mutex> lck(m_mutex);
+        unique_lock lck(m_mutex);
         if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
             continue;
 

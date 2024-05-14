@@ -43,7 +43,7 @@ CBlockCache::CBlockCache() noexcept :
   */
 void CBlockCache::add_block(const uint256& hash, const NodeId& nodeId, const TxOrigin txOrigin, CBlock&& block) noexcept
 {
-    unique_lock<mutex> lck(m_CacheMapLock);
+    unique_lock lck(m_CacheMapLock);
     auto it = m_BlockCacheMap.find(hash);
     if (it != m_BlockCacheMap.end())
     {
@@ -128,7 +128,7 @@ bool CBlockCache::ProcessNextBlock(const uint256 &hash)
     // first, collect all next blocks from the unlinked map
     v_uint256 vNextBlocks;
     {
-        unique_lock<mutex> lck(m_CacheMapLock);
+        unique_lock lck(m_CacheMapLock);
         // check if we have any next blocks in unlinked map
         auto range = m_UnlinkedMap.equal_range(hash);
         while (range.first != range.second)
@@ -168,7 +168,7 @@ bool CBlockCache::ProcessNextBlock(const uint256 &hash)
     // delete processed blocks
     if (!vToDelete.empty())
     {
-        unique_lock<mutex> lck(m_CacheMapLock);
+        unique_lock lck(m_CacheMapLock);
         auto range = m_UnlinkedMap.equal_range(hash);
         for (auto it = range.first; it != range.second; )
         {
@@ -301,7 +301,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
     // check if we're in nitial blockchain download (IBD) mode
     const bool bIsInitialBlockDownload = fnIsInitialBlockDownload(consensusParams);;
 
-    unique_lock<mutex> lck(m_CacheMapLock);
+    unique_lock lck(m_CacheMapLock);
     // make sure this function is called only from one thread
     // also, cs_main lock can be used here only when m_CacheMapLock is unlocked
     // the correct lock order is: cs_main -> m_CacheMapLock
@@ -563,7 +563,7 @@ v_uint256 CBlockCache::find_next_blocks(const uint32_t nMinHeight) const noexcep
 {
     v_uint256 vNextBlocks;
 
-    unique_lock<mutex> lck(m_CacheMapLock);
+    unique_lock lck(m_CacheMapLock);
     uint32_t nCurrentMinHeight = numeric_limits<uint32_t>::max();
     // first find target height 
     for (auto& [hash, item] : m_BlockCacheMap)
@@ -585,7 +585,7 @@ v_uint256 CBlockCache::find_next_blocks(const uint32_t nMinHeight) const noexcep
 
 bool CBlockCache::find_next_block(const v_uint256& vHashes, uint256 &hashNextBlock) const noexcept
 {
-    unique_lock<mutex> lck(m_CacheMapLock);
+    unique_lock lck(m_CacheMapLock);
     // search from the end
     for (auto it = vHashes.crbegin(); it != vHashes.crend(); ++it)
     {
@@ -601,7 +601,7 @@ bool CBlockCache::find_next_block(const v_uint256& vHashes, uint256 &hashNextBlo
 
 size_t CBlockCache::size() const noexcept
 {
-    unique_lock<mutex> lck(m_CacheMapLock);
+    unique_lock lck(m_CacheMapLock);
     return m_BlockCacheMap.size();
 }
 
@@ -613,7 +613,7 @@ size_t CBlockCache::size() const noexcept
  */
 bool CBlockCache::exists(const uint256& hash) const noexcept
 {
-    unique_lock<mutex> lck(m_CacheMapLock);
+    unique_lock lck(m_CacheMapLock);
     const auto it = m_BlockCacheMap.find(hash);
     return it != m_BlockCacheMap.cend();
 }
@@ -629,7 +629,7 @@ bool CBlockCache::check_prev_block(const CBlockIndex *pindex)
         return false;
     const auto &prevBlockHash = pindex->pprev->GetBlockHash();
 
-    unique_lock<mutex> lck(m_CacheMapLock);
+    unique_lock lck(m_CacheMapLock);
     const auto it = m_BlockCacheMap.find(prevBlockHash);
     if (it == m_BlockCacheMap.cend())
         return false;

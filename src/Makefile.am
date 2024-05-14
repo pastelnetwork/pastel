@@ -139,9 +139,10 @@ MNODE_CPP =\
   mnode/tickets/collection-act.cpp \
   mnode/tickets/collection-reg.cpp \
   mnode/tickets/collection-item.cpp \
+  mnode/tickets/contract.cpp \
   mnode/tickets/nft-reg.cpp \
   mnode/tickets/nft-royalty.cpp \
-  mnode/tickets/nft-take-down.cpp \
+  mnode/tickets/take-down.cpp \
   mnode/tickets/offer.cpp \
   mnode/tickets/pastelid-reg.cpp \
   mnode/tickets/ticket-extra-fees.cpp \
@@ -200,12 +201,13 @@ MNODE_H = \
   mnode/tickets/ticket_signing.h \
   mnode/tickets/tickets-all.h \
   mnode/tickets/nft-act.h \
+  mnode/tickets/contract.h \
   mnode/tickets/collection-act.h \
   mnode/tickets/collection-reg.h \
   mnode/tickets/collection-item.h \
   mnode/tickets/nft-reg.h \
   mnode/tickets/nft-royalty.h \
-  mnode/tickets/nft-take-down.h \
+  mnode/tickets/take-down.h \
   mnode/tickets/offer.h \
   mnode/tickets/pastelid-reg.h \
   mnode/tickets/transfer.h \

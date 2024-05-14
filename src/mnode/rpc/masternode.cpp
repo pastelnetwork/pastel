@@ -89,7 +89,7 @@ Arguments:
 
 Available modes:
   activeseconds  - Print number of seconds masternode recognized by the network as enabled
-                   (since latest issued \"masternode start/start-many/start-alias\")
+                   (since latest issued \"masternode activate\")
   addr           - Print ip address associated with a masternode (can be additionally filtered, partial match)
   full           - Print info in format 'status protocol payee lastseen activeseconds lastpaidtime lastpaidblock IP'
                    (can be additionally filtered, partial match)
@@ -1240,9 +1240,9 @@ Available commands:
 )"
 #ifdef ENABLE_WALLET
 R"(
-  outputs      - Print masternode compatible outputs
-  start-alias  - Start single remote masternode by assigned alias configured in masternode.conf
-  start-<mode> - Start remote masternodes configured in masternode.conf (<mode>: 'all', 'missing', 'disabled')
+  outputs         - Print masternode compatible outputs
+  activate        - Start single remote masternode by assigned alias configured in masternode.conf
+  activate-<mode> - Start remote masternodes configured in masternode.conf (<mode>: 'all', 'missing', 'disabled')
 )"
 #endif // ENABLE_WALLET
 R"(

@@ -1,8 +1,6 @@
 // Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <json/json.hpp>
-
 #include <pastelid/common.h>
 #include <mnode/tickets/offer.h>
 #include <mnode/tickets/accept.h>
@@ -196,7 +194,13 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
     return tv;
 }
 
-string CAcceptTicket::ToJSON(const bool bDecodeProperties) const noexcept
+/**
+ * Get json representation of the ticket.
+ * 
+ * \param bDecodeProperties - not used in this class
+ * \return json object
+ */
+json CAcceptTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     const json jsonObj
     {
@@ -214,7 +218,18 @@ string CAcceptTicket::ToJSON(const bool bDecodeProperties) const noexcept
             }
         }
     };
-    return jsonObj.dump(4);
+    return jsonObj;
+}
+
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - if true, then decode action_ticket and its properties
+ * \return json string
+ */
+string CAcceptTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 bool CAcceptTicket::FindTicketInDb(const string& key, CAcceptTicket& ticket)

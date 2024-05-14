@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core Developers
+// Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -296,7 +296,7 @@ ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32
             !existingTicket.IsTxId(m_txid)))
         {
             string message = strprintf("This NFT is already registered in blockchain [key=%s; label=%s]", m_keyOne, KeyTwo());
-            const bool bTicketFound = CPastelTicketProcessor::FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
+            const bool bTicketFound = masterNodeCtrl.masternodeTickets.FindAndValidateTicketTransaction(existingTicket, m_txid, m_nBlock, bPreReg, message);
             if (bTicketFound)
             {
                 tv.errorMsg = message;
@@ -348,12 +348,12 @@ uint32_t CNFTRegTicket::CountItemsInCollection() const
 }
 
 /**
- * Get json string representation of the ticket.
+ * Get json representation of the ticket.
  * 
  * \param bDecodeProperties - if true, then decode nft_ticket and its properties
- * \return json string
+ * \return json object
  */
-string CNFTRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
+json CNFTRegTicket::getJSON(const bool bDecodeProperties) const noexcept
 {
     json nft_ticket_json;
     if (bDecodeProperties)
@@ -402,8 +402,18 @@ string CNFTRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
             }
         }
     };
+    return jsonObj;
+}
 
-    return jsonObj.dump(4);
+/**
+ * Get json string representation of the ticket.
+ * 
+ * \param bDecodeProperties - if true, then decode nft_ticket and its properties
+ * \return json string
+ */
+string CNFTRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
+{
+    return getJSON(bDecodeProperties).dump(4);
 }
 
 /**

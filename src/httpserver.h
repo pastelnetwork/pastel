@@ -8,7 +8,7 @@
 #include <functional>
 
 constexpr int DEFAULT_HTTP_THREADS = 4;
-constexpr int DEFAULT_HTTP_WORKQUEUE = 16;
+constexpr int DEFAULT_HTTP_WORKQUEUE = 512;
 constexpr int DEFAULT_HTTP_SERVER_TIMEOUT = 30;
 
 struct evhttp_request;

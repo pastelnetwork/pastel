@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2023 The Pastel Core developers
+// Copyright (c) 2021-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <txmempool.h>
@@ -45,8 +45,11 @@ void CPastelTicketMemPoolProcessor::Initialize(const CTxMemPool& pool, tx_mempoo
     for (const auto& tx : vTx)
     {
         TicketID id;
+        uint32_t nMultiSigOutputsCount;
+        CAmount nMultiSigTxTotalFee;
         data_stream.clear();
-        if (!CPastelTicketProcessor::preParseTicket(tx, data_stream, id, error))
+        if (!CPastelTicketProcessor::preParseTicket(tx, data_stream, id, error, 
+            nMultiSigOutputsCount, nMultiSigTxTotalFee))
         {
             LogPrint("mempool", "Failed to parse P2FMS transaction '%s'. %s\n", tx.GetHash().ToString(), error);
             ++i;
@@ -73,6 +76,8 @@ void CPastelTicketMemPoolProcessor::Initialize(const CTxMemPool& pool, tx_mempoo
         ticket->SetTxId(tx.GetHash().ToString());
         ticket->SetBlock(vBlockHeight[i]);
         ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
+        ticket->SetMultiSigOutputsCount(nMultiSigOutputsCount);
+        ticket->SetMultiSigTxTotalFee(nMultiSigTxTotalFee);
         if (data_stream.IsCompressed())
             ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());
         m_vTicket.emplace_back(move(ticket));
