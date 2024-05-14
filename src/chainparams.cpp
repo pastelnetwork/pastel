@@ -61,7 +61,7 @@ constexpr uint32_t TESTNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t TESTNET_CEZANNE_UPGRADE_STARTING_BLOCK = 158'530;
 constexpr uint32_t TESTNET_MONET_UPGRADE_STARTING_BLOCK = 370'000;
 constexpr uint32_t TESTNET_VERMEER_UPGRADE_STARTING_BLOCK = 426'000;
-constexpr uint32_t DEVNET_MATISSE_UPGRADE_STARTING_BLOCK = 426'500;
+constexpr uint32_t TESTNET_MATISSE_UPGRADE_STARTING_BLOCK = 426'500;
 
 // devnet upgrades activation heights
 constexpr uint32_t DEVNET_OVERWINTER_STARTING_BLOCK = 10;
@@ -69,7 +69,7 @@ constexpr uint32_t DEVNET_SAPLING_STARTING_BLOCK = 20;
 constexpr uint32_t DEVNET_CEZANNE_UPGRADE_STARTING_BLOCK = 30;
 constexpr uint32_t DEVNET_MONET_UPGRADE_STARTING_BLOCK = 40;
 constexpr uint32_t DEVNET_VERMEER_UPGRADE_STARTING_BLOCK = 28'930;
-constexpr uint32_t DEVNET_MATISSE_UPGRADE_STARTING_BLOCK = 60'800;
+constexpr uint32_t DEVNET_MATISSE_UPGRADE_STARTING_BLOCK = 61'400;
 
 static CBlock CreateGenesisBlock(const char* pszTimestamp, 
                                  const v_uint8 &genesisPubKey, 
@@ -393,7 +393,7 @@ public:
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = MAINNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 100'000'000 * COIN;
-        consensus.nGlobalFeeAdjustmentMultiplier = 0.000026;
+        consensus.nGlobalFeeAdjustmentMultiplier = 0.00000026;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
         consensus.nNewMiningAlgorithmHeightDelay = 0;
@@ -510,7 +510,7 @@ public:
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = TESTNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
-        consensus.nGlobalFeeAdjustmentMultiplier = 0.000706;
+        consensus.nGlobalFeeAdjustmentMultiplier = 0.0000071;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
         consensus.nNewMiningAlgorithmHeightDelay = 0;
@@ -617,7 +617,7 @@ public:
         // The period before a network upgrade activates, where connections to upgrading peers are preferred (in blocks).
         consensus.nNetworkUpgradePeerPreferenceBlockPeriod = DEVNET_NETWORK_UPGRADE_PEER_PREFERENCE_BLOCK_PERIOD;
         consensus.nMaxGovernanceAmount = 1'000'000 * COIN;
-        consensus.nGlobalFeeAdjustmentMultiplier = 1.0;
+        consensus.nGlobalFeeAdjustmentMultiplier = 0.01;
         consensus.nMiningEligibilityThreshold = 0.75;
         // delay in blocks before a new mining algo is activated (after Vermeer upgrade becomes active)
         consensus.nNewMiningAlgorithmHeightDelay = 0;
