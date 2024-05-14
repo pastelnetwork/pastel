@@ -45,7 +45,12 @@ const struct NUInfo NetworkUpgradeInfo[to_integral_type(Consensus::UpgradeIndex:
         /*.nBranchId =*/ 0x5EFAAEEF,
         /*.strName =*/ "Vermeer",
         /*.strInfo =*/ "See https://pastel.network/vermeer-mainnet-release/ for details.",
-    }
+    },
+    {
+		/*.nBranchId =*/ 0x5EFAAEEF,
+		/*.strName =*/ "Matisse",
+		/*.strInfo =*/ "See https://pastel.network/matisse-mainnet-release/ for details.",
+	},
 };
 
 UpgradeState NetworkUpgradeState(

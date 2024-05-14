@@ -33,6 +33,7 @@ enum class UpgradeIndex : int
     UPGRADE_CEZANNE,
     UPGRADE_MONET,
     UPGRADE_VERMEER,
+    UPGRADE_MATISSE,
     // NOTE: Also add new upgrades to NetworkUpgradeInfo in upgrades.cpp
     MAX_NETWORK_UPGRADES
 };
