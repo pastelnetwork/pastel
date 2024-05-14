@@ -27,7 +27,6 @@ import struct
 import socket
 import asyncore
 import time
-import sys
 import random
 from binascii import hexlify
 from io import BytesIO
@@ -53,7 +52,8 @@ BLOSSOM_PROTO_VERSION = 170008
 CEZANNE_PROTO_VERSION = 170009
 MONET_PROTO_VERSION = 170010
 VERMEER_PROTO_VERSION = 170011
-LATEST_PROTO_VERSION = 170011
+MATISSE_PROTO_VERSION = 17012
+LATEST_PROTO_VERSION = 170012
 
 MY_SUBVERSION = b"/python-mininode-tester:0.0.2/"
 
