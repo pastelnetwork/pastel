@@ -90,7 +90,7 @@ static const array<CRPCConvertParam, 80> gl_vRPCConvertParams =
     { "storagefee", "getsensecomputefee", {1, 2} },
     { "storagefee", "getsenseprocessingfee", {1, 2} },
     { "storagefee", "getstoragefee", {1, 2} },
-    { "storagefee", "setfee", {1, 2} },
+    { "storagefee", "setfee", {2} },
     { "tickets", "get", {2} },
     { "verifychain", nullptr, {0, 1} },
     { "walletpassphrase", nullptr, {1} },
