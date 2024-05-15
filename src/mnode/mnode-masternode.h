@@ -347,8 +347,8 @@ public:
     const CMasterNodePing &getLastPing() const noexcept { return m_lastPing; }
     bool setLastPingAndCheck(const CMasterNodePing& lastPing, const bool bSkipEarlyPingCheck, int& nDos) noexcept;
 
-    CAmount GetMNFee(const MN_FEE mnFee) const noexcept;
-    void SetMNFee(const MN_FEE mnFee, const CAmount nNewFee) noexcept;
+    CAmount GetMNFeeInPSL(const MN_FEE mnFeeType) const noexcept;
+    void SetMNFeeInPSL(const MN_FEE mnFeeType, const CAmount nNewFeeInPSL) noexcept;
 
     // check and update MasterNode's Pastel ID
     bool CheckAndUpdateMNID(std::string &error);

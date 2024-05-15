@@ -169,7 +169,7 @@ UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
 
     const char *szOptionName = bIsLocalFee ? mnFeeInfo.szLocalOptionName : mnFeeInfo.szOptionName;
     const CAmount nFee = static_cast<CAmount>(
-		(bIsLocalFee && pmn ? pmn->GetMNFee(mnFee) : masterNodeCtrl.GetNetworkMedianMNFee(mnFee)) * nFeeAdjustmentMultiplier);
+		(bIsLocalFee && pmn ? pmn->GetMNFeeInPSL(mnFee) : masterNodeCtrl.GetNetworkMedianMNFee(mnFee)) * nFeeAdjustmentMultiplier);
     if (!szOptionName)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "This fee is not supported by this RPC call.");
     string sOptionName(szOptionName);
@@ -178,6 +178,7 @@ UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
     retObj.pushKV(sOptionName + "Pat", nFee * COIN);
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
+    retObj.pushKV(RPC_KEY_GLOBAL_FEE_MULTIPLIER, nGlobalFeeAdjustmentMultiplier);
     retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, nFeeAdjustmentMultiplier);
     return retObj;
 }
@@ -210,13 +211,14 @@ UniValue storagefee_getfees(const UniValue& params)
         if (pmn)
         {
             sOptionName = mnFeeInfo.szLocalOptionName;
-            nFee = static_cast<CAmount>(pmn->GetMNFee(mnFee) * nFeeAdjustmentMultiplier);
+            nFee = static_cast<CAmount>(pmn->GetMNFeeInPSL(mnFee) * nFeeAdjustmentMultiplier);
             retObj.pushKV(sOptionName, nFee);
             retObj.pushKV(sOptionName + "Pat", nFee * COIN);
         }
     }
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
+    retObj.pushKV(RPC_KEY_GLOBAL_FEE_MULTIPLIER, nGlobalFeeAdjustmentMultiplier);
     retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, nFeeAdjustmentMultiplier);
     return retObj;
 }
@@ -261,6 +263,7 @@ Returns:
     retObj.pushKV("datasize", static_cast<uint64_t>(nDataSizeInMB));
     retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
+    retObj.pushKV(RPC_KEY_GLOBAL_FEE_MULTIPLIER, nGlobalFeeAdjustmentMultiplier);
     retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, fChainDeflatorFactor * nGlobalFeeAdjustmentMultiplier);
 
     string sActionFeeKey;

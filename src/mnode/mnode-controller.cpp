@@ -747,7 +747,7 @@ CAmount CMasterNodeController::GetNetworkMedianMNFee(const MN_FEE mnFee) const n
             {
                 if (!pmn)
                     continue;
-                vFee[cnt++] = pmn->GetMNFee(mnFee);
+                vFee[cnt++] = pmn->GetMNFeeInPSL(mnFee);
             }
             // Use trimmean to calculate the value with fixed 25% percentage
             nFee = static_cast<CAmount>(ceil(TRIMMEAN(vFee, 0.25)));

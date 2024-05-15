@@ -2280,7 +2280,7 @@ void CMasternodeMan::SetMasternodeFee(const COutPoint& outpoint, const MN_FEE mn
 
     auto pmn = Get(SKIP_LOCK, outpoint);
     if (pmn)
-        pmn->SetMNFee(mnFeeType, newFee);
+        pmn->SetMNFeeInPSL(mnFeeType, newFee);
 }
 
 /**
