@@ -19,6 +19,7 @@ constexpr auto RPC_KEY_PRIVKEY					 = "privKey";
 constexpr auto RPC_KEY_HEIGHT					 = "height";
 constexpr auto RPC_KEY_CHAIN_DEFLATOR_FACTOR     = "feeDeflatorFactor";
 constexpr auto RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER = "feeAdjustmentMultiplier";
+constexpr auto RPC_KEY_GLOBAL_FEE_MULTIPLIER     = "globalFeeMultiplier";
 
 // rpc response object key values
 constexpr auto RPC_RESULT_FAILED				= "failed";

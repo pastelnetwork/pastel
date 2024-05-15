@@ -830,51 +830,53 @@ CMasternode& CMasternode::operator=(CMasternode const& from)
     return *this;
 }
 
-CAmount CMasternode::GetMNFee(const MN_FEE mnFee) const noexcept
+CAmount CMasternode::GetMNFeeInPSL(const MN_FEE mnFeeType) const noexcept
 {
     CAmount nFee = 0;
-    switch (mnFee)
+    switch (mnFeeType)
 	{
         case MN_FEE::StorageFeePerMB:
-            nFee = m_nMNFeePerMB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nMNFeePerMB;
+            nFee = m_nMNFeePerMB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFeeType) : m_nMNFeePerMB;
             break;
 
         case MN_FEE::TicketChainStorageFeePerKB:
-            nFee = m_nTicketChainStorageFeePerKB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nTicketChainStorageFeePerKB;
+            nFee = m_nTicketChainStorageFeePerKB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFeeType) : m_nTicketChainStorageFeePerKB;
             break;
 
         case MN_FEE::SenseComputeFee:
-            nFee = m_nSenseComputeFee == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nSenseComputeFee;
+            nFee = m_nSenseComputeFee == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFeeType) : m_nSenseComputeFee;
             break;
 
         case MN_FEE::SenseProcessingFeePerMB:
-            nFee = m_nSenseProcessingFeePerMB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFee) : m_nSenseProcessingFeePerMB;
+            nFee = m_nSenseProcessingFeePerMB == 0 ? masterNodeCtrl.GetDefaultMNFee(mnFeeType) : m_nSenseProcessingFeePerMB;
             break;
 
         default:
             break;
     }
+    if (nFee < DEFAULT_MIN_MN_FEE_PSL)
+		nFee = DEFAULT_MIN_MN_FEE_PSL;
     return nFee;
 }
 
-void CMasternode::SetMNFee(const MN_FEE mnFee, const CAmount nNewFee) noexcept
+void CMasternode::SetMNFeeInPSL(const MN_FEE mnFeeType, const CAmount nNewFeeInPSL) noexcept
 {
-    switch (mnFee)
+    switch (mnFeeType)
     {
         case MN_FEE::StorageFeePerMB:
-            m_nMNFeePerMB = nNewFee;
+            m_nMNFeePerMB = nNewFeeInPSL;
             break;
 
         case MN_FEE::TicketChainStorageFeePerKB:
-            m_nTicketChainStorageFeePerKB = nNewFee;
+            m_nTicketChainStorageFeePerKB = nNewFeeInPSL;
             break;
 
         case MN_FEE::SenseComputeFee:
-            m_nSenseComputeFee = nNewFee;
+            m_nSenseComputeFee = nNewFeeInPSL;
             break;
 
         case MN_FEE::SenseProcessingFeePerMB:
-            m_nSenseProcessingFeePerMB = nNewFee;
+            m_nSenseProcessingFeePerMB = nNewFeeInPSL;
             break;
 
         default:

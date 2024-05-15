@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <cstddef>
 
+#include <amount.h>
+
 enum class MN_FEE: uint32_t
 {
 	StorageFeePerMB = 0,		// data storage fee per MB
@@ -14,6 +16,8 @@ enum class MN_FEE: uint32_t
 
 	COUNT
 };
+
+static constexpr CAmount DEFAULT_MIN_MN_FEE_PSL = 1; // 1 PSL
 
 enum class GetTopMasterNodeStatus: int
 {
