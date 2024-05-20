@@ -521,19 +521,19 @@ R"(getblockmininginfo "block_hash|block_height" (block_count) (filter)
 Returns information about blocks mined and signed by masternodes.
 
 Arguments:
-1. "block_hash|block_height"   (string or numeric, required) The block hash or height to start from
-2. block_count                 (numeric, optional, default=1) The number of blocks to return backwards
-3. filter                      (string, optional) filter results by masternode collateral id (txid-vout) or mnid
+1. "block_hash|block_height" (string or numeric, required) The block hash or height to start from
+2. block_count               (numeric, optional, default=1) The number of blocks to return backwards
+3. filter                    (string, optional) filter results by masternode collateral id (txid-vout) or mnid
 
 Result:
 [
     {
         "blockhash": "xxxx",     (string) The block hash
-		"height": n,             (numeric) The block height
-		"mnid": "xxxx",          (string) The masternode id that mined the block
-		"collateralid": "xxxx",  (string) The masternode collateral id (txid-vout)
+        "height": n,             (numeric) The block height
+        "mnid": "xxxx",          (string) The masternode id that mined the block
+        "collateralid": "xxxx",  (string) The masternode collateral id (txid-vout)
     },
-	...
+    ...
 ]
 
 Examples:

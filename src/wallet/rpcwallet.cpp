@@ -4813,16 +4813,17 @@ As json rpc:
 
 UniValue scanBurnTransactions(const UniValue& params, bool fHelp)
 {
-    if (fHelp || params.size() > 2 || params.empty())
+    if (fHelp || params.size() > 3 || params.empty())
         throw runtime_error(
-R"(scanburntransactions "from_taddress" ( hash|height )
-Scan for the transactions from the given taddress to the burn address.
+R"(scanburntransactions "from_taddress" ( hash|height ) ( burn_taddress )
+Scan for the transactions from the given transparent address to the burn address.
 
 Arguments:
 1. "from_taddress" (string, required) The transparent address that the transactions are sent from.
                    If '*' is given, will scan for transactions from all addresses.
 2. hash|height     (string or numeric, optional) The block hash or height to start scanning from. 
                    If not provided, the scan starts from the genesis block.
+3. burn_taddress   (string, optional) The burn address to scan for. If not provided, the default burn address is used.
 
 Result:
 [
@@ -4855,7 +4856,12 @@ Examples:
         if (!IsValidDestination(destTrackingAddress))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel transparent address");
     }
-    CTxDestination destBurnAddress = keyIO.DecodeDestination(chainparams.getPastelBurnAddress());
+    string sDestBurnAddress;
+    if (params.size() > 2)
+        sDestBurnAddress = params[2].get_str();
+    else
+        sDestBurnAddress = chainparams.getPastelBurnAddress();
+    const CTxDestination destBurnAddress = keyIO.DecodeDestination(sDestBurnAddress);
     if (!IsValidDestination(destBurnAddress))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel burn address");
 
@@ -5049,77 +5055,77 @@ extern UniValue z_exportwallet(const UniValue& params, bool fHelp);
 extern UniValue z_importwallet(const UniValue& params, bool fHelp);
 
 static const CRPCCommand commands[] =
-{ //  category              name                        actor (function)           okSafeMode
+{ //  category              name                          actor (function)           okSafeMode
     //  --------------------- ------------------------    -----------------------    ----------
-    { "rawtransactions",    "fundrawtransaction",       &fundrawtransaction,       false },
-    { "hidden",             "resendwallettransactions", &resendwallettransactions, true  },
-    { "wallet",             "addmultisigaddress",       &addmultisigaddress,       true  },
-    { "wallet",             "backupwallet",             &backupwallet,             true  },
-    { "wallet",             "dumpprivkey",              &dumpprivkey,              true  },
-    { "wallet",             "dumpwallet",               &dumpwallet,               true  },
-    { "wallet",             "encryptwallet",            &encryptwallet,            true  },
-    { "wallet",             "fixmissingtxs",            &fixMissingTransactions,   false },
-    { "wallet",             "getaccountaddress",        &getaccountaddress,        true  },
-    { "wallet",             "getaccount",               &getaccount,               true  },
-    { "wallet",             "getaddressesbyaccount",    &getaddressesbyaccount,    true  },
-    { "wallet",             "getbalance",               &getbalance,               false },
-    { "wallet",             "getnewaddress",            &getnewaddress,            true  },
-    { "wallet",             "getrawchangeaddress",      &getrawchangeaddress,      true  },
-    { "wallet",             "getreceivedbyaccount",     &getreceivedbyaccount,     false },
-    { "wallet",             "getreceivedbyaddress",     &getreceivedbyaddress,     false },
-    { "wallet",             "gettransaction",           &gettransaction,           false },
-    { "wallet",             "gettxfee",                 &gettxfee,                 false },
-    { "wallet",             "getunconfirmedbalance",    &getunconfirmedbalance,    false },
-    { "wallet",             "getwalletinfo",            &getwalletinfo,            false },
-    { "wallet",             "importprivkey",            &importprivkey,            true  },
-    { "wallet",             "importwallet",             &importwallet,             true  },
-    { "wallet",             "importaddress",            &importaddress,            true  },
-    { "wallet",             "keypoolrefill",            &keypoolrefill,            true  },
-    { "wallet",             "listaccounts",             &listaccounts,             false },
-    { "wallet",             "listaddressgroupings",     &listaddressgroupings,     false },
-    { "wallet",             "listaddressamounts",       &listaddressamounts,       false },
-    { "wallet",             "listlockunspent",          &listlockunspent,          false },
-    { "wallet",             "listreceivedbyaccount",    &listreceivedbyaccount,    false },
-    { "wallet",             "listreceivedbyaddress",    &listreceivedbyaddress,    false },
-    { "wallet",             "listsinceblock",           &listsinceblock,           false },
-    { "wallet",             "listtransactions",         &listtransactions,         false },
-    { "wallet",             "listunspent",              &listunspent,              false },
-    { "wallet",             "lockunspent",              &lockunspent,              true  },
-    { "wallet",             "move",                     &movecmd,                  false },
-    { "wallet",             "scanformissingtxs",        &scanForMissingTransactions, false },
-    { "wallet",             "scanburntransactions",     &scanBurnTransactions,     false },
-
-    { "wallet",             "sendfrom",                 &sendfrom,                 false },
-    { "wallet",             "sendmany",                 &sendmany,                 false },
-    { "wallet",             "sendtoaddress",            &sendtoaddress,            false },
-    { "wallet",             "setaccount",               &setaccount,               true  },
-    { "wallet",             "settxfee",                 &settxfee,                 true  },
-    { "wallet",             "signmessage",              &signmessage,              true  },
-    { "wallet",             "walletlock",               &walletlock,               true  },
-    { "wallet",             "walletpassphrasechange",   &walletpassphrasechange,   true  },
-    { "wallet",             "walletpassphrase",         &walletpassphrase,         true  },
-    { "wallet",             "zcbenchmark",              &zc_benchmark,             true  },
-    { "wallet",             "z_listreceivedbyaddress",  &z_listreceivedbyaddress,  false },
-    { "wallet",             "z_listunspent",            &z_listunspent,            false },
-    { "wallet",             "z_getbalance",             &z_getbalance,             false },
-    { "wallet",             "z_gettotalbalance",        &z_gettotalbalance,        false },
-    { "wallet",             "z_mergetoaddress",         &z_mergetoaddress,         false },
-    { "wallet",             "z_sendmany",               &z_sendmany,               false },
-    { "wallet",             "z_sendmanywithchangetosender",  &z_sendmanywithchangetosender,   false },
-    { "wallet",             "z_shieldcoinbase",         &z_shieldcoinbase,         false },
-    { "wallet",             "z_getoperationstatus",     &z_getoperationstatus,     true  },
-    { "wallet",             "z_getoperationresult",     &z_getoperationresult,     true  },
-    { "wallet",             "z_listoperationids",       &z_listoperationids,       true  },
-    { "wallet",             "z_getnewaddress",          &z_getnewaddress,          true  },
-    { "wallet",             "z_listaddresses",          &z_listaddresses,          true  },
-    { "wallet",             "z_exportkey",              &z_exportkey,              true  },
-    { "wallet",             "z_importkey",              &z_importkey,              true  },
-    { "wallet",             "z_exportviewingkey",       &z_exportviewingkey,       true  },
-    { "wallet",             "z_importviewingkey",       &z_importviewingkey,       true  },
-    { "wallet",             "z_exportwallet",           &z_exportwallet,           true  },
-    { "wallet",             "z_importwallet",           &z_importwallet,           true  },
-    { "wallet",             "z_viewtransaction",        &z_viewtransaction,        false },
-    { "wallet",             "z_getnotescount",          &z_getnotescount,          false }
+    { "rawtransactions", "fundrawtransaction",           &fundrawtransaction,       false },
+    { "hidden",          "resendwallettransactions",     &resendwallettransactions, true  },
+    { "wallet",          "addmultisigaddress",           &addmultisigaddress,       true  },
+    { "wallet",          "backupwallet",                 &backupwallet,             true  },
+    { "wallet",          "dumpprivkey",                  &dumpprivkey,              true  },
+    { "wallet",          "dumpwallet",                   &dumpwallet,               true  },
+    { "wallet",          "encryptwallet",                &encryptwallet,            true  },
+    { "wallet",          "fixmissingtxs",                &fixMissingTransactions,   false },
+    { "wallet",          "getaccountaddress",            &getaccountaddress,        true  },
+    { "wallet",          "getaccount",                   &getaccount,               true  },
+    { "wallet",          "getaddressesbyaccount",        &getaddressesbyaccount,    true  },
+    { "wallet",          "getbalance",                   &getbalance,               false },
+    { "wallet",          "getnewaddress",                &getnewaddress,            true  },
+    { "wallet",          "getrawchangeaddress",          &getrawchangeaddress,      true  },
+    { "wallet",          "getreceivedbyaccount",         &getreceivedbyaccount,     false },
+    { "wallet",          "getreceivedbyaddress",         &getreceivedbyaddress,     false },
+    { "wallet",          "gettransaction",               &gettransaction,           false },
+    { "wallet",          "gettxfee",                     &gettxfee,                 false },
+    { "wallet",          "getunconfirmedbalance",        &getunconfirmedbalance,    false },
+    { "wallet",          "getwalletinfo",                &getwalletinfo,            false },
+    { "wallet",          "importprivkey",                &importprivkey,            true  },
+    { "wallet",          "importwallet",                 &importwallet,             true  },
+    { "wallet",          "importaddress",                &importaddress,            true  },
+    { "wallet",          "keypoolrefill",                &keypoolrefill,            true  },
+    { "wallet",          "listaccounts",                 &listaccounts,             false },
+    { "wallet",          "listaddressgroupings",         &listaddressgroupings,     false },
+    { "wallet",          "listaddressamounts",           &listaddressamounts,       false },
+    { "wallet",          "listlockunspent",              &listlockunspent,          false },
+    { "wallet",          "listreceivedbyaccount",        &listreceivedbyaccount,    false },
+    { "wallet",          "listreceivedbyaddress",        &listreceivedbyaddress,    false },
+    { "wallet",          "listsinceblock",               &listsinceblock,           false },
+    { "wallet",          "listtransactions",             &listtransactions,         false },
+    { "wallet",          "listunspent",                  &listunspent,              false },
+    { "wallet",          "lockunspent",                  &lockunspent,              true  },
+    { "wallet",          "move",                         &movecmd,                  false },
+    { "wallet",          "scanformissingtxs",            &scanForMissingTransactions, false },
+    { "wallet",          "scanburntransactions",         &scanBurnTransactions,     false },
+                                                        
+    { "wallet",          "sendfrom",                     &sendfrom,                 false },
+    { "wallet",          "sendmany",                     &sendmany,                 false },
+    { "wallet",          "sendtoaddress",                &sendtoaddress,            false },
+    { "wallet",          "setaccount",                   &setaccount,               true  },
+    { "wallet",          "settxfee",                     &settxfee,                 true  },
+    { "wallet",          "signmessage",                  &signmessage,              true  },
+    { "wallet",          "walletlock",                   &walletlock,               true  },
+    { "wallet",          "walletpassphrasechange",       &walletpassphrasechange,   true  },
+    { "wallet",          "walletpassphrase",             &walletpassphrase,         true  },
+    { "wallet",          "zcbenchmark",                  &zc_benchmark,             true  },
+    { "wallet",          "z_listreceivedbyaddress",      &z_listreceivedbyaddress,  false },
+    { "wallet",          "z_listunspent",                &z_listunspent,            false },
+    { "wallet",          "z_getbalance",                 &z_getbalance,             false },
+    { "wallet",          "z_gettotalbalance",            &z_gettotalbalance,        false },
+    { "wallet",          "z_mergetoaddress",             &z_mergetoaddress,         false },
+    { "wallet",          "z_sendmany",                   &z_sendmany,               false },
+    { "wallet",          "z_sendmanywithchangetosender", &z_sendmanywithchangetosender,   false },
+    { "wallet",          "z_shieldcoinbase",             &z_shieldcoinbase,         false },
+    { "wallet",          "z_getoperationstatus",         &z_getoperationstatus,     true  },
+    { "wallet",          "z_getoperationresult",         &z_getoperationresult,     true  },
+    { "wallet",          "z_listoperationids",           &z_listoperationids,       true  },
+    { "wallet",          "z_getnewaddress",              &z_getnewaddress,          true  },
+    { "wallet",          "z_listaddresses",              &z_listaddresses,          true  },
+    { "wallet",          "z_exportkey",                  &z_exportkey,              true  },
+    { "wallet",          "z_importkey",                  &z_importkey,              true  },
+    { "wallet",          "z_exportviewingkey",           &z_exportviewingkey,       true  },
+    { "wallet",          "z_importviewingkey",           &z_importviewingkey,       true  },
+    { "wallet",          "z_exportwallet",               &z_exportwallet,           true  },
+    { "wallet",          "z_importwallet",               &z_importwallet,           true  },
+    { "wallet",          "z_viewtransaction",            &z_viewtransaction,        false },
+    { "wallet",          "z_getnotescount",              &z_getnotescount,          false }
 };
 
 void RegisterWalletRPCCommands(CRPCTable &tableRPC)
