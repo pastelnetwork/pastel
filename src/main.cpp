@@ -341,11 +341,19 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash)
     }
 }
 
-/** Update pindexLastCommonBlock and add not-in-flight missing successors to vBlocks, until it has
- *  at most count entries. */
-void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, block_index_vector_t& vBlocks, NodeId& nodeStaller)
+/**
+ * Update pindexLastCommonBlock and add not-in-flight missing successors to vBlocksToDownload, until it has
+ * at most nMaxBlockCount entries.
+ * 
+ * \param pNodeState - node state
+ * \param nMaxBlockCount - maximum number of blocks to download
+ * \param vBlocksToDownload - vector of blocks to download
+ * \param nodeStaller - node id that is stalling the download
+ */
+void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t nMaxBlockCount, 
+    block_index_vector_t& vBlocksToDownload, NodeId& nodeStaller)
 {
-    if (count == 0 || !pNodeState)
+    if (nMaxBlockCount == 0 || !pNodeState)
         return;
 
     // Make sure pindexBestKnownBlock is up to date, we'll need it.
@@ -390,7 +398,7 @@ void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, block_in
     if (pNodeState->pindexLastCommonBlock == pNodeBestKnownBlock)
         return;
 
-    vBlocks.reserve(vBlocks.size() + count);
+    vBlocksToDownload.reserve(vBlocksToDownload.size() + nMaxBlockCount);
 
     block_index_vector_t vToFetch;
     auto pindexWalk = pNodeState->pindexLastCommonBlock;
@@ -407,7 +415,7 @@ void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, block_in
         // as iterating over ~100 CBlockIndex* entries anyway.
         size_t nToFetch = min<size_t>(
             static_cast<size_t>(nMaxHeight - pindexWalk->nHeight), 
-            static_cast<size_t>(max<int>(count - static_cast<unsigned int>(vBlocks.size()), 128)));
+            static_cast<size_t>(max<int>(nMaxBlockCount - static_cast<unsigned int>(vBlocksToDownload.size()), 128)));
         vToFetch.resize(nToFetch);
         pindexWalk = pNodeBestKnownBlock->GetAncestor(static_cast<int>(pindexWalk->nHeight + nToFetch));
         vToFetch[nToFetch - 1] = pindexWalk;
@@ -415,7 +423,7 @@ void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, block_in
             vToFetch[i - 1] = vToFetch[i]->pprev;
 
         // Iterate over those blocks in vToFetch (in forward direction), adding the ones that
-        // are not yet downloaded and not in flight to vBlocks. In the meantime, update
+        // are not yet downloaded and not in flight to vBlocksToDownload. In the meantime, update
         // pindexLastCommonBlock as long as all ancestors are already downloaded, or if it's
         // already part of our chain (and therefore don't need it even if pruned).
         for (auto pindex : vToFetch)
@@ -427,19 +435,22 @@ void FindNextBlocksToDownload(node_state_t& pNodeState, uint32_t count, block_in
                 if (pindex->nChainTx)
                     pNodeState->pindexLastCommonBlock = pindex;
             } else if (mapBlocksInFlight.count(pindex->GetBlockHash()) == 0) {
+                // skip download for this block if it is in the block cache
+                if (gl_BlockCache.exists(pindex->GetBlockHash()))
+					continue;
                 // The block is not already downloaded, and not yet in flight.
                 if (pindex->nHeight > nWindowEnd)
                 {
                     // We reached the end of the window.
-                    if (vBlocks.empty() && waitingfor != pNodeState->id)
+                    if (vBlocksToDownload.empty() && waitingfor != pNodeState->id)
                     {
                         // We aren't able to fetch anything, but we would be if the download window was one larger.
                         nodeStaller = waitingfor;
                     }
                     return;
                 }
-                vBlocks.push_back(pindex);
-                if (vBlocks.size() == count)
+                vBlocksToDownload.push_back(pindex);
+                if (vBlocksToDownload.size() == nMaxBlockCount)
                     return;
             } else if (waitingfor == -1) {
                 // This is the first already-in-flight block.
@@ -2118,16 +2129,73 @@ static void PruneBlockIndexCandidates()
 
 bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nInvalidBlockHeight, const uint256& invalidBlockHash)
 {
+    constexpr size_t MAX_REWIND_CHAIN_BLOCKS = 1000;
     //(chainparams.IsTestNet() && nInvalidBlockHeight == 252500 && invalidBlockHash ==
     //    uint256S("0018bd16a9c6f15795a754c498d2b2083ab78f14dae44a66a8d0e90ba8464d9c"));
     const string sRewindChainBlockHash = GetArg("-rewindchain", "");
+    bool bAllowRewind = false;
     if (!sRewindChainBlockHash.empty())
-    {
+    do {
 		const uint256 rewindChainBlockHash = uint256S(sRewindChainBlockHash);
+
         if (rewindChainBlockHash == invalidBlockHash)
-			return true;
-	}
-    return false;
+        {
+            bAllowRewind = true;
+            break;
+        }
+        
+        // rewindchain can point to any ancestor block of the invalid block
+        const CBlockIndex *pindexRewindChain = nullptr;
+        const CBlockIndex *pindex = nullptr;
+
+        auto it = mapBlockIndex.find(rewindChainBlockHash);
+        if (it == mapBlockIndex.cend())
+        {
+            LogFnPrintf("rewindchain block %s not found in index", rewindChainBlockHash.ToString());
+            break;
+        }
+        pindexRewindChain = it->second;
+        if (!pindexRewindChain)
+        {
+            LogFnPrintf("rewindchain block %s has invalid index", rewindChainBlockHash.ToString());
+            break;
+        }
+        it = mapBlockIndex.find(invalidBlockHash);
+        if (it == mapBlockIndex.cend())
+        {
+            LogFnPrintf("invalid block %s not found in index", invalidBlockHash.ToString());
+            break;
+        }
+		pindex = it->second;
+        if (!pindex)
+        {
+            LogFnPrintf("invalid block %s has invalid index", invalidBlockHash.ToString());
+			break;
+		}
+        if (pindexRewindChain->nHeight > pindex->nHeight)
+        {
+            LogFnPrintf("rewindchain block %s is at a higher height (%d) than invalid block %s (%d)",
+				rewindChainBlockHash.ToString(), pindexRewindChain->nHeight,
+                invalidBlockHash.ToString(), pindex->nHeight);
+			break;
+        }
+        if (pindex->nHeight - pindexRewindChain->nHeight > MAX_REWIND_CHAIN_BLOCKS)
+        {
+            LogFnPrintf("rewindchain block %s is too far back from invalid block %s",
+                rewindChainBlockHash.ToString(), invalidBlockHash.ToString());
+            break;
+        }
+        const auto pindexAncestor = pindex->GetAncestor(pindexRewindChain->nHeight);
+        if (pindexAncestor == pindexRewindChain)
+        {
+            LogFnPrintf("rewindchain block %s (%d) is a direct ancestor of the invalid block %s (%d)",
+				rewindChainBlockHash.ToString(), pindexRewindChain->nHeight,
+                invalidBlockHash.ToString(), pindex->nHeight);
+			bAllowRewind = true;
+			break;
+		}
+    } while (false);
+    return bAllowRewind;
 }
 
 /**
@@ -2151,8 +2219,8 @@ static bool ActivateBestChainStep(CValidationState &state, const CChainParams& c
     bool bClearWitnessCaches = false;
     if (nReorgLength > static_cast<int>(MAX_REORG_LENGTH))
     {
-        const bool bIsIntendedChainRewind = IsIntendedChainRewind(chainparams, pindexFork->nHeight, pindexFork->GetBlockHash());
-        if (bIsIntendedChainRewind)
+        const bool bIntendedChainRewind = IsIntendedChainRewind(chainparams, pindexFork->nHeight, pindexFork->GetBlockHash());
+        if (bIntendedChainRewind)
         {
             bClearWitnessCaches = true;
             auto msg = strprintf(translate(
@@ -3015,7 +3083,7 @@ bool ContextualCheckBlockHeader(
     CValidationState& state,
     const CChainParams& chainparams,
     const bool bGenesisBlock,
-    CBlockIndex * const pindexPrev)
+    const CBlockIndex * pindexPrev)
 {
     const auto& consensusParams = chainparams.GetConsensus();
     if (hashBlock == consensusParams.hashGenesisBlock)
@@ -3813,9 +3881,9 @@ bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlo
         const auto networkID = chainparams.NetworkIDString();
 
         // This is true when we intend to do a long rewind.
-        const bool bIntendedRewind = IsIntendedChainRewind(chainparams, nInvalidBlockHeight, *phashInvalidBlock);
+        const bool bIntendedChainRewind = IsIntendedChainRewind(chainparams, nInvalidBlockHeight, *phashInvalidBlock);
 
-        bClearWitnessCaches = (nRewindLength > MAX_REORG_LENGTH && bIntendedRewind);
+        bClearWitnessCaches = (nRewindLength > MAX_REORG_LENGTH && bIntendedChainRewind);
         if (bClearWitnessCaches)
         {
             auto msg = strprintf(translate(
@@ -3824,7 +3892,7 @@ bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlo
             LogPrintf("*** %s\n", msg);
         }
 
-        if (nRewindLength > MAX_REORG_LENGTH && !bIntendedRewind)
+        if (nRewindLength > MAX_REORG_LENGTH && !bIntendedChainRewind)
         {
             auto pindexOldTip = chainActive.Tip();
             auto pindexRewind = chainActive[nInvalidBlockHeight - 1];
@@ -4115,7 +4183,7 @@ bool RewindBlockIndexToValidFork(const CChainParams& chainparams)
 #ifdef ENABLE_WALLET
         if (bClearWitnessCaches)
         {
-		    LogFnPrintf("Clearing witness caches due to a long rewind");
+		    LogFnPrintf("Clearing witness cache due to a long rewind");
 			pwalletMain->ClearNoteWitnessCache();
         }
 #endif // ENABLE_WALLET
@@ -5397,7 +5465,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
         CBlockLocator locator;
         uint256 hashStop;
         vRecv >> locator >> hashStop;
-        // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
+        // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx nMaxBlockCount at the end
         vector<CBlock> vHeaders;
 
         {
@@ -5464,7 +5532,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
                 {
                     mempool.check(gl_pCoinsTip.get());
                     RelayTransaction(tx);
-                    LogFnPrint("mempool", "AcceptToMemoryPool: peer=%d %s: accepted %s (poolsz %u)",
+                    LogFnPrint("mempool", "AcceptToMemoryPool: peer=%d %s: accepted %s (pool size=%zu)",
                         pfrom->id, pfrom->cleanSubVer,
                         txid.ToString(),
                         mempool.mapTx.size());
@@ -5544,7 +5612,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
         for (size_t n = 0; n < nCount; n++)
         {
             vRecv >> headers[n];
-            ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
+            ReadCompactSize(vRecv); // ignore tx nMaxBlockCount; assume it is 0.
         }
 
         // Nothing interesting. Stop asking this peer for more headers.
@@ -6230,7 +6298,7 @@ void NodeDetectStalledDownload(node_t& pto, node_state_t &pNodeState, const Cons
     // In case there is a block that has been in flight from this peer for (2 + 0.5 * N) times the block interval
     // (with N the number of validated blocks that were in flight at the time it was requested), disconnect due to
     // timeout. We compensate for in-flight blocks to prevent killing off peers due to our own downstream link
-    // being saturated. We only count validated in-flight blocks so peers can't advertise non-existing block hashes
+    // being saturated. We only nMaxBlockCount validated in-flight blocks so peers can't advertise non-existing block hashes
     // to unreasonably increase our timeout.
     // We also compare the block download timeout originally calculated against the time at which we'd disconnect
     // if we assumed the block were being requested now (ignoring blocks we've requested from this peer, since we're

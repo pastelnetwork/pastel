@@ -47,7 +47,9 @@ public:
     /**
      * @param[in] _parent   CDBWrapper that this batch is to be submitted to
      */
-    CDBBatch(const CDBWrapper &_parent) : parent(_parent) { };
+    CDBBatch(const CDBWrapper &_parent) : 
+        parent(_parent)
+    {}
 
     template <typename K, typename V>
     void Write(const K& key, const V& value)
@@ -225,7 +227,8 @@ public:
 
         std::string strValue;
         leveldb::Status status = pdb->Get(readoptions, slKey, &strValue);
-        if (!status.ok()) {
+        if (!status.ok())
+        {
             if (status.IsNotFound())
                 return false;
             LogPrintf("LevelDB read failure: %s\n", status.ToString());

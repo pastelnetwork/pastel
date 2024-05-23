@@ -46,7 +46,7 @@ public:
 	}
 
 	void Clear() noexcept override;
-	ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+	ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
 
 	std::string KeyTwo() const noexcept override { return m_label; }
 	bool HasKeyTwo() const noexcept override { return true; }
@@ -103,10 +103,10 @@ public:
 
 	// create contract ticket
 	static CContractTicket Create(std::string&& sContractTicket, std::string&& sSubType, std::string&& sSecondaryKey);
-    static bool FindTicketInDb(const std::string& key, CContractTicket& ticket);
-	static bool FindTicketInDbBySecondaryKey(const std::string& key, CContractTicket& ticket);
-	static bool CheckIfTicketInDb(const std::string& key);
-	static ContractTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static bool FindTicketInDb(const std::string& key, CContractTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
+	static bool FindTicketInDbBySecondaryKey(const std::string& key, CContractTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
+	static bool CheckIfTicketInDb(const std::string& key, const CBlockIndex* pindexPrev = nullptr);
+	static ContractTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
 
 protected:
 	std::string m_sContractTicket; // contract ticket data (encoded with base64 when passed via rpc parameter)

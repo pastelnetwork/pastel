@@ -28,7 +28,7 @@ CP2FMS_TX_Builder::CP2FMS_TX_Builder(const CDataStream& input_stream, const CAmo
     m_consensusBranchId = CurrentEpochBranchId(gl_nChainHeight + 1, m_chainParams.GetConsensus());
 }
 
-void CP2FMS_TX_Builder::setExtraOutputs(std::vector<CTxOut>&& vExtraOutputs, const CAmount nExtraAmountInPat) noexcept
+void CP2FMS_TX_Builder::setExtraOutputs(v_txouts&& vExtraOutputs, const CAmount nExtraAmountInPat) noexcept
 {
     m_vExtraOutputs = move(vExtraOutputs);
     m_nExtraAmountInPat = nExtraAmountInPat;

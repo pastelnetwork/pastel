@@ -1,4 +1,4 @@
-// Copyright (c) 2023 The Pastel developers
+// Copyright (c) 2023-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
@@ -141,7 +141,7 @@ TEST_F(TestActionRegTicket, RetrieveCollectionTicket)
 
 	// test invalid collection txid
 	m_sCollectionActTxid = "123";
-	EXPECT_EQ(RetrieveCollectionActivateTicket(error, bInvalidTxId), nullptr);
+	EXPECT_EQ(RetrieveCollectionActivateTicket(error, bInvalidTxId, nullptr), nullptr);
 	EXPECT_TRUE(bInvalidTxId);
 	EXPECT_TRUE(!error.empty());
 
@@ -149,7 +149,7 @@ TEST_F(TestActionRegTicket, RetrieveCollectionTicket)
 	error.clear();
 	bInvalidTxId = false;
 	m_sCollectionActTxid = TEST_COLLECTION_TXID;
-	EXPECT_EQ(RetrieveCollectionActivateTicket(error, bInvalidTxId), nullptr);
+	EXPECT_EQ(RetrieveCollectionActivateTicket(error, bInvalidTxId, nullptr), nullptr);
 	EXPECT_FALSE(bInvalidTxId);
 	EXPECT_FALSE(error.empty());
 }

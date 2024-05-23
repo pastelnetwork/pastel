@@ -110,9 +110,10 @@ void CActionActivateTicket::sign(SecureString&& strKeyPass)
  * 
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
+ * \param pindexPrev - previous block index
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -135,12 +136,13 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
 			}
         }
         // 0. Common validations
-        unique_ptr<CPastelTicket> pastelTicket;
+        PastelTicketPtr pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, txOrigin, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::ActionReg); },
             GetTicketDescription(), CActionRegTicket::GetTicketDescription(), nCallDepth,
-            TicketPricePSL(nActiveChainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
+            TicketPricePSL(nActiveChainHeight) + static_cast<CAmount>(getAllMNFeesPSL()), // fee for ticket + all MN storage fees (percent from storage fee)
+            pindexPrev);
 
         if (commonTV.IsNotValid())
         {
@@ -155,7 +157,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
         // Check the Activation ticket for that Registration ticket is already in the database
         // (ticket transaction replay attack protection)
         CActionActivateTicket existingTicket;
-        if (FindTicketInDb(m_regTicketTxId, existingTicket))
+        if (FindTicketInDb(m_regTicketTxId, existingTicket, pindexPrev))
         {
             if (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
                 !existingTicket.IsSameSignature(m_signature) || // check if this is not the same ticket!!
@@ -216,7 +218,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
             string error;
             bool bInvalidTxId = false;
             const string sCollectionActTxId = pActionRegTicket->getCollectionActTxId();
-            const auto collectionActTicket = pActionRegTicket->RetrieveCollectionActivateTicket(error, bInvalidTxId);
+            const auto collectionActTicket = pActionRegTicket->RetrieveCollectionActivateTicket(error, bInvalidTxId, pindexPrev);
             if (bInvalidTxId)
             {
                 tv.errorMsg = move(error);
@@ -265,7 +267,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
                     GetTicketDescription(), GetTxId(), ::GetTicketDescription(collectionRegTicket->ID()));
 				break;
 			}
-            const size_t nCollectionItemCount = pActionRegTicket->CountItemsInCollection();
+            const size_t nCollectionItemCount = pActionRegTicket->CountItemsInCollection(pindexPrev);
             // check if we will have more than allowed number of items in the collection if we register this item
             if (nCollectionItemCount + 1 > pCollRegTicket->getMaxCollectionEntries())
             {
@@ -289,9 +291,10 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
  *      - mn3 (20% of 80% - 16% of all storage fee)
  * 
  * \param outputs - extra outputs return
+ * \param pindexPrev - previous block index
  * \return total amount of extra outputs in patoshis
  */
-CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
+CAmount CActionActivateTicket::GetExtraOutputs(v_txouts& outputs, const CBlockIndex *pindexPrev) const
 {
     const auto ticket = CPastelTicketProcessor::GetTicket(m_regTicketTxId, TicketID::ActionReg);
     const auto ActionRegTicket = dynamic_cast<const CActionRegTicket*>(ticket.get());
@@ -305,7 +308,7 @@ CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     {
         const auto mnPastelID = ActionRegTicket->getPastelID(mn);
         CPastelIDRegTicket mnPastelIDticket;
-        if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
+        if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket, pindexPrev))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s with this txid [%s] is not in the blockchain or is invalid",
                 mnPastelID, CActionRegTicket::GetTicketDescription(), m_regTicketTxId));
@@ -326,25 +329,33 @@ CAmount CActionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     return nAllAmount;
 }
 
-bool CActionActivateTicket::FindTicketInDb(const string& key, CActionActivateTicket& ticket)
+/**
+ * Find Action Activation ticket in DB.
+ * 
+ * \param key - Action Registration ticket txid
+ * \param ticket - ticket to fill with data
+ * \param pindexPrev - previous block index
+ * \return true if ticket found, false otherwise
+ */
+bool CActionActivateTicket::FindTicketInDb(const string& key, CActionActivateTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.setRegTxId(key);
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
-ActionActivateTickets_t CActionActivateTicket::FindAllTicketByMVKey(const std::string& sMVKey)
+ActionActivateTickets_t CActionActivateTicket::FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionActivateTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionActivateTicket>(sMVKey, pindexPrev);
 }
 
 ActionActivateTickets_t CActionActivateTicket::FindAllTicketByCalledAtHeight(const uint32_t nCalledAtHeight)
 {
-    return FindAllTicketByMVKey(std::to_string(nCalledAtHeight));
+    return FindAllTicketByMVKey(std::to_string(nCalledAtHeight), nullptr);
 }
 
-bool CActionActivateTicket::CheckTicketExistByActionRegTicketID(const std::string& regTicketTxId)
+bool CActionActivateTicket::CheckTicketExistByActionRegTicketID(const std::string& regTicketTxId, const CBlockIndex* pindexPrev)
 {
     CActionActivateTicket ticket;
     ticket.setRegTxId(regTicketTxId);
-    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket, pindexPrev);
 }

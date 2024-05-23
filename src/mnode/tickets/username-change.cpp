@@ -118,9 +118,10 @@ string CChangeUsernameTicket::ToStr() const noexcept
  * 
  * \param bPreReg - ticket pre-registration
  * \param nCallDepth - current function call depth
+ * \param pindexPrev - previous block index
  * \return true if ticket is valid
  */
-ticket_validation_t CChangeUsernameTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CChangeUsernameTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     using namespace chrono;
     using namespace literals::chrono_literals;
@@ -136,7 +137,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const TxOrigin txOrigin, cons
     TktMemPool.Initialize(mempool);
 
     CChangeUsernameTicket tktDB, tktMP;
-    const bool bTicketExistsInDB = FindTicketInDb(m_sUserName, tktDB);
+    const bool bTicketExistsInDB = FindTicketInDb(m_sUserName, tktDB, pindexPrev);
     // true if the username-change ticket found in the mempool with the same PastelId as an existing DB ticket: tktDB
     // if ticket exists - it means that user already has changed username
     const bool bDBUserChangedName_MemPool = bTicketExistsInDB && TktMemPool.TicketExistsBySecondaryKey(tktDB.m_sPastelID);
@@ -275,15 +276,23 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const TxOrigin txOrigin, cons
     return tv;
 }
 
-bool CChangeUsernameTicket::FindTicketInDb(const string& key, CChangeUsernameTicket& ticket)
+/**
+ * Find ChangeUserName ticket in DB.
+ * 
+ * \param key - username
+ * \param ticket - found ticket
+ * \param pindexPrev - previous block index
+ * \return true if ticket is found
+ */
+bool CChangeUsernameTicket::FindTicketInDb(const string& key, CChangeUsernameTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.m_sUserName = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
-ChangeUsernameTickets_t CChangeUsernameTicket::FindAllTicketByMVKey(const string& sMVKey)
+ChangeUsernameTickets_t CChangeUsernameTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeUsernameTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeUsernameTicket>(sMVKey, pindexPrev);
 }
 
 bool CChangeUsernameTicket::isUsernameBad(const string& username, string& error)

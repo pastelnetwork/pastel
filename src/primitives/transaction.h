@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
@@ -476,6 +476,9 @@ public:
     std::string ToString() const;
 };
 
+using v_txouts = std::vector<CTxOut>;
+using v_txins = std::vector<CTxIn>;
+
 // Overwinter version group id
 static constexpr uint32_t OVERWINTER_VERSION_GROUP_ID = 0x03C48270;
 static_assert(OVERWINTER_VERSION_GROUP_ID != 0, "version group id must be non-zero as specified in ZIP 202");
@@ -538,8 +541,8 @@ public:
     const bool fOverwintered;
     const int32_t nVersion;
     const uint32_t nVersionGroupId;
-    const std::vector<CTxIn> vin;       // tx inputs
-    const std::vector<CTxOut> vout;     // tx outputs
+    const v_txins vin;       // tx inputs
+    const v_txouts vout;     // tx outputs
     // Represents the earliest time or block height at which a transaction is considered valid and 
     // can be added to a block.
     // There are two possible values of nLockTime: 
@@ -600,8 +603,8 @@ public:
             throw std::ios_base::failure("Unknown transaction format");
         }
 
-        READWRITE(*const_cast<std::vector<CTxIn>*>(&vin));
-        READWRITE(*const_cast<std::vector<CTxOut>*>(&vout));
+        READWRITE(*const_cast<v_txins*>(&vin));
+        READWRITE(*const_cast<v_txouts*>(&vout));
         READWRITE(*const_cast<uint32_t*>(&nLockTime));
         if (isOverwinterV3 || isSaplingV4)
         {
@@ -693,8 +696,8 @@ struct CMutableTransaction
     bool fOverwintered;
     int32_t nVersion;
     uint32_t nVersionGroupId;
-    std::vector<CTxIn> vin;
-    std::vector<CTxOut> vout;
+    v_txins vin;
+    v_txouts vout;
     uint32_t nLockTime;
     uint32_t nExpiryHeight;
     CAmount valueBalance;

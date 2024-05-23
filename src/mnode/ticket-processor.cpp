@@ -62,9 +62,9 @@ void CPastelTicketProcessor::InitTicketDB()
  * 
  * \param ticketId - ticket type
  */
-unique_ptr<CPastelTicket> CPastelTicketProcessor::CreateTicket(const TicketID ticketId)
+PastelTicketPtr CPastelTicketProcessor::CreateTicket(const TicketID ticketId)
 {
-    unique_ptr<CPastelTicket> ticket;
+    PastelTicketPtr ticket;
     switch (ticketId)
     {
     case TicketID::PastelID:
@@ -178,10 +178,7 @@ bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const
         return false;
     itDB->second->Write(ticket.KeyOne(), ticket, true);
     if (ticket.HasKeyTwo())
-    {
-        auto realKeyTwo = RealKeyTwo(ticket.KeyTwo());
-        itDB->second->Write(realKeyTwo, ticket.KeyOne(), true);
-    }
+        itDB->second->Write(RealKeyTwo(ticket.KeyTwo()), ticket.KeyOne(), true);
 
     if (ticket.HasMVKeyOne())
         UpdateDB_MVK(ticket, ticket.MVKeyOne());
@@ -257,7 +254,7 @@ bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CComp
  * \param ticket - ticket object
  * \return validation status with error sMessage if any
  */
-ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, unique_ptr<CPastelTicket>&& ticket) noexcept
+ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, PastelTicketPtr&& ticket) noexcept
 {
     ticket_validation_t tv;
     do
@@ -486,13 +483,15 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
  * \param state - validation state
  * \param nHeight - current block height
  * \param tx - transaction to validate
+ * \param pIndexPrev - previous block index (can be nullptr)
  * \return ticket validation status (TICKET_VALIDATION_STATE enum)
  *    NOT_TICKET     - if transaction being validated is not a ticket transaction
  *    VALID          - ticket is valid
  *    MISSING_INPUTS - ticket is missing some dependent data (for example, nft-act ticket can't find nft-reg ticket)
  *    INVALID        - ticket validation failed, error sMessage is returned in errorMsg
  */
-ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidationState &state, const uint32_t nHeight, const CTransaction& tx)
+ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidationState &state, const uint32_t nHeight, 
+    const CTransaction& tx, const CBlockIndex *pindexPrev)
 {
     ticket_validation_t tv;
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
@@ -512,7 +511,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
 
         // this is a ticket and it needs to be validated
         bool bOk = false;
-        unique_ptr<CPastelTicket> ticket;
+        PastelTicketPtr ticket;
         try
         {
             string ticketBlockTxIdStr = tx.GetHash().GetHex();
@@ -536,7 +535,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
             ticket->SetMultiSigOutputsCount(nMultiSigOutputsCount);
             ticket->SetMultiSigTxTotalFee(nMultiSigTxTotalFee);
             // ticket validation
-            tv = ticket->IsValid(state.getTxOrigin(), 0);
+            tv = ticket->IsValid(state.getTxOrigin(), 0, pindexPrev);
             if (tv.IsNotValid())
                 break;
             ticket->SetSerializedSize(data_stream.GetSavedDecompressedSize());
@@ -653,37 +652,47 @@ bool CPastelTicketProcessor::SerializeTicketToStream(const uint256& txid, string
  * 
  * \param txid - ticket transaction id
  * \param pBlockHash - optional parameter to return block hash
+ * \param pindexPrev - previous block index (can be nullptr)
  * \return created unique_ptr for Pastel ticket by txid
  */
-unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid, uint256* pBlockHash)
+PastelTicketPtr CPastelTicketProcessor::GetTicket(const uint256 &txid, uint256* pBlockHash,
+    const CBlockIndex *pindexPrev)
 {
     string error;
     ticket_parse_data_t data;
     if (!SerializeTicketToStream(txid, error, data, true))
     {
-        LogFnPrintf("Failed to get ticket by txid=%s. ERROR: %s. Will throw exception", txid.GetHex(), error);
+        LogFnPrintf("Failed to get ticket by txid=%s. ERROR: %s", txid.GetHex(), error);
         throw runtime_error(error);
     }
 
-    unique_ptr<CPastelTicket> ticket;
+    PastelTicketPtr ticket;
     string sTxId = data.tx.GetHash().GetHex();
     try
     {
         if (!data.hashBlock.IsNull()) // this will filter out tickets from mempool (not in block yet) NOTE: transactions in mempool DOES have non-zero block height!
         {
-            if (data.nTicketHeight == numeric_limits<uint32_t>::max())
+            CBlockIndex* pindex = nullptr;
+            bool bInActiveChain = false;
+            const auto mi = mapBlockIndex.find(data.hashBlock);
+            if (mi != mapBlockIndex.cend())
             {
-                // if ticket block height is still not defined - lookup it up in mapBlockIndex by hash
-                const auto mi = mapBlockIndex.find(data.hashBlock);
-                if (mi != mapBlockIndex.cend() && mi->second)
-                {
-                    const auto pindex = mi->second;
-                    if (chainActive.Contains(pindex))
-                        data.nTicketHeight = pindex->nHeight;
-                }
+                pindex = mi->second;
+                bInActiveChain = pindex && chainActive.Contains(pindex);
             }
+            // if ticket block height is still not defined - get it from block index
+            if ((data.nTicketHeight == numeric_limits<uint32_t>::max()) && bInActiveChain)
+                data.nTicketHeight = pindex->nHeight;
             if (pBlockHash)
 				*pBlockHash = data.hashBlock;
+            // if pindexPrev is defined - check if ticket is in the same branch as pindexPrev
+            if (pindexPrev && bInActiveChain && (pindexPrev->GetAncestor(data.nTicketHeight) != pindex))
+			{
+                error = strprintf("Ticket with txid=%s (height=%d) is in the active chain, but accessed from the forked chain on height=%d",
+                    txid.GetHex(), pindex->nHeight, pindexPrev->nHeight);
+                LogFnPrintf("%s", error);
+                return ticket; // return empty ticket
+			}
         } else
             data.nTicketHeight = numeric_limits<uint32_t>::max();
 
@@ -720,11 +729,12 @@ unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const uint256 &txid,
     return ticket;
 }
 
-unique_ptr<CPastelTicket> CPastelTicketProcessor::GetTicket(const string& _txid, const TicketID ticketID)
+PastelTicketPtr CPastelTicketProcessor::GetTicket(const string& _txid, const TicketID ticketID,
+    const CBlockIndex *pindexPrev)
 {
     uint256 txid;
     txid.SetHex(_txid);
-    auto ticket = GetTicket(txid);
+    auto ticket = GetTicket(txid, nullptr, pindexPrev);
     if (!ticket || ticketID != ticket->ID())
         throw runtime_error(strprintf(
             "The ticket with this txid [%s] is not in the blockchain", _txid));
@@ -741,7 +751,7 @@ EraseTicketResult CPastelTicketProcessor::EraseIfTicketTransaction(const uint256
     }
 
     // create Pastel ticket by id
-    unique_ptr<CPastelTicket> ticket = CreateTicket(data.ticket_id);
+    PastelTicketPtr ticket = CreateTicket(data.ticket_id);
     if (!ticket)
     {
         error = strprintf("Failed to create ticket by id=%hhu.", to_integral_type<TicketID>(data.ticket_id));
@@ -762,44 +772,89 @@ EraseTicketResult CPastelTicketProcessor::EraseIfTicketTransaction(const uint256
  * Check whether ticket exists in TicketDB (use keyOne as a key).
  *
  * \param ticket - ticket to search (ID and keyOne are used for search)
+ * \param pindexPrev - previous block index (can be nullptr)
  * \return true if ticket with the given parameters was found in ticket DB
  */
-bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket) const
+bool CPastelTicketProcessor::CheckTicketExist(const CPastelTicket& ticket, const CBlockIndex* pindexPrev) const
 {
     const auto key = ticket.KeyOne();
     const auto itDB = dbs.find(ticket.ID());
     if (itDB == dbs.cend())
         return false;
-    return itDB->second->Exists(key);
+    if (!itDB->second->Exists(key))
+        return false;
+
+    if (pindexPrev)
+    {
+        auto existingTicket = CreateTicket(ticket.ID());
+        bool bRet = itDB->second->Read(ticket.KeyOne(), *existingTicket);
+        if (!bRet)
+            return false;
+        const uint32_t nExistingTicketBlockHeight = existingTicket->GetBlock();
+        if (nExistingTicketBlockHeight == numeric_limits<uint32_t>::max())
+			return false;
+        if (nExistingTicketBlockHeight > gl_nChainHeight)
+            return false;
+        const auto pindexExistingTicket = chainActive[nExistingTicketBlockHeight];
+        // it is possible that current ticket is in the forked chain, but existing ticket is in the active chain and in 
+        // the ticket DB.
+        // Ignore the ticket if they are in different branches.
+        return (pindexPrev->GetAncestor(nExistingTicketBlockHeight) == pindexExistingTicket);
+    }
+    return true;
 }
 
 /**
 * Check whether ticket exists in TicketDB (use keyTwo as a key).
 *
 * \param ticket - ticket to search (ID and keyTwo are used for search)
+* \param pindexPrev - previous block index (can be nullptr)
 * \return true if ticket with the given parameters was found in ticket DB
 */
-bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket& ticket) const
+bool CPastelTicketProcessor::CheckTicketExistBySecondaryKey(const CPastelTicket& ticket, const CBlockIndex* pindexPrev) const
 {
-    if (ticket.HasKeyTwo())
+    if (!ticket.HasKeyTwo())
+        return false;
+
+    string mainKey;
+    const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
+    const auto itDB = dbs.find(ticket.ID());
+    if (itDB == dbs.cend())
+        return false;
+    if (!itDB->second->Read(sRealKeyTwo, mainKey))
+        return false;
+    if (!itDB->second->Exists(mainKey))
+        return false;
+    if (pindexPrev)
     {
-        string mainKey;
-        const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
-        const auto itDB = dbs.find(ticket.ID());
-        if (itDB != dbs.cend() && itDB->second->Read(sRealKeyTwo, mainKey))
-            return itDB->second->Exists(mainKey);
+        auto existingTicket = CreateTicket(ticket.ID());
+        bool bRet = itDB->second->Read(mainKey, *existingTicket);
+        if (!bRet)
+			return false;
+        const uint32_t nExistingTicketBlockHeight = existingTicket->GetBlock();
+        if (nExistingTicketBlockHeight == numeric_limits<uint32_t>::max())
+			return false;
+        if (nExistingTicketBlockHeight > gl_nChainHeight)
+            return false;
+        const auto pindexExistingTicket = chainActive[nExistingTicketBlockHeight];
+        // it is possible that current ticket is in the forked chain, but existing ticket is in the active chain and in 
+        // the ticket DB.
+        // Ignore the ticket if they are in different branches.
+        return (pindexPrev->GetAncestor(nExistingTicketBlockHeight) == pindexExistingTicket);
     }
-    return false;
+    return true;
 }
+
 
 /**
  * Find ticket in TicketDB by primary key.
  * Is ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param ticket - ticket object to return
+ * \param pindexPrev - previous block index (can be nullptr)
  * \return true if ticket was found and successfully read from DB
  */
-bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket) const
+bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket, const CBlockIndex *pindexPrev) const
 {
     const auto sKey = ticket.KeyOne();
     const auto itDB = dbs.find(ticket.ID());
@@ -807,13 +862,30 @@ bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket) const
         return false;
     bool bRet = itDB->second->Read(sKey, ticket);
     if (bRet)
+    do 
     {
         if (ticket.IsBlockNewerThan(gl_nChainHeight))
         {
             bRet = false;
             ticket.Clear();
+            break;
         }
-    }
+        if (!pindexPrev)
+            break;
+        const uint32_t nTicketBlockHeight = ticket.GetBlock();
+        if (nTicketBlockHeight == numeric_limits<uint32_t>::max())
+		{
+			bRet = false;
+			ticket.Clear();
+			break;
+		}
+        const auto pindexTicket = chainActive[nTicketBlockHeight];
+		if (pindexPrev->GetAncestor(nTicketBlockHeight) != pindexTicket)
+		{
+			bRet = false;
+			ticket.Clear();
+		}
+    } while (false);
     return bRet;
 }
 
@@ -899,29 +971,59 @@ void CPastelTicketProcessor::RepairTicketDB(const bool bUpdateUI)
  * If ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param ticket - ticket object to return
+ * \param pindexPrev - previous block index (can be nullptr)
  * \return true if ticket has secondary key and the ticket was found
  */
-bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket) const
+bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket, const CBlockIndex *pindexPrev) const
 {
     // check if this ticket type supports secondary key
-    if (ticket.HasKeyTwo())
+    if (!ticket.HasKeyTwo())
+        return false;
+
+    string sMainKey;
+    // get real secondary key: @2@ + key
+    const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
+    // find in DB record: <real_secondary_key> -> <primary_key>
+    const auto itDB = dbs.find(ticket.ID());
+    bool bRet = false;
+    do
     {
-        string sMainKey;
-        // get real secondary key: @2@ + key
-        const auto sRealKeyTwo = RealKeyTwo(ticket.KeyTwo());
-        // find in DB record: <real_secondary_key> -> <primary_key>
-        const auto itDB = dbs.find(ticket.ID());
-        if (itDB != dbs.cend() && itDB->second->Read(sRealKeyTwo, sMainKey))
+        if (itDB == dbs.cend())
+            break;
+        
+        if (!itDB->second->Read(sRealKeyTwo, sMainKey))
+            break;
+
+        if (!itDB->second->Read(sMainKey, ticket))
+            break;
+
+        if (ticket.IsBlockNewerThan(gl_nChainHeight))
         {
-            if (itDB->second->Read(sMainKey, ticket))
-            {
-                if (!ticket.IsBlockNewerThan(gl_nChainHeight))
-    				return true;
-				ticket.Clear();
-            }
+            ticket.Clear();
+			break;
         }
-    }
-    return false;
+
+        // we can be in the forked chain (pindexPrev points to the previous block)
+        if (!pindexPrev)
+        {
+            bRet = true;
+            break;
+        }
+        const uint32_t nTicketBlockHeight = ticket.GetBlock();
+        if (nTicketBlockHeight == numeric_limits<uint32_t>::max())
+        {
+            ticket.Clear();
+			break;
+		}
+		const auto pindexTicket = chainActive[nTicketBlockHeight];
+        if (pindexPrev->GetAncestor(nTicketBlockHeight) != pindexTicket)
+        {
+            ticket.Clear();
+            break;
+        }
+        bRet = true;
+    } while (false);
+    return bRet;
 }
 
 /**
@@ -929,10 +1031,11 @@ bool CPastelTicketProcessor::FindTicketBySecondaryKey(CPastelTicket& ticket) con
  * If ticket height returned by DB is higher than active chain height - ticket is considered invalid.
  * 
  * \param mvKey - key to search for. Tickets support up to 3 mvkeys.
+ * \param pindexPrev - (optional) previous block index (can be nullptr)
  * \return vector of found tickets with the given mvKey
  */
 template <class _TicketType>
-vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvKey)
+vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvKey, const CBlockIndex *pindexPrev)
 {
     vector<_TicketType> tickets;
     v_strings vMainKeys;
@@ -949,7 +1052,19 @@ vector<_TicketType> CPastelTicketProcessor::FindTicketsByMVKey(const string& mvK
         {
             _TicketType ticket;
             if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nCurrentChainHeight))
+            {
+                // check if this ticket is in the same chain as pindexPrev
+                if (pindexPrev)
+                {
+					const uint32_t nTicketBlockHeight = ticket.GetBlock();
+					if (nTicketBlockHeight == numeric_limits<uint32_t>::max())
+						continue;
+					const auto pindexTicket = chainActive[nTicketBlockHeight];
+					if (pindexPrev->GetAncestor(nTicketBlockHeight) != pindexTicket)
+						continue;
+				}
                 tickets.emplace_back(ticket);
+            }
         }
     }
     return tickets;
@@ -978,20 +1093,20 @@ string CPastelTicketProcessor::getValueBySecondaryKey(const CPastelTicket& ticke
     return sMainKey;
 }
 
-template PastelIDRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const string&);
-template NFTRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRegTicket>(const string&);
-template CollectionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CollectionRegTicket>(const string&);
-template CollectionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CollectionActivateTicket>(const string&);
-template NFTActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTActivateTicket>(const string&);
-template OfferTickets_t CPastelTicketProcessor::FindTicketsByMVKey<COfferTicket>(const string&);
-template AcceptTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CAcceptTicket>(const string&);
-template TransferTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CTransferTicket>(const string&);
-template NFTRoyaltyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const string&);
-template ChangeUsernameTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const string&);
-template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const string&);
-template ActionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionRegTicket>(const string&);
-template ActionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionActivateTicket>(const string&);
-template ContractTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CContractTicket>(const string&);
+template PastelIDRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CPastelIDRegTicket>(const string&, const CBlockIndex*);
+template NFTRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRegTicket>(const string&, const CBlockIndex*);
+template CollectionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CollectionRegTicket>(const string&, const CBlockIndex*);
+template CollectionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CollectionActivateTicket>(const string&, const CBlockIndex*);
+template NFTActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTActivateTicket>(const string&, const CBlockIndex*);
+template OfferTickets_t CPastelTicketProcessor::FindTicketsByMVKey<COfferTicket>(const string&, const CBlockIndex*);
+template AcceptTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CAcceptTicket>(const string&, const CBlockIndex*);
+template TransferTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CTransferTicket>(const string&, const CBlockIndex*);
+template NFTRoyaltyTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CNFTRoyaltyTicket>(const string&, const CBlockIndex*);
+template ChangeUsernameTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeUsernameTicket>(const string&, const CBlockIndex*);
+template ChangeEthereumAddressTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CChangeEthereumAddressTicket>(const string&, const CBlockIndex*);
+template ActionRegTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionRegTicket>(const string&, const CBlockIndex*);
+template ActionActivateTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CActionActivateTicket>(const string&, const CBlockIndex*);
+template ContractTickets_t CPastelTicketProcessor::FindTicketsByMVKey<CContractTicket>(const string&, const CBlockIndex*);
 
 v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
 {
@@ -1078,13 +1193,14 @@ template <> struct TicketTypeMapper<TicketID::Contract>
 };
 
 template <TicketID ID>
-bool ReadTicketFromDB(unique_ptr<CDBIterator>& pcursor, string& sKey, unique_ptr<CPastelTicket> &ticket)
+bool ReadTicketFromDB(unique_ptr<CDBIterator>& pcursor, string& sKey, PastelTicketPtr &ticket)
 {
     sKey.clear();
     typename TicketTypeMapper<ID>::TicketType dbTicket;
     if (pcursor->GetKey(sKey))
     {
-        if (str_starts_with(sKey, TICKET_KEYTWO_PREFIX) || str_starts_with(sKey, TICKET_MVKEY_PREFIX))
+        if (str_starts_with(sKey, TICKET_KEYTWO_PREFIX) || 
+            str_starts_with(sKey, TICKET_MVKEY_PREFIX))
         {
             sKey.clear();
             return false;
@@ -1118,7 +1234,7 @@ bool CPastelTicketProcessor::ProcessAllTickets(TicketID id, process_ticket_data_
 	while (pcursor->Valid())
 	{
 		sKey.clear();
-        unique_ptr<CPastelTicket> ticket;
+        PastelTicketPtr ticket;
 
         switch (id)
         {
@@ -1449,7 +1565,7 @@ string CPastelTicketProcessor::ListFilterActionTickets(const uint32_t nMinHeight
 string CPastelTicketProcessor::ListFilterContractTickets(const uint32_t nMinHeight, const string& subtype) const
 {
     ContractTickets_t vTickets;
-    ProcessTicketsByMVKey<CContractTicket>(subtype,
+    ProcessTicketsByMVKey<CContractTicket>(subtype, nullptr,
         [&](const CContractTicket& ticket) -> bool
         {
             if ((ticket.getSubType() == subtype) &&
@@ -1588,15 +1704,16 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
     const string& sTxId,
     PastelTickets_t& chain,
     bool shortPath,
-    string& errRet) noexcept
+    string& errRet,
+    const CBlockIndex *pindexPrev) noexcept
 {
-    unique_ptr<CPastelTicket> pastelTicket;
+    PastelTicketPtr pastelTicket;
     uint256 txid = uint256S(sTxId);
 
     // Get ticket pointed by txid. This is either Activation or Transfer tickets (Offer, Accept, Transfer)
     try
     {
-        pastelTicket = CPastelTicketProcessor::GetTicket(txid);
+        pastelTicket = CPastelTicketProcessor::GetTicket(txid, nullptr, pindexPrev);
     }
     catch ([[maybe_unused]] const runtime_error& ex)
     {
@@ -1619,7 +1736,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                     break;
                 }
                 if (!WalkBackTradingChain(shortPath ? pTransferTicket->getItemTxId() : pTransferTicket->getAcceptTxId(), 
-                    chain, shortPath, errRet))
+                    chain, shortPath, errRet, pindexPrev))
                     break;
             } break;
 
@@ -1632,7 +1749,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                         CAcceptTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
-                if (!WalkBackTradingChain(pAcceptTicket->getOfferTxId(), chain, shortPath, errRet))
+                if (!WalkBackTradingChain(pAcceptTicket->getOfferTxId(), chain, shortPath, errRet, pindexPrev))
                     break;
             } break;
 
@@ -1645,7 +1762,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                         COfferTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
-                if (!WalkBackTradingChain(pOfferTicket->getItemTxId(), chain, shortPath, errRet))
+                if (!WalkBackTradingChain(pOfferTicket->getItemTxId(), chain, shortPath, errRet, pindexPrev))
                     break;
             } break;
 
@@ -1658,7 +1775,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                         CNFTActivateTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
-                if (!WalkBackTradingChain(pNftActTicket->getRegTxId(), chain, shortPath, errRet))
+                if (!WalkBackTradingChain(pNftActTicket->getRegTxId(), chain, shortPath, errRet, pindexPrev))
                     break;
             } break;
 
@@ -1682,7 +1799,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                         CollectionActivateTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
-                if (!WalkBackTradingChain(pCollectionActTicket->getRegTxId(), chain, shortPath, errRet))
+                if (!WalkBackTradingChain(pCollectionActTicket->getRegTxId(), chain, shortPath, errRet, pindexPrev))
                     break;
             } break;
 
@@ -1706,7 +1823,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                         CActionActivateTicket::GetTicketDescription(), pastelTicket->GetTxId(), sTxId);
                     break;
                 }
-                if (!WalkBackTradingChain(pActionActTicket->getRegTxId(), chain, shortPath, errRet))
+                if (!WalkBackTradingChain(pActionActTicket->getRegTxId(), chain, shortPath, errRet, pindexPrev))
                     break;
             } break;
 
@@ -1751,7 +1868,7 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
         throw runtime_error(strprintf("Ticket (%s) is invalid. %s", ticket.GetTicketName(), tv.errorMsg));
 
     vector<CTxOut> vExtraOutputs;
-    const CAmount nExtraAmountInPat = ticket.GetExtraOutputs(vExtraOutputs);
+    const CAmount nExtraAmountInPat = ticket.GetExtraOutputs(vExtraOutputs, nullptr);
 
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     auto nTicketID = to_integral_type<TicketID>(ticket.ID());
@@ -1876,7 +1993,8 @@ void CPastelTicketProcessor::SearchForNFTs(const search_thumbids_t& p, function<
     // process NFT activation tickets by PastelID (mvkey #1)
     for (const auto &sPastelID : vPastelIDs)
     {
-        ProcessTicketsByMVKey<CNFTActivateTicket>(sPastelID, [&](const CNFTActivateTicket& actTicket) -> bool
+        ProcessTicketsByMVKey<CNFTActivateTicket>(sPastelID, nullptr,
+            [&](const CNFTActivateTicket& actTicket) -> bool
         {
             // check if we exceeded max results
             if (p.nMaxResultCount.has_value() && (nResultCount >= p.nMaxResultCount.value()))
@@ -2295,7 +2413,7 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
     }
 
     KeyIO keyIO(Params());
-    vector<CTxOut> extraOutputs;
+    v_txouts vExtraOutputs;
     CAmount extraAmount = 0;
     if (!extraPayments.empty())
     {
@@ -2304,7 +2422,7 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
             auto dest = keyIO.DecodeDestination(p.first);
             if (!IsValidDestination(dest))
                 return string{};
-            extraOutputs.emplace_back(p.second, GetScriptForDestination(dest));
+            vExtraOutputs.emplace_back(p.second, GetScriptForDestination(dest));
             extraAmount += p.second;
         }
     }
@@ -2315,7 +2433,7 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
 
     CMutableTransaction tx;
     CP2FMS_TX_Builder txBuilder(data_stream, ticketPricePSL);
-    txBuilder.setExtraOutputs(move(extraOutputs), extraAmount);
+    txBuilder.setExtraOutputs(move(vExtraOutputs), extraAmount);
     if (!txBuilder.build(error, tx))
         throw runtime_error(strprintf("Failed to create P2FMS from data provided. %s", error));
 

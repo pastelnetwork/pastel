@@ -261,7 +261,7 @@ void CActionRegTicket::Clear() noexcept
  * Set action type.
  * 
  * \param sActionType - sense or cascade
- * \return true if action type was set succesfully (known action type)
+ * \return true if action type was set successfully (known action type)
  */
 bool CActionRegTicket::setActionType(const string& sActionType) noexcept
 {
@@ -274,7 +274,7 @@ bool CActionRegTicket::setActionType(const string& sActionType) noexcept
     return (m_ActionType != ACTION_TICKET_TYPE::UNKNOWN);
 }
 
-uint32_t CActionRegTicket::CountItemsInCollection() const
+uint32_t CActionRegTicket::CountItemsInCollection(const CBlockIndex *pindexPrev) const
 {
     if (m_ActionType == ACTION_TICKET_TYPE::SENSE)
         return CollectionActivateTicket::CountItemsInCollection(m_sCollectionActTxid, COLLECTION_ITEM_TYPE::SENSE, true);
@@ -353,9 +353,10 @@ string CActionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
  * 
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
+ * \param pindexPrev - previous block index
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -368,7 +369,7 @@ ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uin
             // Only done after Create
 
             // A.1 check that the ActionReg ticket is already in the blockchain
-            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
+            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this, pindexPrev))
             {
                 tv.errorMsg = strprintf(
                     "This Action is already registered in blockchain [key=%s; label=%s]", 
@@ -404,7 +405,7 @@ ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uin
 
         // (ticket transaction replay attack protection)
         CActionRegTicket existingTicket;
-        if (FindTicketInDb(m_keyOne, existingTicket) &&
+        if (FindTicketInDb(m_keyOne, existingTicket, pindexPrev) &&
             (!existingTicket.IsBlock(m_nBlock) ||
              !existingTicket.IsTxId(m_txid)))
         {
@@ -426,7 +427,7 @@ ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uin
         }
 
         // B. Something to validate always
-        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCalledAtHeight, m_sActionTicket);
+        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCalledAtHeight, m_sActionTicket, pindexPrev);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;
@@ -446,30 +447,32 @@ ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uin
  * 
  * \param key - lookup key, used in a search by primary key
  * \param ticket - returns ticket if found
+ * \param pindexPrev - previous block index
  * \return true if ticket was found
  */
-bool CActionRegTicket::FindTicketInDb(const string& key, CActionRegTicket& ticket)
+bool CActionRegTicket::FindTicketInDb(const string& key, CActionRegTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.m_keyOne = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
 /**
  * Check if ticket exists in a DB by primary key.
  * 
  * \param key - lookup key, used in a search by primary key
+ * \param pindexPrev - previous block index
  * \return true if ticket exists in a DB
  */
-bool CActionRegTicket::CheckIfTicketInDb(const string& key)
+bool CActionRegTicket::CheckIfTicketInDb(const string& key, const CBlockIndex *pindexPrev)
 {
     CActionRegTicket ticket;
     ticket.m_keyOne = key;
-    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket, pindexPrev);
 }
 
-ActionRegTickets_t CActionRegTicket::FindAllTicketByMVKey(const string& sMVKey)
+ActionRegTickets_t CActionRegTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionRegTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CActionRegTicket>(sMVKey, pindexPrev);
 }
 
 /**

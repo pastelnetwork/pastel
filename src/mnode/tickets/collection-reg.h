@@ -120,7 +120,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sCollectionTicket; }
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     // check if this user is authorized collection contributor
     bool IsAuthorizedContributor(const std::string &sPastelID) const noexcept;
     std::string getCollectionItemDesc() const noexcept;
@@ -173,10 +173,10 @@ public:
 
     static CollectionRegTicket Create(std::string&& collection_ticket_base64_encoded, const std::string& signatures, 
         std::string &&sPastelID, SecureString&& strKeyPass, std::string &&label, const CAmount storageFee);
-    static bool FindTicketInDb(const std::string& key, CollectionRegTicket& ticket);
-    static bool FindTicketInDbByCollectionName(const std::string& sCollectionName, CollectionRegTicket& ticket);
-    static bool CheckIfTicketInDb(const std::string& key);
-    static CollectionRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static bool FindTicketInDb(const std::string& key, CollectionRegTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
+    static bool FindTicketInDbByCollectionName(const std::string& sCollectionName, CollectionRegTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
+    static bool CheckIfTicketInDb(const std::string& key, const CBlockIndex* pindexPrev = nullptr);
+    static CollectionRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
 
 protected:
     std::string m_sCollectionTicket;     // collection registration ticket (json format)

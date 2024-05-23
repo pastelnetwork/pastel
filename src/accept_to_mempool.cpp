@@ -283,14 +283,16 @@ bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs,
  * \param state - validation state
  * \param chainparams - chain parameters
  * \param nHeight - height of the block being evaluated
+ * \param pindexPrev - pointer to the previous block index
  * \param isInitBlockDownload - functor to check IBD mode
- * \return 
+ * \return true if the transaction is valid, false otherwise
  */
 bool ContextualCheckTransaction(
     const CTransaction& tx,
     CValidationState &state,
     const CChainParams& chainparams,
     const int nHeight,
+    const CBlockIndex *pindexPrev,
     funcIsInitialBlockDownload_t isInitBlockDownload)
 {
     const auto& consensusParams = chainparams.GetConsensus();
@@ -512,7 +514,7 @@ bool ContextualCheckTransaction(
     }
     
     // Check Pastel Ticket transactions
-    const auto tv = CPastelTicketProcessor::ValidateIfTicketTransaction(state, nHeight, tx);
+    const auto tv = CPastelTicketProcessor::ValidateIfTicketTransaction(state, nHeight, tx, pindexPrev);
     if (tv.state == TICKET_VALIDATION_STATE::NOT_TICKET || tv.state == TICKET_VALIDATION_STATE::VALID)
         return true;
     if (tv.state == TICKET_VALIDATION_STATE::MISSING_INPUTS)
@@ -526,11 +528,20 @@ bool ContextualCheckTransaction(
                      REJECT_INVALID, "bad-tx-invalid-ticket", false, strRejectReasonDetails);
 }
 
+/**
+ * Contextual validation of the block and its transactions.
+ * 
+ * \param block - block to check
+ * \param state - validation state
+ * \param chainparams - chain parameters
+ * \param pindexPrev - pointer to the previous block index
+ * \return true if the block is valid, false otherwise
+ */
 bool ContextualCheckBlock(
     const CBlock& block,
     CValidationState& state,
     const CChainParams& chainparams,
-    CBlockIndex * const pindexPrev)
+    const CBlockIndex *pindexPrev)
 {
     const int nHeight = !pindexPrev ? 0 : pindexPrev->nHeight + 1;
     const auto& consensusParams = chainparams.GetConsensus();
@@ -540,7 +551,7 @@ bool ContextualCheckBlock(
     for (const auto& tx : block.vtx)
     {
         // Check transaction contextually against consensus rules at block height
-        if (!ContextualCheckTransaction(tx, state, chainparams, nHeight))
+        if (!ContextualCheckTransaction(tx, state, chainparams, nHeight, pindexPrev, fnIsInitialBlockDownload))
             return false; // Failure reason has been set in validation state object
 
         int nLockTimeFlags = 0;
@@ -839,7 +850,7 @@ bool AcceptToMemoryPool(
         return error("%s: CheckTransaction failed. %s", sFuncLog, state.GetRejectReason());
 
     // Check transaction contextually against the set of consensus rules which apply in the next block to be mined.
-    if (!ContextualCheckTransaction(tx, state, chainparams, nextBlockHeight))
+    if (!ContextualCheckTransaction(tx, state, chainparams, nextBlockHeight, nullptr, fnIsInitialBlockDownload))
     {
         if (state.IsRejectCode(REJECT_MISSING_INPUTS))
         {

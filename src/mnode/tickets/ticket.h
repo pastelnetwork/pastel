@@ -12,6 +12,7 @@
 #include <consensus/validation.h>
 #include <primitives/transaction.h>
 #include <mnode/tickets/ticket-types.h>
+#include <chain.h>
 
 typedef enum class _TICKET_VALIDATION_STATE : uint8_t
 {
@@ -110,7 +111,7 @@ public:
      *   ex.: address has enough coins for registration
      * else - validate ticket in general
      */
-    virtual ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept = 0; 
+    virtual ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev = nullptr) const noexcept = 0; 
     // stored ticket version
     short GetStoredVersion() const noexcept { return m_nVersion; }
     const std::string GetTxId() const noexcept { return m_txid; }
@@ -180,7 +181,7 @@ public:
     void SetBlock(const uint32_t nBlockHeight) noexcept { m_nBlock = nBlockHeight; }
 
     virtual CAmount GetStorageFee() const noexcept { return 0; }
-    virtual CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const { return 0; }
+    virtual CAmount GetExtraOutputs(v_txouts& outputs, const CBlockIndex *pindexPrev = nullptr) const { return 0; }
 
     // ticket object serialization/deserialization
     virtual void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) = 0;
@@ -241,5 +242,6 @@ protected:
     }
 };
 
-using PastelTickets_t = std::vector<std::unique_ptr<CPastelTicket>>;
+using PastelTicketPtr = std::unique_ptr<CPastelTicket>;
+using PastelTickets_t = std::vector<PastelTicketPtr>;
 

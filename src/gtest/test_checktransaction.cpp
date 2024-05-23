@@ -118,7 +118,7 @@ TEST(checktransaction_tests, bad_txns_oversize)
 
         // ... but fails contextual ones!
         EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-txns-oversize", false, Ne(""))).Times(1);
-        EXPECT_FALSE(ContextualCheckTransaction(tx, state, Params(), 1));
+        EXPECT_FALSE(ContextualCheckTransaction(tx, state, Params(), 1, nullptr, fnIsInitialBlockDownload));
     }
 
     {
@@ -135,7 +135,7 @@ TEST(checktransaction_tests, bad_txns_oversize)
 
         MockCValidationState state(TxOrigin::UNKNOWN);
         EXPECT_TRUE(CheckTransactionWithoutProofVerification(tx, state));
-        EXPECT_TRUE(ContextualCheckTransaction(tx, state, Params(), 1));
+        EXPECT_TRUE(ContextualCheckTransaction(tx, state, Params(), 1, nullptr, fnIsInitialBlockDownload));
 
         // Revert to default
         UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -519,7 +519,7 @@ TEST(checktransaction_tests, overwinter_version_high)
     UNSAFE_CTransaction tx(mtx);
     MockCValidationState state(TxOrigin::MINED_BLOCK);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "bad-tx-overwinter-version-too-high", false, Ne(""))).Times(1);
-    ContextualCheckTransaction(tx, state, Params(), 1);
+    ContextualCheckTransaction(tx, state, Params(), 1, nullptr, fnIsInitialBlockDownload);
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
@@ -559,16 +559,16 @@ TEST(checktransaction_tests, overwinter_not_active)
     // mempool (and thus not mined), DoS ban score should be zero, else 10
     const auto& chainparams = Params();
     EXPECT_CALL(state, DoS(0, false, REJECT_INVALID, "tx-overwinter-not-active", false, Ne(""))).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, [](const Consensus::Params &) { return true; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, nullptr, [](const Consensus::Params &) { return true; });
     EXPECT_CALL(state, DoS(10, false, REJECT_INVALID, "tx-overwinter-not-active", false, Ne(""))).Times(1);
-    ContextualCheckTransaction(tx, state, chainparams, 0, [](const Consensus::Params&) { return false; });
+    ContextualCheckTransaction(tx, state, chainparams, 0, nullptr, [](const Consensus::Params&) { return false; });
 
     MockCValidationState state1(TxOrigin::MINED_BLOCK);
     // for transactions that have been mined in a block, DoS ban score should always be 100.
     EXPECT_CALL(state1, DoS(100, false, REJECT_INVALID, "tx-overwinter-not-active", false, Ne(""))).Times(1);
-    ContextualCheckTransaction(tx, state1, chainparams, 0, [](const Consensus::Params&) { return true; });
+    ContextualCheckTransaction(tx, state1, chainparams, 0, nullptr, [](const Consensus::Params&) { return true; });
     EXPECT_CALL(state1, DoS(100, false, REJECT_INVALID, "tx-overwinter-not-active", false, Ne(""))).Times(1);
-    ContextualCheckTransaction(tx, state1, chainparams, 0, [](const Consensus::Params&) { return false; });
+    ContextualCheckTransaction(tx, state1, chainparams, 0, nullptr, [](const Consensus::Params&) { return false; });
 }
 
 // This tests a transaction without the fOverwintered flag set, against the Overwinter consensus rule set.
@@ -586,7 +586,7 @@ TEST(checktransaction_tests, overwinter_flag_not_set)
     CTransaction tx(mtx);
     MockCValidationState state(TxOrigin::MINED_BLOCK);
     EXPECT_CALL(state, DoS(100, false, REJECT_INVALID, "tx-overwintered-flag-not-set", false, Ne(""))).Times(1);
-    ContextualCheckTransaction(tx, state, Params(), 1);
+    ContextualCheckTransaction(tx, state, Params(), 1, nullptr, fnIsInitialBlockDownload);
 
     // Revert to default
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);

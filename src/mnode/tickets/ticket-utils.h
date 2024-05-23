@@ -30,15 +30,17 @@
  * \param sReferredItemTicketDescription - description of the referred item ticket
  * \param nCallDepth - current common_ticket_validation function call depth
  * \param ticketPriceInPSL - amount in PSL to pay for registration
+ * \param pindexPrev - previous block index
  * \return ticket validation status and error message if any
  */
 template <class T, typename F>
 ticket_validation_t common_ticket_validation(
     const T& ticket, const TxOrigin txOrigin, const std::string& strReferredItemTxId, 
-    std::unique_ptr<CPastelTicket>& referredItemTicket, F fValidation,
+    PastelTicketPtr& referredItemTicket, F fValidation,
     const std::string& sThisTicketDescription, 
     const std::string& sReferredItemTicketDescription, 
-    const uint32_t nCallDepth, const CAmount ticketPriceInPSL) noexcept
+    const uint32_t nCallDepth, const CAmount ticketPriceInPSL,
+    const CBlockIndex *pindexPrev = nullptr) noexcept
 {
     // default is invalid state
     ticket_validation_t tv;
@@ -69,9 +71,10 @@ ticket_validation_t common_ticket_validation(
             break;
         // B.2 Get ticket pointed by txid. This is either Activation, Action Activation or Transfer tickets (Offer, Accept, Transfer)
         std::string sGetError;
+        uint256 referredItemBlockHash;
         try
         {
-            referredItemTicket = masterNodeCtrl.masternodeTickets.GetTicket(referredItemTxId);
+            referredItemTicket = masterNodeCtrl.masternodeTickets.GetTicket(referredItemTxId, &referredItemBlockHash, pindexPrev);
         } catch (const std::exception& ex)
         {
             sGetError = ex.what();
@@ -146,7 +149,7 @@ ticket_validation_t common_ticket_validation(
         }
 
         // D.3 Validate referred item ticket
-        const auto referredItemTV = referredItemTicket->IsValid(TxOrigin::UNKNOWN, nCallDepth + 1);
+        const auto referredItemTV = referredItemTicket->IsValid(TxOrigin::UNKNOWN, nCallDepth + 1, pindexPrev);
         if (referredItemTV.IsNotValid())
         {
             tv.state = referredItemTV.state;

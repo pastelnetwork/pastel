@@ -62,9 +62,10 @@ void CollectionActivateTicket::sign(SecureString&& strKeyPass)
 * 
 * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
 * \param nCallDepth - function call depth
+* \param pindexPrev - previous block index
 * \return ticket validation state and error message if any
 */
-ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -87,12 +88,13 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
 			}
 		}
         // 0. Common validations
-        unique_ptr<CPastelTicket> pastelTicket;
+        PastelTicketPtr pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, txOrigin, m_regTicketTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::CollectionReg); },
             GetTicketDescription(), CollectionRegTicket::GetTicketDescription(), nCallDepth,
-            TicketPricePSL(nActiveChainHeight) + static_cast<CAmount>(getAllMNFeesPSL())); // fee for ticket + all MN storage fees (percent from storage fee)
+            TicketPricePSL(nActiveChainHeight) + static_cast<CAmount>(getAllMNFeesPSL()), // fee for ticket + all MN storage fees (percent from storage fee)
+            pindexPrev);
 
         if (commonTV.IsNotValid())
         {
@@ -107,7 +109,7 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
         // Check the Activation ticket for that Registration ticket is already in the database
         // (ticket transaction replay attack protection)
         CollectionActivateTicket existingTicket;
-        if (FindTicketInDb(m_regTicketTxId, existingTicket))
+        if (FindTicketInDb(m_regTicketTxId, existingTicket, pindexPrev))
         {
             if (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
                 !existingTicket.IsSameSignature(m_signature) || // check if this is not the same ticket!!
@@ -176,9 +178,10 @@ ticket_validation_t CollectionActivateTicket::IsValid(const TxOrigin txOrigin, c
  *      - mn3 (20% of 90% - 18% of all storage fee)
  * 
  * \param outputs - vector of outputs: CTxOut
+ * \param pindexPrev - previous block index
  * \return - total amount of extra outputs in patoshis
  */
-CAmount CollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
+CAmount CollectionActivateTicket::GetExtraOutputs(v_txouts& outputs, const CBlockIndex *pindexPrev) const
 {
     const auto ticket = CPastelTicketProcessor::GetTicket(m_regTicketTxId, TicketID::CollectionReg);
     const auto pCollRegTicket = dynamic_cast<const CollectionRegTicket*>(ticket.get());
@@ -192,7 +195,7 @@ CAmount CollectionActivateTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     {
         const auto mnPastelID = pCollRegTicket->getPastelID(mn);
         CPastelIDRegTicket mnPastelIDticket;
-        if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket))
+        if (!CPastelIDRegTicket::FindTicketInDb(mnPastelID, mnPastelIDticket, pindexPrev))
             throw runtime_error(strprintf(
                 "The Pastel ID [%s] from the %s ticket with this txid [%s] is not in the blockchain or is invalid",
                 mnPastelID, CollectionRegTicket::GetTicketDescription(), m_regTicketTxId));
@@ -235,7 +238,7 @@ json CollectionActivateTicket::getJSON(const bool bDecodeProperties) const noexc
         if (pCollRegTicket)
         {
             const auto nActiveChainHeight = gl_nChainHeight + 1;
-            nCollectionItemCount = CountItemsInCollection(GetTxId(), pCollRegTicket->getItemType(), true);
+            nCollectionItemCount = CountItemsInCollection(GetTxId(), pCollRegTicket->getItemType(), true, nullptr);
             bIsCollectionFull = nCollectionItemCount >= pCollRegTicket->getMaxCollectionEntries();
             bIsCollectionExpiredByHeight = nActiveChainHeight > pCollRegTicket->getCollectionFinalAllowedBlockHeight();
 			sCollectionState = bIsCollectionFull || bIsCollectionExpiredByHeight ? "finalized" : "in_process";
@@ -278,20 +281,28 @@ string CollectionActivateTicket::ToJSON(const bool bDecodeProperties) const noex
     return getJSON(bDecodeProperties).dump(4);
 }
 
-bool CollectionActivateTicket::FindTicketInDb(const string& key, CollectionActivateTicket& ticket)
+/**
+ * Find Collection Activation ticket in DB.
+ * 
+ * \param key - Collection Registration ticket txid
+ * \param ticket - ticket to fill with data
+ * \param pindexPrev - previous block index
+ * \return true if ticket found, false otherwise
+ */
+bool CollectionActivateTicket::FindTicketInDb(const string& key, CollectionActivateTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.setRegTxId(key);
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
-CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByMVKey(const std::string& sMVKey)
+CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionActivateTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionActivateTicket>(sMVKey, pindexPrev);
 }
 
 CollectionActivateTickets_t CollectionActivateTicket::FindAllTicketByCreatorHeight(const uint32_t nCreatorHeight)
 {
-    return FindAllTicketByMVKey(std::to_string(nCreatorHeight));
+    return FindAllTicketByMVKey(std::to_string(nCreatorHeight), nullptr);
 }
 
 bool CollectionActivateTicket::CheckTicketExistByCollectionTicketID(const std::string& regTicketTxId)
@@ -307,15 +318,17 @@ bool CollectionActivateTicket::CheckTicketExistByCollectionTicketID(const std::s
  * \param sCollectionActTxid - txid of the collection activate ticket
  * \param itemType - collection item type
  * \param bActivatedOnly - count only activated items (items with activation ticket)
+ * \param pindexPrev - previous block index
  * \return number of items in the collection
  */
-uint32_t CollectionActivateTicket::CountItemsInCollection(const std::string& sCollectionActTxid, const COLLECTION_ITEM_TYPE itemType, bool bActivatedOnly)
+uint32_t CollectionActivateTicket::CountItemsInCollection(const std::string& sCollectionActTxid, 
+    const COLLECTION_ITEM_TYPE itemType, bool bActivatedOnly, const CBlockIndex *pindexPrev)
 {
     uint32_t nCollectionItemCount = 0;
     const uint32_t nActiveChainHeight = gl_nChainHeight + 1;
     if (itemType == COLLECTION_ITEM_TYPE::SENSE)
     {
-        masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(sCollectionActTxid,
+        masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(sCollectionActTxid, pindexPrev,
             [&](const CActionRegTicket& regTicket) -> bool
             {
                 if (bActivatedOnly)
@@ -332,7 +345,7 @@ uint32_t CollectionActivateTicket::CountItemsInCollection(const std::string& sCo
     } 
     else if (itemType == COLLECTION_ITEM_TYPE::NFT)
     {
-        masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(sCollectionActTxid,
+        masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(sCollectionActTxid, pindexPrev,
             [&](const CNFTRegTicket& regTicket) -> bool
             {
                 if (bActivatedOnly)
@@ -354,11 +367,12 @@ uint32_t CollectionActivateTicket::CountItemsInCollection(const std::string& sCo
  * Get collection ticket by txid.
  *
  * \param txid - collection ticket transaction id
+ * \param pindexPrev - previous block index (optional)
  * \return collection ticket
  */
-unique_ptr<CPastelTicket> CollectionActivateTicket::GetCollectionTicket(const uint256& txid)
+PastelTicketPtr CollectionActivateTicket::GetCollectionTicket(const uint256& txid, const CBlockIndex* pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.GetTicket(txid);
+    return masterNodeCtrl.masternodeTickets.GetTicket(txid, nullptr, pindexPrev);
 }
 
 /**
@@ -367,11 +381,13 @@ unique_ptr<CPastelTicket> CollectionActivateTicket::GetCollectionTicket(const ui
  * \param error - return error if collection not found
  * \param sRegTxId - collection registration ticket txid
  * \param bInvalidTxId - set to true if collection txid is invalid
+ * \param pindexPrev - previous block index
  * \return nullopt if collection txid is invalid, false - if collection ticket not found
  */
-unique_ptr<CPastelTicket> CollectionActivateTicket::RetrieveCollectionRegTicket(string& error, const string& sRegTxId, bool& bInvalidTxId) noexcept
+PastelTicketPtr CollectionActivateTicket::RetrieveCollectionRegTicket(string& error, const string& sRegTxId, 
+    bool& bInvalidTxId, const CBlockIndex* pindexPrev) noexcept
 {
-    unique_ptr<CPastelTicket> collectionRegTicket;
+    PastelTicketPtr collectionRegTicket;
     bInvalidTxId = false;
     do
     {
@@ -386,7 +402,7 @@ unique_ptr<CPastelTicket> CollectionActivateTicket::RetrieveCollectionRegTicket(
         // get the collection registration ticket pointed by txid
         try
         {
-            collectionRegTicket = GetCollectionTicket(collection_reg_txid);
+            collectionRegTicket = GetCollectionTicket(collection_reg_txid, pindexPrev);
         }
         catch (const std::exception& ex)
         {

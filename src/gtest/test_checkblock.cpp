@@ -5,6 +5,7 @@
 #include <mock_validation_state.h>
 
 #include <main.h>
+#include <accept_to_mempool.h>
 #include <key_io.h>
 #include <zcash/Proof.hpp>
 #include <clientversion.h>
@@ -121,7 +122,7 @@ protected:
 
         // We now expect this to be a valid block.
         MockCValidationState state(TxOrigin::MINED_BLOCK);
-        EXPECT_TRUE(ContextualCheckBlock(block, state, chainparams, &indexPrev));
+        EXPECT_TRUE(ContextualCheckBlock(block, state, chainparams, static_cast<const CBlockIndex *>(&indexPrev)));
     }
 
     // Expects a height-1 block containing a given transaction to fail

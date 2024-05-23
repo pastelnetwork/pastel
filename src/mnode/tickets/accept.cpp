@@ -45,7 +45,7 @@ string CAcceptTicket::ToStr() const noexcept
 * \param nCallDepth - function call depth
 * \return true if the ticket is valid
 */
-ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -69,12 +69,12 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
         }
 
         // 0. Common validations
-        unique_ptr<CPastelTicket> offerTicket;
+        PastelTicketPtr offerTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, txOrigin, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), COfferTicket::GetTicketDescription(), nCallDepth, 
-            m_nPricePSL + TicketPricePSL(nActiveChainHeight));
+            m_nPricePSL + TicketPricePSL(nActiveChainHeight), pindexPrev);
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -88,7 +88,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
         // or if there are, it is older then 1h and there is no Transfer ticket for it
         // acceptTicket->ticketBlock <= height+24 (2.5m per block -> 24blocks/per hour) - nMaxAcceptTicketAge
         CAcceptTicket existingAcceptTicket;
-        if (CAcceptTicket::FindTicketInDb(m_offerTxId, existingAcceptTicket))
+        if (CAcceptTicket::FindTicketInDb(m_offerTxId, existingAcceptTicket, pindexPrev))
         {
             // fixed: new Accept ticket is not created due to the next condition
             //if (bPreReg)
@@ -104,7 +104,7 @@ ticket_validation_t CAcceptTicket::IsValid(const TxOrigin txOrigin, const uint32
                 !existingAcceptTicket.IsTxId(m_txid))
             {
                 //check transfer ticket
-                if (CTransferTicket::CheckTransferTicketExistByAcceptTicket(existingAcceptTicket.m_txid))
+                if (CTransferTicket::CheckTransferTicketExistByAcceptTicket(existingAcceptTicket.m_txid, pindexPrev))
                 {
                     tv.errorMsg = strprintf(
                         "The %s ticket you are trying to accept [%s] is already processed",
@@ -232,10 +232,18 @@ string CAcceptTicket::ToJSON(const bool bDecodeProperties) const noexcept
     return getJSON(bDecodeProperties).dump(4);
 }
 
-bool CAcceptTicket::FindTicketInDb(const string& key, CAcceptTicket& ticket)
+/**
+ * Find Accept ticket in the Ticket DB.
+ * 
+ * \param key - Offer ticket txid
+ * \param ticket - found Accept ticket
+ * \param pindexPrev - previous block index
+ * \return true if the ticket is found, false otherwise
+ */
+bool CAcceptTicket::FindTicketInDb(const string& key, CAcceptTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.m_offerTxId = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
 bool CAcceptTicket::CheckAcceptTicketExistByOfferTicket(const string& offerTxnId)
@@ -245,7 +253,7 @@ bool CAcceptTicket::CheckAcceptTicketExistByOfferTicket(const string& offerTxnId
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
-AcceptTickets_t CAcceptTicket::FindAllTicketByMVKey(const string& sMVKey)
+AcceptTickets_t CAcceptTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex* pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CAcceptTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CAcceptTicket>(sMVKey, pindexPrev);
 }

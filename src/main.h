@@ -413,12 +413,12 @@ bool ContextualCheckBlockHeader(
     CValidationState& state,
     const CChainParams& chainparams,
     const bool bGenesisBlock,
-    CBlockIndex *pindexPrev);
+    const CBlockIndex *pindexPrev);
 bool ContextualCheckBlock(
     const CBlock& block,
     CValidationState& state,
     const CChainParams& chainparams,
-    CBlockIndex *pindexPrev);
+    const CBlockIndex *pindexPrev);
 
 /** Check a block is completely valid from start to finish (only works on top of our current best block, with cs_main held) */
 bool TestBlockValidity(

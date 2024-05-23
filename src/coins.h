@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <assert.h>
@@ -74,7 +74,7 @@ public:
     bool fCoinBase;
 
     //! unspent transaction outputs; spent outputs are .IsNull(); spent outputs at the end of the array are dropped
-    std::vector<CTxOut> vout;
+    v_txouts vout;
 
     //! at which height this transaction was included in the active block chain
     int nHeight;
@@ -98,7 +98,7 @@ public:
 
     void Clear() {
         fCoinBase = false;
-        std::vector<CTxOut>().swap(vout);
+        v_txouts().swap(vout);
         nHeight = 0;
         nVersion = 0;
     }
@@ -111,7 +111,7 @@ public:
         while (vout.size() > 0 && vout.back().IsNull())
             vout.pop_back();
         if (vout.empty())
-            std::vector<CTxOut>().swap(vout);
+            v_txouts().swap(vout);
     }
 
     void ClearUnspendable() {

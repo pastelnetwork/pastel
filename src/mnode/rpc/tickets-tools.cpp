@@ -497,7 +497,7 @@ As json rpc
         nMultiSigOutputsCount, nMultiSigTxTotalFee, true, true))
 		throw JSONRPCError(RPC_DESERIALIZATION_ERROR,
             strprintf("Failed to parse raw hex transaction data. %s", error));
-    unique_ptr<CPastelTicket> ticket = CPastelTicketProcessor::CreateTicket(ticket_id);
+    PastelTicketPtr ticket = CPastelTicketProcessor::CreateTicket(ticket_id);
     if (!ticket)
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR,
             			strprintf("Failed to create ticket object for ticket id %hhu", to_integral_type<TicketID>(ticket_id)));

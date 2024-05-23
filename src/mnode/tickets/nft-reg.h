@@ -134,7 +134,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sNFTTicket; }
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
 
     // getters for ticket fields
     uint16_t getTicketVersion() const noexcept { return m_nNFTTicketVersion; }
@@ -178,10 +178,10 @@ public:
 
     static CNFTRegTicket Create(std::string &&nft_ticket, const std::string& signatures, std::string &&sPastelID, 
         SecureString&& strKeyPass, std::string &&label, const CAmount storageFee);
-    static bool FindTicketInDb(const std::string& key, CNFTRegTicket& ticket);
-    static bool CheckIfTicketInDb(const std::string& key);
-    static NFTRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
-    uint32_t CountItemsInCollection() const override;
+    static bool FindTicketInDb(const std::string& key, CNFTRegTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
+    static bool CheckIfTicketInDb(const std::string& key, const CBlockIndex* pindexPrev = nullptr);
+    static NFTRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
+    uint32_t CountItemsInCollection(const CBlockIndex *pindexPrev = nullptr) const override;
     static CAmount GetNftFee(const size_t nImageDataSizeInMB, const size_t nTicketDataSizeInBytes,
         const uint32_t nChainHeight = std::numeric_limits<uint32_t>::max()) noexcept;
 

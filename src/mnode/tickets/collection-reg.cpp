@@ -243,9 +243,10 @@ bool CollectionRegTicket::CanAcceptTicket(const CPastelTicket &ticket) const noe
 * 
 * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
 * \param nCallDepth - function call depth
+* \param pindexPrev - previous block index
 * \return true if the ticket is valid
 */
-ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -274,8 +275,8 @@ ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const 
             // check if collection ticket is already in the blockchain:
             // - search by key
             // - search by collection name
-            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this) ||
-                masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(*this))
+            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this, pindexPrev) ||
+                masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(*this, pindexPrev))
             {
                 tv.errorMsg = strprintf(
                     "This %s collection '%s' is already registered in blockchain [key=%s; label=%s]", 
@@ -345,7 +346,7 @@ ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const 
 
         // (ticket transaction replay attack protection)
         CollectionRegTicket existingTicket;
-        if (FindTicketInDb(m_keyOne, existingTicket) &&
+        if (FindTicketInDb(m_keyOne, existingTicket, pindexPrev) &&
             (!existingTicket.IsBlock(m_nBlock) ||
             !existingTicket.IsTxId(m_txid)))
         {
@@ -360,7 +361,7 @@ ticket_validation_t CollectionRegTicket::IsValid(const TxOrigin txOrigin, const 
         }
 
         // B. Something to validate always
-        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCreatorHeight, m_sCollectionTicket);
+        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCreatorHeight, m_sCollectionTicket, pindexPrev);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;
@@ -469,25 +470,29 @@ string CollectionRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
 * 
 * \param key - lookup key, used in a search by primary key
 * \param ticket - returns ticket if found
+* \param pindexPrev - previous block index
 * \return true if ticket was found
 */
-bool CollectionRegTicket::FindTicketInDb(const string& key, CollectionRegTicket& ticket)
+bool CollectionRegTicket::FindTicketInDb(const string& key, CollectionRegTicket& ticket,
+    const CBlockIndex *pindexPrev)
 {
     ticket.m_keyOne = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
 /**
  * Find ticket in DB by collection name (secondary key).
  * 
  * \param sCollectionName - collection name
+ * \param pindexPrev - previous block index
  * \param ticket - returns ticket if found
- * \return  
+ * \return true if ticket was found
  */
-bool CollectionRegTicket::FindTicketInDbByCollectionName(const std::string& sCollectionName, CollectionRegTicket& ticket)
+bool CollectionRegTicket::FindTicketInDbByCollectionName(const std::string& sCollectionName, 
+    CollectionRegTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.setCollectionName(sCollectionName);
-    return masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket, pindexPrev);
 }
 
 /**
@@ -496,14 +501,14 @@ bool CollectionRegTicket::FindTicketInDbByCollectionName(const std::string& sCol
 * \param key - lookup key, used in a search by primary key
 * \return true if ticket exists in a DB
 */
-bool CollectionRegTicket::CheckIfTicketInDb(const string& key)
+bool CollectionRegTicket::CheckIfTicketInDb(const string& key, const CBlockIndex* pindexPrev)
 {
     CollectionRegTicket ticket;
     ticket.m_keyOne = key;
-    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket, pindexPrev);
 }
 
-CollectionRegTickets_t CollectionRegTicket::FindAllTicketByMVKey(const string& sMVKey)
+CollectionRegTickets_t CollectionRegTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionRegTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CollectionRegTicket>(sMVKey, pindexPrev);
 }

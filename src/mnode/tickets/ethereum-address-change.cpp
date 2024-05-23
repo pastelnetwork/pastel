@@ -65,13 +65,14 @@ string CChangeEthereumAddressTicket::ToStr() const noexcept
 }
 
 /**
- * Validate Pastel ticket.
+ * Validate Etherium Address ticket.
  * 
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
+ * \param pindexPrev - previous block index
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CChangeEthereumAddressTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CChangeEthereumAddressTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -79,7 +80,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const TxOrigin txOrigi
     {
         const bool bPreReg = isPreReg(txOrigin);
         CChangeEthereumAddressTicket existingTicket;
-        const bool bTicketExists = FindTicketInDb(ethereumAddress, existingTicket);
+        const bool bTicketExists = FindTicketInDb(ethereumAddress, existingTicket, pindexPrev);
         // A. Something to check ONLY before the ticket made into transaction
         if (isLocalPreReg(txOrigin))
         {
@@ -130,7 +131,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const TxOrigin txOrigi
         // D. Check if this Pastel ID hasn't changed Ethereum Address in last 24 hours.
         CChangeEthereumAddressTicket _ticket;
         _ticket.pastelID = pastelID;
-        const bool bFoundTicketBySecondaryKey = masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket);
+        const bool bFoundTicketBySecondaryKey = masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(_ticket, pindexPrev);
         if (bFoundTicketBySecondaryKey)
         {
             const unsigned int height = (bPreReg || IsBlock(0)) ? nActiveChainHeight : m_nBlock;
@@ -179,15 +180,24 @@ CChangeEthereumAddressTicket CChangeEthereumAddressTicket::Create(string _pastel
     return ticket;
 }
 
-bool CChangeEthereumAddressTicket::FindTicketInDb(const string& key, CChangeEthereumAddressTicket& ticket)
+/**
+ * Find EthereumAddress ticket in DB.
+ * 
+ * \param key - Ethereum Address
+ * \param ticket - ticket to fill with found data
+ * \param pindexPrev - previous block index
+ * \return true if ticket found, false otherwise
+ */
+bool CChangeEthereumAddressTicket::FindTicketInDb(const string& key, CChangeEthereumAddressTicket& ticket,
+    const CBlockIndex *pindexPrev)
 {
     ticket.ethereumAddress = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
-ChangeEthereumAddressTickets_t CChangeEthereumAddressTicket::FindAllTicketByMVKey(const string& sMVKey)
+ChangeEthereumAddressTickets_t CChangeEthereumAddressTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeEthereumAddressTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CChangeEthereumAddressTicket>(sMVKey, pindexPrev);
 }
 
 bool CChangeEthereumAddressTicket::isEthereumAddressInvalid(const string& ethereumAddress, string& error)

@@ -426,12 +426,14 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
                     {
                         auto pindexWalk = pindexBestHeader->GetAncestor(chainTip->nHeight + 7);
                         bool bHaveAllBlocksData = true;
+                        int nBlockWithoutData = -1;
                         while (pindexWalk && pindexWalk != pLastCommonAncestorBlockIndex)
                         {
                             if (!(pindexWalk->nStatus & BLOCK_HAVE_DATA) && 
                                 (m_BlockCacheMap.find(pindexWalk->GetBlockHash()) == m_BlockCacheMap.cend()))
                             {
                                 bHaveAllBlocksData = false;
+                                nBlockWithoutData = pindexWalk->nHeight;
                                 break;
                             }
                             pindexWalk = pindexWalk->pprev;
@@ -441,6 +443,12 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
                             m_bValidForkDetected = true;
                             LogFnPrintf("*** VALID FORK DETECTED, best block height=%u (%s)",
                                 pindexBestHeader->nHeight, pindexBestHeader->GetBlockHashString());
+                        }
+                        else
+                        {
+                            LogFnPrintf("not all blocks data for the forked chain is available (checked blocks: %d-%d), first block without data: %d",
+								chainTip->nHeight, chainTip->nHeight + 7, nBlockWithoutData);
+							break;
                         }
                     }
                 }

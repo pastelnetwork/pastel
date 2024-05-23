@@ -70,7 +70,7 @@ public:
 
     // get ticket price in PSL
     CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return m_fee; }
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     /**
      * Disable changing username for this number of blocks since last change.
      * 
@@ -101,8 +101,8 @@ public:
     }
 
     static CChangeUsernameTicket Create(std::string &&sPastelID, std::string &&sUserName, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket);
-    static ChangeUsernameTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static bool FindTicketInDb(const std::string& key, CChangeUsernameTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
+    static ChangeUsernameTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
 
 
     /** Some general checks to see if the username is bad. Below cases will be considered as bad Username
