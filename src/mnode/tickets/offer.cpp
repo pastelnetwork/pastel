@@ -130,9 +130,10 @@ OFFER_TICKET_STATE COfferTicket::checkValidState(const uint32_t nHeight) const n
  * 
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
+ * \param pindexPrev - previous block index
  * \return true if the ticket is valid
  */
-ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -140,7 +141,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
     {
         const bool bPreReg = isPreReg(txOrigin);
         // 0. Common validations
-        unique_ptr<CPastelTicket> itemTicket;
+        PastelTicketPtr itemTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, txOrigin, m_itemTxId, itemTicket,
             [](const TicketID tid) noexcept
@@ -154,7 +155,8 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
                 */
                 return !is_enum_any_of(tid, TicketID::Activate, TicketID::ActionActivate, TicketID::Transfer);
             },
-            GetTicketDescription(), "activation or transfer", nCallDepth, TicketPricePSL(nActiveChainHeight));
+            GetTicketDescription(), "activation or transfer", nCallDepth, TicketPricePSL(nActiveChainHeight),
+            pindexPrev);
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -200,7 +202,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
         // check if this Offer ticket is already in DB
         bool bTicketFoundInDB = false;
         COfferTicket existingTicket;
-        if (COfferTicket::FindTicketInDb(KeyOne(), existingTicket))
+        if (COfferTicket::FindTicketInDb(KeyOne(), existingTicket, pindexPrev))
         {
             if (existingTicket.IsSameSignature(m_signature) &&
                 existingTicket.IsBlock(m_nBlock) &&
@@ -211,10 +213,10 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
         size_t nTotalCopies{0};
         TicketID originalItemType = itemTicket->ID(); // to be defined for Transfer ticket
         // Verify the item is not already transferred or gifted
-        const auto fnVerifyAvailableCopies = [this, &originalItemType](const string& strTicket, const size_t nTotalCopies) -> ticket_validation_t
+        const auto fnVerifyAvailableCopies = [this, &originalItemType, &pindexPrev](const string& strTicket, const size_t nTotalCopies) -> ticket_validation_t
         {
             ticket_validation_t tv;
-            const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByMVKey(m_itemTxId);
+            const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByMVKey(m_itemTxId, pindexPrev);
             const size_t nTransferredCopies = vExistingTransferTickets.size();
             do
             {
@@ -256,7 +258,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
                 break;
             }
             //  Get ticket pointed by Action Registration txid
-            const auto ticket = masterNodeCtrl.masternodeTickets.GetTicket(pActionActTicket->getRegTxId(), TicketID::ActionReg);
+            const auto ticket = masterNodeCtrl.masternodeTickets.GetTicket(pActionActTicket->getRegTxId(), TicketID::ActionReg, pindexPrev);
             if (!ticket)
             {
                 tv.errorMsg = strprintf(
@@ -306,7 +308,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
                 break;
             }
             //  Get ticket pointed by NFT Registration txid
-            const auto ticket = masterNodeCtrl.masternodeTickets.GetTicket(pNftActTicket->getRegTxId(), TicketID::NFT);
+            const auto ticket = masterNodeCtrl.masternodeTickets.GetTicket(pNftActTicket->getRegTxId(), TicketID::NFT, pindexPrev);
             if (!ticket)
             {
                 tv.errorMsg = strprintf(
@@ -361,7 +363,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
             { //else if this is already confirmed ticket - skip this check, otherwise it will failed
                 PastelTickets_t vTicketChain;
                 // walk back trading chain to find original ticket
-                if (!masterNodeCtrl.masternodeTickets.WalkBackTradingChain(m_itemTxId, vTicketChain, true, tv.errorMsg))
+                if (!masterNodeCtrl.masternodeTickets.WalkBackTradingChain(m_itemTxId, vTicketChain, true, tv.errorMsg, pindexPrev))
                 {
                     tv.errorMsg = strprintf(
                         "Failed to walkback trading chain. %s",
@@ -398,7 +400,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
         // (ticket transaction replay attack protection)
         // If found similar ticket, replacement is possible if allowed
         // Can be a few Offer tickets
-        const auto vExistingOfferTickets = COfferTicket::FindAllTicketByMVKey(m_itemTxId);
+        const auto vExistingOfferTickets = COfferTicket::FindAllTicketByMVKey(m_itemTxId, pindexPrev);
         ticket_validation_t tv1;
         tv1.setValid();
         for (const auto& t : vExistingOfferTickets)
@@ -406,7 +408,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
             if (t.IsBlock(m_nBlock) || t.IsTxId(m_txid) || t.m_nCopyNumber != m_nCopyNumber)
                 continue;
 
-            if (CTransferTicket::CheckTransferTicketExistByOfferTicket(t.m_txid))
+            if (CTransferTicket::CheckTransferTicketExistByOfferTicket(t.m_txid, pindexPrev))
             {
                 tv1.errorMsg = strprintf(
                     "Cannot replace %s ticket - it has been already transferred, txid - [%s], copyNumber [%hu].",
@@ -507,13 +509,21 @@ string COfferTicket::ToJSON(const bool bDecodeProperties) const noexcept
     return getJSON(bDecodeProperties).dump(4);
 }
 
-bool COfferTicket::FindTicketInDb(const string& key, COfferTicket& ticket)
+/**
+ * Find Offer ticket in DB.
+ * 
+ * \param key - <txid>:<copy_number> key
+ * \param ticket - offer ticket to fill
+ * \param pindexPrev - previous block index
+ * \return true if the ticket is found
+ */
+bool COfferTicket::FindTicketInDb(const string& key, COfferTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.key = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
-OfferTickets_t COfferTicket::FindAllTicketByMVKey(const string& sMVKey)
+OfferTickets_t COfferTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<COfferTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<COfferTicket>(sMVKey, pindexPrev);
 }

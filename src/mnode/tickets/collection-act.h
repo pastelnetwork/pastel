@@ -71,7 +71,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     CAmount GetStorageFee() const noexcept override { return m_storageFee; }
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
     // sign the ticket with the PastelID's private key - creates signature
@@ -112,19 +112,21 @@ public:
     {
         return {ALL_MN_FEE, PRINCIPAL_MN_FEE_SHARE, OTHER_MN_FEE_SHARE};
     }
-    CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
+    CAmount GetExtraOutputs(v_txouts& outputs, const CBlockIndex *pindexPrev = nullptr) const override;
 
     static CollectionActivateTicket Create(std::string &&regTicketTxId, int _creatorHeight, int _storageFee, std::string &&sPastelID, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CollectionActivateTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, CollectionActivateTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
 
-    static CollectionActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static CollectionActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
     static CollectionActivateTickets_t FindAllTicketByCreatorHeight(const uint32_t nCreatorHeight);
     static bool CheckTicketExistByCollectionTicketID(const std::string& regTicketTxId);
-    static uint32_t CountItemsInCollection(const std::string& sCollectionActTxid, const COLLECTION_ITEM_TYPE itemType, bool bActivatedOnly = true);
+    static uint32_t CountItemsInCollection(const std::string& sCollectionActTxid, const COLLECTION_ITEM_TYPE itemType, 
+        bool bActivatedOnly = true, const CBlockIndex* pindexPrev = nullptr);
     // retrieve referred collection registration ticket
-    static std::unique_ptr<CPastelTicket> RetrieveCollectionRegTicket(std::string& error, const std::string& sRegTxId, bool& bInvalidTxId) noexcept;
+    static PastelTicketPtr RetrieveCollectionRegTicket(std::string& error, const std::string& sRegTxId, 
+        bool& bInvalidTxId, const CBlockIndex* pindexPrev = nullptr) noexcept;
     // get collection ticket by txid
-    static std::unique_ptr<CPastelTicket> GetCollectionTicket(const uint256& txid);
+    static PastelTicketPtr GetCollectionTicket(const uint256& txid, const CBlockIndex* pindexPrev = nullptr);
 
 protected:
     std::string m_sPastelID;     // Pastel ID of the Collection's creator

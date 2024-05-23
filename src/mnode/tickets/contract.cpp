@@ -30,7 +30,15 @@ void CContractTicket::Clear() noexcept
 	m_sSubType.clear();
 }
 
-ticket_validation_t CContractTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+/**
+* Validate contract ticket.
+* 
+* \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
+* \param nCallDepth - function call depth
+* \param pindexPrev - previous block index
+* \return true if the ticket is valid
+*/
+ticket_validation_t CContractTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
 	ticket_validation_t tv;
 	do
@@ -49,7 +57,7 @@ ticket_validation_t CContractTicket::IsValid(const TxOrigin txOrigin, const uint
 		}
 
         CContractTicket tktDB, tktMP;
-		const bool bTicketExistsInDB = FindTicketInDb(m_keyOne, tktDB);
+		const bool bTicketExistsInDB = FindTicketInDb(m_keyOne, tktDB, pindexPrev);
 
 		// initialize Pastel Ticket mempool processor for contract tickets
 		// retrieve mempool transactions with TicketID::Contract tickets
@@ -62,7 +70,7 @@ ticket_validation_t CContractTicket::IsValid(const TxOrigin txOrigin, const uint
 			// Only done after Create
 
             // check that the Contract ticket is already in the blockchain
-            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
+            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this, pindexPrev))
             {
                 tv.errorMsg = strprintf(
                     "This Contract is already registered in blockchain [key=%s; secondary key=%s]",
@@ -101,7 +109,7 @@ ticket_validation_t CContractTicket::IsValid(const TxOrigin txOrigin, const uint
 		{
 			tktDB.Clear();
 			// check if Contract ticket with this secondary key already exists in the database
-			if (FindTicketInDb(m_label, tktDB) &&
+			if (FindTicketInDb(m_label, tktDB, pindexPrev) &&
 				(!tktDB.IsBlock(m_nBlock) || !tktDB.IsTxId(m_txid)))
 			{
 				string message = strprintf(
@@ -126,16 +134,17 @@ ticket_validation_t CContractTicket::IsValid(const TxOrigin txOrigin, const uint
  * 
  * \param key - lookup key, primary or secondary
  * \param ticket - returns ticket if found
+ * \param pindexPrev - previous block index
  * \return true if ticket was found
  */
-bool CContractTicket::FindTicketInDb(const string& key, CContractTicket& ticket)
+bool CContractTicket::FindTicketInDb(const string& key, CContractTicket& ticket, const CBlockIndex *pindexPrev)
 {
 	ticket.m_keyOne = key;
-	if (!masterNodeCtrl.masternodeTickets.FindTicket(ticket))
+	if (!masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev))
 	{
 		ticket.Clear();
 		ticket.m_label = key;
-		if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket))
+		if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket, pindexPrev))
 			return false;
 	}
 	return true;
@@ -146,12 +155,14 @@ bool CContractTicket::FindTicketInDb(const string& key, CContractTicket& ticket)
  * 
  * \param key - secondary key
  * \param ticket - returns ticket if found
+ * \param pindexPrev - previous block index
  * \return true if ticket was found
  */
-bool CContractTicket::FindTicketInDbBySecondaryKey(const std::string& key, CContractTicket& ticket)
+bool CContractTicket::FindTicketInDbBySecondaryKey(const std::string& key, CContractTicket& ticket,
+	const CBlockIndex *pindexPrev)
 {
 	ticket.m_label = key;
-	return masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
+	return masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket, pindexPrev);
 }
 
 /**
@@ -160,16 +171,16 @@ bool CContractTicket::FindTicketInDbBySecondaryKey(const std::string& key, CCont
  * \param key - lookup key, used in a search by primary key
  * \return true if ticket exists in a DB
  */
-bool CContractTicket::CheckIfTicketInDb(const string& key)
+bool CContractTicket::CheckIfTicketInDb(const string& key, const CBlockIndex* pindexPrev)
 {
     CContractTicket ticket;
     ticket.m_keyOne = key;
     return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
 }
 
-ContractTickets_t CContractTicket::FindAllTicketByMVKey(const string& sMVKey)
+ContractTickets_t CContractTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-	return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CContractTicket>(sMVKey);
+	return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CContractTicket>(sMVKey, pindexPrev);
 }
 
 json CContractTicket::getJSON(const bool bDecodeProperties) const noexcept

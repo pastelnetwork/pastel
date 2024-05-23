@@ -122,7 +122,7 @@ As json rpc
             // this could be also collection activation ticket txid
             // search for all NFT registration tickets that belongs to this collection
             NFTActivateTickets_t vTickets;
-            masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(key,
+            masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CNFTRegTicket>(key, nullptr,
                 [&](const CNFTRegTicket& regTicket) -> bool
                 {
                     CNFTActivateTicket actTicket;
@@ -193,7 +193,7 @@ As json rpc
             // this could be also collection activation ticket txid
             // search for all Action registration tickets that belongs to this collection
             ActionActivateTickets_t vTickets;
-            masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(key,
+            masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<CActionRegTicket>(key, nullptr,
                 [&](const CActionRegTicket& regTicket) -> bool
                 {
                     CActionActivateTicket actTicket;

@@ -69,7 +69,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     CAmount GetStorageFee() const noexcept override { return m_storageFee; }
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
     // sign the ticket with the PastelID's private key - creates signature
@@ -111,14 +111,14 @@ public:
         return {ALL_MN_FEE, PRINCIPAL_MN_FEE_SHARE, OTHER_MN_FEE_SHARE};
     }
 
-    CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
+    CAmount GetExtraOutputs(v_txouts& outputs, const CBlockIndex *pindexPrev = nullptr) const override;
 
     static CNFTActivateTicket Create(std::string &&regTicketTxId, int _creatorHeight, int _storageFee, std::string &&sPastelID, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CNFTActivateTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, CNFTActivateTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
 
-    static NFTActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static NFTActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
     static NFTActivateTickets_t FindAllTicketByCreatorHeight(const uint32_t nCreatorHeight);
-    static bool CheckTicketExistByNFTTicketID(const std::string& regTicketTxId);
+    static bool CheckTicketExistByNFTTicketID(const std::string& regTicketTxId, const CBlockIndex* pindexPrev = nullptr);
 
 protected:
     std::string m_sPastelID;     // Pastel ID of the creator

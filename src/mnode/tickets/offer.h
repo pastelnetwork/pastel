@@ -96,7 +96,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
 
     // get ticket price in PSL (2% of the item's asked price)
     CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return std::max<CAmount>(10, m_nAskedPricePSL / 50); }
@@ -149,9 +149,9 @@ public:
         std::string &&sIntendedForPastelID, 
         std::string &&pastelID, 
         SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, COfferTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, COfferTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
 
-    static OfferTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static OfferTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
 
 protected:
     std::string m_itemTxId;  // item activation txid (NFT activation txid, Action activation txid, ...)

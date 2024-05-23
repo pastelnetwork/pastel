@@ -21,7 +21,7 @@ class CP2FMS_TX_Builder
 public:
     CP2FMS_TX_Builder(const CDataStream& input_stream, const CAmount nPriceInPSL,
         opt_string_t sFundingAddress = std::nullopt);
-    void setExtraOutputs(std::vector<CTxOut>&& vExtraOutputs, const CAmount nExtraAmountInPat) noexcept;
+    void setExtraOutputs(v_txouts&& vExtraOutputs, const CAmount nExtraAmountInPat) noexcept;
 
     bool build(std::string &error, CMutableTransaction& tx_out);
 
@@ -29,7 +29,7 @@ protected:
     // input data stream (can be compressed stream)
     const CDataStream& m_input_stream;
     CAmount m_nPriceInPSL;
-    std::vector<CTxOut> m_vExtraOutputs;
+    v_txouts m_vExtraOutputs;
     CAmount m_nExtraAmountInPat;
     opt_string_t m_sFundingAddress;
 

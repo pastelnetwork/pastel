@@ -15,6 +15,7 @@
 #include <utils/datacompressor.h>
 #include <dbwrapper.h>
 #include <chain.h>
+#include <main.h>
 #include <primitives/transaction.h>
 #include <txmempool_entry.h>
 #include <consensus/validation.h>
@@ -25,8 +26,8 @@
 
 constexpr uint8_t TICKET_COMPRESS_ENABLE_MASK  = (1<<7); // using bit 7 to mark a ticket is compressed
 constexpr uint8_t TICKET_COMPRESS_DISABLE_MASK = 0x7F;
-constexpr auto TICKET_KEYTWO_PREFIX = "@2@";
-constexpr auto TICKET_MVKEY_PREFIX = "@M@";
+constexpr auto TICKET_KEYTWO_PREFIX = "@2@";  // Ticket DB secondary key prefix (unique)
+constexpr auto TICKET_MVKEY_PREFIX = "@M@";   // Ticket DB auxiliary key prefix (non-unique)
 
 // tuple <item id, item registration txid, transfer ticket txid>
 using reg_transfer_txid_t = std::tuple<TicketID, std::string, std::string>;
@@ -68,7 +69,7 @@ typedef struct _search_thumbids_t
     mu_strings fuzzySearchMap;
 } search_thumbids_t;
 
-using process_ticket_data_func_t = std::function<bool(std::string &&sKey, const std::unique_ptr<CPastelTicket>&)>;
+using process_ticket_data_func_t = std::function<bool(std::string &&sKey, const PastelTicketPtr&)>;
 
 // Check if json value passes fuzzy search filter
 bool isValuePassFuzzyFilter(const nlohmann::json& jProp, const std::string& sPropFilterValue) noexcept;
@@ -103,10 +104,10 @@ class CPastelTicketProcessor
     std::string filterTickets(F f, const uint32_t nMinHeight, const bool bCheckConfirmation = true) const;
 
 public:
-    CPastelTicketProcessor() = default;
+    CPastelTicketProcessor() noexcept = default;
 
     // Create ticket unique_ptr by type
-    static std::unique_ptr<CPastelTicket> CreateTicket(const TicketID ticketId);
+    static PastelTicketPtr CreateTicket(const TicketID ticketId);
 
     void InitTicketDB();
     void UpdatedBlockTip(const CBlockIndex* cBlockIndex, bool fInitialDownload);
@@ -119,16 +120,16 @@ public:
     void UpdateDB_MVK(const CPastelTicket& ticket, const std::string& mvKey);
 
     // check whether ticket exists (use keyOne as a key)
-    bool CheckTicketExist(const CPastelTicket& ticket) const;
-    bool FindTicket(CPastelTicket& ticket) const;
+    bool CheckTicketExist(const CPastelTicket& ticket, const CBlockIndex* pindexPrev = nullptr) const;
+    bool FindTicket(CPastelTicket& ticket, const CBlockIndex* pindexPrev = nullptr) const;
     bool EraseTicketFromDB(const CPastelTicket& ticket) const;
     EraseTicketResult EraseIfTicketTransaction(const uint256& txid, std::string &error);
     size_t EraseTicketsFromDbByList(const block_index_cvector_t& vBlockIndex);
     void RepairTicketDB(const bool bUpdateUI);
 
     // Check whether ticket exists (use keyTwo as a key).
-    bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket) const;
-    bool FindTicketBySecondaryKey(CPastelTicket& ticket) const;
+    bool CheckTicketExistBySecondaryKey(const CPastelTicket& ticket, const CBlockIndex *pindexPrev = nullptr) const;
+    bool FindTicketBySecondaryKey(CPastelTicket& ticket, const CBlockIndex *pindexPrev = nullptr) const;
 
     /**
     * Process tickets of the specified type using functor F.
@@ -139,7 +140,7 @@ public:
     *       Functor f should return false to stop enumeration.
     */
     template <class _TicketType, typename _TicketFunctor>
-    void ProcessTicketsByMVKey(const std::string& mvKey, _TicketFunctor f) const
+    void ProcessTicketsByMVKey(const std::string& mvKey, const CBlockIndex *pindexPrev, _TicketFunctor f) const
     {
         v_strings vMainKeys;
         // get real MV key: "@M@" + key
@@ -157,6 +158,16 @@ public:
             _TicketType ticket;
             if (itDB->second->Read(key, ticket) && !ticket.IsBlockNewerThan(nCurrentChainHeight))
             {
+                // check if this ticket is in the same chain as pindexPrev
+                if (pindexPrev)
+                {
+					const uint32_t nTicketBlockHeight = ticket.GetBlock();
+					if (nTicketBlockHeight == std::numeric_limits<uint32_t>::max())
+						continue;
+					const auto pindexTicket = chainActive[nTicketBlockHeight];
+					if (pindexPrev->GetAncestor(nTicketBlockHeight) != pindexTicket)
+						continue;
+                }
                 if (!f(ticket))
                     break; // stop processing tickets if functor returned false
             }
@@ -165,7 +176,7 @@ public:
 
     // find all tickets by mvKey
     template <class _TicketType>
-    std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey);
+    std::vector<_TicketType> FindTicketsByMVKey(const std::string& mvKey, const CBlockIndex *pindexPrev = nullptr);
 
      // Process all tickets from the database of the given type.
     bool ProcessAllTickets(TicketID id, process_ticket_data_func_t ticketFunctor) const;
@@ -218,11 +229,14 @@ public:
 
     static std::tuple<std::string, std::string> SendTicket(const CPastelTicket& ticket, const opt_string_t& sFundingAddress = std::nullopt);
 
-    static std::unique_ptr<CPastelTicket> GetTicket(const uint256 &txid, uint256* pBlockHash = nullptr);
-    static std::unique_ptr<CPastelTicket> GetTicket(const std::string& _txid, const TicketID ticketID);
+    static PastelTicketPtr GetTicket(const uint256 &txid, uint256* pBlockHash = nullptr, 
+        const CBlockIndex *pindexPrev = nullptr);
+    static PastelTicketPtr GetTicket(const std::string& _txid, const TicketID ticketID,
+        const CBlockIndex *pindexPrev = nullptr);
     static std::string GetTicketJSON(const uint256 &txid, const bool bDecodeProperties = false);
 
-    static ticket_validation_t ValidateIfTicketTransaction(CValidationState &state, const uint32_t nHeight, const CTransaction& tx);
+    static ticket_validation_t ValidateIfTicketTransaction(CValidationState &state, const uint32_t nHeight, 
+        const CTransaction& tx, const CBlockIndex *pindexPrev);
     
     static bool WalkBackTradingChain(
             const std::string& sTxId,   // txid of the starting ticket
@@ -230,7 +244,8 @@ public:
             bool shortPath,             // follow short or long path
                                         //      Transfer, Act, Reg in short walk
                                         //      Transfer, Accept, Offer, Act or Reg in long walk
-            std::string& errRet) noexcept;
+            std::string& errRet,
+            const CBlockIndex *pindexPrev = nullptr) noexcept;
     
     std::optional<reg_transfer_txid_t> ValidateOwnership(const std::string& _txid, const std::string& _pastelID);
 #ifdef FAKE_TICKET
@@ -254,5 +269,5 @@ public:
 protected:
     bool m_bTicketDBInitialized = false;
 
-    static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, std::unique_ptr<CPastelTicket>&& ticket) noexcept;
+    static ticket_validation_t ValidateTicketFees(const uint32_t nHeight, const CTransaction& tx, PastelTicketPtr&& ticket) noexcept;
 };

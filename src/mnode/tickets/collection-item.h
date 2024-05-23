@@ -15,14 +15,15 @@ public:
     std::string getCreatorPastelID_param() const noexcept { return m_sCreatorPastelID; }
     bool IsCollectionItem() const noexcept { return !m_sCollectionActTxid.empty(); }
     // count number of items in the collection
-    virtual uint32_t CountItemsInCollection() const = 0;
+    virtual uint32_t CountItemsInCollection(const CBlockIndex *pindexPrev = nullptr) const = 0;
     // retrieve referred collection activate ticket
-    virtual std::unique_ptr<CPastelTicket> RetrieveCollectionActivateTicket(std::string& error, bool& bInvalidTxId) const noexcept;
+    virtual PastelTicketPtr RetrieveCollectionActivateTicket(std::string& error, 
+        bool& bInvalidTxId, const CBlockIndex* pindexPrev = nullptr) const noexcept;
 
 protected:
     std::string m_sCollectionActTxid; // txid of the collection activation ticket - can be empty for the simple item
     std::string m_sCreatorPastelID;   // Pastel ID of the collection item creator
 
     // validate referred collection
-    ticket_validation_t IsValidCollection(const bool bPreReg) const noexcept;
+    ticket_validation_t IsValidCollection(const bool bPreReg, const CBlockIndex *pindexPrev = nullptr) const noexcept;
 };

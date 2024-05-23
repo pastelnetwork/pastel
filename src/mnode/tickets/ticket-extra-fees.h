@@ -26,7 +26,7 @@ public:
     // get Pastel ID to pay royalty fee
     std::string GetRoyaltyPayeePastelID(const std::string &txid) const;
     // get royalty payee address
-    std::string GetRoyaltyPayeeAddress(const std::string &txid) const;
+    std::string GetRoyaltyPayeeAddress(const std::string &txid, const CBlockIndex *pindexPrev = nullptr) const;
     // check that fees are valid
     bool ValidateFees(std::string& error) const noexcept;
 

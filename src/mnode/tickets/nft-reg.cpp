@@ -219,7 +219,7 @@ void CNFTRegTicket::set_collection_properties() noexcept
         return;
     string error;
     bool bInvalidTxId = false;
-    const auto collectionTicket = RetrieveCollectionActivateTicket(error, bInvalidTxId);
+    const auto collectionTicket = RetrieveCollectionActivateTicket(error, bInvalidTxId, nullptr);
     const CollectionRegTicket *pCollTicket = dynamic_cast<const CollectionRegTicket*>(collectionTicket.get());
     if (!pCollTicket)
         return;
@@ -238,13 +238,14 @@ void CNFTRegTicket::set_collection_properties() noexcept
 }
 
 /**
- * Validate NFT ticket.
+ * Validate NFT Registration ticket.
  * 
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
+ * \param pindexPrev - previous block index
  * \return true if the ticket is valid
  */
-ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -257,7 +258,7 @@ ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32
             // Only done after Create
 
             // A.1 check that the NFT ticket is already in the blockchain
-            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
+            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this, pindexPrev))
             {
                 tv.errorMsg = strprintf(
                     "This NFT is already registered in blockchain [key=%s; label=%s]",
@@ -291,7 +292,7 @@ ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32
         }
         // (ticket transaction replay attack protection)
         CNFTRegTicket existingTicket;
-        if (FindTicketInDb(m_keyOne, existingTicket) &&
+        if (FindTicketInDb(m_keyOne, existingTicket, pindexPrev) &&
             (!existingTicket.IsBlock(m_nBlock) ||
             !existingTicket.IsTxId(m_txid)))
         {
@@ -313,7 +314,7 @@ ticket_validation_t CNFTRegTicket::IsValid(const TxOrigin txOrigin, const uint32
         }
 
         // B. Something to validate always
-        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCreatorHeight, m_sNFTTicket);
+        const ticket_validation_t sigTv = validate_signatures(txOrigin, nCallDepth, m_nCreatorHeight, m_sNFTTicket, pindexPrev);
         if (sigTv.IsNotValid())
         {
             tv.state = sigTv.state;
@@ -342,9 +343,9 @@ void CNFTRegTicket::Clear() noexcept
     m_props.clear();
 }
 
-uint32_t CNFTRegTicket::CountItemsInCollection() const
+uint32_t CNFTRegTicket::CountItemsInCollection(const CBlockIndex *pindexPrev) const
 {
-    return CollectionActivateTicket::CountItemsInCollection(m_sCollectionActTxid, COLLECTION_ITEM_TYPE::NFT, true);
+    return CollectionActivateTicket::CountItemsInCollection(m_sCollectionActTxid, COLLECTION_ITEM_TYPE::NFT, true, pindexPrev);
 }
 
 /**
@@ -421,12 +422,13 @@ string CNFTRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
  * 
  * \param key - lookup key, used in a search by primary key
  * \param ticket - returns ticket if found
+ * \param pindexPrev - previous block index
  * \return true if ticket was found
  */
-bool CNFTRegTicket::FindTicketInDb(const string& key, CNFTRegTicket& ticket)
+bool CNFTRegTicket::FindTicketInDb(const string& key, CNFTRegTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.m_keyOne = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
 /**
@@ -435,16 +437,16 @@ bool CNFTRegTicket::FindTicketInDb(const string& key, CNFTRegTicket& ticket)
  * \param key - lookup key, used in a search by primary key
  * \return true if ticket exists in a DB
  */
-bool CNFTRegTicket::CheckIfTicketInDb(const string& key)
+bool CNFTRegTicket::CheckIfTicketInDb(const string& key, const CBlockIndex* pindexPrev)
 {
     CNFTRegTicket ticket;
     ticket.m_keyOne = key;
-    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket, pindexPrev);
 }
 
-NFTRegTickets_t CNFTRegTicket::FindAllTicketByMVKey(const string& sMVKey)
+NFTRegTickets_t CNFTRegTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRegTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRegTicket>(sMVKey, pindexPrev);
 }
 
 CAmount CNFTRegTicket::GetNftFee(const size_t nImageDataSizeInMB, const size_t nTicketDataSizeInBytes, const uint32_t nChainHeight) noexcept

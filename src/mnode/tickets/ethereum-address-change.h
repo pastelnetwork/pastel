@@ -66,7 +66,7 @@ public:
     std::string ToStr() const noexcept override;
     // get ticket price in PSL
     CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return fee; }
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
 
     void SerializationOp(CDataStream& s, const SERIALIZE_ACTION ser_action) override
     {
@@ -86,7 +86,7 @@ public:
     }
 
     static CChangeEthereumAddressTicket Create(std::string _pastelID, std::string _ethereumAddress, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CChangeEthereumAddressTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, CChangeEthereumAddressTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
 
     /** Some general checks to see if the ethereum address is invalid. Below cases will be considered as an invalid EthereumAddress
     *     - Contains characters that are different from hex digits
@@ -95,5 +95,5 @@ public:
     * return: true if bad, false if good to use
     */
     static bool isEthereumAddressInvalid(const std::string& ethereumAddress, std::string& error);
-    static ChangeEthereumAddressTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static ChangeEthereumAddressTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
 };

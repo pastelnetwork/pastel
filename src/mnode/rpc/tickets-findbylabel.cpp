@@ -10,7 +10,7 @@ using namespace std;
 template <class _TicketType>
 void ListTicketsByLabel(const string& label, UniValue &vOut)
 {
-    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<_TicketType>(label,
+    masterNodeCtrl.masternodeTickets.ProcessTicketsByMVKey<_TicketType>(label, nullptr,
         [&](const _TicketType& tkt) -> bool
         {
             UniValue obj(UniValue::VOBJ);

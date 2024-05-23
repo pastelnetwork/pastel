@@ -1,7 +1,12 @@
+// Copyright (c) 2018-2024 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <chainparams.h>
+#include <accept_to_mempool.h>
 #include <consensus/params.h>
 #include <consensus/validation.h>
 #include <key_io.h>
@@ -57,7 +62,7 @@ TEST(TransactionBuilder, Invoke)
     EXPECT_EQ(tx1.valueBalance, -40000);
 
     CValidationState state(TxOrigin::MINED_BLOCK);
-    EXPECT_TRUE(ContextualCheckTransaction(tx1, state, chainparams, 2));
+    EXPECT_TRUE(ContextualCheckTransaction(tx1, state, chainparams, 2, nullptr, fnIsInitialBlockDownload));
     EXPECT_EQ(state.GetRejectReason(), "");
 
     // Prepare to spend the note that was just created
@@ -89,7 +94,7 @@ TEST(TransactionBuilder, Invoke)
     EXPECT_EQ(tx2.vShieldedOutput.size(), 2);
     EXPECT_EQ(tx2.valueBalance, 10000);
 
-    EXPECT_TRUE(ContextualCheckTransaction(tx2, state, chainparams, 3));
+    EXPECT_TRUE(ContextualCheckTransaction(tx2, state, chainparams, 3, nullptr, fnIsInitialBlockDownload));
     EXPECT_EQ(state.GetRejectReason(), "");
 
     // Revert to default

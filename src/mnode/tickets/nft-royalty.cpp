@@ -59,13 +59,14 @@ string CNFTRoyaltyTicket::ToStr() const noexcept
 }
 
 /**
- * Validate Pastel ticket.
+ * Validate Royalty ticket.
  * 
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
+ * \param pindexPrev - previous block index
  * \return true if the ticket is valid
  */
-ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -85,12 +86,12 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const ui
         }
 
         // 0. Common validations
-        unique_ptr<CPastelTicket> pastelTicket;
+        PastelTicketPtr pastelTicket;
         const ticket_validation_t commonTV = common_ticket_validation(
             *this, txOrigin, m_sNFTTxId, pastelTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::NFT); },
             GetTicketDescription(), CNFTRegTicket::GetTicketDescription(), nCallDepth, 
-            TicketPricePSL(nActiveChainHeight));
+            TicketPricePSL(nActiveChainHeight), pindexPrev);
         if (commonTV.IsNotValid())
         {
             // enrich the error message
@@ -121,7 +122,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const ui
         // Check the Royalty change ticket for that NFT is already in the database
         // (ticket transaction replay attack protection)
         CNFTRoyaltyTicket existingTicket;
-        if (FindTicketInDb(KeyOne(), existingTicket) &&
+        if (FindTicketInDb(KeyOne(), existingTicket, pindexPrev) &&
             (bPreReg || // if pre reg - this is probably repeating call, so signatures can be the same
              !existingTicket.IsSameSignature(m_signature) ||
              !existingTicket.IsBlock(m_nBlock) ||
@@ -138,7 +139,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const ui
         }
 
         CPastelIDRegTicket newPastelIDticket;
-        if (!CPastelIDRegTicket::FindTicketInDb(m_sNewPastelID, newPastelIDticket))
+        if (!CPastelIDRegTicket::FindTicketInDb(m_sNewPastelID, newPastelIDticket, pindexPrev))
         {
             tv.errorMsg = strprintf(
                 "The new_pastelID [%s] for Change Royalty ticket with NFT txid [%s] is not in the blockchain or is invalid",
@@ -149,7 +150,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const ui
         size_t nIndex = 0;
         size_t nFoundIndex = numeric_limits<size_t>::max();
         uint32_t nHighBlock = 0;
-        const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxID(m_sNFTTxId);
+        const auto tickets = CNFTRoyaltyTicket::FindAllTicketByNFTTxID(m_sNFTTxId, pindexPrev);
         ticket_validation_t tv1;
         tv1.setValid();
         for (const auto& royaltyTicket : tickets)
@@ -240,18 +241,26 @@ string CNFTRoyaltyTicket::ToJSON(const bool bDecodeProperties) const noexcept
     return getJSON(bDecodeProperties).dump(4);
 }
 
-bool CNFTRoyaltyTicket::FindTicketInDb(const string& key, CNFTRoyaltyTicket& ticket)
+/**
+ * Find NFT Royalty ticket in DB.
+ * 
+ * \param key - key to search
+ * \param ticket - found ticket
+ * \param pindexPrev - previous block index
+ * \return true if the ticket is found
+ */
+bool CNFTRoyaltyTicket::FindTicketInDb(const string& key, CNFTRoyaltyTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.m_keyOne = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
-NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByMVKey(const string& sMVKey)
+NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(sMVKey, pindexPrev);
 }
 
-NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByNFTTxID(const string& NFTTxnId)
+NFTRoyaltyTickets_t CNFTRoyaltyTicket::FindAllTicketByNFTTxID(const string& NFTTxnId, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(NFTTxnId);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CNFTRoyaltyTicket>(NFTTxnId, pindexPrev);
 }

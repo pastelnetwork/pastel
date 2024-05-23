@@ -88,7 +88,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
 
     // getters for ticket fields
@@ -127,20 +127,20 @@ public:
         READWRITE(itemCopySerialNr);
     }
 
-    CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
+    CAmount GetExtraOutputs(v_txouts& outputs, const CBlockIndex *pindexPrev = nullptr) const override;
 
     static CTransferTicket Create(std::string &&offerTxId, std::string &&acceptTxId, std::string &&sPastelID, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CTransferTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, CTransferTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
 
-    static TransferTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static TransferTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
 
-    static bool CheckTransferTicketExistByOfferTicket(const std::string& offerTxId);
-    static bool CheckTransferTicketExistByAcceptTicket(const std::string& acceptTxId);
-    static bool GetTransferTicketByOfferTicket(const std::string& offerTxnId, CTransferTicket& ticket);
-    static bool GetTransferTicketByAcceptTicket(const std::string& acceptTxnId, CTransferTicket& ticket);
+    static bool CheckTransferTicketExistByOfferTicket(const std::string& offerTxId, const CBlockIndex *pindexPrev = nullptr);
+    static bool CheckTransferTicketExistByAcceptTicket(const std::string& acceptTxId, const CBlockIndex *pindexPrev = nullptr);
+    static bool GetTransferTicketByOfferTicket(const std::string& offerTxnId, CTransferTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
+    static bool GetTransferTicketByAcceptTicket(const std::string& acceptTxnId, CTransferTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
     static mu_strings GetPastelIdAndTxIdWithTopHeightPerCopy(const TransferTickets_t& allTickets);
 
-    std::unique_ptr<CPastelTicket> FindItemRegTicket() const;
+    PastelTicketPtr FindItemRegTicket(const CBlockIndex *pindexPrev = nullptr) const;
 
     static std::optional<txid_serial_tuple_t> GetItemRegForMultipleTransfers(const std::string& _txid);
 

@@ -111,7 +111,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override { return m_sActionTicket; }
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     // check if given Pastel ID is the action caller
     bool IsCallerPastelId(const std::string& sPastelID) const noexcept { return m_sCreatorPastelID == sPastelID; }
 
@@ -157,14 +157,14 @@ public:
 
     static CActionRegTicket Create(std::string && action_ticket, const std::string& signatures, 
         std::string && sPastelID, SecureString&& strKeyPass, std::string &&label, const CAmount storageFee);
-    static bool FindTicketInDb(const std::string& key, CActionRegTicket& _ticket);
-    static bool CheckIfTicketInDb(const std::string& key);
-    static ActionRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static bool FindTicketInDb(const std::string& key, CActionRegTicket& _ticket, const CBlockIndex *pindexPrev = nullptr);
+    static bool CheckIfTicketInDb(const std::string& key, const CBlockIndex *pindexPrev = nullptr);
+    static ActionRegTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
     // get action storage fees in PSL
     static action_fee_map_t GetActionFees(const size_t nDataSizeInMB,
         const uint32_t nChainHeight = std::numeric_limits<uint32_t>::max(),
         const bool bIncludeTicketFee = true, const bool bUseAdjustmentMultiplier = true) noexcept;
-    uint32_t CountItemsInCollection() const override;
+    uint32_t CountItemsInCollection(const CBlockIndex *pindexPrev = nullptr) const override;
 
 protected:
     uint16_t m_nActionTicketVersion{0};

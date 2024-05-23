@@ -63,7 +63,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept final;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept final;
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
 
     // getters for ticket fields
@@ -91,10 +91,10 @@ public:
     }
 
     static CNFTRoyaltyTicket Create(std::string &&sNFTTxId, std::string &&sNewPastelID, std::string &&sPastelID, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, CNFTRoyaltyTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
 
-    static NFTRoyaltyTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
-    static NFTRoyaltyTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId);
+    static NFTRoyaltyTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
+    static NFTRoyaltyTickets_t FindAllTicketByNFTTxID(const std::string& NFTTxnId, const CBlockIndex* pindexPrev = nullptr);
 
 protected:
     std::string m_sPastelID;    // Pastel ID of the old (current at moment of creation) royalty recipient

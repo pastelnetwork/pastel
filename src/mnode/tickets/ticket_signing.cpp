@@ -142,10 +142,11 @@ string CTicketSigning::getPastelID(const short sigId) const noexcept
  * \param nCallDepth - current function call depth
  * \param nCreatorHeight - Pastel ID registration ticket height for the principal signature creator
  * \param sTicketToValidate - ticket content to validate
- * 
+ * \param pindexPrev - previous block index (can be nullptr)
  * \return ticket validation state and error message if any
  */
-ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin, const uint32_t nCallDepth, const uint32_t nCreatorHeight, const string& sTicketToValidate) const noexcept
+ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin, const uint32_t nCallDepth, 
+    const uint32_t nCreatorHeight, const string& sTicketToValidate, const CBlockIndex *pindexPrev) const noexcept
 {
     uint32_t nCurrentCallDepth = nCallDepth;
     unordered_map<string, int> pidCountMap;
@@ -160,7 +161,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
         // and this will mark ticket tnx from being valid!!!
         CPastelIDRegTicket pastelIdRegTicket;
         const auto& sigDesc = SIGNER[mnIndex].desc;
-        if (!CPastelIDRegTicket::FindTicketInDb(m_vPastelID[mnIndex], pastelIdRegTicket))
+        if (!CPastelIDRegTicket::FindTicketInDb(m_vPastelID[mnIndex], pastelIdRegTicket, pindexPrev))
         {
             tv.state = TICKET_VALIDATION_STATE::MISSING_INPUTS;
             tv.errorMsg = strprintf(
@@ -170,7 +171,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
         }
             
         // Pastel IDs are valid
-        tv = pastelIdRegTicket.IsValid(TxOrigin::UNKNOWN, ++nCurrentCallDepth);
+        tv = pastelIdRegTicket.IsValid(TxOrigin::UNKNOWN, ++nCurrentCallDepth, pindexPrev);
         if (tv.IsNotValid())
         {
             tv.errorMsg = strprintf(

@@ -35,15 +35,16 @@ string CTicketSignedWithExtraFees::GetRoyaltyPayeePastelID(const string &txid) c
 * Get royalty payee address.
 * 
 * \param txid - ticket transaction id (txid)
+* \param pindexPrev - previous block index
 * \return royalty payee address if royalty fee is defined or empty string
 */
-string CTicketSignedWithExtraFees::GetRoyaltyPayeeAddress(const string &txid) const
+string CTicketSignedWithExtraFees::GetRoyaltyPayeeAddress(const string &txid, const CBlockIndex *pindexPrev) const
 {
     const string pastelID = GetRoyaltyPayeePastelID(txid);
     if (!pastelID.empty())
     {
         CPastelIDRegTicket ticket;
-        if (CPastelIDRegTicket::FindTicketInDb(pastelID, ticket))
+        if (CPastelIDRegTicket::FindTicketInDb(pastelID, ticket, pindexPrev))
             return ticket.getFundingAddress();
     }
     return {};

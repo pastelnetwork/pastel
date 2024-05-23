@@ -114,13 +114,13 @@ string CPastelIDRegTicket::ToStr() const noexcept
 }
 
 /**
- * Validate Pastel ticket.
+ * Validate PastelID Registration ticket.
  * 
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
  * \return true if the ticket is valid
  */
-ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     ticket_validation_t tv;
     do
@@ -132,7 +132,7 @@ ticket_validation_t CPastelIDRegTicket::IsValid(const TxOrigin txOrigin, const u
         {
             // check that Pastel ID ticket is not already in the blockchain.
             // Only done after Create
-            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this))
+            if (masterNodeCtrl.masternodeTickets.CheckTicketExist(*this, pindexPrev))
             {
                 tv.errorMsg = strprintf("This Pastel ID is already registered in blockchain [%s]", m_sPastelID);
                 break;
@@ -289,27 +289,35 @@ string CPastelIDRegTicket::ToJSON(const bool bDecodeProperties) const noexcept
     return getJSON(bDecodeProperties).dump(4);
 }
 
-bool CPastelIDRegTicket::FindTicketInDb(const string& key, CPastelIDRegTicket& ticket)
+/**
+ * Find Pastel ID registration ticket in the database.
+ * 
+ * \param key - Pastel ID, outpoint or funding address
+ * \param ticket - found ticket
+ * \param pindexPrev - previous block index
+ * \return true if the ticket is found
+ */
+bool CPastelIDRegTicket::FindTicketInDb(const string& key, CPastelIDRegTicket& ticket, const CBlockIndex *pindexPrev)
 {
     //first try by PastelID
     ticket.m_sPastelID = key;
-    if (!masterNodeCtrl.masternodeTickets.FindTicket(ticket))
+    if (!masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev))
     {
         //if not, try by outpoint
         ticket.setSecondKey(key);
-        if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket))
+        if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket, pindexPrev))
         {
             //finally, clear outpoint and try by address
             ticket.m_secondKey.clear();
             ticket.m_sFundingAddress = key;
-            if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket))
+            if (!masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket, pindexPrev))
                 return false;
         }
     }
     return true;
 }
 
-PastelIDRegTickets_t CPastelIDRegTicket::FindAllTicketByPastelAddress(const string& address)
+PastelIDRegTickets_t CPastelIDRegTicket::FindAllTicketByPastelAddress(const string& address, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CPastelIDRegTicket>(address);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CPastelIDRegTicket>(address, pindexPrev);
 }

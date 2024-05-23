@@ -82,7 +82,7 @@ bool CInvalidEligibilityBlock::CanTryToRevalidate() noexcept
 
     if (state == STATE::EXCEEDED_RETRIES)
     {
-		LogFnPrint("Invalid MN eligibility block %s at height %u has not been validated after %u retries",
+		LogFnPrintf("Invalid MN eligibility block %s at height %u has not been validated after %u retries",
             			m_hash.ToString(), m_nHeight, MAX_ELIGIBILITY_REVALIDATION_RETRIES);
         Clear();
 		return false;

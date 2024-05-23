@@ -64,7 +64,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     CAmount GetStorageFee() const noexcept override { return m_storageFee; }
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
     // sign the ticket with the Action Caller Pastel ID's private key - creates signature
@@ -108,14 +108,14 @@ public:
         return {ALL_MN_FEE, PRINCIPAL_MN_FEE_SHARE, OTHER_MN_FEE_SHARE};
     }
 
-    CAmount GetExtraOutputs(std::vector<CTxOut>& outputs) const override;
+    CAmount GetExtraOutputs(v_txouts& outputs, const CBlockIndex *pindexPrev = nullptr) const override;
 
     static CActionActivateTicket Create(std::string &&regTicketTxId, const unsigned int nCalledAtHeight, const CAmount storageFee, std::string &&sCallerPastelID, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CActionActivateTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, CActionActivateTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
 
-    static ActionActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static ActionActivateTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
     static ActionActivateTickets_t FindAllTicketByCalledAtHeight(const uint32_t nCalledAtHeight);
-    static bool CheckTicketExistByActionRegTicketID(const std::string& regTicketTxnId);
+    static bool CheckTicketExistByActionRegTicketID(const std::string& regTicketTxnId, const CBlockIndex* pindexPrev = nullptr);
 
 protected:
     std::string m_regTicketTxId;  // txid of the Action registration ticket

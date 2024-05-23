@@ -67,7 +67,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override;
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
     bool IsSameSignature(const v_uint8& signature) const noexcept { return m_signature == signature; }
 
     // getters for ticket fields
@@ -94,11 +94,11 @@ public:
     }
 
     static CAcceptTicket Create(std::string &&offerTxId, const unsigned int nPricePSL, std::string &&sPastelID, SecureString&& strKeyPass);
-    static bool FindTicketInDb(const std::string& key, CAcceptTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, CAcceptTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
 
     static bool CheckAcceptTicketExistByOfferTicket(const std::string& offerTxnId);
 
-    static AcceptTickets_t FindAllTicketByMVKey(const std::string& sMVKey);
+    static AcceptTickets_t FindAllTicketByMVKey(const std::string& sMVKey, const CBlockIndex* pindexPrev = nullptr);
 
 protected:
     std::string m_sPastelID;      // Pastel ID of the new owner (acceptor)

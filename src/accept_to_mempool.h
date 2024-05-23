@@ -12,6 +12,7 @@
 #include <consensus/params.h>
 #include <primitives/transaction.h>
 #include <txmempool.h>
+#include <chain.h>
 
 /** Check whether we are doing an initial block download (synchronizing from disk or network) */
 extern funcIsInitialBlockDownload_t fnIsInitialBlockDownload;
@@ -24,7 +25,8 @@ bool ContextualCheckTransaction(
     CValidationState &state,
     const CChainParams& chainparams,
     const int nHeight,
-    funcIsInitialBlockDownload_t isInitBlockDownload = fnIsInitialBlockDownload);
+    const CBlockIndex *pindexPrev,
+    funcIsInitialBlockDownload_t isInitBlockDownload);
 
 /** Context-independent validity checks */
 bool CheckTransaction(const CTransaction& tx, CValidationState& state, libzcash::ProofVerifier& verifier);

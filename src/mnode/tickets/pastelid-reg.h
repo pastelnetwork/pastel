@@ -97,9 +97,8 @@ public:
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override;
     std::string ToStr() const noexcept override;
     void ToStrStream(std::stringstream& ss, const bool bIncludeMNsignature = true) const noexcept;
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override;
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override;
 
-    // 
     // get ticket price in PSL
     CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return nHeight <= 10000 ? CPastelTicket::TicketPricePSL(nHeight) : 1000; }
 
@@ -133,8 +132,8 @@ public:
 
     static CPastelIDRegTicket Create(std::string&& sPastelID, SecureString&& strKeyPass, 
         const std::string& sFundingAaddress, const std::optional<CMNID_RegData> &mnRegData = std::nullopt);
-    static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket);
-    static PastelIDRegTickets_t FindAllTicketByPastelAddress(const std::string& address);
+    static bool FindTicketInDb(const std::string& key, CPastelIDRegTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
+    static PastelIDRegTickets_t FindAllTicketByPastelAddress(const std::string& address, const CBlockIndex *pindexPrev = nullptr);
 
 protected:
     std::string m_sPastelID;       // Pastel ID - base58-encoded public key (EdDSA448)

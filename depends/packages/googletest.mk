@@ -1,9 +1,9 @@
 package=googletest
-$(package)_version=1.11.0
+$(package)_version=1.14.0
 $(package)_download_path=https://github.com/google/$(package)/archive/refs/tags
 $(package)_file_name=$(package)-$($(package)_version).tar.gz
-$(package)_download_file=release-$($(package)_version).tar.gz
-$(package)_sha256_hash=b4870bf121ff7795ba20d20bcdd8627b8e088f2d1dab299a031c1034eddc93d5
+$(package)_download_file=v$($(package)_version).tar.gz
+$(package)_sha256_hash=8ad598c73ad796e0d8280b082cebd82a630d73e73cd3c70057938a6501bba5d7
 
 define $(package)_set_vars
 $(package)_cxxflags+= -std=c++17

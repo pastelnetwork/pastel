@@ -48,7 +48,7 @@ void collect_all_pastel_ticket_data(
 	for (const auto& ticketInfo : TICKET_INFO)
 	{
 		masterNodeCtrl.masternodeTickets.ProcessAllTickets(ticketInfo.id,
-			[&](string &&sKey, const unique_ptr<CPastelTicket> &ticket)
+			[&](string &&sKey, const PastelTicketPtr &ticket)
 			{
 				if (vAllTicketData.size() >= vAllTicketData.capacity())
 					vAllTicketData.reserve(vAllTicketData.capacity() + TICKET_DATA_VECTOR_RESERVE_INCREMENT);

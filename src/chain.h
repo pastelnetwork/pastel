@@ -453,3 +453,4 @@ public:
 
 // Find the last common ancestor two blocks have.
 CBlockIndex* FindLastCommonAncestorBlockIndex(CBlockIndex* pa, CBlockIndex* pb);
+const CBlockIndex* FindLastCommonAncestorBlockIndex(const CBlockIndex* pa, const CBlockIndex* pb);

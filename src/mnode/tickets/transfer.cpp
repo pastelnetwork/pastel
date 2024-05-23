@@ -29,8 +29,10 @@ using namespace std;
  *                     2) Action activation ticket txid
  *                     2) transfer ticket txid for NFT or Action
  * \param signature is the signature of current CTransferTicket that is checked
+ * \param pindexPrev - previous block index
+ * \return ticket validation state
  */
-ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uint8& signature)
+ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uint8& signature, const CBlockIndex *pindexPrev)
 {
     //  if (!masterNodeCtrl.IsSynced()) {
     //    throw runtime_error("Can not validate transfer ticket as master node is not synced");
@@ -42,7 +44,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
     do
     {
         const uint256 txid = uint256S(itemTxId);
-        const auto pTicket = CPastelTicketProcessor::GetTicket(txid);
+        const auto pTicket = CPastelTicketProcessor::GetTicket(txid, nullptr, pindexPrev);
         if (!pTicket)
         {
             tv.errorMsg = strprintf(
@@ -64,7 +66,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
                     break;
                 }
 
-                const auto pNFTTicket = CPastelTicketProcessor::GetTicket(pNFTActTicket->getRegTxId(), TicketID::NFT);
+                const auto pNFTTicket = CPastelTicketProcessor::GetTicket(pNFTActTicket->getRegTxId(), TicketID::NFT, pindexPrev);
                 if (!pNFTTicket)
                 {
                     tv.errorMsg = strprintf(
@@ -97,7 +99,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
                     break;
                 }
 
-                const auto pActionTicket = CPastelTicketProcessor::GetTicket(pActionActTicket->getRegTxId(), TicketID::ActionReg);
+                const auto pActionTicket = CPastelTicketProcessor::GetTicket(pActionActTicket->getRegTxId(), TicketID::ActionReg, pindexPrev);
                 if (!pActionTicket)
                 {
                     tv.errorMsg = strprintf(
@@ -140,7 +142,7 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
         }
 
         size_t nTransferredCopies{0};
-        const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByMVKey(itemTxId);
+        const auto vExistingTransferTickets = CTransferTicket::FindAllTicketByMVKey(itemTxId, pindexPrev);
         for (const auto& t: vExistingTransferTickets)
         {
             if (!t.IsSameSignature(signature))
@@ -179,7 +181,7 @@ CTransferTicket CTransferTicket::Create(string &&offerTxId, string &&acceptTxId,
 
     ticket.GenerateTimestamp();
 
-    // In case it is nested it means that we have the Transfer txid in the Offer ticket (reffered item).
+    // In case it is nested it means that we have the Transfer txid in the Offer ticket (referred item).
     // Returns tuple:
     //   [0]: original registration ticket's txid
     //   [1]: copy number for a given item (NFT or Action)
@@ -243,9 +245,10 @@ string CTransferTicket::ToStr() const noexcept
  * 
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
  * \param nCallDepth - function call depth
+ * \param pindexPrev - previous block index
  * \return true if the ticket is valid
  */
-ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept
+ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept
 {
     const auto nActiveChainHeight = gl_nChainHeight + 1;
     ticket_validation_t tv;
@@ -269,12 +272,12 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
 			}
         }
         // 0. Common validations
-        unique_ptr<CPastelTicket> offerTicket;
+        PastelTicketPtr offerTicket;
         ticket_validation_t commonTV = common_ticket_validation(
             *this, txOrigin, m_offerTxId, offerTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Offer); },
             GetTicketDescription(), COfferTicket::GetTicketDescription(), nCallDepth, 
-            m_nPricePSL + TicketPricePSL(nActiveChainHeight));
+            m_nPricePSL + TicketPricePSL(nActiveChainHeight), pindexPrev);
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -284,12 +287,12 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
             break;
         }
 
-        unique_ptr<CPastelTicket> acceptTicket;
+        PastelTicketPtr acceptTicket;
         commonTV = common_ticket_validation(
             *this, txOrigin, m_acceptTxId, acceptTicket,
             [](const TicketID tid) noexcept { return (tid != TicketID::Accept); },
             GetTicketDescription(), CAcceptTicket::GetTicketDescription(), nCallDepth, 
-            m_nPricePSL + TicketPricePSL(nActiveChainHeight));
+            m_nPricePSL + TicketPricePSL(nActiveChainHeight), pindexPrev);
         if (commonTV.IsNotValid())
         {
             tv.errorMsg = strprintf(
@@ -302,7 +305,7 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
 
         // 1. Verify that there is no another Transfer ticket for the same Offer ticket
         CTransferTicket existingTicket;
-        if (CTransferTicket::GetTransferTicketByOfferTicket(m_offerTxId, existingTicket))
+        if (CTransferTicket::GetTransferTicketByOfferTicket(m_offerTxId, existingTicket, pindexPrev))
         {
             // (ticket transaction replay attack protection)
             if (!existingTicket.IsSameSignature(m_signature) ||
@@ -326,7 +329,7 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
         }
         // 1. Verify that there is no another Transfer ticket for the same Accept ticket
         existingTicket.m_offerTxId.clear();
-        if (CTransferTicket::GetTransferTicketByAcceptTicket(m_acceptTxId, existingTicket))
+        if (CTransferTicket::GetTransferTicketByAcceptTicket(m_acceptTxId, existingTicket, pindexPrev))
         {
             //Compare signatures to skip if the same ticket
             if (!existingTicket.IsSameSignature(m_signature) ||
@@ -398,7 +401,7 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
             }
         }
 
-        transfer_copy_validation(m_itemTxId, m_signature);
+        transfer_copy_validation(m_itemTxId, m_signature, pindexPrev);
 
         tv.setValid();
     } while (false);
@@ -409,9 +412,10 @@ ticket_validation_t CTransferTicket::IsValid(const TxOrigin txOrigin, const uint
  * Get extra outputs for the Transfer ticket.
  * 
  * \param outputs - vector of outputs: CTxOut
+ * \param pindexPrev - previous block index
  * \return - total amount of extra outputs in patoshis
  */
-CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
+CAmount CTransferTicket::GetExtraOutputs(v_txouts& outputs, const CBlockIndex *pindexPrev) const
 {
     const auto pOfferTicket = CPastelTicketProcessor::GetTicket(m_offerTxId, TicketID::Offer);
     if (!pOfferTicket)
@@ -427,7 +431,7 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
 
     const auto offererPastelID = offerTicket->getPastelID();
     CPastelIDRegTicket offererPastelIDticket;
-    if (!CPastelIDRegTicket::FindTicketInDb(offererPastelID, offererPastelIDticket))
+    if (!CPastelIDRegTicket::FindTicketInDb(offererPastelID, offererPastelIDticket, pindexPrev))
         throw runtime_error(strprintf(
             "The Pastel ID [%s] from %s ticket with this txid [%s] is not in the blockchain or is invalid",
             offererPastelID, COfferTicket::GetTicketDescription(), m_offerTxId));
@@ -444,7 +448,7 @@ CAmount CTransferTicket::GetExtraOutputs(vector<CTxOut>& outputs) const
     CAmount nGreenNFTAmount = 0;
     string sRoyaltyAddress, sGreenAddress;
 
-    const auto itemTicket = FindItemRegTicket();
+    const auto itemTicket = FindItemRegTicket(pindexPrev);
     switch (itemTicket->ID())
     {
         case TicketID::NFT: {
@@ -549,17 +553,25 @@ string CTransferTicket::ToJSON(const bool bDecodeProperties) const noexcept
     return getJSON(bDecodeProperties).dump(4);
 }
 
-bool CTransferTicket::FindTicketInDb(const string& key, CTransferTicket& ticket)
+/**
+ * Find Transfer ticket in DB.
+ * 
+ * \param key - Offer or Accept ticket txid
+ * \param ticket - found Transfer ticket
+ * \param pindexPrev - previous block index
+ * \return true if the ticket is found
+ */
+bool CTransferTicket::FindTicketInDb(const string& key, CTransferTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.m_offerTxId = key;
     ticket.m_acceptTxId = key;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket) ||
-           masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev) ||
+           masterNodeCtrl.masternodeTickets.FindTicketBySecondaryKey(ticket, pindexPrev);
 }
 
-TransferTickets_t CTransferTicket::FindAllTicketByMVKey(const string& sMVKey)
+TransferTickets_t CTransferTicket::FindAllTicketByMVKey(const string& sMVKey, const CBlockIndex *pindexPrev)
 {
-    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(sMVKey);
+    return masterNodeCtrl.masternodeTickets.FindTicketsByMVKey<CTransferTicket>(sMVKey, pindexPrev);
 }
 
 mu_strings CTransferTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(const TransferTickets_t& filteredTickets)
@@ -599,30 +611,60 @@ mu_strings CTransferTicket::GetPastelIdAndTxIdWithTopHeightPerCopy(const Transfe
     return ownerPastelIDs_and_txids;
 }
 
-bool CTransferTicket::CheckTransferTicketExistByOfferTicket(const string& offerTxId)
+/**
+ * Check if Transfer ticket exists for the given Offer ticket.
+ * 
+ * \param offerTxId - Offer ticket txid
+ * \param pindexPrev - previous block index
+ * \return true if the ticket exists
+ */
+bool CTransferTicket::CheckTransferTicketExistByOfferTicket(const string& offerTxId, const CBlockIndex *pindexPrev)
 {
     CTransferTicket ticket;
     ticket.m_offerTxId = offerTxId;
-    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket);
+    return masterNodeCtrl.masternodeTickets.CheckTicketExist(ticket, pindexPrev);
 }
 
-bool CTransferTicket::CheckTransferTicketExistByAcceptTicket(const string& acceptTxId)
+/**
+ * Check if Transfer ticket exists for the given Accept ticket.
+ * 
+ * \param acceptTxId - Accept ticket txid
+ * \param pindexPrev - previous block index
+ * \return - true if the ticket exists
+ */
+bool CTransferTicket::CheckTransferTicketExistByAcceptTicket(const string& acceptTxId, const CBlockIndex *pindexPrev)
 {
     CTransferTicket ticket;
     ticket.m_acceptTxId = acceptTxId;
-    return masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket);
+    return masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket, pindexPrev);
 }
 
-bool CTransferTicket::GetTransferTicketByOfferTicket(const string& offerTxnId, CTransferTicket& ticket)
+/**
+ * Get Transfer ticket by the given Offer ticket.
+ * 
+ * \param offerTxnId - Offer ticket txid
+ * \param ticket - found Transfer ticket
+ * \param pindexPrev - previous block index
+ * \return true if the ticket is found
+ */
+bool CTransferTicket::GetTransferTicketByOfferTicket(const string& offerTxnId, CTransferTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.m_offerTxId = offerTxnId;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
-bool CTransferTicket::GetTransferTicketByAcceptTicket(const string& acceptTxnId, CTransferTicket& ticket)
+/**
+ * Get Transfer ticket for the given Accept ticket.
+ * 
+ * \param acceptTxnId - Accept ticket txid
+ * \param ticket - found Transfer ticket
+ * \param pindexPrev - previous block index
+ * \return true if the ticket is found
+ */
+bool CTransferTicket::GetTransferTicketByAcceptTicket(const string& acceptTxnId, CTransferTicket& ticket, const CBlockIndex *pindexPrev)
 {
     ticket.m_acceptTxId = acceptTxnId;
-    return masterNodeCtrl.masternodeTickets.FindTicket(ticket);
+    return masterNodeCtrl.masternodeTickets.FindTicket(ticket, pindexPrev);
 }
 
 /**
@@ -631,14 +673,15 @@ bool CTransferTicket::GetTransferTicketByAcceptTicket(const string& acceptTxnId,
  *  - NFT registration ticket
  *  - Action registration ticket
  * 
+ * \param pindexPrev - previous block index
  * \return registration ticket
  * \throw runtime_error if reg ticket not found or not of the expected type
  */
-unique_ptr<CPastelTicket> CTransferTicket::FindItemRegTicket() const
+PastelTicketPtr CTransferTicket::FindItemRegTicket(const CBlockIndex *pindexPrev) const
 {
-    vector<unique_ptr<CPastelTicket>> chain;
+    PastelTickets_t chain;
     string errRet;
-    if (!CPastelTicketProcessor::WalkBackTradingChain(m_itemTxId, chain, true, errRet))
+    if (!CPastelTicketProcessor::WalkBackTradingChain(m_itemTxId, chain, true, errRet, pindexPrev))
         throw runtime_error(errRet);
 
     if (chain.empty())

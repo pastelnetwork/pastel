@@ -6,7 +6,7 @@
 using namespace std;
 
 // CTakeDownTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool CTakeDownTicket::FindTicketInDb(const string& key, CTakeDownTicket& ticket)
+bool CTakeDownTicket::FindTicketInDb(const string& key, CTakeDownTicket& ticket, const CBlockIndex *pindexPrev)
 {
     return false;
 }

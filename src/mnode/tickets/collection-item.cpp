@@ -21,11 +21,12 @@ void CollectionItem::Clear() noexcept
  *
  * \param error - return error if collection not found
  * \param bInvalidTxId - set to true if collection txid is invalid
+ * \param pindexPrev - previous block index
  * \return nullopt if collection txid is invalid, false - if collection ticket not found
  */
-unique_ptr<CPastelTicket> CollectionItem::RetrieveCollectionActivateTicket(string& error, bool& bInvalidTxId) const noexcept
+PastelTicketPtr CollectionItem::RetrieveCollectionActivateTicket(string& error, bool& bInvalidTxId, const CBlockIndex* pindexPrev) const noexcept
 {
-    unique_ptr<CPastelTicket> collectionActTicket;
+    PastelTicketPtr collectionActTicket;
     bInvalidTxId = false;
     do
     {
@@ -40,7 +41,7 @@ unique_ptr<CPastelTicket> CollectionItem::RetrieveCollectionActivateTicket(strin
         // get the collection activation ticket pointed by txid
         try
         {
-            collectionActTicket = CollectionActivateTicket::GetCollectionTicket(collection_act_txid);
+            collectionActTicket = CollectionActivateTicket::GetCollectionTicket(collection_act_txid, pindexPrev);
         }
         catch (const std::exception& ex)
         {
@@ -54,9 +55,10 @@ unique_ptr<CPastelTicket> CollectionItem::RetrieveCollectionActivateTicket(strin
  * Validate Collection reference.
  *
  * \param txOrigin - ticket transaction origin (used to determine pre-registration mode)
+ * \param pindexPrev - previous block index
  * \return ticket validation result structure
  */
-ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const noexcept
+ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg, const CBlockIndex *pindexPrev) const noexcept
 {
     ticket_validation_t tv;
     // skip validation if collection txid is not defined
@@ -71,7 +73,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
         // retrieve collection registration ticket
         string error;
         bool bInvalidTxId = false;
-        const auto collectionActTicket = RetrieveCollectionActivateTicket(error, bInvalidTxId);
+        const auto collectionActTicket = RetrieveCollectionActivateTicket(error, bInvalidTxId, pindexPrev);
         if (bInvalidTxId)
         {
             tv.errorMsg = move(error);
@@ -99,7 +101,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
             break;
         }
         // get collection registration ticket
-        const auto collectionRegTicket = CollectionActivateTicket::RetrieveCollectionRegTicket(error, pCollActTicket->getRegTxId(), bInvalidTxId);
+        const auto collectionRegTicket = CollectionActivateTicket::RetrieveCollectionRegTicket(error, pCollActTicket->getRegTxId(), bInvalidTxId, pindexPrev);
         if (bInvalidTxId)
         {
             tv.errorMsg = move(error);
@@ -161,7 +163,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg) const 
 
         // count all registered items in a collection up to the current height
         // don't count current reg ticket
-        const uint32_t nCollectionItemCount = CountItemsInCollection();
+        const uint32_t nCollectionItemCount = CountItemsInCollection(pindexPrev);
 
         // check if we have more than allowed number of items in the collection
         if (nCollectionItemCount + (bPreReg ? 1 : 0) > pCollRegTicket->getMaxCollectionEntries())

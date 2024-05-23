@@ -10,10 +10,10 @@
 
 v_uint8 convertIntToVectorLE(const uint64_t val_int)
 {
-    v_uint8 bytes;
-    for (size_t i = 0; i < 8; i++)
-        bytes.push_back(val_int >> (i * 8));
-    return bytes;
+    v_uint8 vBytes(sizeof(uint64_t));
+    for (size_t i = 0; i < sizeof(uint64_t); i++)
+        vBytes[i] = static_cast<uint8_t>(val_int >> (i * 8));
+    return vBytes;
 }
 
 // Convert bytes into boolean vector. (MSB to LSB)

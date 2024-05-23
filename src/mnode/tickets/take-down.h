@@ -14,7 +14,7 @@ using TakeDownTickets_t = std::vector<CTakeDownTicket>;
 class CTakeDownTicket : public CPastelTicket
 {
 public:
-    static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket);
+    static bool FindTicketInDb(const std::string& key, CTakeDownTicket& ticket, const CBlockIndex *pindexPrev = nullptr);
     CAmount TicketPricePSL(const uint32_t nHeight) const noexcept override { return nHeight <= 10'000 ? CPastelTicket::TicketPricePSL(nHeight) : 100'000; }
 
     TicketID ID() const noexcept override { return TicketID::Down; }
@@ -27,7 +27,7 @@ public:
     std::string ToJSON(const bool bDecodeProperties = false) const noexcept override { return "{}"; }
     nlohmann::json getJSON(const bool bDecodeProperties = false) const noexcept override { return nlohmann::json(); }
     std::string ToStr() const noexcept override { return ""; }
-    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth) const noexcept override
+    ticket_validation_t IsValid(const TxOrigin txOrigin, const uint32_t nCallDepth, const CBlockIndex *pindexPrev) const noexcept override
     {
         ticket_validation_t tv;
         return tv;
