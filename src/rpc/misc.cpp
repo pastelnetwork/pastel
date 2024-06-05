@@ -696,6 +696,498 @@ Examples:)"
     }
     return result;
 }
+
+// insightexplorer
+UniValue getaddressutxos(const UniValue& params, bool fHelp)
+{
+    const bool fEnableInsightExplorer = fExperimentalMode && fInsightExplorer;
+    std::string disabledMsg = "";
+    if (!fEnableInsightExplorer) {
+        disabledMsg = experimentalDisabledHelpMsg("getaddressutxos", {"insightexplorer"});
+    }
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+                "getaddressutxos {\"addresses\": [\"taddr\", ...], (\"chainInfo\": true|false)}\n"
+                "\nReturns all unspent outputs for an address.\n"
+                + disabledMsg +
+                "\nArguments:\n"
+                "{\n"
+                "  \"addresses\":\n"
+                "    [\n"
+                "      \"address\"  (string) The base58check encoded address\n"
+                "      ,...\n"
+                "    ],\n"
+                "  \"chainInfo\"  (boolean, optional, default=false) Include chain info with results\n"
+                "}\n"
+                "(or)\n"
+                "\"address\"  (string) The base58check encoded address\n"
+                "\nResult\n"
+                "[\n"
+                "  {\n"
+                "    \"address\"  (string) The address base58check encoded\n"
+                "    \"txid\"  (string) The output txid\n"
+                "    \"height\"  (number) The block height\n"
+                "    \"outputIndex\"  (number) The output index\n"
+                "    \"script\"  (string) The script hex encoded\n"
+                "    \"satoshis\"  (number) The number of " + MINOR_CURRENCY_UNIT + " of the output\n"
+                                                                                    "  }, ...\n"
+                                                                                    "]\n\n"
+                                                                                    "(or, if chainInfo is true):\n\n"
+                                                                                    "{\n"
+                                                                                    "  \"utxos\":\n"
+                                                                                    "    [\n"
+                                                                                    "      {\n"
+                                                                                    "        \"address\"     (string)  The address base58check encoded\n"
+                                                                                    "        \"txid\"        (string)  The output txid\n"
+                                                                                    "        \"height\"      (number)  The block height\n"
+                                                                                    "        \"outputIndex\" (number)  The output index\n"
+                                                                                    "        \"script\"      (string)  The script hex encoded\n"
+                                                                                    "        \"satoshis\"    (number)  The number of " + MINOR_CURRENCY_UNIT + " of the output\n"
+                                                                                                                                                               "      }, ...\n"
+                                                                                                                                                               "    ],\n"
+                                                                                                                                                               "  \"hash\"              (string)  The block hash\n"
+                                                                                                                                                               "  \"height\"            (numeric) The block height\n"
+                                                                                                                                                               "}\n"
+                                                                                                                                                               "\nExamples:\n"
+                + HelpExampleCli("getaddressutxos", "'{\"addresses\": [\"tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ\"], \"chainInfo\": true}'")
+                + HelpExampleRpc("getaddressutxos", "{\"addresses\": [\"tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ\"], \"chainInfo\": true}")
+        );
+
+    if (!fEnableInsightExplorer) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Error: getaddressutxos is disabled. "
+                                           "Run './pastel-cli help getaddressutxos' for instructions on how to enable this feature.");
+    }
+
+    bool includeChainInfo = false;
+    if (params[0].isObject()) {
+        UniValue chainInfo = find_value(params[0].get_obj(), "chainInfo");
+        if (!chainInfo.isNull()) {
+            includeChainInfo = chainInfo.get_bool();
+        }
+    }
+    std::vector<std::pair<uint160, ScriptType>> addresses;
+    if (!getAddressesFromParams(params, addresses)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    }
+    std::vector<CAddressUnspentDbEntry> unspentOutputs;
+    for (const auto& it : addresses) {
+        if (!GetAddressUnspent(it.first, it.second, unspentOutputs)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+        }
+    }
+    std::sort(unspentOutputs.begin(), unspentOutputs.end(),
+              [](const CAddressUnspentDbEntry& a, const CAddressUnspentDbEntry& b) -> bool {
+                  return a.second.blockHeight < b.second.blockHeight;
+              });
+
+    UniValue utxos(UniValue::VARR);
+    for (const auto& it : unspentOutputs) {
+        UniValue output(UniValue::VOBJ);
+        std::string address;
+        if (!getAddressFromIndex(it.first.type, it.first.hashBytes, address)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+        }
+
+        output.pushKV("address", address);
+        output.pushKV("txid", it.first.txhash.GetHex());
+        output.pushKV("outputIndex", (int)it.first.index);
+        output.pushKV("script", HexStr(it.second.script.begin(), it.second.script.end()));
+        output.pushKV("satoshis", it.second.satoshis);
+        output.pushKV("height", it.second.blockHeight);
+        utxos.push_back(output);
+    }
+
+    if (!includeChainInfo)
+        return utxos;
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("utxos", utxos);
+
+    LOCK(cs_main);  // for chainActive
+    result.pushKV("hash", chainActive.Tip()->GetBlockHash().GetHex());
+    result.pushKV("height", (int)chainActive.Height());
+    return result;
+}
+
+
+static void getHeightRange(const UniValue& params, int& start, int& end)
+{
+    start = 0;
+    end = 0;
+    if (params[0].isObject()) {
+        UniValue startValue = find_value(params[0].get_obj(), "start");
+        UniValue endValue = find_value(params[0].get_obj(), "end");
+        // If either is not specified, the other is ignored.
+        if (!startValue.isNull() && !endValue.isNull()) {
+            start = startValue.get_int();
+            end = endValue.get_int();
+            if (start <= 0 || end <= 0) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                                   "Start and end are expected to be greater than zero");
+            }
+            if (end < start) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                                   "End value is expected to be greater than or equal to start");
+            }
+        }
+    }
+
+    LOCK(cs_main);  // for chainActive
+    if (start > chainActive.Height() || end > chainActive.Height()) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Start or end is outside chain range");
+    }
+}
+
+// Parse an address list then fetch the corresponding addressindex information.
+static void getAddressesInHeightRange(
+        const UniValue& params,
+        int start, int end,
+        std::vector<std::pair<uint160, ScriptType>>& addresses,
+        std::vector<std::pair<CAddressIndexKey, CAmount>> &addressIndex)
+{
+    if (!getAddressesFromParams(params, addresses)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    }
+    for (const auto& it : addresses) {
+        if (!GetAddressIndex(it.first, it.second, addressIndex, start, end)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                               "No information available for address");
+        }
+    }
+}
+
+// insightexplorer
+UniValue getaddressdeltas(const UniValue& params, bool fHelp)
+{
+    std::string disabledMsg = "";
+    const bool fEnableInsightExplorer = fExperimentalMode && fInsightExplorer;
+    if (!fEnableInsightExplorer) {
+        disabledMsg = experimentalDisabledHelpMsg("getaddressdeltas", {"insightexplorer"});
+    }
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+                "getaddressdeltas {\"addresses\": [\"taddr\", ...], (\"start\": n), (\"end\": n), (\"chainInfo\": true|false)}\n"
+                "\nReturns all changes for an address.\n"
+                "\nReturns information about all changes to the given transparent addresses within the given (inclusive)\n"
+                "\nblock height range, default is the full blockchain.\n"
+                + disabledMsg +
+                "\nArguments:\n"
+                "{\n"
+                "  \"addresses\":\n"
+                "    [\n"
+                "      \"address\" (string) The base58check encoded address\n"
+                "      ,...\n"
+                "    ]\n"
+                "  \"start\"       (number, optional) The start block height\n"
+                "  \"end\"         (number, optional) The end block height\n"
+                "  \"chainInfo\"   (boolean, optional, default=false) Include chain info in results, only applies if start and end specified\n"
+                "}\n"
+                "(or)\n"
+                "\"address\"       (string) The base58check encoded address\n"
+                "\nResult:\n"
+                "[\n"
+                "  {\n"
+                "    \"satoshis\"  (number) The difference of " + MINOR_CURRENCY_UNIT + "\n"
+                                                                                        "    \"txid\"      (string) The related txid\n"
+                                                                                        "    \"index\"     (number) The related input or output index\n"
+                                                                                        "    \"height\"    (number) The block height\n"
+                                                                                        "    \"address\"   (string) The base58check encoded address\n"
+                                                                                        "  }, ...\n"
+                                                                                        "]\n\n"
+                                                                                        "(or, if chainInfo is true):\n\n"
+                                                                                        "{\n"
+                                                                                        "  \"deltas\":\n"
+                                                                                        "    [\n"
+                                                                                        "      {\n"
+                                                                                        "        \"satoshis\"    (number) The difference of " + MINOR_CURRENCY_UNIT + "\n"
+                                                                                                                                                                      "        \"txid\"        (string) The related txid\n"
+                                                                                                                                                                      "        \"index\"       (number) The related input or output index\n"
+                                                                                                                                                                      "        \"height\"      (number) The block height\n"
+                                                                                                                                                                      "        \"address\"     (string)  The address base58check encoded\n"
+                                                                                                                                                                      "      }, ...\n"
+                                                                                                                                                                      "    ],\n"
+                                                                                                                                                                      "  \"start\":\n"
+                                                                                                                                                                      "    {\n"
+                                                                                                                                                                      "      \"hash\"          (string)  The start block hash\n"
+                                                                                                                                                                      "      \"height\"        (numeric) The height of the start block\n"
+                                                                                                                                                                      "    }\n"
+                                                                                                                                                                      "  \"end\":\n"
+                                                                                                                                                                      "    {\n"
+                                                                                                                                                                      "      \"hash\"          (string)  The end block hash\n"
+                                                                                                                                                                      "      \"height\"        (numeric) The height of the end block\n"
+                                                                                                                                                                      "    }\n"
+                                                                                                                                                                      "}\n"
+                                                                                                                                                                      "\nExamples:\n"
+                + HelpExampleCli("getaddressdeltas", "'{\"addresses\": [\"tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ\"], \"start\": 1000, \"end\": 2000, \"chainInfo\": true}'")
+                + HelpExampleRpc("getaddressdeltas", "{\"addresses\": [\"tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ\"], \"start\": 1000, \"end\": 2000, \"chainInfo\": true}")
+        );
+
+    if (!fEnableInsightExplorer) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Error: getaddressdeltas is disabled. "
+                                           "Run './pastel-cli help getaddressdeltas' for instructions on how to enable this feature.");
+    }
+
+    int start = 0;
+    int end = 0;
+    getHeightRange(params, start, end);
+
+    std::vector<std::pair<uint160, int>> addresses;
+    std::vector<std::pair<CAddressIndexKey, CAmount>> addressIndex;
+    getAddressesInHeightRange(params, start, end, addresses, addressIndex);
+
+    bool includeChainInfo = false;
+    if (params[0].isObject()) {
+        UniValue chainInfo = find_value(params[0].get_obj(), "chainInfo");
+        if (!chainInfo.isNull()) {
+            includeChainInfo = chainInfo.get_bool();
+        }
+    }
+
+    UniValue deltas(UniValue::VARR);
+    for (const auto& it : addressIndex) {
+        std::string address;
+        if (!getAddressFromIndex(it.first.type, it.first.hashBytes, address)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+        }
+
+        UniValue delta(UniValue::VOBJ);
+        delta.pushKV("address", address);
+        delta.pushKV("blockindex", (int)it.first.txindex);
+        delta.pushKV("height", it.first.blockHeight);
+        delta.pushKV("index", (int)it.first.index);
+        delta.pushKV("satoshis", it.second);
+        delta.pushKV("txid", it.first.txhash.GetHex());
+        deltas.push_back(delta);
+    }
+
+    UniValue result(UniValue::VOBJ);
+
+    if (!(includeChainInfo && start > 0 && end > 0)) {
+        return deltas;
+    }
+
+    UniValue startInfo(UniValue::VOBJ);
+    UniValue endInfo(UniValue::VOBJ);
+    {
+        LOCK(cs_main);  // for chainActive
+        if (start > chainActive.Height() || end > chainActive.Height()) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Start or end is outside chain range");
+        }
+        startInfo.pushKV("hash", chainActive[start]->GetBlockHash().GetHex());
+        endInfo.pushKV("hash", chainActive[end]->GetBlockHash().GetHex());
+    }
+    startInfo.pushKV("height", start);
+    endInfo.pushKV("height", end);
+
+    result.pushKV("deltas", deltas);
+    result.pushKV("start", startInfo);
+    result.pushKV("end", endInfo);
+
+    return result;
+}
+
+// insightexplorer
+UniValue getaddressbalance(const UniValue& params, bool fHelp)
+{
+    std::string disabledMsg = "";
+    const bool fEnableInsightExplorer = fExperimentalMode && fInsightExplorer;
+    if (!fEnableInsightExplorer) {
+        disabledMsg = experimentalDisabledHelpMsg("getaddressbalance", {"insightexplorer"});
+    }
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+                "getaddressbalance {\"addresses\": [\"taddr\", ...]}\n"
+                "\nReturns the balance for addresses.\n"
+                + disabledMsg +
+                "\nArguments:\n"
+                "{\n"
+                "  \"addresses\":\n"
+                "    [\n"
+                "      \"address\"  (string) The base58check encoded address\n"
+                "      ,...\n"
+                "    ]\n"
+                "}\n"
+                "(or)\n"
+                "\"address\"  (string) The base58check encoded address\n"
+                "\nResult:\n"
+                "{\n"
+                "  \"balance\"  (string) The current balance in " + MINOR_CURRENCY_UNIT + "\n"
+                                                                                          "  \"received\"  (string) The total number of " + MINOR_CURRENCY_UNIT + " received (including change)\n"
+                                                                                                                                                                  "}\n"
+                                                                                                                                                                  "\nExamples:\n"
+                + HelpExampleCli("getaddressbalance", "'{\"addresses\": [\"tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ\"]}'")
+                + HelpExampleRpc("getaddressbalance", "{\"addresses\": [\"tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ\"]}")
+        );
+
+    if (!fEnableInsightExplorer) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Error: getaddressbalance is disabled. "
+                                           "Run './pastel-cli help getaddressbalance' for instructions on how to enable this feature.");
+    }
+
+    std::vector<std::pair<uint160, int>> addresses;
+    std::vector<std::pair<CAddressIndexKey, CAmount>> addressIndex;
+    // this method doesn't take start and end block height params, so set
+    // to zero (full range, entire blockchain)
+    getAddressesInHeightRange(params, 0, 0, addresses, addressIndex);
+
+    CAmount balance = 0;
+    CAmount received = 0;
+    for (const auto& it : addressIndex) {
+        if (it.second > 0) {
+            received += it.second;
+        }
+        balance += it.second;
+    }
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("balance", balance);
+    result.pushKV("received", received);
+    return result;
+}
+
+// insightexplorer
+UniValue getaddresstxids(const UniValue& params, bool fHelp)
+{
+    std::string disabledMsg = "";
+    const bool fEnableInsightExplorer = fExperimentalMode && fInsightExplorer;
+    if (!fEnableInsightExplorer) {
+        disabledMsg = experimentalDisabledHelpMsg("getaddresstxids", {"insightexplorer"});
+    }
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+                "getaddresstxids {\"addresses\": [\"taddr\", ...], (\"start\": n), (\"end\": n)}\n"
+                "\nReturns the txids for given transparent addresses within the given (inclusive)\n"
+                "\nblock height range, default is the full blockchain.\n"
+                "\nStarting v4.5.0, returned txids are in the order they appear in blocks, which \n"
+                "\nensures that they are topologically sorted (i.e. parent txids will appear before child txids).\n"
+                + disabledMsg +
+                "\nArguments:\n"
+                "{\n"
+                "  \"addresses\":\n"
+                "    [\n"
+                "      \"taddr\"  (string) The base58check encoded address\n"
+                "      ,...\n"
+                "    ]\n"
+                "  \"start\" (number, optional) The start block height\n"
+                "  \"end\" (number, optional) The end block height\n"
+                "}\n"
+                "(or)\n"
+                "\"address\"  (string) The base58check encoded address\n"
+                "\nResult:\n"
+                "[\n"
+                "  \"transactionid\"  (string) The transaction id\n"
+                "  ,...\n"
+                "]\n"
+                "\nExamples:\n"
+                + HelpExampleCli("getaddresstxids", "'{\"addresses\": [\"tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ\"], \"start\": 1000, \"end\": 2000}'")
+                + HelpExampleRpc("getaddresstxids", "{\"addresses\": [\"tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ\"], \"start\": 1000, \"end\": 2000}")
+        );
+
+    if (!fEnableInsightExplorer) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Error: getaddresstxids is disabled. "
+                                           "Run './pastel-cli help getaddresstxids' for instructions on how to enable this feature.");
+    }
+
+    int start = 0;
+    int end = 0;
+    getHeightRange(params, start, end);
+
+    std::vector<std::pair<uint160, int>> addresses;
+    std::vector<std::pair<CAddressIndexKey, CAmount>> addressIndex;
+    getAddressesInHeightRange(params, start, end, addresses, addressIndex);
+
+    // This is an ordered set, sorted by (height,txindex) so result also sorted by height.
+    std::set<std::tuple<int, int, std::string>> txids;
+
+    for (const auto& it : addressIndex) {
+        const int height = it.first.blockHeight;
+        const int txindex = it.first.txindex;
+        const std::string txid = it.first.txhash.GetHex();
+        // Duplicate entries (two addresses in same tx) are suppressed
+        txids.insert(std::make_tuple(height, txindex, txid));
+    }
+    UniValue result(UniValue::VARR);
+    for (const auto& it : txids) {
+        // only push the txid, not the height
+        result.push_back(std::get<2>(it));
+    }
+
+    return result;
+}
+
+// insightexplorer
+UniValue getspentinfo(const UniValue& params, bool fHelp)
+{
+    std::string disabledMsg = "";
+    const bool fEnableInsightExplorer = fExperimentalMode && fInsightExplorer;
+    if (!fEnableInsightExplorer) {
+        disabledMsg = experimentalDisabledHelpMsg("getspentinfo", {"insightexplorer"});
+    }
+    if (fHelp || params.size() != 1 || !params[0].isObject())
+        throw runtime_error(
+                "getspentinfo {\"txid\": \"txidhex\", \"index\": n}\n"
+                "\nReturns the txid and index where an output is spent.\n"
+                + disabledMsg +
+                "\nArguments:\n"
+                "{\n"
+                "  \"txid\"   (string) The hex string of the txid\n"
+                "  \"index\"  (number) The vout (output) index\n"
+                "}\n"
+                "\nResult:\n"
+                "{\n"
+                "  \"txid\"   (string) The transaction id\n"
+                "  \"index\"  (number) The spending (vin, input) index\n"
+                "  ,...\n"
+                "}\n"
+                "\nExamples:\n"
+                + HelpExampleCli("getspentinfo", "'{\"txid\": \"33990288fb116981260be1de10b8c764f997674545ab14f9240f00346333b780\", \"index\": 4}'")
+                + HelpExampleRpc("getspentinfo", "{\"txid\": \"33990288fb116981260be1de10b8c764f997674545ab14f9240f00346333b780\", \"index\": 4}")
+        );
+
+    if (!fEnableInsightExplorer) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Error: getspentinfo is disabled. "
+                                           "Run './pastel-cli help getspentinfo' for instructions on how to enable this feature.");
+    }
+
+    UniValue txidValue = find_value(params[0].get_obj(), "txid");
+    UniValue indexValue = find_value(params[0].get_obj(), "index");
+
+    if (!txidValue.isStr())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid txid, must be a string");
+    if (!indexValue.isNum())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid index, must be an integer");
+    uint256 txid = ParseHashV(txidValue, "txid");
+    int outputIndex = indexValue.get_int();
+
+    CSpentIndexKey key(txid, outputIndex);
+    CSpentIndexValue value;
+
+    {
+        LOCK(cs_main);
+        if (!GetSpentIndex(key, value)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unable to get spent info");
+        }
+    }
+    UniValue obj(UniValue::VOBJ);
+    obj.pushKV("txid", value.txid.GetHex());
+    obj.pushKV("index", (int)value.inputIndex);
+    obj.pushKV("height", value.blockHeight);
+
+    return obj;
+}
+
+static UniValue RPCLockedMemoryInfo()
+{
+    LockedPool::Stats stats = LockedPoolManager::Instance().stats();
+    UniValue obj(UniValue::VOBJ);
+    obj.pushKV("used", uint64_t(stats.used));
+    obj.pushKV("free", uint64_t(stats.free));
+    obj.pushKV("total", uint64_t(stats.total));
+    obj.pushKV("locked", uint64_t(stats.locked));
+    obj.pushKV("chunks_used", uint64_t(stats.chunks_used));
+    obj.pushKV("chunks_free", uint64_t(stats.chunks_free));
+    return obj;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
@@ -706,8 +1198,15 @@ static const CRPCCommand commands[] =
     { "util",               "createmultisig",         &createmultisig,         true  },
     { "util",               "verifymessage",          &verifymessage,          true  },
 
+    // START insightexplorer
     /* Address index */
+    { "addressindex",       "getaddresstxids",        &getaddresstxids,        false }, /* insight explorer */
+    { "addressindex",       "getaddressbalance",      &getaddressbalance,      false }, /* insight explorer */
+    { "addressindex",       "getaddressdeltas",       &getaddressdeltas,       false }, /* insight explorer */
+    { "addressindex",       "getaddressutxos",        &getaddressutxos,        false }, /* insight explorer */
     { "addressindex",       "getaddressmempool",      &getaddressmempool,      true  }, /* insight explorer */
+    { "blockchain",         "getspentinfo",           &getspentinfo,           false }, /* insight explorer */
+    // END insightexplorer
 
     /* Not shown in help */
     { "hidden",             "setmocktime",            &setmocktime,            true  },

@@ -282,6 +282,7 @@ unsigned int CScript::GetSigOpCount(const CScript& scriptSig) const
 }
 
 // insightexplorer
+// https://github.com/bitpay/bitcoin/commit/017f548ea6d89423ef568117447e61dd5707ec42#diff-f7ca24fb80ddba0f291cb66344ca6fcbR204
 bool CScript::IsPayToPublicKeyHash() const
 {
     // Extra-fast test for pay-to-pubkey-hash CScripts:
@@ -294,6 +295,7 @@ bool CScript::IsPayToPublicKeyHash() const
 	    (*this)[23] == OP_EQUALVERIFY &&
 	    (*this)[24] == OP_CHECKSIG);
 }
+
 bool CScript::IsPayToScriptHash() const
 {
     // Extra-fast test for pay-to-script-hash CScripts:
@@ -344,6 +346,17 @@ string CScript::ToString() const
             str += GetOpName(opcode);
     }
     return str;
+}
+
+// insightexplorer
+ScriptType CScript::GetType() const
+{
+    if (this->IsPayToPublicKeyHash())
+        return ScriptType::P2PKH;
+    if (this->IsPayToScriptHash())
+        return ScriptType::P2SH;
+    // We don't know this script type
+    return ScriptType::UNKNOWN;
 }
 
 // insightexplorer

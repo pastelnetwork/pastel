@@ -38,6 +38,7 @@
 #include <txmempool.h>
 #include <script_check.h>
 #include <netmsg/netconsts.h>
+#include <txdb.h>
 
 class CBlockIndex;
 class CBlockTreeDB;
@@ -352,7 +353,15 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 
 } // namespace Consensus
 
+// insightexplorer
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+bool GetAddressIndex(const uint160& addressHash, int type,
+                     std::vector<CAddressIndexDbEntry> &addressIndex,
+                     int start = 0, int end = 0);
+bool GetAddressUnspent(const uint160& addressHash, int type,
+                       std::vector<CAddressUnspentDbEntry>& unspentOutputs);
+bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
+                       std::vector<std::pair<uint256, unsigned int> > &hashes);
 
 /** Functions for disk access for blocks */
 bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos, const CMessageHeader::MessageStartChars& messageStart);
@@ -372,6 +381,7 @@ bool DisconnectBlock(
     const CChainParams& chainparams,
     CBlockIndex* pindex,
     CCoinsViewCache& coins,
+    const bool updateIndices,
     bool* pfClean = nullptr);
 
 /** Apply the effects of this block (with given index) on the UTXO set represented by coins.

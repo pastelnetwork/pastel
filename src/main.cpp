@@ -1257,7 +1257,8 @@ bool DisconnectBlock(
     CValidationState& state, 
     const CChainParams& chainparams,
     CBlockIndex* pindex, 
-    CCoinsViewCache& view, 
+    CCoinsViewCache& view,
+    const bool updateIndices,
     bool* pfClean)
 {
     // check that the block hash is the same as the best block in the view
@@ -1279,6 +1280,10 @@ bool DisconnectBlock(
     if (blockUndo.vtxundo.size() + 1 != block.vtx.size())
         return errorFn(__METHOD_NAME__, "height=%d, block and undo data inconsistent", pindex->nHeight);
 
+    std::vector<CAddressIndexDbEntry> addressIndex;
+    std::vector<CAddressUnspentDbEntry> addressUnspentIndex;
+    std::vector<CSpentIndexDbEntry> spentIndex;
+
     // undo transactions in reverse order
     if (!block.vtx.empty())
     {
@@ -1288,6 +1293,28 @@ bool DisconnectBlock(
         {
             const CTransaction& tx = block.vtx[i];
             const uint256 &txid = tx.GetHash();
+
+            // insightexplorer
+            // https://github.com/bitpay/bitcoin/commit/017f548ea6d89423ef568117447e61dd5707ec42#diff-7ec3c68a81efff79b6ca22ac1f1eabbaR2236
+            if (fAddressIndex && updateIndices) {
+                for (unsigned int k = tx.vout.size(); k-- > 0;) {
+                    const CTxOut &out = tx.vout[k];
+                    ScriptType scriptType = out.scriptPubKey.GetType();
+                    if (scriptType != ScriptType::UNKNOWN) {
+                        uint160 const addrHash = out.scriptPubKey.AddressHash();
+
+                        // undo receiving activity
+                        addressIndex.push_back(make_pair(
+                                CAddressIndexKey(scriptType, addrHash, pindex->nHeight, i, hash, k, false),
+                                out.nValue));
+
+                        // undo unspent index
+                        addressUnspentIndex.push_back(make_pair(
+                                CAddressUnspentKey(scriptType, addrHash, hash, k),
+                                CAddressUnspentValue()));
+                    }
+                }
+            }
 
             // Check that all outputs are available and match the outputs in the block itself
             // exactly.
@@ -1324,6 +1351,34 @@ bool DisconnectBlock(
                 const CTxInUndo& undo = txundo.vprevout[j];
                 if (!ApplyTxInUndo(undo, view, out))
                     fClean = false;
+
+                // insightexplorer
+                // https://github.com/bitpay/bitcoin/commit/017f548ea6d89423ef568117447e61dd5707ec42#diff-7ec3c68a81efff79b6ca22ac1f1eabbaR2304
+                const CTxIn input = tx.vin[j];
+                if (fAddressIndex && updateIndices) {
+                    const CTxOut &prevout = view.GetOutputFor(input);
+                    ScriptType scriptType = prevout.scriptPubKey.GetType();
+                    if (scriptType != ScriptType::UNKNOWN) {
+                        uint160 const addrHash = prevout.scriptPubKey.AddressHash();
+
+                        // undo spending activity
+                        addressIndex.push_back(make_pair(
+                                CAddressIndexKey(scriptType, addrHash, pindex->nHeight, i, hash, j, true),
+                                prevout.nValue * -1));
+
+                        // restore unspent index
+                        addressUnspentIndex.push_back(make_pair(
+                                CAddressUnspentKey(scriptType, addrHash, input.prevout.hash, input.prevout.n),
+                                CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undo.nHeight)));
+                    }
+                }
+                // insightexplorer
+                if (fSpentIndex && updateIndices) {
+                    // undo and delete the spent index
+                    spentIndex.push_back(make_pair(
+                            CSpentIndexKey(input.prevout.hash, input.prevout.n),
+                            CSpentIndexValue()));
+                }
             }
         }
     }
@@ -1343,6 +1398,25 @@ bool DisconnectBlock(
 
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
+
+    // insightexplorer
+    if (fAddressIndex && updateIndices) {
+        if (!gl_pBlockTreeDB->EraseAddressIndex(addressIndex)) {
+            AbortNode(state, "Failed to delete address index");
+            return errorFn(__METHOD_NAME__, "height=%d, failed to delete address index", pindex->nHeight);
+        }
+        if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(addressUnspentIndex)) {
+            AbortNode(state, "Failed to write address unspent index");
+            return errorFn(__METHOD_NAME__, "height=%d, failed to write address unspent index", pindex->nHeight);
+        }
+    }
+    // insightexplorer
+    if (fSpentIndex && updateIndices) {
+        if (!gl_pBlockTreeDB->UpdateSpentIndex(spentIndex)) {
+            AbortNode(state, "Failed to write transaction index");
+            return errorFn(__METHOD_NAME__, "height=%d, failed to write transaction index", pindex->nHeight);
+        }
+    }
 
     if (pfClean)
     {
@@ -1565,6 +1639,38 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
                 return state.DoS(100, error("ConnectBlock(): inputs missing/spent"),
                                  REJECT_INVALID, "bad-txns-inputs-missingorspent");
 
+            // insightexplorer
+            // https://github.com/bitpay/bitcoin/commit/017f548ea6d89423ef568117447e61dd5707ec42#diff-7ec3c68a81efff79b6ca22ac1f1eabbaR2597
+            if (fAddressIndex || fSpentIndex) {
+                for (size_t j = 0; j < tx.vin.size(); j++) {
+
+                    const CTxIn input = tx.vin[j];
+                    const CTxOut &prevout = allPrevOutputs[j];
+                    ScriptType scriptType = prevout.scriptPubKey.GetType();
+                    const uint160 addrHash = prevout.scriptPubKey.AddressHash();
+                    if (fAddressIndex && scriptType != ScriptType::UNKNOWN) {
+                        // record spending activity
+                        addressIndex.push_back(make_pair(
+                                CAddressIndexKey(scriptType, addrHash, pindex->nHeight, i, hash, j, true),
+                                prevout.nValue * -1));
+
+                        // remove address from unspent index
+                        addressUnspentIndex.push_back(make_pair(
+                                CAddressUnspentKey(scriptType, addrHash, input.prevout.hash, input.prevout.n),
+                                CAddressUnspentValue()));
+                    }
+                    if (fSpentIndex) {
+                        // Add the spent index to determine the txid and input that spent an output
+                        // and to find the amount and address from an input.
+                        // If we do not recognize the script type, we still add an entry to the
+                        // spentindex db, with a script type of 0 and addrhash of all zeroes.
+                        spentIndex.push_back(make_pair(
+                                CSpentIndexKey(input.prevout.hash, input.prevout.n),
+                                CSpentIndexValue(hash, j, pindex->nHeight, prevout.nValue, scriptType, addrHash)));
+                    }
+                }
+            }
+
             // are the shielded requirements met?
             if (!view.HaveShieldedRequirements(tx))
                 return state.DoS(100, error("ConnectBlock(): Shielded requirements not met"),
@@ -1590,6 +1696,28 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
             if (!ContextualCheckInputs(tx, state, view, fExpensiveChecks, flags, fCacheResults, txdata[i], consensusParams, consensusBranchId, gl_ScriptCheckManager.GetThreadCount() ? &vChecks : nullptr))
                 return false;
             scriptCheckControl->Add(vChecks);
+        }
+
+        // insightexplorer
+        // https://github.com/bitpay/bitcoin/commit/017f548ea6d89423ef568117447e61dd5707ec42#diff-7ec3c68a81efff79b6ca22ac1f1eabbaR2656
+        if (fAddressIndex) {
+            for (unsigned int k = 0; k < tx.vout.size(); k++) {
+                const CTxOut &out = tx.vout[k];
+                ScriptType scriptType = out.scriptPubKey.GetType();
+                if (scriptType != ScriptType::UNKNOWN) {
+                    uint160 const addrHash = out.scriptPubKey.AddressHash();
+
+                    // record receiving activity
+                    addressIndex.push_back(make_pair(
+                            CAddressIndexKey(scriptType, addrHash, pindex->nHeight, i, hash, k, false),
+                            out.nValue));
+
+                    // record unspent output
+                    addressUnspentIndex.push_back(make_pair(
+                            CAddressUnspentKey(scriptType, addrHash, hash, k),
+                            CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->nHeight)));
+                }
+            }
         }
 
         CTxUndo undoDummy;
@@ -1686,6 +1814,42 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
     if (fTxIndex && !gl_pBlockTreeDB->WriteTxIndex(vPos))
         return AbortNode(state, "Failed to write transaction index");
+
+    // START insightexplorer
+    if (fAddressIndex) {
+        if (!gl_pBlockTreeDB->WriteAddressIndex(addressIndex)) {
+            return AbortNode(state, "Failed to write address index");
+        }
+        if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(addressUnspentIndex)) {
+            return AbortNode(state, "Failed to write address unspent index");
+        }
+    }
+    if (fSpentIndex) {
+        if (!gl_pBlockTreeDB->UpdateSpentIndex(spentIndex)) {
+            return AbortNode(state, "Failed to write spent index");
+        }
+    }
+    if (fTimestampIndex) {
+        unsigned int logicalTS = pindex->nTime;
+        unsigned int prevLogicalTS = 0;
+
+        // retrieve logical timestamp of the previous block
+        if (pindex->pprev)
+            if (!gl_pBlockTreeDB->ReadTimestampBlockIndex(pindex->pprev->GetBlockHash(), prevLogicalTS))
+                LogPrintf("%s: Failed to read previous block's logical timestamp\n", __func__);
+
+        if (logicalTS <= prevLogicalTS) {
+            logicalTS = prevLogicalTS + 1;
+            LogPrintf("%s: Previous logical timestamp is newer Actual[%d] prevLogical[%d] Logical[%d]\n", __func__, pindex->nTime, prevLogicalTS, logicalTS);
+        }
+
+        if (!gl_pBlockTreeDB->WriteTimestampIndex(CTimestampIndexKey(logicalTS, pindex->GetBlockHash())))
+            return AbortNode(state, "Failed to write timestamp index");
+
+        if (!gl_pBlockTreeDB->WriteTimestampBlockIndex(CTimestampBlockIndexKey(pindex->GetBlockHash()), CTimestampBlockIndexValue(logicalTS)))
+            return AbortNode(state, "Failed to write blockhash index");
+    }
+    // END insightexplorer
 
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
@@ -1888,7 +2052,8 @@ static bool DisconnectTip(CValidationState &state, const CChainParams& chainpara
     int64_t nStart = GetTimeMicros();
     {
         CCoinsViewCache view(gl_pCoinsTip.get());
-        if (!DisconnectBlock(block, state, chainparams, pindexDelete, view))
+        // insightexplorer: update indices (true)
+        if (!DisconnectBlock(block, state, chainparams, pindexDelete, view, true))
             return error("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHashString());
         assert(view.Flush());
     }
@@ -3733,6 +3898,7 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     LogPrintf("%s: insight explorer %s\n", __func__, fAddressIndex ? "enabled" : "disabled");
     fAddressIndex = fInsightExplorer.load();
     fSpentIndex = fInsightExplorer.load();
+    fTimestampIndex = fInsightExplorer.load();
 
     // Fill in-memory data
     for (const auto &[hash, pindex] : mapBlockIndex)
@@ -3829,7 +3995,8 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
         if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + gl_pCoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage)
         {
             bool fClean = true;
-            if (!DisconnectBlock(block, state, chainparams, pindex, coins, &fClean))
+            // insightexplorer: do not update indices (false)
+            if (!DisconnectBlock(block, state, chainparams, pindex, coins, false, &fClean))
                 return errorFn(__METHOD_NAME__, "*** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
             pindexState = pindex->pprev;
             if (!fClean)
@@ -6521,13 +6688,64 @@ public:
 } instance_of_cmaincleanup;
 
 
+// START insightexplorer
+bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
+                       std::vector<std::pair<uint256, unsigned int> > &hashes)
+{
+    if (!fTimestampIndex) {
+        LogPrint("rpc", "Timestamp index not enabled");
+        return false;
+    }
+    if (!pblocktree->ReadTimestampIndex(high, low, fActiveOnly, hashes)) {
+        LogPrint("rpc", "Unable to get hashes for timestamps");
+        return false;
+    }
+    return true;
+}
+
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
 {
     AssertLockHeld(cs_main);
-    if (!fSpentIndex)
+    if (!fSpentIndex) {
+        LogPrint("rpc", "Spent index not enabled");
         return false;
-
+    }
     if (mempool.getSpentIndex(key, value))
         return true;
-    return gl_pBlockTreeDB->ReadSpentIndex(key, value);
+
+    if (!pblocktree->ReadSpentIndex(key, value)) {
+        LogPrint("rpc", "Unable to get spent index information");
+        return false;
+    }
+    return true;
 }
+
+bool GetAddressIndex(const uint160& addressHash, int type,
+                     std::vector<CAddressIndexDbEntry>& addressIndex,
+                     int start, int end)
+{
+    if (!fAddressIndex) {
+        LogPrint("rpc", "address index not enabled");
+        return false;
+    }
+    if (!pblocktree->ReadAddressIndex(addressHash, type, addressIndex, start, end)) {
+        LogPrint("rpc", "unable to get txids for address");
+        return false;
+    }
+    return true;
+}
+
+bool GetAddressUnspent(const uint160& addressHash, int type,
+                       std::vector<CAddressUnspentDbEntry>& unspentOutputs)
+{
+    if (!fAddressIndex) {
+        LogPrint("rpc", "address index not enabled");
+        return false;
+    }
+    if (!pblocktree->ReadAddressUnspentIndex(addressHash, type, unspentOutputs)) {
+        LogPrint("rpc", "unable to get txids for address");
+        return false;
+    }
+    return true;
+}
+// END insightexplorer

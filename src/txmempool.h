@@ -135,13 +135,19 @@ public:
      */
     void check(const CCoinsViewCache *pcoins) const;
     void setSanityCheck(const double dFrequency = 1.0) noexcept { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
-
-	void getAddressIndex(const std::vector<std::pair<uint160, ScriptType>>& addresses,
-                         std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results);
-
-    bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value);
-
 	bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate = true);
+
+    // START insightexplorer
+    void addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view);
+    void getAddressIndex(const std::vector<std::pair<uint160, ScriptType>>& addresses,
+                         std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results);
+    void removeAddressIndex(const uint256& txhash);
+
+    void addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view);
+    bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value);
+    void removeSpentIndex(const uint256 txhash);
+    // END insightexplorer
+
     void remove(const CTransaction& tx, const bool fRecursive = true, std::list<CTransaction>* pRemovedTxList = nullptr);
     void removeWithAnchor(const uint256 &invalidRoot, ShieldedType type);
     void removeForReorg(const CCoinsViewCache *pcoins, unsigned int nMemPoolHeight, int flags);
