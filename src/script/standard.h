@@ -138,4 +138,4 @@ CScript GetScriptForDestination(const CTxDestination& dest);
 CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
 
 // insightexplorer
-CTxDestination DestFromAddressHash(ScriptType scriptType, uint160& addressHash);
+CTxDestination DestFromAddressHash(const ScriptType scriptType, uint160& addressHash);

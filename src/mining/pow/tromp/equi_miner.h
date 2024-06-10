@@ -58,23 +58,23 @@ typedef u32 au32;
 #endif
 
 // number of buckets
-static constexpr u32 NBUCKETS = 1<<BUCKBITS;
+constexpr u32 NBUCKETS = 1<<BUCKBITS;
 // 2_log of number of slots per bucket
-static constexpr u32 SLOTBITS = RESTBITS+1+1;
-static constexpr u32 SLOTRANGE = 1<<SLOTBITS;
-static constexpr u32 SLOTMSB = 1<<(SLOTBITS-1);
+constexpr u32 SLOTBITS = RESTBITS+1+1;
+constexpr u32 SLOTRANGE = 1<<SLOTBITS;
+constexpr u32 SLOTMSB = 1<<(SLOTBITS-1);
 // number of slots per bucket
-static constexpr u32 NSLOTS = SLOTRANGE * SAVEMEM;
+constexpr u32 NSLOTS = SLOTRANGE * SAVEMEM;
 // number of per-xhash slots
-static constexpr u32 XFULL = 16;
+constexpr u32 XFULL = 16;
 // SLOTBITS mask
-static constexpr u32 SLOTMASK = SLOTRANGE-1;
+constexpr u32 SLOTMASK = SLOTRANGE-1;
 // number of possible values of xhash (rest of n) bits
-static constexpr u32 NRESTS = 1<<RESTBITS;
+constexpr u32 NRESTS = 1<<RESTBITS;
 // number of blocks of hashes extracted from single 512 bit blake2b output
-static constexpr u32 NBLOCKS = (NHASHES+HASHESPERBLAKE-1)/HASHESPERBLAKE;
+constexpr u32 NBLOCKS = (NHASHES+HASHESPERBLAKE-1)/HASHESPERBLAKE;
 // nothing larger found in 100000 runs
-static constexpr u32 MAXSOLS = 8;
+constexpr u32 MAXSOLS = 8;
 
 // tree node identifying its children as two different slots in
 // a bucket on previous layer with the same rest bits (x-tra hash)

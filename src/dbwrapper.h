@@ -170,6 +170,8 @@ private:
     //! the database itself
     leveldb::DB* pdb;
 
+    bool m_bCreated; // true if the database was created during this session
+
 public:
     /**
      * @param[in] path        Location in the filesystem where leveldb data will be stored.
@@ -179,6 +181,8 @@ public:
      */
     CDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory = false, bool fWipe = false);
     ~CDBWrapper();
+
+    bool WasCreated() const noexcept { return m_bCreated; }
 
     template <typename K, typename V>
     bool Read(const K& key, V& value) const

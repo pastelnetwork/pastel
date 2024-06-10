@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014 The Bitcoin Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -13,7 +14,7 @@
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
-from test_framework.util import initialize_chain_clean, start_node, \
+from test_framework.util import  start_node, \
     connect_nodes, stop_node, sync_blocks
 
 import os.path
@@ -27,6 +28,8 @@ class PruneTest(BitcoinTestFramework):
     def __init__(self):
         self.utxo = []
         self.address = ["",""]
+        self.setup_clean_chain = True
+        self.num_nodes = 3
 
         # Some pre-processing to create a bunch of OP_RETURN txouts to insert into transactions we create
         # So we have big transactions and full blocks to fill up our block files
@@ -45,10 +48,6 @@ class PruneTest(BitcoinTestFramework):
             # add script_pubkey
             self.txouts = self.txouts + script_pubkey
 
-
-    def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 3)
 
     def setup_network(self):
         self.nodes = []

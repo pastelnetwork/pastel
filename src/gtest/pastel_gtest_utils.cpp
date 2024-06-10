@@ -1,12 +1,18 @@
-// Copyright (c) 2021-2023 The Pastel Core developers
+// Copyright (c) 2021-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <regex>
+#include <random>
+
+#include <gtest/gtest.h>
+
+#include <utils/fs.h>
+#include <rpc/client.h>
+#include <rpc/server.h>
+#include <chainparams.h>
 
 #include <pastel_gtest_utils.h>
-#include <utils/fs.h>
 
-#include <random>
-#include <chainparams.h>
 using namespace std;
 
 int GenZero(int n)
@@ -32,9 +38,9 @@ string generateRandomId(const size_t nLength)
         "abcdefghijklmnopqrstuvwxyz"
         "0123456789_";
 
-    static std::random_device rd;
-    static std::mt19937 mt(rd());
-    static std::uniform_int_distribution<int> dist(0, static_cast<int>(strlen(charset) - 1));
+    static random_device rd;
+    static mt19937 mt(rd());
+    static uniform_int_distribution<int> dist(0, static_cast<int>(strlen(charset) - 1));
 
     string s;
     s.resize(nLength);
@@ -45,9 +51,9 @@ string generateRandomId(const size_t nLength)
 
 string generateRandomTxId()
 {
-    static std::random_device rd;
-    static std::mt19937_64 gen(rd());
-    static std::uniform_int_distribution<uint64_t> dist;
+    static random_device rd;
+    static mt19937_64 gen(rd());
+    static uniform_int_distribution<uint64_t> dist;
 
     string sTxId;
     sTxId.reserve(64);
@@ -95,4 +101,52 @@ void RegtestDeactivateSapling()
 {
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_SAPLING, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
     UpdateNetworkUpgradeParameters(Consensus::UpgradeIndex::UPGRADE_OVERWINTER, Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT);
+}
+
+UniValue TestCallRPC(const string& args)
+{
+    v_strings vArgs;
+
+    regex pattern("\\ |\t");
+    vArgs = v_strings(
+                    sregex_token_iterator(args.begin(), args.end(), pattern, -1),
+                    sregex_token_iterator()
+                    );
+
+    string strMethod = vArgs[0];
+    vArgs.erase(vArgs.begin());
+    // Handle empty strings the same way as CLI
+    for (auto i = 0; i < vArgs.size(); i++)
+    {
+        if (vArgs[i] == "\"\"")
+            vArgs[i] = "";
+    }
+    UniValue params = RPCConvertValues(strMethod, vArgs);
+    EXPECT_TRUE(tableRPC[strMethod] != nullptr);
+    rpcfn_type method = tableRPC[strMethod]->actor;
+    try {
+        UniValue result = (*method)(params, false);
+        return result;
+    }
+    catch (const UniValue& objError) {
+        throw runtime_error(find_value(objError, "message").get_str());
+    }
+}
+
+UniValue TestCallRPC_Params(const std::string& sRpcMethod, const std::string& sRpcParams)
+{
+    return TestCallRPC(sRpcMethod + " " + sRpcParams);
+}
+
+void CheckRPCThrows(const string &sRpcMethod, const string& sRpcParams, const string &sExpectedErrorMessage)
+{
+    try {
+        TestCallRPC(sRpcMethod + " " + sRpcParams);
+        // Note: CallRPC catches (const UniValue& objError) and rethrows a runtime_error
+        // "Should have caused an error";
+    } catch (const runtime_error& e) {
+        EXPECT_EQ(sExpectedErrorMessage, e.what());
+    } catch([[maybe_unused]] const exception& e) {
+        // string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"";
+    }
 }

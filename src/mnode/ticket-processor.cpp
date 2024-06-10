@@ -18,7 +18,7 @@
 #include <key_io.h>
 #include <init.h>
 #include <accept_to_mempool.h>
-#include <txdb.h>
+#include <txdb/txdb.h>
 #include <mnode/tickets/ticket-types.h>
 #include <mnode/tickets/tickets-all.h>
 #include <mnode/mnode-controller.h>
@@ -1867,7 +1867,7 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
     if (tv.IsNotValid())
         throw runtime_error(strprintf("Ticket (%s) is invalid. %s", ticket.GetTicketName(), tv.errorMsg));
 
-    vector<CTxOut> vExtraOutputs;
+    v_txouts vExtraOutputs;
     const CAmount nExtraAmountInPat = ticket.GetExtraOutputs(vExtraOutputs, nullptr);
 
     CCompressedDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
@@ -2594,7 +2594,7 @@ uint32_t CPastelTicketProcessor::GetTicketBlockHeightInActiveChain(const uint256
                 {
                     const auto pindex = mi->second;
                     if (chainActive.Contains(pindex))
-                        return pindex->nHeight;
+                        return pindex->GetHeight();
                 }
             }
             return data.nTicketHeight;

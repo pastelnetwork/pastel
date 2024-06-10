@@ -15,11 +15,13 @@
 #include <main.h>
 #include <net.h>
 #include <netbase.h>
-#include <rpc/server.h>
 #include <timedata.h>
 #include <txmempool.h>
 #include <chain_options.h>
 #include <script/scripttype.h>
+#include <rpc/server.h>
+#include <rpc/chain-rpc-utils.h>
+#include <rpc/rpc_consts.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
@@ -95,9 +97,9 @@ Examples:
         obj.pushKV("balance",       ValueFromAmount(pwalletMain->GetBalance()));
     }
 #endif
-    obj.pushKV("blocks",        static_cast<uint64_t>(gl_nChainHeight.load()));
+    obj.pushKV("blocks",        gl_nChainHeight.load());
     obj.pushKV("timeoffset",    GetTimeOffset());
-    obj.pushKV("connections",   static_cast<uint64_t>(gl_NodeManager.GetNodeCount()));
+    obj.pushKV("connections",   gl_NodeManager.GetNodeCount());
     obj.pushKV("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string()));
     obj.pushKV("difficulty",    GetDifficulty());
     obj.pushKV("chain",         Params().NetworkIDString());
@@ -105,7 +107,7 @@ Examples:
     if (pwalletMain)
     {
         obj.pushKV("keypoololdest", pwalletMain->GetOldestKeyPoolTime());
-        obj.pushKV("keypoolsize",   static_cast<uint64_t>(pwalletMain->GetKeyPoolSize()));
+        obj.pushKV("keypoolsize",   pwalletMain->GetKeyPoolSize());
     }
     if (pwalletMain && pwalletMain->IsCrypted())
         obj.pushKV("unlocked_until", nWalletUnlockTime);
@@ -150,7 +152,7 @@ public:
             for (const CTxDestination& addr : addresses) {
                 a.push_back(keyIO.EncodeDestination(addr));
             }
-            obj.pushKV("addresses", a);
+            obj.pushKV("vAddresses", a);
             if (whichType == TX_MULTISIG)
                 obj.pushKV("sigsrequired", nRequired);
         }
@@ -310,7 +312,7 @@ CScript _createmultisig_redeemScript(const UniValue& params)
             strprintf("not enough keys supplied "
                       "(got %u keys, but need at least %d to redeem)", keys.size(), nRequired));
     if (keys.size() > 16)
-        throw runtime_error("Number of addresses involved in the multisignature address creation > 16\nReduce the number");
+        throw runtime_error("Number of vAddresses involved in the multisignature address creation > 16\nReduce the number");
 
     KeyIO keyIO(Params());
 
@@ -370,8 +372,8 @@ Creates a multi-signature address with n signature of m keys required.
 It returns a json object with the address and redeemScript.
 
 Arguments:
-1. nrequired    (numeric, required) The number of required signatures out of the n keys or addresses.
-2. "keys"       (string, required) A json array of keys which are Pastel addresses or hex-encoded public keys
+1. nrequired    (numeric, required) The number of required signatures out of the n keys or vAddresses.
+2. "keys"       (string, required) A json array of keys which are Pastel vAddresses or hex-encoded public keys
      [
        "key"    (string) Pastel address or hex-encoded public key
        ,...
@@ -385,7 +387,7 @@ Result:
 
 Examples:
 
-Create a multisig address from 2 addresses
+Create a multisig address from 2 vAddresses
 )" + HelpExampleCli("createmultisig", "2 \"[\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\",\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\"]\"") + R"(
 As a json rpc call
 )" + HelpExampleRpc("createmultisig", "2, \"[\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\",\\\"Ptor9ydHJuGpNWFAX3ZTu3bXevEhCaDVrsY\\\"]\"")
@@ -502,12 +504,12 @@ static UniValue RPCLockedMemoryInfo()
 {
     LockedPool::Stats stats = LockedPoolManager::Instance().stats();
     UniValue obj(UniValue::VOBJ);
-    obj.pushKV("used", uint64_t(stats.used));
-    obj.pushKV("free", uint64_t(stats.free));
-    obj.pushKV("total", uint64_t(stats.total));
-    obj.pushKV("locked", uint64_t(stats.locked));
-    obj.pushKV("chunks_used", uint64_t(stats.chunks_used));
-    obj.pushKV("chunks_free", uint64_t(stats.chunks_free));
+    obj.pushKV("used", stats.used);
+    obj.pushKV("free", stats.free);
+    obj.pushKV("total", stats.total);
+    obj.pushKV("locked", stats.locked);
+    obj.pushKV("chunks_used", stats.chunks_used);
+    obj.pushKV("chunks_free", stats.chunks_free);
     return obj;
 }
 
@@ -568,14 +570,14 @@ static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, ScriptTy
     if (IsKeyDestination(dest))
     {
         auto x = get_if<CKeyID>(&dest);
-        memcpy(&hashBytes, x->begin(), 20);
+        memcpy(&hashBytes, x->begin(), uint160::SIZE);
         type = ScriptType::P2PKH;
         return true;
     }
     if (IsScriptDestination(dest))
     {
         auto x = get_if<CScriptID>(&dest);
-        memcpy(&hashBytes, x->begin(), 20);
+        memcpy(&hashBytes, x->begin(), uint160::SIZE);
         type = ScriptType::P2SH;
         return true;
     }
@@ -585,53 +587,52 @@ static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, ScriptTy
 // insightexplorer
 static bool getAddressesFromParams(
     const UniValue& params,
-    vector<pair<uint160, ScriptType>> &addresses)
+    vector<pair<uint160, ScriptType>> &vAddresses)
 {
-    v_strings param_addresses;
-    if (params[0].isStr()) {
-        param_addresses.push_back(params[0].get_str());
-    } else if (params[0].isObject()) {
-        UniValue addressValues = find_value(params[0].get_obj(), "addresses");
-        if (!addressValues.isArray()) {
+    v_strings vParamAddresses;
+    if (params[0].isStr())
+        vParamAddresses.push_back(params[0].get_str());
+    else if (params[0].isObject())
+    {
+        const auto &addressValues = find_value(params[0].get_obj(), "addresses");
+        if (!addressValues.isArray())
+        {
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
                 "Addresses is expected to be an array");
         }
-        for (const auto& it : addressValues.getValues()) {
-            param_addresses.push_back(it.get_str());
-        }
+        vParamAddresses.reserve(addressValues.size());
+        for (const auto& it : addressValues.getValues())
+            vParamAddresses.push_back(it.get_str());
     } else
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
+    vAddresses.reserve(vParamAddresses.size());
+
     KeyIO keyIO(Params());
-    for (const auto& it : param_addresses)
+    for (const auto& it : vParamAddresses)
     {
-        CTxDestination address = keyIO.DecodeDestination(it);
+        auto address = keyIO.DecodeDestination(it);
         uint160 hashBytes;
         ScriptType type = ScriptType::UNKNOWN;
         if (!getIndexKey(address, hashBytes, type))
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address" + params[0].get_str());
-        addresses.push_back(make_pair(move(hashBytes), move(type)));
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+        vAddresses.emplace_back(hashBytes, type);
     }
     return true;
 }
 
 UniValue getaddressmempool(const UniValue& params, bool fHelp)
 {
-    const string enableArg = "insightexplorer";
-    const bool fEnableGetAddressMempool = fExperimentalMode && fInsightExplorer;
-    string disabledMsg = "";
-    if (!fEnableGetAddressMempool) {
-        disabledMsg = experimentalDisabledHelpMsg("getaddressmempool", enableArg);
-    }
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETADDRESSMEMPOOL);
+
     if (fHelp || params.size() != 1)
         throw runtime_error(
-R"(getaddressmempool {addresses: [taddr, ...]}
+R"(getaddressmempool {"addresses": [taddr, ...]}
 
-Returns all mempool deltas for an address.)"
-+ disabledMsg +
-R"(Arguments:
+Returns all mempool deltas for an address.)" + disabledMsg + R"(
+Arguments:
 {
-  addresses:
+  "addresses":
     [
       address   (string) The base58check encoded address
       ,...
@@ -653,49 +654,502 @@ Result:
 ]
 
 Examples:)"
-            + HelpExampleCli("getaddressmempool", "'{\"addresses\": [\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\"]}'")
-            + HelpExampleRpc("getaddressmempool", "{\"addresses\": [\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\"]}")
+            + HelpExampleCli(RPC_API_GETADDRESSMEMPOOL, "'{\"addresses\": [\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\"]}'")
+            + HelpExampleRpc(RPC_API_GETADDRESSMEMPOOL, "{\"addresses\": [\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\"]}")
         );
 
-    if (!fEnableGetAddressMempool) {
-        throw JSONRPCError(RPC_MISC_ERROR, "Error: getaddressmempool is disabled. "
-            "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
-    }
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSMEMPOOL);
 
-    vector<pair<uint160, ScriptType>> addresses;
+    vector<pair<uint160, ScriptType>> vAddresses;
 
-    if (!getAddressesFromParams(params, addresses))
+    if (!getAddressesFromParams(params, vAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>> indexes;
-    mempool.getAddressIndex(addresses, indexes);
-    sort(indexes.begin(), indexes.end(),
+    vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>> vIndexes;
+    mempool.getAddressIndex(vAddresses, vIndexes);
+    std::sort(vIndexes.begin(), vIndexes.end(),
         [](const pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>& a,
            const pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>& b) -> bool {
                return a.second.time < b.second.time;
            });
 
     UniValue result(UniValue::VARR);
+    result.reserve(vIndexes.size());
 
-    for (const auto& it : indexes) {
-        string address;
-        if (!getAddressFromIndex(it.first.type, it.first.addressBytes, address)) {
+    string address;
+    for (const auto& it : vIndexes)
+    {
+        if (!getAddressFromIndex(it.first.type, it.first.addressBytes, address))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
-        }
+
         UniValue delta(UniValue::VOBJ);
         delta.pushKV("address", move(address));
-        delta.pushKV("txid", it.first.txhash.GetHex());
-        delta.pushKV("index", (int)it.first.index);
+        delta.pushKV(RPC_KEY_TXID, it.first.txhash.GetHex());
+        delta.pushKV("index", it.first.index);
         delta.pushKV("patoshis", it.second.amount);
         delta.pushKV("timestamp", it.second.time);
         if (it.second.amount < 0) {
             delta.pushKV("prevtxid", it.second.prevhash.GetHex());
-            delta.pushKV("prevout", (int)it.second.prevout);
+            delta.pushKV("prevout", it.second.prevout);
         }
         result.push_back(move(delta));
     }
     return result;
 }
+
+// Parse an address list then fetch the corresponding addressindex information.
+static void getAddressesInHeightRange(
+    const UniValue& params,
+    const tuple<uint32_t, uint32_t> &height_range,
+    vector<pair<uint160, ScriptType>>& vAddresses,
+    vector<pair<CAddressIndexKey, CAmount>> &vAddressIndex)
+{
+    if (!getAddressesFromParams(params, vAddresses))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    
+    for (const auto& it : vAddresses)
+    {
+        if (!GetAddressIndex(it.first, it.second, vAddressIndex, height_range))
+        {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                "No information available for address");
+        }
+    }
+}
+
+// insightexplorer
+UniValue getaddresstxids(const UniValue& params, bool fHelp)
+{
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETADDRESSTXIDS);
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+R"(getaddresstxids {"addresses": ["taddr", ...], ("start": n), ("end": n)}
+
+Returns the transaction ids for given transparent addresses within the given (inclusive)
+block height range, default is the full blockchain.
+
+Returned txids are in the order they appear in blocks, which
+ensures that they are topologically sorted (i.e. parent txids will appear before child txids).
+)" + disabledMsg + R"(
+Arguments:
+{
+  "addresses":
+    [
+      "taddr"  (string) The base58check encoded address
+      ,...
+    ]
+  "start" (number, optional) The start block height
+  "end"   (number, optional) The end block height
+}
+(or)
+  "address" (string) The base58check encoded address
+
+Result:
+[
+  "txid"  (string) The transaction id
+  ,...
+]
+
+Examples:
+)" + HelpExampleCli(RPC_API_GETADDRESSTXIDS, R"('{"addresses": ["PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n"], "start": 1000, "end": 2000}')") +
+     HelpExampleRpc(RPC_API_GETADDRESSTXIDS, R"({"addresses": ["PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n"], "start": 1000, "end": 2000})")
+    );
+
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSTXIDS);
+
+    const auto height_range = rpc_get_height_range(params);
+
+    vector<pair<uint160, ScriptType>> vAddresses;
+    vector<pair<CAddressIndexKey, CAmount>> vAddressIndex;
+    getAddressesInHeightRange(params, height_range, vAddresses, vAddressIndex);
+
+    // This is an ordered set, sorted by (height, txindex) so result also sorted by height.
+    set<tuple<uint32_t, uint32_t, string>> txids;
+
+    for (const auto& [index_key, amount] : vAddressIndex)
+    {
+        const uint32_t height = index_key.blockHeight;
+        const uint32_t txindex = index_key.txindex;
+        string txid = index_key.txhash.GetHex();
+        // Duplicate entries (two addresses in same tx) are suppressed
+        txids.emplace(height, txindex, move(txid));
+    }
+    UniValue result(UniValue::VARR);
+    result.reserve(txids.size());
+    for (const auto& it : txids)
+    {
+        // only push the txid, not the height
+        result.push_back(get<2>(it));
+    }
+
+    return result;
+}
+
+// insightexplorer
+UniValue getaddressbalance(const UniValue& params, bool fHelp)
+{
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETADDRESSBALANCE);
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+R"(getaddressbalance {"addresses": ["taddr", ...]}
+
+Returns the balance for addresses.
+)" + disabledMsg + R"(
+Arguments:
+{
+  "addresses":
+    [
+      "address"  (string) The base58check encoded address
+      ,...
+    ]
+}
+(or)
+"address"  (string) The base58check encoded address
+
+Result:
+{
+  "balance"  (string) The current balance in )" + MINOR_CURRENCY_UNIT + R"(
+  "received"  (string) The total number of )" + MINOR_CURRENCY_UNIT + R"( received (including change)
+}
+
+Examples:
+)" + HelpExampleCli(RPC_API_GETADDRESSBALANCE, R"('{"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"]}')") +
+     HelpExampleRpc(RPC_API_GETADDRESSBALANCE, R"({"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"]})")
+    );
+
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSBALANCE);
+
+    vector<pair<uint160, ScriptType>> vAddresses;
+    vector<pair<CAddressIndexKey, CAmount>> vAddressIndex;
+    // this method doesn't take start and end block height params, so set
+    // to zero (full range, entire blockchain)
+    getAddressesInHeightRange(params, make_tuple(0, 0), vAddresses, vAddressIndex);
+
+    CAmount balance = 0;
+    CAmount received = 0;
+    for (const auto& it : vAddressIndex)
+    {
+        if (it.second > 0)
+            received += it.second;
+
+        balance += it.second;
+    }
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("balance", balance);
+    result.pushKV("received", received);
+    return result;
+}
+
+// insightexplorer
+UniValue getaddressdeltas(const UniValue& params, bool fHelp)
+{
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETADDRESSDELTAS);
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+R"(getaddressdeltas {"addresses": ["taddr", ...], ("start": n), ("end": n), ("chainInfo": true|false)}
+
+Returns all changes for an address.
+
+Returns information about all changes to the given transparent addresses within the given (inclusive)
+block height range, default is the full blockchain.
+)" + disabledMsg + R"(
+Arguments:
+{
+  "addresses":
+    [
+      "address" (string) The base58check encoded address
+      ,...
+    ]
+  "start"       (number, optional) The start block height
+  "end"         (number, optional) The end block height
+  "chainInfo"   (boolean, optional, default=false) Include chain info in results, only applies if start and end specified
+}
+(or)
+"address"       (string) The base58check encoded address
+
+Result:
+[
+  {
+    "patoshis"  (number) The difference of )" + MINOR_CURRENCY_UNIT + R"(
+    "txid"      (string) The related txid
+    "index"     (number) The related input or output index
+    "height"    (number) The block height
+    "address"   (string) The base58check encoded address
+  }, ...
+]
+
+(or, if chainInfo is true):
+
+{
+  "deltas":
+    [
+      {
+        "patoshis"    (number) The difference of )" + MINOR_CURRENCY_UNIT + R"(
+        "txid"        (string) The related txid
+        "index"       (number) The related input or output index
+        "height"      (number) The block height
+        "address"     (string)  The address base58check encoded
+      }, ...
+    ],
+  "start":
+    {
+      "hash"          (string)  The start block hash
+      "height"        (numeric) The height of the start block
+    }
+  "end":
+    {
+      "hash"          (string)  The end block hash
+      "height"        (numeric) The height of the end block
+    }
+}
+
+Examples:
+)" + HelpExampleCli(RPC_API_GETADDRESSDELTAS, R"('{"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"], "start": 1000, "end": 2000, "chainInfo": true}')") +
+     HelpExampleRpc(RPC_API_GETADDRESSDELTAS, R"({"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"], "start": 1000, "end": 2000, "chainInfo": true})")
+    );
+
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSDELTAS);
+
+    const auto height_range = rpc_get_height_range(params);
+
+    vector<pair<uint160, ScriptType>> vAddresses;
+    vector<pair<CAddressIndexKey, CAmount>> vAddressIndex;
+    getAddressesInHeightRange(params, height_range, vAddresses, vAddressIndex);
+
+    bool includeChainInfo = false;
+    if (params[0].isObject())
+    {
+        UniValue chainInfo = find_value(params[0].get_obj(), "chainInfo");
+        if (!chainInfo.isNull())
+            includeChainInfo = chainInfo.get_bool();
+    }
+
+    UniValue deltas(UniValue::VARR);
+    deltas.reserve(vAddressIndex.size());
+    for (const auto& it : vAddressIndex)
+    {
+        string address;
+        auto scriptTypeOpt = toScriptType(it.first.type);
+        if (!scriptTypeOpt)
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
+        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+
+        UniValue delta(UniValue::VOBJ);
+        delta.pushKV("address", address);
+        delta.pushKV("blockindex", it.first.txindex);
+        delta.pushKV(RPC_KEY_HEIGHT, it.first.blockHeight);
+        delta.pushKV("index", it.first.index);
+        delta.pushKV("patoshis", it.second);
+        delta.pushKV(RPC_KEY_TXID, it.first.txhash.GetHex());
+        deltas.push_back(delta);
+    }
+
+    UniValue result(UniValue::VOBJ);
+
+    uint32_t start = get<0>(height_range);
+    uint32_t end = get<1>(height_range);
+    if (!(includeChainInfo && start > 0 && end > 0))
+        return deltas;
+
+    UniValue startInfo(UniValue::VOBJ);
+    UniValue endInfo(UniValue::VOBJ);
+    {
+        LOCK(cs_main);  // for chainActive
+        if (start > gl_nChainHeight || end > gl_nChainHeight)
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Start or end is outside chain range");
+
+        startInfo.pushKV("hash", chainActive[start]->GetBlockHash().GetHex());
+        endInfo.pushKV("hash", chainActive[end]->GetBlockHash().GetHex());
+    }
+    startInfo.pushKV(RPC_KEY_HEIGHT, start);
+    endInfo.pushKV(RPC_KEY_HEIGHT, end);
+
+    result.pushKV("deltas", deltas);
+    result.pushKV("start", startInfo);
+    result.pushKV("end", endInfo);
+
+    return result;
+}
+
+// insightexplorer
+UniValue getaddressutxos(const UniValue& params, bool fHelp)
+{
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETADDRESSUTXOS);
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+R"(getaddressutxos {"addresses": ["taddr", ...], ("chainInfo": true|false)}
+
+Returns all unspent outputs for an address.
+)" + disabledMsg + R"(
+Arguments:
+{
+  "addresses":
+    [
+      "address"  (string) The base58check encoded address
+      ,...
+    ],
+  "chainInfo"  (boolean, optional, default=false) Include chain info with results
+}
+(or)
+"address"  (string) The base58check encoded address
+
+Result
+[
+  {
+    "address"  (string) The address base58check encoded
+    "txid"  (string) The output txid
+    "height"  (number) The block height
+    "outputIndex"  (number) The output index
+    "script"  (string) The script hex encoded
+    "patoshis"  (number) The number of )" + MINOR_CURRENCY_UNIT + R"( of the output
+  }, ...
+]
+
+(or, if chainInfo is true):
+
+{
+  "utxos":
+    [
+      {
+        "address"     (string)  The address base58check encoded
+        "txid"        (string)  The output txid
+        "height"      (number)  The block height
+        "outputIndex" (number)  The output index
+        "script"      (string)  The script hex encoded
+        "patoshis"    (number)  The number of )" + MINOR_CURRENCY_UNIT + R"( of the output
+      }, ...
+    ],
+  "hash"              (string)  The block hash
+  "height"            (numeric) The block height
+}
+
+Examples:
+)" + HelpExampleCli(RPC_API_GETADDRESSUTXOS, R"('{"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"], "chainInfo": true}')") +
+     HelpExampleRpc(RPC_API_GETADDRESSUTXOS, R"({"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"], "chainInfo": true})")
+    );
+
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSUTXOS);
+
+    bool includeChainInfo = false;
+    if (params[0].isObject())
+    {
+        UniValue chainInfo = find_value(params[0].get_obj(), "chainInfo");
+        if (!chainInfo.isNull())
+            includeChainInfo = chainInfo.get_bool();
+    }
+    vector<pair<uint160, ScriptType>> vAddresses;
+    if (!getAddressesFromParams(params, vAddresses))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+
+    vector<CAddressUnspentDbEntry> vUnspentOutputs;
+    for (const auto& it : vAddresses)
+    {
+        if (!GetAddressUnspent(it.first, it.second, vUnspentOutputs))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+    }
+    std::sort(vUnspentOutputs.begin(), vUnspentOutputs.end(),
+        [](const CAddressUnspentDbEntry& a, const CAddressUnspentDbEntry& b) -> bool {
+            return a.second.blockHeight < b.second.blockHeight;
+        });
+
+    UniValue utxos(UniValue::VARR);
+    utxos.reserve(vUnspentOutputs.size());
+
+    string address;
+    for (const auto& it : vUnspentOutputs)
+    {
+        UniValue output(UniValue::VOBJ);
+        auto scriptTypeOpt = toScriptType(it.first.type);
+        if (!scriptTypeOpt)
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
+        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+
+        output.pushKV("address", address);
+        output.pushKV(RPC_KEY_TXID, it.first.txhash.GetHex());
+        output.pushKV("outputIndex", it.first.index);
+        output.pushKV("script", HexStr(it.second.script.begin(), it.second.script.end()));
+        output.pushKV("patoshis", it.second.patoshis);
+        output.pushKV(RPC_KEY_HEIGHT, it.second.blockHeight);
+        utxos.push_back(move(output));
+    }
+
+    if (!includeChainInfo)
+        return utxos;
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("utxos", utxos);
+
+    {
+        LOCK(cs_main);  // for chainActive
+        result.pushKV("hash", chainActive.Tip()->GetBlockHash().GetHex());
+        result.pushKV(RPC_KEY_HEIGHT, gl_nChainHeight.load());
+    }
+    return result;
+}
+
+// insightexplorer
+UniValue getspentinfo(const UniValue& params, bool fHelp)
+{
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETSPENTINFO);
+
+if (fHelp || params.size() != 1 || !params[0].isObject())
+    throw runtime_error(
+R"(getspentinfo {"txid": "txid", "index": n}
+
+Returns the txid and index where an output is spent.
+)" + disabledMsg + R"(
+Arguments:
+{
+  "txid"   (string) The hex string of the transaction id
+  "index"  (number) The vout (output) index
+}
+
+Result:
+{
+  "txid"   (string) The transaction id
+  "index"  (number) The spending (vin, input) index
+  ,...
+}
+
+Examples:
+)" + HelpExampleCli(RPC_API_GETSPENTINFO, R"('{"txid": "33990288fb116981260be1de10b8c764f997674545ab14f9240f00346333b780", "index": 4}')") +
+     HelpExampleRpc(RPC_API_GETSPENTINFO, R"({"txid": "33990288fb116981260be1de10b8c764f997674545ab14f9240f00346333b780", "index": 4})")
+    );
+
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETSPENTINFO);
+
+    const auto &txidValue = find_value(params[0].get_obj(), "txid");
+    const auto &indexValue = find_value(params[0].get_obj(), "index");
+
+    if (!txidValue.isStr())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid txid, must be a string");
+    if (!indexValue.isNum())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid index, must be an integer");
+    uint256 txid = ParseHashV(txidValue, "txid");
+    int outputIndex = indexValue.get_int();
+
+    CSpentIndexKey key(txid, outputIndex);
+    CSpentIndexValue value;
+
+    {
+        LOCK(cs_main);
+        if (!GetSpentIndex(key, value))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unable to get spent info");
+    }
+    UniValue obj(UniValue::VOBJ);
+    obj.pushKV(RPC_KEY_TXID, value.txid.GetHex());
+    obj.pushKV("index", value.inputIndex);
+    obj.pushKV(RPC_KEY_HEIGHT, value.blockHeight);
+
+    return obj;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
@@ -706,8 +1160,15 @@ static const CRPCCommand commands[] =
     { "util",               "createmultisig",         &createmultisig,         true  },
     { "util",               "verifymessage",          &verifymessage,          true  },
 
+    /* insight explorer */
     /* Address index */
+    { "addressindex",       "getaddresstxids",        &getaddresstxids,        false }, /* insight explorer */
+    { "addressindex",       "getaddressbalance",      &getaddressbalance,      false }, /* insight explorer */
+    { "addressindex",       "getaddressdeltas",       &getaddressdeltas,       false }, /* insight explorer */
+    { "addressindex",       "getaddressutxos",        &getaddressutxos,        false }, /* insight explorer */
     { "addressindex",       "getaddressmempool",      &getaddressmempool,      true  }, /* insight explorer */
+    { "blockchain",         "getspentinfo",           &getspentinfo,           false }, /* insight explorer */
+    // END insightexplorer
 
     /* Not shown in help */
     { "hidden",             "setmocktime",            &setmocktime,            true  },

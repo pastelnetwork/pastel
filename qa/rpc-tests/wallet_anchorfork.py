@@ -8,16 +8,17 @@ from test_framework.util import assert_equal, initialize_chain_clean, \
     start_nodes, stop_nodes, connect_nodes_bi, \
     wait_and_assert_operationid_status, wait_pastelds, \
     sync_blocks, sync_mempools
-from decimal import Decimal
 
 class WalletAnchorForkTest (BitcoinTestFramework):
 
-    def setup_chain(self):
-        print(f'Initializing test directory {self.options.tmpdir}')
-        initialize_chain_clean(self.options.tmpdir, 4)
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+        self.num_nodes = 3
+
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-debug=zrpc']] * 3 )
+        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-debug=zrpc']] * self.num_nodes) )
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)

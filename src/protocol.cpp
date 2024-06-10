@@ -14,7 +14,7 @@
 
 using namespace std;
 
-static constexpr array<const char *, 13> NET_MSG_TYPE =
+constexpr array<const char *, 13> NET_MSG_TYPE =
 {
     "ERROR",
     "tx",

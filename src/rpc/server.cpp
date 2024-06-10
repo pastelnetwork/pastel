@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <sstream>
@@ -11,6 +11,7 @@
 #include <utils/sync.h>
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
+#include <chain_options.h>
 #include <rpc/server.h>
 #include <init.h>
 #include <key_io.h>
@@ -479,6 +480,33 @@ string experimentalDisabledHelpMsg(const string& rpc, const string& enableArg)
         "to the pastel.conf file:\n\n"
         "experimentalfeatures=1\n"
         + enableArg + "=1\n";
+}
+
+string rpcDisabledHelpMsg(const string& rpc, const string& enableArg)
+{
+    return strprintf(R"(
+WARNING: %s is disabled.
+To enable it, restart pasteld with the -%s commandline options,
+or add this line to the pastel.conf file:
+
+%s=1
+)", rpc, enableArg, enableArg);
+}
+
+string rpcDisabledInsightExplorerHelpMsg(const string& rpc)
+{
+    string sDisabledMsg;
+    if (!fInsightExplorer)
+        sDisabledMsg = rpcDisabledHelpMsg(rpc, "insightexplorer");
+    return sDisabledMsg;
+}
+
+void rpcDisabledThrowMsg(const bool bFlagToCheck, const string& rpc)
+{
+    if (bFlagToCheck)
+        return;
+
+    throw JSONRPCError(RPC_MISC_ERROR, strprintf(ERRMSG_RPC_DISABLED, rpc, rpc));
 }
 
 void RPCRegisterTimerInterface(RPCTimerInterface *iface)

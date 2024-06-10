@@ -14,10 +14,10 @@
 
 #include <utils/enum_util.h>
 #include <utils/util.h>
+#include <utils/arith_uint256.h>
 #include <main.h>
 #include <addrman.h>
 #include <alert.h>
-#include <arith_uint256.h>
 #include <chainparams.h>
 #include <chain_options.h>
 #include <chain.h>
@@ -31,7 +31,7 @@
 #include <merkleblock.h>
 #include <metrics.h>
 #include <net.h>
-#include <txdb.h>
+#include <txdb/txdb.h>
 #include <txmempool.h>
 #include <accept_to_mempool.h>
 #include <ui_interface.h>
@@ -81,10 +81,6 @@ atomic_bool fExperimentalMode = false;
 atomic_bool fImporting = false;
 atomic_bool fReindex = false;
 atomic_bool fTxIndex = false;
-atomic_bool fInsightExplorer = false;  // insightexplorer
-atomic_bool fAddressIndex = false;     // insightexplorer
-atomic_bool fSpentIndex = true;       // insightexplorer
-atomic_bool fTimestampIndex = false;   // insightexplorer
 atomic_bool fHavePruned = false;
 atomic_bool fPruneMode = false;
 
@@ -577,6 +573,74 @@ CAmount GetMinRelayFee(const CTransaction& tx, const size_t nBytes, bool fAllowF
     return nMinFee;
 }
 
+bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
+    vector<pair<uint256, unsigned int> > &vHashes)
+{
+    if (!fTimestampIndex)
+    {
+        LogPrint("rpc", "Timestamp index not enabled");
+        return false;
+    }
+    if (!gl_pBlockTreeDB->ReadTimestampIndex(high, low, fActiveOnly, vHashes))
+    {
+        LogPrint("rpc", "Unable to get vHashes for timestamps");
+        return false;
+    }
+    return true;
+}
+
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
+{
+    AssertLockHeld(cs_main);
+    if (!fSpentIndex)
+    {
+        LogPrint("rpc", "Spent index not enabled");
+        return false;
+    }
+    if (mempool.getSpentIndex(key, value))
+        return true;
+
+    if (!gl_pBlockTreeDB->ReadSpentIndex(key, value))
+    {
+        LogPrint("rpc", "Unable to get spent index information");
+        return false;
+    }
+    return true;
+}
+
+bool GetAddressIndex(const uint160& addressHash, const ScriptType type,
+                     vector<CAddressIndexDbEntry>& vAddressIndex,
+                     const tuple<uint32_t, uint32_t> &height_range)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "address index not enabled");
+        return false;
+    }
+    if (!gl_pBlockTreeDB->ReadAddressIndex(addressHash, to_integral_type(type), vAddressIndex, 
+            get<0>(height_range), get<1>(height_range)))
+    {
+        LogPrint("rpc", "unable to get txids for address");
+        return false;
+    }
+    return true;
+}
+
+bool GetAddressUnspent(const uint160& addressHash, const ScriptType type,
+                       vector<CAddressUnspentDbEntry>& unspentOutputs)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "address index not enabled");
+        return false;
+    }
+    if (!gl_pBlockTreeDB->ReadAddressUnspentIndex(addressHash, to_integral_type(type), unspentOutputs))
+    {
+        LogPrint("rpc", "unable to get txids for address");
+        return false;
+    }
+    return true;
+}
 /**
  * Search for transaction by txid (transaction hash) and return in txOut.
  * If transaction was found inside a block, its hash (txid) is placed in hashBlock.
@@ -1084,7 +1148,7 @@ bool ContextualCheckInputs(
         // Helps prevent CPU exhaustion attacks.
 
         // Skip ECDSA signature verification when connecting blocks
-        // before the last block chain checkpoint. This is safe because block merkle hashes are
+        // before the last block chain checkpoint. This is safe because block merkle vHashes are
         // still computed and checked, and any change will be caught at the next checkpoint.
         if (fScriptChecks)
         {
@@ -1243,51 +1307,92 @@ static bool ApplyTxInUndo(const CTxInUndo& undo, CCoinsViewCache& view, const CO
 
 /**
  * Disconnects a block from the blockchain in the event of a reorganization.
+ * When UNCLEAN or FAILED is returned, view is left in an indeterminate state.
+ * The addressIndex and spentIndex will be updated if requested.
  * 
  * \param block - The block to disconnect.
  * \param state - The validation state.
  * \param chainparams - The chain parameters.
  * \param pindex - the block index   
  * \param view - The coins view to which to apply the changes.
- * \param pfClean - Set to true if the block was cleanly disconnected.
- * \return true on success.
+ * \param bUpdateIndices - Whether to update the addressIndex and spentIndex.
+ * \return block disconnect result BlockDisconnectResult:
+ *      OK - block was cleanly disconnected
+ *      UNCLEAN - block was disconnected, but UTXO set was inconsistent with block
+ *      FAILED - failed to disconnect block 
  */
-bool DisconnectBlock(
+BlockDisconnectResult DisconnectBlock(
     const CBlock& block, 
     CValidationState& state, 
     const CChainParams& chainparams,
     CBlockIndex* pindex, 
     CCoinsViewCache& view, 
-    bool* pfClean)
+    const bool bUpdateIndices)
 {
     // check that the block hash is the same as the best block in the view
     assert(pindex->GetBlockHash() == view.GetBestBlock());
-
-    if (pfClean)
-        *pfClean = false;
 
     bool fClean = true;
 
     CBlockUndo blockUndo;
     CDiskBlockPos pos = pindex->GetUndoPos();
     if (pos.IsNull())
-        return errorFn(__METHOD_NAME__, "no undo data available");
+    {
+        errorFn(__METHOD_NAME__, "no undo data available");
+        return BlockDisconnectResult::FAILED;
+    }
+
     // retrieve the undo data for the block: a record of the information needed to reverse the effects of a block
     if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash()))
-        return errorFn(__METHOD_NAME__, "failure reading undo data");
+    {
+        errorFn(__METHOD_NAME__, "failure reading undo data");
+        return BlockDisconnectResult::FAILED;
+    }
 
     if (blockUndo.vtxundo.size() + 1 != block.vtx.size())
-        return errorFn(__METHOD_NAME__, "height=%d, block and undo data inconsistent", pindex->nHeight);
+    {
+        errorFn(__METHOD_NAME__, "height=%u, block and undo data inconsistent", pindex->GetHeight());
+        return BlockDisconnectResult::FAILED;
+    }
+
+    vector<CAddressIndexDbEntry> vAddressIndex;
+    vector<CAddressUnspentDbEntry> vAddressUnspentIndex;
+    vector<CSpentIndexDbEntry> vSpentIndex;
 
     // undo transactions in reverse order
     if (!block.vtx.empty())
     {
         CSerializeData vTicketData;
         string error;
-        for (size_t i = block.vtx.size(); i-- > 0;)
+        for (uint32_t i = static_cast<uint32_t>(block.vtx.size()); i-- > 0;)
         {
             const CTransaction& tx = block.vtx[i];
             const uint256 &txid = tx.GetHash();
+
+            // insightexplorer
+            if (fAddressIndex && bUpdateIndices)
+            {
+                for (uint32_t k = static_cast<uint32_t>(tx.vout.size()); k-- > 0;)
+                {
+                    const CTxOut &out = tx.vout[k];
+                    ScriptType scriptType = out.scriptPubKey.GetType();
+                    if (scriptType == ScriptType::UNKNOWN)
+                        continue;
+
+                    uint160 const addrHash = out.scriptPubKey.AddressHash();
+
+                    // undo receiving activity
+                    vAddressIndex.emplace_back(
+                        CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, k, false),
+                        out.nValue);
+
+                    // undo unspent index
+                    vAddressUnspentIndex.emplace_back(
+                        CAddressUnspentKey(scriptType, addrHash, txid, k),
+                        CAddressUnspentValue());
+                }
+            }
+            
 
             // Check that all outputs are available and match the outputs in the block itself
             // exactly.
@@ -1299,11 +1404,11 @@ bool DisconnectBlock(
                 CCoins outsBlock(tx, pindex->nHeight);
                 // The CCoins serialization does not serialize negative numbers.
                 // No network rules currently depend on the version here, so an inconsistency is harmless
-                // but it must be corrected before txout nversion ever influences a network rule.
+                // but it must be corrected before txout version ever influences a network rule.
                 if (outsBlock.nVersion < 0)
                     outs->nVersion = outsBlock.nVersion;
                 if (*outs != outsBlock)
-                    fClean = fClean && errorFn(__METHOD_NAME__, "height=%d, added transaction mismatch? database corrupted", pindex->nHeight);
+                    fClean = fClean && errorFn(__METHOD_NAME__, "height=%u, added transaction mismatch? database corrupted", pindex->GetHeight());
 
                 // remove outputs
                 outs->Clear();
@@ -1314,16 +1419,50 @@ bool DisconnectBlock(
 
             if (i == 0)
                 break; // break on coinbase
+
             // restore inputs, not coinbases
             const CTxUndo& txundo = blockUndo.vtxundo[i - 1];
             if (txundo.vprevout.size() != tx.vin.size())
-                return errorFn(__METHOD_NAME__, "height=%d, transaction and undo data inconsistent", pindex->nHeight);
-            for (unsigned int j = static_cast<unsigned int>(tx.vin.size()); j-- > 0;)
             {
-                const COutPoint& out = tx.vin[j].prevout;
+                errorFn(__METHOD_NAME__, "height=%u, transaction and undo data inconsistent", pindex->GetHeight());
+                return BlockDisconnectResult::FAILED;
+            }
+            for (uint32_t j = static_cast<uint32_t>(tx.vin.size()); j-- > 0;)
+            {
+                const CTxIn &input = tx.vin[j];
+                const COutPoint& out = input.prevout;
                 const CTxInUndo& undo = txundo.vprevout[j];
                 if (!ApplyTxInUndo(undo, view, out))
                     fClean = false;
+
+                // insightexplorer
+                if (fAddressIndex && bUpdateIndices)
+                {
+                    const CTxOut &prevout = view.GetOutputFor(input);
+                    ScriptType scriptType = prevout.scriptPubKey.GetType();
+                    if (scriptType != ScriptType::UNKNOWN)
+                    {
+                        uint160 const addrHash = prevout.scriptPubKey.AddressHash();
+
+                        // undo spending activity
+                        vAddressIndex.emplace_back(
+                            CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, j, true),
+                            prevout.nValue * -1);
+
+                        // restore unspent index
+                        vAddressUnspentIndex.emplace_back(
+                            CAddressUnspentKey(scriptType, addrHash, input.prevout.hash, input.prevout.n),
+                            CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undo.nHeight));
+                    }
+                }
+                if (fSpentIndex && bUpdateIndices)
+                {
+                    // undo and delete the spent index
+                    vSpentIndex.emplace_back(
+                        CSpentIndexKey(input.prevout.hash, input.prevout.n),
+                        CSpentIndexValue());
+                }
+
             }
         }
     }
@@ -1344,13 +1483,30 @@ bool DisconnectBlock(
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
-    if (pfClean)
+   // insightexplorer
+    if (fAddressIndex && bUpdateIndices)
     {
-        *pfClean = fClean;
-        return true;
+        if (!gl_pBlockTreeDB->EraseAddressIndex(vAddressIndex))
+        {
+            AbortNode(state, "Failed to delete address index");
+            return BlockDisconnectResult::FAILED;
+        }
+        if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(vAddressUnspentIndex))
+        {
+            AbortNode(state, "Failed to write address unspent index");
+            return BlockDisconnectResult::FAILED;
+        }
+    }
+    if (fSpentIndex && bUpdateIndices)
+    {
+        if (!gl_pBlockTreeDB->UpdateSpentIndex(vSpentIndex))
+        {
+            AbortNode(state, "Failed to write transaction index");
+            return BlockDisconnectResult::FAILED;
+        }
     }
 
-    return fClean;
+    return fClean ? BlockDisconnectResult::OK : BlockDisconnectResult::UNCLEAN;
 }
 
 void static FlushBlockFile(bool fFinalize = false)
@@ -1523,6 +1679,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     vector<pair<uint256, CDiskTxPos> > vPos;
     vPos.reserve(block.vtx.size());
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
+    vector<CAddressIndexDbEntry> vAddressIndex;
+    vector<CAddressUnspentDbEntry> vAddressUnspentIndex;
+    vector<CSpentIndexDbEntry> vSpentIndex;
 
     // Construct the incremental merkle tree at the current block position
     auto old_sprout_tree_root = view.GetBestAnchor(SPROUT);
@@ -1545,29 +1704,80 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     assert(view.GetSaplingAnchorAt(view.GetBestAnchor(SAPLING), sapling_tree));
 
     // Grab the consensus branch ID for the block's height
-    auto consensusBranchId = CurrentEpochBranchId(pindex->nHeight, consensusParams);
+    auto consensusBranchId = CurrentEpochBranchId(pindex->GetHeight(), consensusParams);
 
     vector<PrecomputedTransactionData> txdata;
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
-    for (size_t i = 0; i < block.vtx.size(); i++)
+
+    for (uint32_t i = 0; i < block.vtx.size(); i++)
     {
         const CTransaction &tx = block.vtx[i];
+        const uint256 &txid = tx.GetHash();
+
+        // Coinbase transactions are the only case where this vector will not be the same
+        // length as `tx.vin` (since coinbase transactions have a single synthetic input).
+        // Only shielded coinbase transactions will need to produce sighashes for coinbase
+        // transactions; this is handled in ZIP 244 by having the coinbase sighash be the txid.
+        v_txouts vAllPrevOutputs;
 
         nInputs += tx.vin.size();
         nSigOps += GetLegacySigOpCount(tx);
         if (nSigOps > MAX_BLOCK_SIGOPS)
-            return state.DoS(100, error("ConnectBlock(): too many sigops"),
+            return state.DoS(100, errorFn(__METHOD_NAME__, "too many sigops"),
                              REJECT_INVALID, "bad-blk-sigops");
 
         if (!tx.IsCoinBase())
         {
             if (!view.HaveInputs(tx))
-                return state.DoS(100, error("ConnectBlock(): inputs missing/spent"),
+                return state.DoS(100, errorFn(__METHOD_NAME__, "inputs missing/spent"),
                                  REJECT_INVALID, "bad-txns-inputs-missingorspent");
 
+			vAllPrevOutputs.reserve(tx.vin.size());
+            for (const auto& input : tx.vin)
+            {
+                const auto &prevout = view.GetOutputFor(input);
+                vAllPrevOutputs.push_back(prevout);
+            }
+
+            // insightexplorer
+            if (fAddressIndex || fSpentIndex)
+            {
+                for (uint32_t j = 0; j < tx.vin.size(); j++)
+                {
+
+                    const CTxIn input = tx.vin[j];
+                    const CTxOut &prevout = vAllPrevOutputs[j];
+                    ScriptType scriptType = prevout.scriptPubKey.GetType();
+                    const uint160 addrHash = prevout.scriptPubKey.AddressHash();
+                    if (fAddressIndex && scriptType != ScriptType::UNKNOWN)
+                    {
+                        // record spending activity
+                        vAddressIndex.emplace_back(
+                            CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, j, true),
+                            prevout.nValue * -1);
+
+                        // remove address from unspent index
+                        vAddressUnspentIndex.emplace_back(
+                            CAddressUnspentKey(scriptType, addrHash, input.prevout.hash, input.prevout.n),
+                            CAddressUnspentValue());
+                    }
+                    if (fSpentIndex)
+                    {
+                        // Add the spent index to determine the txid and input that spent an output
+                        // and to find the amount and address from an input.
+                        // If we do not recognize the script type, we still add an entry to the
+                        // spentindex db, with a script type of 0 and addrhash of all zeroes.
+                        vSpentIndex.emplace_back(
+                            CSpentIndexKey(input.prevout.hash, input.prevout.n),
+                            CSpentIndexValue(txid, j, pindex->nHeight, prevout.nValue, scriptType, addrHash));
+                    }
+                }
+            }
+            
+            
             // are the shielded requirements met?
             if (!view.HaveShieldedRequirements(tx))
-                return state.DoS(100, error("ConnectBlock(): Shielded requirements not met"),
+                return state.DoS(100, errorFn(__METHOD_NAME__, "Shielded requirements not met"),
                                  REJECT_INVALID, "bad-txns-shielded-requirements-not-met");
 
             // Add in sigops done by pay-to-script-hash inputs;
@@ -1575,7 +1785,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
             // an incredibly-expensive-to-validate block.
             nSigOps += GetP2SHSigOpCount(tx, view);
             if (nSigOps > MAX_BLOCK_SIGOPS)
-                return state.DoS(100, error("ConnectBlock(): too many sigops"),
+                return state.DoS(100, errorFn(__METHOD_NAME__, "too many sigops"),
                                  REJECT_INVALID, "bad-blk-sigops");
         }
 
@@ -1583,7 +1793,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
         if (!tx.IsCoinBase())
         {
-            nFees += view.GetValueIn(tx)-tx.GetValueOut();
+            nFees += view.GetValueIn(tx) - tx.GetValueOut();
 
             vector<CScriptCheck> vChecks;
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
@@ -1591,6 +1801,31 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
                 return false;
             scriptCheckControl->Add(vChecks);
         }
+
+        // insightexplorer
+        if (fAddressIndex)
+        {
+            for (uint32_t k = 0; k < tx.vout.size(); k++)
+            {
+                const CTxOut &out = tx.vout[k];
+                ScriptType scriptType = out.scriptPubKey.GetType();
+                if (scriptType == ScriptType::UNKNOWN)
+                    continue;
+
+                uint160 const addrHash = out.scriptPubKey.AddressHash();
+
+                // record receiving activity
+                vAddressIndex.emplace_back(
+                    CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, k, false),
+                    out.nValue);
+
+                // record unspent output
+                vAddressUnspentIndex.emplace_back(
+                    CAddressUnspentKey(scriptType, addrHash, txid, k),
+                    CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->GetHeight()));
+            }
+        }
+
 
         CTxUndo undoDummy;
         if (i > 0)
@@ -1612,7 +1847,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
     // If Sapling is active, block.hashFinalSaplingRoot must be the
     // same as the root of the Sapling tree
-    if (NetworkUpgradeActive(pindex->nHeight, consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING))
+    if (NetworkUpgradeActive(pindex->GetHeight(), consensusParams, Consensus::UpgradeIndex::UPGRADE_SAPLING))
     {
         if (block.hashFinalSaplingRoot != sapling_tree.root())
         {
@@ -1673,9 +1908,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
         // Move this if BLOCK_VALID_CONSENSUS is ever altered.
         static_assert(BLOCK_VALID_CONSENSUS == BLOCK_VALID_SCRIPTS,
             "nCachedBranchId must be set after all consensus rules have been validated.");
-        if (IsActivationHeightForAnyUpgrade(pindex->nHeight, consensusParams)) {
+        if (IsActivationHeightForAnyUpgrade(pindex->GetHeight(), consensusParams))
+        {
             pindex->SetStatusFlag(BLOCK_ACTIVATES_UPGRADE);
-            pindex->nCachedBranchId = CurrentEpochBranchId(pindex->nHeight, consensusParams);
+            pindex->nCachedBranchId = CurrentEpochBranchId(pindex->GetHeight(), consensusParams);
         } else if (pindex->pprev) {
             pindex->nCachedBranchId = pindex->pprev->nCachedBranchId;
         }
@@ -1686,6 +1922,45 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
     if (fTxIndex && !gl_pBlockTreeDB->WriteTxIndex(vPos))
         return AbortNode(state, "Failed to write transaction index");
+
+    // START insightexplorer
+    if (fAddressIndex)
+    {
+        if (!gl_pBlockTreeDB->WriteAddressIndex(vAddressIndex))
+            return AbortNode(state, "Failed to write address index");
+        if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(vAddressUnspentIndex))
+            return AbortNode(state, "Failed to write address unspent index");
+    }
+    if (fSpentIndex)
+    {
+        if (!gl_pBlockTreeDB->UpdateSpentIndex(vSpentIndex))
+            return AbortNode(state, "Failed to write spent index");
+    }
+    if (fTimestampIndex)
+    {
+        unsigned int logicalTS = pindex->nTime;
+        unsigned int prevLogicalTS = 0;
+
+        // retrieve logical timestamp of the previous block
+        if (pindex->pprev && !gl_pBlockTreeDB->ReadTimestampBlockIndex(pindex->pprev->GetBlockHash(), prevLogicalTS))
+            LogFnPrintf("Failed to read previous block's logical timestamp");
+
+        if (logicalTS <= prevLogicalTS)
+        {
+            logicalTS = prevLogicalTS + 1;
+            // skip log for regtest where lot of blocks can be generated in a short time
+            if (!chainparams.IsRegTest())
+                LogFnPrintf("Previous logical timestamp is newer Actual[%u] prevLogical[%u] Logical[%u]",
+                    pindex->nTime, prevLogicalTS, logicalTS);
+        }
+
+        if (!gl_pBlockTreeDB->WriteTimestampIndex(CTimestampIndexKey(logicalTS, pindex->GetBlockHash())))
+            return AbortNode(state, "Failed to write timestamp index");
+
+        if (!gl_pBlockTreeDB->WriteTimestampBlockIndex(CTimestampBlockIndexKey(pindex->GetBlockHash()), CTimestampBlockIndexValue(logicalTS)))
+            return AbortNode(state, "Failed to write blockhash index");
+    }
+    // END insightexplorer
 
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
@@ -1739,7 +2014,7 @@ static bool FlushStateToDisk(
                 fFlushForPrune = true;
                 if (!fHavePruned)
                 {
-                    gl_pBlockTreeDB->WriteFlag("prunedblockfiles", true);
+                    gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_PRUNEDBLOCKFILES, true);
                     fHavePruned = true;
                 }
             }
@@ -1832,6 +2107,7 @@ void PruneAndFlush()
 /** Update chainActive and related internal data structures. */
 void static UpdateTip(const CChainParams& chainparams, CBlockIndex* pindexNew)
 {
+    AssertLockHeld(cs_main);
     chainActive.SetTip(pindexNew);
 
     // New best block
@@ -1870,12 +2146,22 @@ void static UpdateTip(const CChainParams& chainparams, CBlockIndex* pindexNew)
     }
 }
 
+void SetInsightExplorer(const bool fEnable)
+{
+    fInsightExplorer = fEnable;
+	fAddressIndex = fEnable;
+	fSpentIndex = fEnable;
+	fTimestampIndex = fEnable;
+}
+
 /**
  * Disconnect chainActive's tip. You probably want to call mempool.removeForReorg and
  * mempool.removeWithoutBranchId after this, with cs_main held.
  */
 static bool DisconnectTip(CValidationState &state, const CChainParams& chainparams, bool fBare = false)
 {
+    AssertLockHeld(cs_main);
+
     auto pindexDelete = chainActive.Tip();
     assert(pindexDelete);
     // Read block from disk.
@@ -1888,7 +2174,8 @@ static bool DisconnectTip(CValidationState &state, const CChainParams& chainpara
     int64_t nStart = GetTimeMicros();
     {
         CCoinsViewCache view(gl_pCoinsTip.get());
-        if (!DisconnectBlock(block, state, chainparams, pindexDelete, view))
+        // insightexplorer: update indices (true)
+        if (DisconnectBlock(block, state, chainparams, pindexDelete, view, true) != BlockDisconnectResult::OK)
             return error("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHashString());
         assert(view.Flush());
     }
@@ -2174,9 +2461,9 @@ bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nInva
 		}
         if (pindexRewindChain->nHeight > pindex->nHeight)
         {
-            LogFnPrintf("rewindchain block %s is at a higher height (%d) than invalid block %s (%d)",
+            LogFnPrintf("rewindchain block %s is at a higher height (%d) than invalid block %s (%u)",
 				rewindChainBlockHash.ToString(), pindexRewindChain->nHeight,
-                invalidBlockHash.ToString(), pindex->nHeight);
+                invalidBlockHash.ToString(), pindex->GetHeight());
 			break;
         }
         if (pindex->nHeight - pindexRewindChain->nHeight > MAX_REWIND_CHAIN_BLOCKS)
@@ -2188,9 +2475,9 @@ bool IsIntendedChainRewind(const CChainParams& chainparams, const uint32_t nInva
         const auto pindexAncestor = pindex->GetAncestor(pindexRewindChain->nHeight);
         if (pindexAncestor == pindexRewindChain)
         {
-            LogFnPrintf("rewindchain block %s (%d) is a direct ancestor of the invalid block %s (%d)",
+            LogFnPrintf("rewindchain block %s (%d) is a direct ancestor of the invalid block %s (%u)",
 				rewindChainBlockHash.ToString(), pindexRewindChain->nHeight,
-                invalidBlockHash.ToString(), pindex->nHeight);
+                invalidBlockHash.ToString(), pindex->GetHeight());
 			bAllowRewind = true;
 			break;
 		}
@@ -2458,7 +2745,7 @@ void AddBlockUnlinked(CBlockIndex* pindex)
     if (!pindex || !pindex->pprev || !pindex->pprev->IsValid(BLOCK_VALID_TREE))
         return;
     mapBlocksUnlinked.emplace(pindex->pprev, pindex);
-    LogPrint("net", "added unlinked block (%d)->(%d)\n", pindex->pprev->nHeight, pindex->nHeight);
+    LogPrint("net", "added unlinked block (%u)->(%u)\n", pindex->pprev->GetHeight(), pindex->GetHeight());
 }
 
 /**
@@ -2532,7 +2819,7 @@ bool InvalidateBlock(CValidationState& state, const CChainParams& chainparams, C
 {
     AssertLockHeld(cs_main);
 
-    LogFnPrintf("invalidating active blockchain starting at height %d (%s)", pindex->nHeight, pindex->GetBlockHashString());
+    LogFnPrintf("invalidating active blockchain starting at height %u (%s)", pindex->GetHeight(), pindex->GetBlockHashString());
 
     // Mark the block itself as invalid.
     pindex->SetStatusFlag(BLOCK_FAILED_VALID);
@@ -3180,14 +3467,14 @@ bool AcceptBlockHeader(
             *ppindex = pindex;
         if (pindex->nStatus & BLOCK_FAILED_MASK)
         {
-            strRejectReasonDetails = strprintf("received block header (height=%d, %s) already exists in index and marked invalid",
-                				pindex->nHeight, pindex->GetBlockHashString());
+            strRejectReasonDetails = strprintf("received block header (height=%u, %s) already exists in index and marked invalid",
+                				pindex->GetHeight(), pindex->GetBlockHashString());
             return state.Invalid(error("%s: %s", __func__, strRejectReasonDetails),
                 0, "duplicate", strRejectReasonDetails);
         }
         // if previous block has failed contextual validation - add it to unlinked block map as well
         if (gl_BlockCache.check_prev_block(pindex))
-            LogFnPrint("net", "block %s (height=%d) added to cached unlinked map", hashBlock.ToString(), pindex->nHeight);
+            LogFnPrint("net", "block %s (height=%u) added to cached unlinked map", hashBlock.ToString(), pindex->GetHeight());
         return true;
     }
 
@@ -3265,7 +3552,7 @@ bool AcceptBlock(
     // blocks which are too close in height to the tip.  Apply this test
     // regardless of whether pruning is enabled; it should generally be safe to
     // not process unrequested blocks.
-    const bool fTooFarAhead = (static_cast<uint32_t>(pindex->nHeight) > chainActive.Height() + MIN_BLOCKS_TO_KEEP);
+    const bool fTooFarAhead = (pindex->GetHeight() > chainActive.Height() + MIN_BLOCKS_TO_KEEP);
 
     // TODO: deal better with return value and error conditions for duplicate
     // and unrequested blocks.
@@ -3453,7 +3740,7 @@ bool TestBlockValidity(
         return false;
     if (!ContextualCheckBlock(block, state, chainparams, pindexPrev))
         return false;
-    if (!ConnectBlock(block, state, chainparams, & indexDummy, viewNew, true))
+    if (!ConnectBlock(block, state, chainparams, &indexDummy, viewNew, true))
         return false;
     assert(state.IsValid());
 
@@ -3641,9 +3928,9 @@ CBlockIndex* InsertBlockIndex(const uint256 &hash)
     return pindexNew;
 }
 
-static bool LoadBlockIndexDB(const CChainParams& chainparams)
+static bool LoadBlockIndexDB(const CChainParams& chainparams, string &strLoadError)
 {
-    if (!gl_pBlockTreeDB->LoadBlockIndexGuts(chainparams))
+    if (!gl_pBlockTreeDB->LoadBlockIndexGuts(chainparams, strLoadError))
         return false;
 
     func_thread_interrupt_point();
@@ -3686,10 +3973,10 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     // Load block file info
     gl_pBlockTreeDB->ReadLastBlockFile(nLastBlockFile);
     vinfoBlockFile.resize(nLastBlockFile + 1);
-    LogPrintf("%s: last block file = %i\n", __func__, nLastBlockFile);
+    LogFnPrintf("last block file = %i", nLastBlockFile);
     for (int nFile = 0; nFile <= nLastBlockFile; nFile++)
         gl_pBlockTreeDB->ReadBlockFileInfo(nFile, vinfoBlockFile[nFile]);
-    LogPrintf("%s: last block file info: %s\n", __func__, vinfoBlockFile[nLastBlockFile].ToString());
+    LogFnPrintf("last block file info: %s", vinfoBlockFile[nLastBlockFile].ToString());
     for (int nFile = nLastBlockFile + 1; true; nFile++)
     {
         CBlockFileInfo info;
@@ -3700,7 +3987,7 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     }
 
     // Check presence of blk files
-    LogPrintf("Checking all blk files are present...\n");
+    LogFnPrintf("Checking all blk files are present...");
     unordered_set<int> setBlkDataFiles;
     for (const auto &[hash, pindex] : mapBlockIndex)
     {
@@ -3711,13 +3998,16 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     {
         CDiskBlockPos pos(nBlockFileNo, 0);
         if (CAutoFile(OpenBlockFile(pos, true), SER_DISK, CLIENT_VERSION).IsNull())
+        {
+            strLoadError = strprintf("block file %d is missing", nBlockFileNo);
             return false;
+        }
     }
 
     // Check whether we have ever pruned block & undo files
-    gl_pBlockTreeDB->ReadFlag("prunedblockfiles", fHavePruned);
+    gl_pBlockTreeDB->ReadFlag(TXDB_FLAG_PRUNEDBLOCKFILES, fHavePruned);
     if (fHavePruned)
-        LogPrintf("LoadBlockIndexDB(): Block files have previously been pruned\n");
+        LogFnPrintf("Block files have previously been pruned");
 
     // Check whether we need to continue reindexing
     bool fReindexing = false;
@@ -3725,14 +4015,29 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
     fReindex = fReindex.load() || fReindexing;
 
     // Check whether we have a transaction index
-    gl_pBlockTreeDB->ReadFlag("txindex", fTxIndex);
-    LogPrintf("%s: transaction index %s\n", __func__, fTxIndex ? "enabled" : "disabled");
+    if (!gl_pBlockTreeDB->WasCreated())
+    {
+        bool fTxIndexPreviouslySet = false;
+        gl_pBlockTreeDB->ReadFlag(TXDB_FLAG_TXINDEX, fTxIndexPreviouslySet);
+        LogFnPrintf("(DB option) transaction index %s", fTxIndex ? "enabled" : "disabled");
 
-    // Check whether block explorer features are enabled
-    gl_pBlockTreeDB->ReadFlag("insightexplorer", fInsightExplorer);
-    LogPrintf("%s: insight explorer %s\n", __func__, fAddressIndex ? "enabled" : "disabled");
-    fAddressIndex = fInsightExplorer.load();
-    fSpentIndex = fInsightExplorer.load();
+        // Check for changed -txindex state
+        if (fTxIndexPreviouslySet != fTxIndex)
+        {
+            strLoadError = translate("You need to rebuild the database using -reindex to change -txindex");
+            return false;
+        }
+
+        // Check for changed -insightexplorer state
+        bool fInsightExplorerPreviouslySet = false;
+        gl_pBlockTreeDB->ReadFlag(TXDB_FLAG_INSIGHT_EXPLORER, fInsightExplorerPreviouslySet);
+        LogFnPrintf("(DB option) insight explorer %s", fInsightExplorer ? "enabled" : "disabled");
+        if (fInsightExplorer != fInsightExplorerPreviouslySet)
+        {
+            strLoadError = translate("You need to rebuild the database using -reindex to change -insightexplorer");
+            return false;
+        }
+    }
 
     // Fill in-memory data
     for (const auto &[hash, pindex] : mapBlockIndex)
@@ -3758,7 +4063,7 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams)
 
     PruneBlockIndexCandidates();
 
-    LogPrintf("%s: hashBestChain=%s height=%d date=%s progress=%f\n", __func__,
+    LogFnPrintf("hashBestChain=%s height=%d date=%s progress=%f\n",
         chainActive.Tip()->GetBlockHashString(), chainActive.Height(),
         DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
         Checkpoints::GuessVerificationProgress(chainparams.Checkpoints(), chainActive.Tip()));
@@ -3777,43 +4082,46 @@ CVerifyDB::~CVerifyDB()
     uiInterface.ShowProgress("", 100);
 }
 
-bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview, int nCheckLevel, int nCheckDepth)
+bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview, 
+    uint32_t nCheckLevel, uint32_t nCheckDepth)
 {
     LOCK(cs_main);
-    if (!chainActive.Tip() || !chainActive.Tip()->pprev)
+    const auto chainTip = chainActive.Tip();
+    if (!chainTip || !chainTip->pprev)
         return true;
 
     // Verify blocks in the best chain
     if (nCheckDepth <= 0)
         nCheckDepth = 1000000000; // suffices until the year 19000
-    if (nCheckDepth > chainActive.Height())
-        nCheckDepth = chainActive.Height();
-    nCheckLevel = max(0, min(4, nCheckLevel));
+    if (nCheckDepth > gl_nChainHeight)
+        nCheckDepth = gl_nChainHeight;
+    nCheckLevel = max(0U, min(4U, nCheckLevel));
 
-    LogFnPrintf("Verifying last %d blocks at level %d", nCheckDepth, nCheckLevel);
+    LogFnPrintf("Verifying last %u blocks at level %u", nCheckDepth, nCheckLevel);
     CCoinsViewCache coins(coinsview);
-    CBlockIndex* pindexState = chainActive.Tip();
+    CBlockIndex* pindexState = chainTip;
     CBlockIndex* pindexFailure = nullptr;
     size_t nGoodTransactions = 0;
     CValidationState state(TxOrigin::LOADED_BLOCK);
     // No need to verify JoinSplits twice
     auto verifier = libzcash::ProofVerifier::Disabled();
     const auto &consensusParams = chainparams.GetConsensus();
-    for (auto pindex = chainActive.Tip(); pindex && pindex->pprev; pindex = pindex->pprev)
+    for (auto pindex = chainTip; pindex && pindex->pprev; pindex = pindex->pprev)
     {
         func_thread_interrupt_point();
-        uiInterface.ShowProgress(translate("Verifying blocks..."), max(1, min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
-        if (pindex->nHeight < chainActive.Height() - nCheckDepth)
+        uiInterface.ShowProgress(translate("Verifying blocks..."), 
+            max(1, min(99, (int)(((double)(gl_nChainHeight - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100)))));
+        if (pindex->GetHeight() < gl_nChainHeight - nCheckDepth)
             break;
 
         CBlock block;
         // check level 0: read from disk
         if (!ReadBlockFromDisk(block, pindex, consensusParams))
-            return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
+            return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %u, hash=%s", pindex->GetHeight(), pindex->GetBlockHashString());
         // check level 1: verify block validity
         uint256 hashBlock;
         if (nCheckLevel >= 1 && !CheckBlock(block, hashBlock, state, chainparams, verifier, true, true, false, pindex->pprev))
-            return errorFn(__METHOD_NAME__, "*** found bad block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
+            return errorFn(__METHOD_NAME__, "*** found bad block at %u, hash=%s", pindex->GetHeight(), pindex->GetBlockHashString());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex)
         {
@@ -3822,17 +4130,17 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             if (!pos.IsNull())
             {
                 if (!UndoReadFromDisk(undo, pos, pindex->pprev->GetBlockHash()))
-                    return errorFn(__METHOD_NAME__, "*** found bad undo data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
+                    return errorFn(__METHOD_NAME__, "*** found bad undo data at %u, hash=%s", pindex->GetHeight(), pindex->GetBlockHashString());
             }
         }
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
         if (nCheckLevel >= 3 && pindex == pindexState && (coins.DynamicMemoryUsage() + gl_pCoinsTip->DynamicMemoryUsage()) <= nCoinCacheUsage)
         {
-            bool fClean = true;
-            if (!DisconnectBlock(block, state, chainparams, pindex, coins, &fClean))
-                return errorFn(__METHOD_NAME__, "*** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
+            BlockDisconnectResult res = DisconnectBlock(block, state, chainparams, pindex, coins, false);
+            if (res == BlockDisconnectResult::FAILED)
+                return errorFn(__METHOD_NAME__, "*** irrecoverable inconsistency in block data at %u, hash=%s", pindex->GetHeight(), pindex->GetBlockHashString());
             pindexState = pindex->pprev;
-            if (!fClean)
+            if (res == BlockDisconnectResult::UNCLEAN)
             {
                 nGoodTransactions = 0;
                 pindexFailure = pindex;
@@ -3844,26 +4152,27 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
     }
     if (pindexFailure)
         return errorFn(__METHOD_NAME__, "*** coin database inconsistencies found (last %i blocks, %i good transactions before that)",
-            chainActive.Height() - pindexFailure->nHeight + 1, nGoodTransactions);
+            gl_nChainHeight - pindexFailure->nHeight + 1, nGoodTransactions);
 
     // check level 4: try reconnecting blocks
     if (nCheckLevel >= 4)
     {
         CBlockIndex *pindex = pindexState;
-        while (pindex != chainActive.Tip())
+        while (pindex != chainTip)
         {
             func_thread_interrupt_point();
-            uiInterface.ShowProgress(translate("Verifying blocks..."), max(1, min(99, 100 - (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * 50))));
+            uiInterface.ShowProgress(translate("Verifying blocks..."), 
+                max(1, min(99, 100 - (int)(((double)(gl_nChainHeight - pindex->GetHeight())) / (double)nCheckDepth * 50))));
             pindex = chainActive.Next(pindex);
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex, consensusParams))
-                return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
+                return errorFn(__METHOD_NAME__, "*** ReadBlockFromDisk failed at %u, hash=%s", pindex->GetHeight(), pindex->GetBlockHashString());
             if (!ConnectBlock(block, state, chainparams, pindex, coins))
-                return errorFn(__METHOD_NAME__, "*** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHashString());
+                return errorFn(__METHOD_NAME__, "*** found unconnectable block at %u, hash=%s", pindex->GetHeight(), pindex->GetBlockHashString());
         }
     }
 
-    LogFnPrintf("No coin database inconsistencies in last %i blocks (%zu transactions)", chainActive.Height() - pindexState->nHeight, nGoodTransactions);
+    LogFnPrintf("No coin database inconsistencies in last %i blocks (%zu transactions)", gl_nChainHeight - pindexState->nHeight, nGoodTransactions);
     return true;
 }
 
@@ -3872,7 +4181,7 @@ bool ValidateRewindLength(const CChainParams& chainparams, const int nInvalidBlo
 {
     AssertLockHeld(cs_main);
 
-    const int nRewindLength = chainActive.Height() - nInvalidBlockHeight;
+    const int nRewindLength = gl_nChainHeight - nInvalidBlockHeight;
     if (nRewindLength > 0)
     {
         const uint256 *phashInvalidBlock = chainActive[nInvalidBlockHeight]->phashBlock;
@@ -3937,7 +4246,7 @@ bool RewindBlockIndexToHeight(const CChainParams& chainparams, bool& bClearWitne
             break;
         }
         if (!DisconnectTip(state, chainparams, true))
-            return error("RewindBlockIndex: unable to disconnect block at height %d", pindex->nHeight);
+            return error("RewindBlockIndex: unable to disconnect block at height %u", pindex->GetHeight());
         // Occasionally flush state to disk.
         if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC))
             return false;
@@ -4018,20 +4327,20 @@ bool RewindChainToBlock(string &error, const CChainParams& chainparams, const st
         }
         if (pindex == chainActive.Tip())
         {
-			error = strprintf("%s. Block with hash %s (%d) is already the active tip", REWIND_ERRMSG, sBlockHash, pindex->nHeight);
+			error = strprintf("%s. Block with hash %s (%u) is already the active tip", REWIND_ERRMSG, sBlockHash, pindex->GetHeight());
 			return false;
 		}
         const uint32_t nOldChainHeight = gl_nChainHeight;
-        if (static_cast<uint32_t>(pindex->nHeight) > nOldChainHeight)
+        if (pindex->GetHeight() > nOldChainHeight)
         {
-            error = strprintf("%s. Block with hash %s (%d) is ahead of the active tip (%u)", REWIND_ERRMSG, sBlockHash, pindex->nHeight, nOldChainHeight);
+            error = strprintf("%s. Block with hash %s (%u) is ahead of the active tip (%u)", REWIND_ERRMSG, sBlockHash, pindex->GetHeight(), nOldChainHeight);
 			return false;
         }
 
-        uiInterface.InitMessage(strprintf(translate("Rewinding chain to block %s (%d)..."), sBlockHash, pindex->nHeight));
-        LogFnPrintf("Rewinding blockchain to the block height=%d (%s)", pindex->nHeight, sBlockHash);
+        uiInterface.InitMessage(strprintf(translate("Rewinding chain to block %s (%u)..."), sBlockHash, pindex->GetHeight()));
+        LogFnPrintf("Rewinding blockchain to the block height=%u (%s)", pindex->GetHeight(), sBlockHash);
 
-        const uint32_t nRewindLength = nOldChainHeight - static_cast<uint32_t>(pindex->nHeight);
+        const uint32_t nRewindLength = nOldChainHeight - pindex->GetHeight();
 #ifdef ENABLE_WALLET
         if (nRewindLength > MAX_REORG_LENGTH)
             pwalletMain->ClearNoteWitnessCache();
@@ -4085,10 +4394,10 @@ bool RewindBlockIndex(const CChainParams& chainparams, bool& bClearWitnessCaches
     const auto fnIsSufficientlyValidated = [&consensusParams](const CBlockIndex* pindex) -> bool
     {
         const bool fFlagSet = pindex->nStatus & BLOCK_ACTIVATES_UPGRADE;
-        const bool fFlagExpected = IsActivationHeightForAnyUpgrade(pindex->nHeight, consensusParams);
+        const bool fFlagExpected = IsActivationHeightForAnyUpgrade(pindex->GetHeight(), consensusParams);
         return fFlagSet == fFlagExpected &&
             pindex->nCachedBranchId &&
-            *pindex->nCachedBranchId == CurrentEpochBranchId(pindex->nHeight, consensusParams);
+            *pindex->nCachedBranchId == CurrentEpochBranchId(pindex->GetHeight(), consensusParams);
     };
 
     int nInvalidBlockHeight = 1;
@@ -4393,10 +4702,10 @@ void UnloadBlockIndex()
     fHavePruned = false;
 }
 
-bool LoadBlockIndex()
+bool LoadBlockIndex(string &strLoadError)
 {
     // Load block index from databases
-    if (!fReindex && !LoadBlockIndexDB(Params()))
+    if (!fReindex && !LoadBlockIndexDB(Params(), strLoadError))
         return false;
     return true;
 }
@@ -4413,15 +4722,10 @@ bool InitBlockIndex(const CChainParams& chainparams)
         return true;
 
     // Use the provided setting for -txindex in the new database
-    fTxIndex = GetBoolArg("-txindex", false);
-    gl_pBlockTreeDB->WriteFlag("txindex", fTxIndex);
+    gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_TXINDEX, fTxIndex);
 
     // Use the provided setting for -insightexplorer in the new database
-    fInsightExplorer = GetBoolArg("-insightexplorer", false);
-    gl_pBlockTreeDB->WriteFlag("insightexplorer", fInsightExplorer.load());
-    fAddressIndex = fInsightExplorer.load();
-    fSpentIndex = fInsightExplorer.load();
-    fTimestampIndex = fInsightExplorer.load();
+    gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_INSIGHT_EXPLORER, fInsightExplorer.load());
 
     LogFnPrintf("Initializing databases...");
 
@@ -5018,7 +5322,7 @@ void static ProcessGetData(node_t &pfrom, const Consensus::Params& consensusPara
             {
                 CMerkleBlock merkleBlock(*block, *pfrom->pfilter);
                 pfrom->PushMessage("merkleblock", merkleBlock);
-                // CMerkleBlock just contains hashes, so also push any transactions in the block the client did not see
+                // CMerkleBlock just contains vHashes, so also push any transactions in the block the client did not see
                 // This avoids hurting performance by pointlessly requiring a round-trip
                 // Note that there is currently no way for a node to request any single transactions we didn't send here -
                 // they must either disconnect and retry or request the full block.
@@ -5437,7 +5741,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
         {
             if (pindex->GetBlockHash() == hashStop)
             {
-                LogFnPrint("net", " getblocks stopping at %d %s", pindex->nHeight, pindex->GetBlockHashString());
+                LogFnPrint("net", " getblocks stopping at %u %s", pindex->GetHeight(), pindex->GetBlockHashString());
                 break;
             }
             // If pruning, don't inv blocks unless we have on disk and are likely to still have
@@ -5445,7 +5749,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
             const int nPrunedBlocksLikelyToHave = static_cast<int>(MIN_BLOCKS_TO_KEEP - 3600 / consensusParams.nPowTargetSpacing);
             if (fPruneMode && (!(pindex->nStatus & BLOCK_HAVE_DATA) || pindex->nHeight <= chainActive.Tip()->nHeight - nPrunedBlocksLikelyToHave))
             {
-                LogFnPrint("net", " getblocks stopping, pruned or too old block at %d %s", pindex->nHeight, pindex->GetBlockHashString());
+                LogFnPrint("net", " getblocks stopping, pruned or too old block at %u %s", pindex->GetHeight(), pindex->GetBlockHashString());
                 break;
             }
             pfrom->PushInventory(CInv(MSG_BLOCK, pindex->GetBlockHash()));
@@ -5453,7 +5757,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
             {
                 // When this block is requested, we'll send an inv that'll
                 // trigger the peer to getblocks the next batch of inventory.
-                LogFnPrint("net", " getblocks stopping at limit %d %s", pindex->nHeight, pindex->GetBlockHashString());
+                LogFnPrint("net", " getblocks stopping at limit %u %s", pindex->GetHeight(), pindex->GetBlockHashString());
                 pfrom->hashContinue = pindex->GetBlockHash();
                 break;
             }
@@ -6298,7 +6602,7 @@ void NodeDetectStalledDownload(node_t& pto, node_state_t &pNodeState, const Cons
     // In case there is a block that has been in flight from this peer for (2 + 0.5 * N) times the block interval
     // (with N the number of validated blocks that were in flight at the time it was requested), disconnect due to
     // timeout. We compensate for in-flight blocks to prevent killing off peers due to our own downstream link
-    // being saturated. We only nMaxBlockCount validated in-flight blocks so peers can't advertise non-existing block hashes
+    // being saturated. We only nMaxBlockCount validated in-flight blocks so peers can't advertise non-existing block vHashes
     // to unreasonably increase our timeout.
     // We also compare the block download timeout originally calculated against the time at which we'd disconnect
     // if we assumed the block were being requested now (ignoring blocks we've requested from this peer, since we're
@@ -6352,8 +6656,8 @@ void NodeSendGetData(node_t& pto, node_state_t& pNodeState, const Consensus::Par
                 vGetData.push_back(CInv(MSG_BLOCK, hash));
                 pNodeState->MarkBlockAsInFlight(hash, consensusParams,
                     mapBlocksInFlight, gl_nQueuedValidatedHeaders, pindex);
-                LogPrint("net", "Requesting block %s (height=%d) from peer=%d\n", hash.ToString(),
-                    pindex->nHeight, nodeId);
+                LogPrint("net", "Requesting block %s (height=%u) from peer=%d\n", hash.ToString(),
+                    pindex->GetHeight(), nodeId);
             }
         }
         if (pNodeState->nBlocksInFlight == 0 && staller != -1)
@@ -6519,15 +6823,3 @@ public:
         mapBlockIndex.clear();
     }
 } instance_of_cmaincleanup;
-
-
-bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
-{
-    AssertLockHeld(cs_main);
-    if (!fSpentIndex)
-        return false;
-
-    if (mempool.getSpentIndex(key, value))
-        return true;
-    return gl_pBlockTreeDB->ReadSpentIndex(key, value);
-}

@@ -27,6 +27,9 @@ public:
     UniValue(int64_t val_) {
         setInt(val_);
     }
+    UniValue(uint32_t val_) {
+        setInt(val_);
+    }
     UniValue(bool val_) {
         setBool(val_);
     }
@@ -62,6 +65,7 @@ public:
     bool setNumStr(const std::string& val);
     bool setNumStr(std::string&& val);
     bool setInt(uint64_t val);
+    bool setInt(uint32_t val);
     bool setInt(int64_t val);
     bool setInt(int val_) { return setInt((int64_t)val_); }
     bool setFloat(double val);

@@ -9,7 +9,7 @@
 
 #include <utils/vector_types.h>
 
-static constexpr size_t DEFINE_SIZE = static_cast<size_t>(-1);
+constexpr size_t DEFINE_SIZE = static_cast<size_t>(-1);
 
 /**
  * test if character is white space not using locale.

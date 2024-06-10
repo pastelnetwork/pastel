@@ -70,6 +70,11 @@ bool UniValue::setInt(uint64_t val_)
     return setNumStr(std::to_string(val_));
 }
 
+bool UniValue::setInt(uint32_t val_)
+{
+    return setNumStr(std::to_string(val_));
+}
+
 bool UniValue::setInt(int64_t val_)
 {
     return setNumStr(std::to_string(val_));

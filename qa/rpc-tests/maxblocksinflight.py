@@ -3,17 +3,16 @@
 # Distributed under the MIT/X11 software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #
-
-from test_framework.mininode import NodeConn, NodeConnCB, NetworkThread, \
-    EarlyDisconnectError, CInv, msg_inv, mininode_lock
-from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import initialize_chain_clean, start_nodes, \
-    p2p_port
-
 import os
 import time
 import random
 import logging
+
+from test_framework.mininode import NodeConn, NodeConnCB, NetworkThread, \
+    EarlyDisconnectError, CInv, msg_inv, mininode_lock
+from test_framework.test_framework import BitcoinTestFramework
+from test_framework.util import  start_nodes, \
+    p2p_port
 
 '''
 In this test we connect to one node over p2p, send it numerous inv's, and
@@ -82,17 +81,19 @@ class TestManager(NodeConnCB):
 
 
 class MaxBlocksInFlightTest(BitcoinTestFramework):
+    
+    def __init__(self):
+        super().__init__()
+        self.num_nodes = 1
+        self.setup_clean_chain = True
+    
     def add_options(self, parser):
         parser.add_argument("--testbinary", dest="testbinary",
                           default=os.getenv("PASTELD", "pasteld"),
                           help="Binary to test max block requests behavior")
 
-    def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 1)
-
     def setup_network(self):
-        self.nodes = start_nodes(1, self.options.tmpdir, 
+        self.nodes = start_nodes(self.num_nodes, self.options.tmpdir, 
                                  extra_args=[['-debug', '-whitelist=127.0.0.1']],
                                  binary=[self.options.testbinary])
 

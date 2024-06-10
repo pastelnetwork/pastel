@@ -33,7 +33,8 @@ static leveldb::Options GetOptions(size_t nCacheSize)
 
 CDBWrapper::CDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe) :
     pdb(nullptr),
-    penv(nullptr)
+    penv(nullptr),
+    m_bCreated(false)
 {
     readoptions.verify_checksums = true;
     iteroptions.verify_checksums = true;
@@ -45,17 +46,43 @@ CDBWrapper::CDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bo
     {
         penv = leveldb::NewMemEnv(leveldb::Env::Default());
         options.env = penv;
+        LogPrintf("Creating in-memory LevelDB\n");
+        leveldb::Status status = leveldb::DB::Open(options, "", &pdb);
+        dbwrapper_private::HandleError(status);
+        LogPrintf("Created in-memory LevelDB successfully\n");
+        m_bCreated = true;
     } else {
-        if (fWipe) {
-            LogPrintf("Wiping LevelDB in %s\n", path.string());
+        // Initial attempt should not create DB
+        options.create_if_missing = false;
+        if (fWipe)
+        {
+            LogPrintf("Wiping LevelDB in '%s'\n", path.string());
             leveldb::Status result = leveldb::DestroyDB(path.string(), options);
             dbwrapper_private::HandleError(result);
         }
         TryCreateDirectory(path);
-        LogPrintf("Opening LevelDB in %s\n", path.string());
+        LogPrintf("Opening LevelDB in '%s'\n", path.string());
+        leveldb::Status status = leveldb::DB::Open(options, path.string(), &pdb);
+
+        if (!status.ok() && (status.IsNotFound() || status.IsInvalidArgument()))
+        {
+            // If the database does not exist, try to create it
+            LogPrintf("LevelDB not found in '%s', creating new LevelDB\n", path.string());
+            options.create_if_missing = true;
+            status = leveldb::DB::Open(options, path.string(), &pdb);
+            if (status.ok())
+            {
+                LogPrintf("Created new LevelDB in '%s' successfully\n", path.string());
+                m_bCreated = true;
+            }
+        }
+        else if (status.ok())
+        {
+            LogPrintf("Opened existing LevelDB in '%s' successfully\n", path.string());
+        }
+
+        dbwrapper_private::HandleError(status);
     }
-    leveldb::Status status = leveldb::DB::Open(options, path.string(), &pdb);
-    dbwrapper_private::HandleError(status);
     LogPrintf("Opened LevelDB successfully\n");
 }
 

@@ -6,6 +6,7 @@
 #include <consensus/validation.h>
 #include <utils/scope_guard.hpp>
 #include <utils/reverselock.h>
+#include <chain_options.h>
 #include <main.h>
 #include <netmsg/block-cache.h>
 #include <netmsg/nodemanager.h>
@@ -379,7 +380,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
                 CBlockIndex* pindex = itBlock->second;
                 if (pindex && pindex->nHeight >= 0)
                 {
-                    nBlockHeight = static_cast<uint32_t>(pindex->nHeight);
+                    nBlockHeight = pindex->GetHeight();
                     // check is the block is already in the active chain
                     if (chainActive.Contains(pindex))
                     {

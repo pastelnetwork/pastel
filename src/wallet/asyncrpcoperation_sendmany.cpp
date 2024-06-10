@@ -1,5 +1,5 @@
 // Copyright (c) 2016 The Zcash developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <array>
@@ -445,7 +445,7 @@ bool AsyncRPCOperation_sendmany::main_impl() {
         } else {
             // Test mode does not send the transaction to the network.
             o.pushKV("test", 1);
-            o.pushKV("txid", tx_.GetHash().ToString());
+            o.pushKV(RPC_KEY_TXID, tx_.GetHash().ToString());
             o.pushKV("hex", move(signedtxn));
         }
         set_result(move(o));
@@ -540,7 +540,7 @@ void AsyncRPCOperation_sendmany::sign_send_raw_transaction(UniValue obj)
             throw JSONRPCError(RPC_WALLET_ERROR, "Send raw transaction did not return an error or a txid.");
 
         auto txid = sendResultValue.get_str();
-        o.pushKV("txid", move(txid));
+        o.pushKV(RPC_KEY_TXID, move(txid));
     } else {
         // Test mode does not send the transaction to the network.
 
@@ -549,7 +549,7 @@ void AsyncRPCOperation_sendmany::sign_send_raw_transaction(UniValue obj)
         stream >> tx;
 
         o.pushKV("test", 1);
-        o.pushKV("txid", tx.GetHash().ToString());
+        o.pushKV(RPC_KEY_TXID, tx.GetHash().ToString());
         o.pushKV("hex", signedtxn);
     }
     set_result(move(o));

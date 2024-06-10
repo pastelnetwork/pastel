@@ -9,7 +9,7 @@ from test_framework.mininode import NodeConn, NetworkThread, CInv, \
     msg_mempool, msg_getdata, msg_tx, mininode_lock, LATEST_PROTO_VERSION
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, connect_nodes_bi, fail, \
-    initialize_chain_clean, p2p_port, start_nodes, sync_blocks, sync_mempools
+     p2p_port, start_nodes, sync_blocks, sync_mempools
 from tx_expiry_helper import TestNode, create_transaction
 
 
@@ -19,10 +19,6 @@ class TxExpiringSoonTest(BitcoinTestFramework):
         super().__init__()
         self.num_nodes = 3
         self.setup_clean_chain = True
-
-    def setup_chain(self):
-        print("Initializing test directory " + self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,

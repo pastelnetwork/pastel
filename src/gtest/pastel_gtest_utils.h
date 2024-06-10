@@ -1,8 +1,10 @@
 #pragma once
-// Copyright (c) 2021-2023 The Pastel Core developers
+// Copyright (c) 2021-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
+
+#include <univalue.h>
 
 #include <utils/uint256.h>
 #include <consensus/params.h>
@@ -26,3 +28,8 @@ std::string generateTempFileName(const char* szFileExt = ".tmp");
 
 const Consensus::Params& RegtestActivateSapling();
 void RegtestDeactivateSapling();
+
+UniValue TestCallRPC(const std::string& args);
+UniValue TestCallRPC_Params(const std::string& sRpcMethod, const std::string& sRpcParams);
+void CheckRPCThrows(const std::string& sRpcMethod, const std::string& sRpcParams,
+	const std::string& sExpectedErrorMessage);

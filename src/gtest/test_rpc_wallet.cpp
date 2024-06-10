@@ -11,7 +11,6 @@
 #include <unordered_set>
 
 #include <univalue.h>
-
 #include <gtest/gtest.h>
 
 #include <utils/tinyformat.h>
@@ -32,12 +31,12 @@
 
 #include <test_rpc.h>
 #include <pastel_gtest_main.h>
+#include <pastel_gtest_utils.h>
 
 using namespace std;
 using namespace testing;
 
 extern UniValue createArgs(int nRequired, const char* address1 = nullptr, const char* address2 = nullptr);
-extern UniValue CallRPC(string args);
 
 // extern CWallet* pwalletMain;
 
@@ -148,135 +147,135 @@ TEST_F(TestRpcWallet1, rpc_wallet)
      * 			setaccount
      *********************************/
     KeyIO keyIO(Params());
-    EXPECT_NO_THROW(CallRPC("setaccount " + keyIO.EncodeDestination(setaccountDemoAddress) + " \"\""));
+    EXPECT_NO_THROW(TestCallRPC("setaccount " + keyIO.EncodeDestination(setaccountDemoAddress) + " \"\""));
     /* Accounts are disabled */
-    EXPECT_THROW(CallRPC("setaccount " + keyIO.EncodeDestination(setaccountDemoAddress) + " nullaccount"), runtime_error);
+    EXPECT_THROW(TestCallRPC("setaccount " + keyIO.EncodeDestination(setaccountDemoAddress) + " nullaccount"), runtime_error);
     /* PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE is not owned by the test wallet. */
-    EXPECT_THROW(CallRPC("setaccount PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE nullaccount"), runtime_error);
-    EXPECT_THROW(CallRPC("setaccount"), runtime_error);
+    EXPECT_THROW(TestCallRPC("setaccount PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE nullaccount"), runtime_error);
+    EXPECT_THROW(TestCallRPC("setaccount"), runtime_error);
     /* PtkqegiGBYiKjGorBWW78i6dgXCHaYY7md (34 chars) is an illegal address (should be 35 chars) */
-    EXPECT_THROW(CallRPC("setaccount PtkqegiGBYiKjGorBWW78i6dgXCHaYY7md nullaccount"), runtime_error);
+    EXPECT_THROW(TestCallRPC("setaccount PtkqegiGBYiKjGorBWW78i6dgXCHaYY7md nullaccount"), runtime_error);
 
 
     /*********************************
      *                  getbalance
      *********************************/
-    EXPECT_NO_THROW(CallRPC("getbalance"));
-    EXPECT_THROW(CallRPC("getbalance " + keyIO.EncodeDestination(demoAddress)), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("getbalance"));
+    EXPECT_THROW(TestCallRPC("getbalance " + keyIO.EncodeDestination(demoAddress)), runtime_error);
 
     /*********************************
      * 			listunspent
      *********************************/
-    EXPECT_NO_THROW(CallRPC("listunspent"));
-    EXPECT_THROW(CallRPC("listunspent string"), runtime_error);
-    EXPECT_THROW(CallRPC("listunspent 0 string"), runtime_error);
-    EXPECT_THROW(CallRPC("listunspent 0 1 not_array"), runtime_error);
-    EXPECT_THROW(CallRPC("listunspent 0 1 [] extra"), runtime_error);
-    EXPECT_NO_THROW(r = CallRPC("listunspent 0 1 []"));
+    EXPECT_NO_THROW(TestCallRPC("listunspent"));
+    EXPECT_THROW(TestCallRPC("listunspent string"), runtime_error);
+    EXPECT_THROW(TestCallRPC("listunspent 0 string"), runtime_error);
+    EXPECT_THROW(TestCallRPC("listunspent 0 1 not_array"), runtime_error);
+    EXPECT_THROW(TestCallRPC("listunspent 0 1 [] extra"), runtime_error);
+    EXPECT_NO_THROW(r = TestCallRPC("listunspent 0 1 []"));
     EXPECT_TRUE(r.get_array().empty());
 
     /*********************************
      * 		listreceivedbyaddress
      *********************************/
-    EXPECT_NO_THROW(CallRPC("listreceivedbyaddress"));
-    EXPECT_NO_THROW(CallRPC("listreceivedbyaddress 0"));
-    EXPECT_THROW(CallRPC("listreceivedbyaddress not_int"), runtime_error);
-    EXPECT_THROW(CallRPC("listreceivedbyaddress 0 not_bool"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("listreceivedbyaddress 0 true"));
-    EXPECT_THROW(CallRPC("listreceivedbyaddress 0 true extra"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("listreceivedbyaddress"));
+    EXPECT_NO_THROW(TestCallRPC("listreceivedbyaddress 0"));
+    EXPECT_THROW(TestCallRPC("listreceivedbyaddress not_int"), runtime_error);
+    EXPECT_THROW(TestCallRPC("listreceivedbyaddress 0 not_bool"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("listreceivedbyaddress 0 true"));
+    EXPECT_THROW(TestCallRPC("listreceivedbyaddress 0 true extra"), runtime_error);
 
     /*********************************
      * 		listreceivedbyaccount
      *********************************/
-    EXPECT_NO_THROW(CallRPC("listreceivedbyaccount"));
-    EXPECT_NO_THROW(CallRPC("listreceivedbyaccount 0"));
-    EXPECT_THROW(CallRPC("listreceivedbyaccount not_int"), runtime_error);
-    EXPECT_THROW(CallRPC("listreceivedbyaccount 0 not_bool"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("listreceivedbyaccount 0 true"));
-    EXPECT_THROW(CallRPC("listreceivedbyaccount 0 true extra"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("listreceivedbyaccount"));
+    EXPECT_NO_THROW(TestCallRPC("listreceivedbyaccount 0"));
+    EXPECT_THROW(TestCallRPC("listreceivedbyaccount not_int"), runtime_error);
+    EXPECT_THROW(TestCallRPC("listreceivedbyaccount 0 not_bool"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("listreceivedbyaccount 0 true"));
+    EXPECT_THROW(TestCallRPC("listreceivedbyaccount 0 true extra"), runtime_error);
 
     /*********************************
      *          listsinceblock
      *********************************/
-    EXPECT_NO_THROW(CallRPC("listsinceblock"));
+    EXPECT_NO_THROW(TestCallRPC("listsinceblock"));
 
     /*********************************
      *          listtransactions
      *********************************/
-    EXPECT_NO_THROW(CallRPC("listtransactions"));
-    EXPECT_NO_THROW(CallRPC("listtransactions " + keyIO.EncodeDestination(demoAddress)));
-    EXPECT_NO_THROW(CallRPC("listtransactions " + keyIO.EncodeDestination(demoAddress) + " 20"));
-    EXPECT_NO_THROW(CallRPC("listtransactions " + keyIO.EncodeDestination(demoAddress) + " 20 0"));
-    EXPECT_THROW(CallRPC("listtransactions " + keyIO.EncodeDestination(demoAddress) + " not_int"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("listtransactions"));
+    EXPECT_NO_THROW(TestCallRPC("listtransactions " + keyIO.EncodeDestination(demoAddress)));
+    EXPECT_NO_THROW(TestCallRPC("listtransactions " + keyIO.EncodeDestination(demoAddress) + " 20"));
+    EXPECT_NO_THROW(TestCallRPC("listtransactions " + keyIO.EncodeDestination(demoAddress) + " 20 0"));
+    EXPECT_THROW(TestCallRPC("listtransactions " + keyIO.EncodeDestination(demoAddress) + " not_int"), runtime_error);
 
     /*********************************
      *          listlockunspent
      *********************************/
-    EXPECT_NO_THROW(CallRPC("listlockunspent"));
+    EXPECT_NO_THROW(TestCallRPC("listlockunspent"));
 
     /*********************************
      *          listaccounts
      *********************************/
-    EXPECT_NO_THROW(CallRPC("listaccounts"));
+    EXPECT_NO_THROW(TestCallRPC("listaccounts"));
 
     /*********************************
      *          listaddressgroupings
      *********************************/
-    EXPECT_NO_THROW(CallRPC("listaddressgroupings"));
+    EXPECT_NO_THROW(TestCallRPC("listaddressgroupings"));
 
     /*********************************
      * 		getrawchangeaddress
      *********************************/
-    EXPECT_NO_THROW(CallRPC("getrawchangeaddress"));
+    EXPECT_NO_THROW(TestCallRPC("getrawchangeaddress"));
 
     /*********************************
      * 		getnewaddress
      *********************************/
-    EXPECT_NO_THROW(CallRPC("getnewaddress"));
-    EXPECT_NO_THROW(CallRPC("getnewaddress \"\""));
+    EXPECT_NO_THROW(TestCallRPC("getnewaddress"));
+    EXPECT_NO_THROW(TestCallRPC("getnewaddress \"\""));
     /* Accounts are deprecated */
-    EXPECT_THROW(CallRPC("getnewaddress getnewaddress_demoaccount"), runtime_error);
+    EXPECT_THROW(TestCallRPC("getnewaddress getnewaddress_demoaccount"), runtime_error);
 
     /*********************************
      * 		getaccountaddress
      *********************************/
-    EXPECT_NO_THROW(CallRPC("getaccountaddress \"\""));
+    EXPECT_NO_THROW(TestCallRPC("getaccountaddress \"\""));
     /* Accounts are deprecated */
-    EXPECT_THROW(CallRPC("getaccountaddress accountThatDoesntExists"), runtime_error);
-    EXPECT_NO_THROW(retValue = CallRPC("getaccountaddress " + (strAccount.empty() ? "\"\"" : strAccount)) );
+    EXPECT_THROW(TestCallRPC("getaccountaddress accountThatDoesntExists"), runtime_error);
+    EXPECT_NO_THROW(retValue = TestCallRPC("getaccountaddress " + (strAccount.empty() ? "\"\"" : strAccount)) );
     EXPECT_EQ(keyIO.DecodeDestination(retValue.get_str()) , demoAddress);
 
     /*********************************
      * 			getaccount
      *********************************/
-    EXPECT_THROW(CallRPC("getaccount"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("getaccount " + keyIO.EncodeDestination(demoAddress)));
+    EXPECT_THROW(TestCallRPC("getaccount"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("getaccount " + keyIO.EncodeDestination(demoAddress)));
 
     /*********************************
      * 	signmessage + verifymessage
      *********************************/
-    EXPECT_NO_THROW(retValue = CallRPC("signmessage " + keyIO.EncodeDestination(demoAddress) + " mymessage"));
-    EXPECT_THROW(CallRPC("signmessage"), runtime_error);
+    EXPECT_NO_THROW(retValue = TestCallRPC("signmessage " + keyIO.EncodeDestination(demoAddress) + " mymessage"));
+    EXPECT_THROW(TestCallRPC("signmessage"), runtime_error);
     /* Should throw error because this address is not loaded in the wallet */
-    EXPECT_THROW(CallRPC("signmessage PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE mymessage"), runtime_error);
+    EXPECT_THROW(TestCallRPC("signmessage PtkqegiGBYiKjGorBWW78i6dgXCHaYY7mdE mymessage"), runtime_error);
 
     /* missing arguments */
-    EXPECT_THROW(CallRPC("verifymessage " + keyIO.EncodeDestination(demoAddress)), runtime_error);
-    EXPECT_THROW(CallRPC("verifymessage " + keyIO.EncodeDestination(demoAddress) + " " + retValue.get_str()), runtime_error);
+    EXPECT_THROW(TestCallRPC("verifymessage " + keyIO.EncodeDestination(demoAddress)), runtime_error);
+    EXPECT_THROW(TestCallRPC("verifymessage " + keyIO.EncodeDestination(demoAddress) + " " + retValue.get_str()), runtime_error);
     /* Illegal address */
-    EXPECT_THROW(CallRPC("verifymessage PtkqegiGBYiKjGorBWW78i6dgXCHaYY7md " + retValue.get_str() + " mymessage"), runtime_error);
+    EXPECT_THROW(TestCallRPC("verifymessage PtkqegiGBYiKjGorBWW78i6dgXCHaYY7md " + retValue.get_str() + " mymessage"), runtime_error);
     /* wrong address */
-    EXPECT_FALSE(CallRPC("verifymessage PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n " + retValue.get_str() + " mymessage").get_bool());
+    EXPECT_FALSE(TestCallRPC("verifymessage PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n " + retValue.get_str() + " mymessage").get_bool());
     /* Correct address and signature but wrong message */
-    EXPECT_FALSE(CallRPC("verifymessage " + keyIO.EncodeDestination(demoAddress) + " " + retValue.get_str() + " wrongmessage").get_bool());
+    EXPECT_FALSE(TestCallRPC("verifymessage " + keyIO.EncodeDestination(demoAddress) + " " + retValue.get_str() + " wrongmessage").get_bool());
     /* Correct address, message and signature*/
-    EXPECT_TRUE(CallRPC("verifymessage " + keyIO.EncodeDestination(demoAddress) + " " + retValue.get_str() + " mymessage").get_bool());
+    EXPECT_TRUE(TestCallRPC("verifymessage " + keyIO.EncodeDestination(demoAddress) + " " + retValue.get_str() + " mymessage").get_bool());
 
     /*********************************
      * 		getaddressesbyaccount
      *********************************/
-    EXPECT_THROW(CallRPC("getaddressesbyaccount"), runtime_error);
-    EXPECT_NO_THROW(retValue = CallRPC("getaddressesbyaccount " + (strAccount.empty() ? "\"\"" : strAccount)));
+    EXPECT_THROW(TestCallRPC("getaddressesbyaccount"), runtime_error);
+    EXPECT_NO_THROW(retValue = TestCallRPC("getaddressesbyaccount " + (strAccount.empty() ? "\"\"" : strAccount)));
     UniValue arr = retValue.get_array();
     EXPECT_EQ(4, arr.size());
     bool notFound = true;
@@ -288,38 +287,38 @@ TEST_F(TestRpcWallet1, rpc_wallet)
     /*********************************
      * 	     fundrawtransaction
      *********************************/
-    EXPECT_THROW(CallRPC("fundrawtransaction 28z"), runtime_error);
-    EXPECT_THROW(CallRPC("fundrawtransaction 01000000000180969800000000001976a91450ce0a4b0ee0ddeb633da85199728b940ac3fe9488ac00000000"), runtime_error);
+    EXPECT_THROW(TestCallRPC("fundrawtransaction 28z"), runtime_error);
+    EXPECT_THROW(TestCallRPC("fundrawtransaction 01000000000180969800000000001976a91450ce0a4b0ee0ddeb633da85199728b940ac3fe9488ac00000000"), runtime_error);
 
     /*
      * getblocksubsidy
      */
-    EXPECT_THROW(CallRPC("getblocksubsidy too many args"), runtime_error);
-    EXPECT_THROW(CallRPC("getblocksubsidy -1"), runtime_error);
-    EXPECT_NO_THROW(retValue = CallRPC("getblocksubsidy 50000"));
+    EXPECT_THROW(TestCallRPC("getblocksubsidy too many args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("getblocksubsidy -1"), runtime_error);
+    EXPECT_NO_THROW(retValue = TestCallRPC("getblocksubsidy 50000"));
     UniValue obj = retValue.get_obj();
     EXPECT_EQ(find_value(obj, "miner").get_real(), REWARD);
-    EXPECT_NO_THROW(retValue = CallRPC("getblocksubsidy 1000000"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("getblocksubsidy 1000000"));
     obj = retValue.get_obj();
     EXPECT_EQ(find_value(obj, "miner").get_real(), REWARD/2.0);
-    EXPECT_NO_THROW(retValue = CallRPC("getblocksubsidy 2000000"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("getblocksubsidy 2000000"));
     obj = retValue.get_obj();
     EXPECT_EQ(find_value(obj, "miner").get_real(), REWARD/4.0);
 
     /*
      * getblock
      */
-    EXPECT_THROW(CallRPC("getblock too many args"), runtime_error);
-    EXPECT_THROW(CallRPC("getblock -1"), runtime_error);
-    EXPECT_THROW(CallRPC("getblock 2147483647"), runtime_error); // allowed, but > height of active chain tip
-    EXPECT_THROW(CallRPC("getblock 2147483648"), runtime_error); // not allowed, > int32 used for nHeight
-    EXPECT_THROW(CallRPC("getblock 100badchars"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("getblock 0"));
-    EXPECT_NO_THROW(CallRPC("getblock 0 0"));
-    EXPECT_NO_THROW(CallRPC("getblock 0 1"));
-    EXPECT_NO_THROW(CallRPC("getblock 0 2"));
-    EXPECT_THROW(CallRPC("getblock 0 -1"), runtime_error); // bad verbosity
-    EXPECT_THROW(CallRPC("getblock 0 3"), runtime_error); // bad verbosity
+    EXPECT_THROW(TestCallRPC("getblock too many args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("getblock -1"), runtime_error);
+    EXPECT_THROW(TestCallRPC("getblock 2147483647"), runtime_error); // allowed, but > height of active chain tip
+    EXPECT_THROW(TestCallRPC("getblock 2147483648"), runtime_error); // not allowed, > int32 used for nHeight
+    EXPECT_THROW(TestCallRPC("getblock 100badchars"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("getblock 0"));
+    EXPECT_NO_THROW(TestCallRPC("getblock 0 0"));
+    EXPECT_NO_THROW(TestCallRPC("getblock 0 1"));
+    EXPECT_NO_THROW(TestCallRPC("getblock 0 2"));
+    EXPECT_THROW(TestCallRPC("getblock 0 -1"), runtime_error); // bad verbosity
+    EXPECT_THROW(TestCallRPC("getblock 0 3"), runtime_error); // bad verbosity
 }
 
 TEST_F(TestRpcWallet, rpc_wallet_getbalance)
@@ -329,26 +328,26 @@ TEST_F(TestRpcWallet, rpc_wallet_getbalance)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
 
-    EXPECT_THROW(CallRPC("z_getbalance too many args"), runtime_error);
-    EXPECT_THROW(CallRPC("z_getbalance invalidaddress"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g"));
-    EXPECT_THROW(CallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g -1"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g 0"));
-    EXPECT_THROW(CallRPC("z_getbalance ptestsapling1zlgc9r90eqapx0vxc00hv3gunpgtm4wj3w9u29ehs4n5dgtdmg406dsemzl5rc7602ravnt3zr6 1"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_getbalance too many args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_getbalance invalidaddress"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g"));
+    EXPECT_THROW(TestCallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g -1"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("z_getbalance tPViri8Zo9JTsE4gh9pU9EbtPGnm1L66y1g 0"));
+    EXPECT_THROW(TestCallRPC("z_getbalance ptestsapling1zlgc9r90eqapx0vxc00hv3gunpgtm4wj3w9u29ehs4n5dgtdmg406dsemzl5rc7602ravnt3zr6 1"), runtime_error);
 
 
-    EXPECT_THROW(CallRPC("z_gettotalbalance too manyargs"), runtime_error);
-    EXPECT_THROW(CallRPC("z_gettotalbalance -1"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("z_gettotalbalance 0"));
+    EXPECT_THROW(TestCallRPC("z_gettotalbalance too manyargs"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_gettotalbalance -1"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("z_gettotalbalance 0"));
 
 
-    EXPECT_THROW(CallRPC("z_listreceivedbyaddress too many args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listreceivedbyaddress too many args"), runtime_error);
     // negative minconf not allowed
-    EXPECT_THROW(CallRPC("z_listreceivedbyaddress tPWB75duYHtmDGgnM1A9hvDQijnNY8AULXk -1"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listreceivedbyaddress tPWB75duYHtmDGgnM1A9hvDQijnNY8AULXk -1"), runtime_error);
     // invalid zaddr, taddr not allowed
-    EXPECT_THROW(CallRPC("z_listreceivedbyaddress tPWB75duYHtmDGgnM1A9hvDQijnNY8AULXk 0"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listreceivedbyaddress tPWB75duYHtmDGgnM1A9hvDQijnNY8AULXk 0"), runtime_error);
     // don't have the spending key
-    EXPECT_THROW(CallRPC("z_listreceivedbyaddress tnRZ8bPq2pff3xBWhTJhNkVUkm2uhzksDeW5PvEa7aFKGT9Qi3YgTALZfjaY4jU3HLVKBtHdSXxoPoLA3naMPcHBcY88FcF 1"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listreceivedbyaddress tnRZ8bPq2pff3xBWhTJhNkVUkm2uhzksDeW5PvEa7aFKGT9Qi3YgTALZfjaY4jU3HLVKBtHdSXxoPoLA3naMPcHBcY88FcF 1"), runtime_error);
 }
 
 /**
@@ -363,23 +362,23 @@ TEST_F(TestRpcWallet, rpc_wallet_z_validateaddress)
     UniValue retValue;
 
     // Check number of args
-    EXPECT_THROW(CallRPC("z_validateaddress"), runtime_error);
-    EXPECT_THROW(CallRPC("z_validateaddress toomany args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_validateaddress"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_validateaddress toomany args"), runtime_error);
 
     // This address is not valid, it belongs to another network
-    EXPECT_NO_THROW(retValue = CallRPC("z_validateaddress tZRprtxz3ZzEYaSYSTZmptBSSaHwavexM1ivj78Vv2QppzpUcqQAhwPAYF99Ld6onX1i9b6YhJSLmsz1dcYzCnA5RpUgUQG"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_validateaddress tZRprtxz3ZzEYaSYSTZmptBSSaHwavexM1ivj78Vv2QppzpUcqQAhwPAYF99Ld6onX1i9b6YhJSLmsz1dcYzCnA5RpUgUQG"));
     UniValue resultObj = retValue.get_obj();
     bool b = find_value(resultObj, "isvalid").get_bool();
     EXPECT_FALSE(b);
 
     // This Sapling address is not valid, it belongs to another network
-    EXPECT_NO_THROW(retValue = CallRPC("z_validateaddress ptestsapling1vqv3eu7n68k2n4fkngtqcc4qc0gca0rzx9pygyydzv9um4qty58hf9qx3pumfs2klzacxaykwnq"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_validateaddress ptestsapling1vqv3eu7n68k2n4fkngtqcc4qc0gca0rzx9pygyydzv9um4qty58hf9qx3pumfs2klzacxaykwnq"));
     resultObj = retValue.get_obj();
     b = find_value(resultObj, "isvalid").get_bool();
     EXPECT_FALSE(b);
 
     // This Sapling address is valid, but the spending key is not in this wallet
-    EXPECT_NO_THROW(retValue = CallRPC("z_validateaddress ps1d5pj2rmj07ndntpfasjppv6cd0ru00rv06a6pudqp948knn9zmt39caxgj6gyjawljgtgpetpr0"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_validateaddress ps1d5pj2rmj07ndntpfasjppv6cd0ru00rv06a6pudqp948knn9zmt39caxgj6gyjawljgtgpetpr0"));
     resultObj = retValue.get_obj();
     b = find_value(resultObj, "isvalid").get_bool();
     EXPECT_TRUE(b);
@@ -402,12 +401,12 @@ TEST_F(TestRpcWallet, rpc_wallet_z_importexport)
     size_t n1 = 1000; // number of times to import/export
 
     // error if no args
-    EXPECT_THROW(CallRPC("z_importkey"), runtime_error);
-    EXPECT_THROW(CallRPC("z_exportkey"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_importkey"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_exportkey"), runtime_error);
 
     // error if too many args
-    EXPECT_THROW(CallRPC("z_importkey way too many args"), runtime_error);
-    EXPECT_THROW(CallRPC("z_exportkey toomany args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_importkey way too many args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_exportkey toomany args"), runtime_error);
 
     // wallet should currently be empty
     set<libzcash::SaplingPaymentAddress> saplingAddrs;
@@ -424,13 +423,13 @@ TEST_F(TestRpcWallet, rpc_wallet_z_importexport)
         auto testSaplingPaymentAddress = testSaplingSpendingKey.DefaultAddress();
         string testSaplingAddr = keyIO.EncodePaymentAddress(testSaplingPaymentAddress);
         string testSaplingKey = keyIO.EncodeSpendingKey(testSaplingSpendingKey);
-        EXPECT_NO_THROW(CallRPC(string("z_importkey ") + testSaplingKey));
-        EXPECT_NO_THROW(retValue = CallRPC(string("z_exportkey ") + testSaplingAddr));
+        EXPECT_NO_THROW(TestCallRPC(string("z_importkey ") + testSaplingKey));
+        EXPECT_NO_THROW(retValue = TestCallRPC(string("z_exportkey ") + testSaplingAddr));
         EXPECT_EQ(retValue.get_str(), testSaplingKey);
     }
 
     // Verify we can list the keys imported
-    EXPECT_NO_THROW(retValue = CallRPC("z_listaddresses"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_listaddresses"));
     UniValue arr = retValue.get_array();
     EXPECT_EQ(arr.size() , n1);
 
@@ -447,7 +446,7 @@ TEST_F(TestRpcWallet, rpc_wallet_z_importexport)
     EXPECT_EQ(saplingAddrs.size() , numAddrs);
 
     // Ask wallet to list addresses
-    EXPECT_NO_THROW(retValue = CallRPC("z_listaddresses"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_listaddresses"));
     arr = retValue.get_array();
     EXPECT_EQ(arr.size() , numAddrs);
 
@@ -462,7 +461,7 @@ TEST_F(TestRpcWallet, rpc_wallet_z_importexport)
     EXPECT_EQ(myaddrs , listaddrs);
 
      // Check if too many args
-    EXPECT_THROW(CallRPC("z_getnewaddress toomanyargs"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_getnewaddress toomanyargs"), runtime_error);
 }
 
 // Check if address is of given type and spendable from our wallet.
@@ -488,18 +487,18 @@ TEST_F(TestRpcWallet, rpc_wallet_z_getnewaddress)
 
     KeyIO keyIO(Params());
     // No parameter defaults to sapling address
-    addr = CallRPC("z_getnewaddress");
+    addr = TestCallRPC("z_getnewaddress");
     CheckHaveAddr<SaplingPaymentAddress>(keyIO.DecodePaymentAddress(addr.get_str()));
 
     // Passing 'sapling' should also work
-    addr = CallRPC("z_getnewaddress sapling");
+    addr = TestCallRPC("z_getnewaddress sapling");
     CheckHaveAddr<SaplingPaymentAddress>(keyIO.DecodePaymentAddress(addr.get_str()));
 
     // Should throw on invalid argument
-    CheckRPCThrows("z_getnewaddress garbage", "Invalid address type");
+    CheckRPCThrows("z_getnewaddress", "garbage", "Invalid address type");
 
     // Too many arguments will throw with the help
-    EXPECT_THROW(CallRPC("z_getnewaddress many args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_getnewaddress many args"), runtime_error);
 }
 
 /**
@@ -691,17 +690,17 @@ TEST_F(TestRpcWallet, rpc_z_getoperations)
     auto sharedInstance = AsyncRPCQueue::sharedInstance();
     EXPECT_EQ(q , sharedInstance);
 
-    EXPECT_NO_THROW(CallRPC("z_getoperationstatus"));
-    EXPECT_NO_THROW(CallRPC("z_getoperationstatus []"));
-    EXPECT_NO_THROW(CallRPC("z_getoperationstatus [\"opid-1234\"]"));
-    EXPECT_THROW(CallRPC("z_getoperationstatus [] toomanyargs"), runtime_error);
-    EXPECT_THROW(CallRPC("z_getoperationstatus not_an_array"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("z_getoperationstatus"));
+    EXPECT_NO_THROW(TestCallRPC("z_getoperationstatus []"));
+    EXPECT_NO_THROW(TestCallRPC("z_getoperationstatus [\"opid-1234\"]"));
+    EXPECT_THROW(TestCallRPC("z_getoperationstatus [] toomanyargs"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_getoperationstatus not_an_array"), runtime_error);
 
-    EXPECT_NO_THROW(CallRPC("z_getoperationresult"));
-    EXPECT_NO_THROW(CallRPC("z_getoperationresult []"));
-    EXPECT_NO_THROW(CallRPC("z_getoperationresult [\"opid-1234\"]"));
-    EXPECT_THROW(CallRPC("z_getoperationresult [] toomanyargs"), runtime_error);
-    EXPECT_THROW(CallRPC("z_getoperationresult not_an_array"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("z_getoperationresult"));
+    EXPECT_NO_THROW(TestCallRPC("z_getoperationresult []"));
+    EXPECT_NO_THROW(TestCallRPC("z_getoperationresult [\"opid-1234\"]"));
+    EXPECT_THROW(TestCallRPC("z_getoperationresult [] toomanyargs"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_getoperationresult not_an_array"), runtime_error);
 
     auto op1 = make_shared<AsyncRPCOperation>();
     q->addOperation(op1);
@@ -716,18 +715,18 @@ TEST_F(TestRpcWallet, rpc_z_getoperations)
     EXPECT_EQ(q->getOperationCount() , 0U);
 
     // Check if too many args
-    EXPECT_THROW(CallRPC("z_listoperationids toomany args"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listoperationids toomany args"), runtime_error);
 
     UniValue retValue;
-    EXPECT_NO_THROW(retValue = CallRPC("z_listoperationids"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_listoperationids"));
     EXPECT_EQ(retValue.get_array().size() , 2U);
 
-    EXPECT_NO_THROW(retValue = CallRPC("z_getoperationstatus"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_getoperationstatus"));
     UniValue array = retValue.get_array();
     EXPECT_EQ(array.size() , 2U);
 
     // idempotent
-    EXPECT_NO_THROW(retValue = CallRPC("z_getoperationstatus"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_getoperationstatus"));
     array = retValue.get_array();
     EXPECT_EQ(array.size() , 2U);
 
@@ -737,7 +736,7 @@ TEST_F(TestRpcWallet, rpc_z_getoperations)
 
         UniValue result;
         // removes result from internal storage
-        EXPECT_NO_THROW(result = CallRPC("z_getoperationresult [\"" + id.get_str() + "\"]"));
+        EXPECT_NO_THROW(result = TestCallRPC("z_getoperationresult [\"" + id.get_str() + "\"]"));
         UniValue resultArray = result.get_array();
         EXPECT_EQ(resultArray.size() , 1U);
 
@@ -746,13 +745,13 @@ TEST_F(TestRpcWallet, rpc_z_getoperations)
         EXPECT_EQ(id.get_str(), resultId.get_str());
 
         // verify the operation has been removed
-        EXPECT_NO_THROW(result = CallRPC("z_getoperationresult [\"" + id.get_str() + "\"]"));
+        EXPECT_NO_THROW(result = TestCallRPC("z_getoperationresult [\"" + id.get_str() + "\"]"));
         resultArray = result.get_array();
         EXPECT_EQ(resultArray.size() , 0U);
     }
 
     // operations removed
-    EXPECT_NO_THROW(retValue = CallRPC("z_getoperationstatus"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_getoperationstatus"));
     array = retValue.get_array();
     EXPECT_EQ(array.size() , 0U);
 
@@ -765,52 +764,52 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_parameters)
     KeyIO keyIO(Params());
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    EXPECT_THROW(CallRPC("z_sendmany"), runtime_error);
-    EXPECT_THROW(CallRPC("z_sendmany toofewargs"), runtime_error);
-    EXPECT_THROW(CallRPC("z_sendmany just too many args here"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_sendmany"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_sendmany toofewargs"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_sendmany just too many args here"), runtime_error);
 
     // bad from address
-    EXPECT_THROW(CallRPC("z_sendmany "
+    EXPECT_THROW(TestCallRPC("z_sendmany "
             "INVALIDtmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ []"), runtime_error);
     // empty amounts
-    EXPECT_THROW(CallRPC("z_sendmany "
+    EXPECT_THROW(TestCallRPC("z_sendmany "
             "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ []"), runtime_error);
 
     // don't have the spending key for this address
-    EXPECT_THROW(CallRPC("z_sendmany "
+    EXPECT_THROW(TestCallRPC("z_sendmany "
             "tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB"
             "UkJ1oSfbhTJhm72WiZizvkZz5aH1 []"), runtime_error);
 
     // duplicate address
-    EXPECT_THROW(CallRPC("z_sendmany "
+    EXPECT_THROW(TestCallRPC("z_sendmany "
             "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
             "[{\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":50.0},"
             " {\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":12.0} ]"
             ), runtime_error);
 
     // invalid fee amount, cannot be negative
-    EXPECT_THROW(CallRPC("z_sendmany "
+    EXPECT_THROW(TestCallRPC("z_sendmany "
             "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
             "[{\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":50.0}] "
             "1 -0.0001"
             ), runtime_error);
 
     // invalid fee amount, bigger than MAX_MONEY
-    EXPECT_THROW(CallRPC("z_sendmany "
+    EXPECT_THROW(TestCallRPC("z_sendmany "
             "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
             "[{\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":50.0}] "
             "1 21000001"
             ), runtime_error);
 
     // fee amount is bigger than sum of outputs
-    EXPECT_THROW(CallRPC("z_sendmany "
+    EXPECT_THROW(TestCallRPC("z_sendmany "
             "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
             "[{\"address\":\"tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp\", \"amount\":50.0}] "
             "1 50.00000001"
             ), runtime_error);
 
     // Mutable tx containing contextual information we need to build tx
-    UniValue retValue = CallRPC("getblockcount");
+    UniValue retValue = TestCallRPC("getblockcount");
     int nHeight = retValue.get_int();
     CMutableTransaction mtx = CreateNewContextualCMutableTransaction(Params().GetConsensus(), nHeight + 1);
     if (mtx.nVersion == 1) {
@@ -878,7 +877,7 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
     auto pa = pwalletMain->GenerateNewSaplingZKey();
     string zaddr1 = keyIO.EncodePaymentAddress(pa);
 
-    retValue = CallRPC("getblockcount");
+    retValue = TestCallRPC("getblockcount");
     int nextBlockHeight = retValue.get_int() + 1;
 
     // Add a fake transaction to the wallet
@@ -989,17 +988,16 @@ TEST_F(TestRpcWallet2, rpc_wallet_encrypted_wallet_sapzkeys)
     EXPECT_EQ(addrs.size(), 0U);
 
     // create keys
-    for (int i = 0; i < n; i++) {
-        CallRPC("z_getnewaddress sapling");
-    }
+    for (int i = 0; i < n; i++)
+        TestCallRPC("z_getnewaddress sapling");
 
     // Verify we can list the keys imported
-    EXPECT_NO_THROW(retValue = CallRPC("z_listaddresses"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_listaddresses"));
     UniValue arr = retValue.get_array();
     EXPECT_EQ(arr.size() , n);
 
     // Verify that the wallet encryption RPC is disabled
-    EXPECT_THROW(CallRPC("encryptwallet passphrase"), runtime_error);
+    EXPECT_THROW(TestCallRPC("encryptwallet passphrase"), runtime_error);
 
     // Encrypt the wallet (we can't call RPC encryptwallet as that shuts down node)
     SecureString strWalletPass;
@@ -1010,22 +1008,22 @@ TEST_F(TestRpcWallet2, rpc_wallet_encrypted_wallet_sapzkeys)
     EXPECT_TRUE(pwalletMain->EncryptWallet(strWalletPass));
 
     // Verify we can still list the keys imported
-    EXPECT_NO_THROW(retValue = CallRPC("z_listaddresses"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_listaddresses"));
     arr = retValue.get_array();
     EXPECT_EQ(arr.size() , n);
 
     // Try to add a new key, but we can't as the wallet is locked
-    EXPECT_THROW(CallRPC("z_getnewaddress sapling"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_getnewaddress sapling"), runtime_error);
 
     // We can't call RPC walletpassphrase as that invokes RPCRunLater which breaks tests.
     // So we manually unlock.
     EXPECT_TRUE(pwalletMain->Unlock(strWalletPass));
 
     // Now add a key
-    EXPECT_NO_THROW(CallRPC("z_getnewaddress sapling"));
+    EXPECT_NO_THROW(TestCallRPC("z_getnewaddress sapling"));
 
     // Verify the key has been added
-    EXPECT_NO_THROW(retValue = CallRPC("z_listaddresses"));
+    EXPECT_NO_THROW(retValue = TestCallRPC("z_listaddresses"));
     arr = retValue.get_array();
     EXPECT_EQ(arr.size() , n+1);
 
@@ -1042,32 +1040,32 @@ TEST_F(TestRpcWallet2, rpc_z_listunspent_parameters)
     UniValue retValue;
 
     // too many args
-    EXPECT_THROW(CallRPC("z_listunspent 1 2 3 4 5"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listunspent 1 2 3 4 5"), runtime_error);
 
     // minconf must be >= 0
-    EXPECT_THROW(CallRPC("z_listunspent -1"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listunspent -1"), runtime_error);
 
     // maxconf must be > minconf
-    EXPECT_THROW(CallRPC("z_listunspent 2 1"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listunspent 2 1"), runtime_error);
 
     // maxconf must not be out of range
-    EXPECT_THROW(CallRPC("z_listunspent 1 9999999999"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listunspent 1 9999999999"), runtime_error);
 
     constexpr auto TEST_ZADDR = "ptestsapling17jcq5vqv44jpm08qtmcnhey40hlpun3jk0ucamkxsu22ju8yr0pmwhngudqrgulhwyzpw0qmqcc";
     // must be an array of addresses
-    EXPECT_THROW(CallRPC(strprintf("z_listunspent 1 999 false %s", TEST_ZADDR)), runtime_error);
+    EXPECT_THROW(TestCallRPC(strprintf("z_listunspent 1 999 false %s", TEST_ZADDR)), runtime_error);
 
     // address must be string
-    EXPECT_THROW(CallRPC("z_listunspent 1 999 false [123456]"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listunspent 1 999 false [123456]"), runtime_error);
 
     // no spending key
-    EXPECT_THROW(CallRPC(strprintf("z_listunspent 1 999 false [\"%s\"]", TEST_ZADDR)), runtime_error);
+    EXPECT_THROW(TestCallRPC(strprintf("z_listunspent 1 999 false [\"%s\"]", TEST_ZADDR)), runtime_error);
 
     // allow watch only
-    EXPECT_NO_THROW(CallRPC(strprintf("z_listunspent 1 999 true [\"%s\"]", TEST_ZADDR)));
+    EXPECT_NO_THROW(TestCallRPC(strprintf("z_listunspent 1 999 true [\"%s\"]", TEST_ZADDR)));
 
     // wrong network, regtest instead of testnet
-    EXPECT_THROW(CallRPC("z_listunspent 1 999 true [\"pzregtestsapling15r8tvulwztl460m5feqmap5fr0xj7qajlzt9g9vhs58c8d2yd6cvuplc9s7qkk5rd2v37fcdyey\"]"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_listunspent 1 999 true [\"pzregtestsapling15r8tvulwztl460m5feqmap5fr0xj7qajlzt9g9vhs58c8d2yd6cvuplc9s7qkk5rd2v37fcdyey\"]"), runtime_error);
 }
 
 TEST_F(TestRpcWallet2, rpc_z_shieldcoinbase_parameters)
@@ -1076,45 +1074,45 @@ TEST_F(TestRpcWallet2, rpc_z_shieldcoinbase_parameters)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    EXPECT_THROW(CallRPC("z_shieldcoinbase"), runtime_error);
-    EXPECT_THROW(CallRPC("z_shieldcoinbase toofewargs"), runtime_error);
-    EXPECT_THROW(CallRPC("z_shieldcoinbase too many args shown here"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase toofewargs"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase too many args shown here"), runtime_error);
 
     // bad from address
-    EXPECT_THROW(CallRPC("z_shieldcoinbase "
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase "
             "INVALIDtmRr6yJonqGK23UVhrKuyvTpF8qxQQjKigJ tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB"), runtime_error);
 
     // bad from address
-    EXPECT_THROW(CallRPC("z_shieldcoinbase "
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase "
     "** tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB"), runtime_error);
 
     // bad to address
-    EXPECT_THROW(CallRPC("z_shieldcoinbase "
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase "
     "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ INVALIDtnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB"), runtime_error);
 
     // invalid fee amount, cannot be negative
-    EXPECT_THROW(CallRPC("z_shieldcoinbase "
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase "
             "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
             "tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB "
             "-0.0001"
             ), runtime_error);
 
     // invalid fee amount, bigger than MAX_MONEY
-    EXPECT_THROW(CallRPC("z_shieldcoinbase "
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase "
             "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
             "tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB "
             "21000001"
             ), runtime_error);
 
     // invalid limit, must be at least 0
-    EXPECT_THROW(CallRPC("z_shieldcoinbase "
+    EXPECT_THROW(TestCallRPC("z_shieldcoinbase "
     "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ "
     "tnpoQJVnYBZZqkFadj2bJJLThNCxbADGB5gSGeYTAGGrT5tejsxY9Zc1BtY8nnHmZkB "
     "100 -1"
     ), runtime_error);
 
     // Mutable tx containing contextual information we need to build tx
-    UniValue retValue = CallRPC("getblockcount");
+    UniValue retValue = TestCallRPC("getblockcount");
     int nHeight = retValue.get_int();
     CMutableTransaction mtx = CreateNewContextualCMutableTransaction(Params().GetConsensus(), nHeight + 1);
     if (mtx.nVersion == 1) {
@@ -1154,76 +1152,76 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
-    CheckRPCThrows("z_mergetoaddress 1 2",
+    CheckRPCThrows("z_mergetoaddress", "1 2",
         "Error: z_mergetoaddress is disabled. Run './pascal-cli help z_mergetoaddress' for instructions on how to enable this feature.");
 
     // Set global state required for z_mergetoaddress
     fExperimentalMode = true;
     mapArgs["-zmergetoaddress"] = "1";
 
-    EXPECT_THROW(CallRPC("z_mergetoaddress"), runtime_error);
-    EXPECT_THROW(CallRPC("z_mergetoaddress toofewargs"), runtime_error);
-    EXPECT_THROW(CallRPC("z_mergetoaddress just too many args present for this method"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_mergetoaddress"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_mergetoaddress toofewargs"), runtime_error);
+    EXPECT_THROW(TestCallRPC("z_mergetoaddress just too many args present for this method"), runtime_error);
 
     string taddr1 = "tPmCf9DhN5jv5CgrxDMHRz6wsEjWwM6qJnZ";
     string taddr2 = "tPp3pfmLi57S8qoccfWnn2o4tXyoQ23wVSp";
     string aSaplingAddr = "ptestsapling1vqv3eu7n68k2n4fkngtqcc4qc0gca0rzx9pygyydzv9um4qty58hf9qx3pumfs2klzacxaykwnq";
 
-    CheckRPCThrows("z_mergetoaddress [] " + taddr1,
+    CheckRPCThrows("z_mergetoaddress", "[] " + taddr1,
         "Invalid parameter, fromaddresses array is empty.");
 
     // bad from address
-    CheckRPCThrows("z_mergetoaddress [\"INVALID" + taddr1 + "\"] " + taddr2,
+    CheckRPCThrows("z_mergetoaddress", "[\"INVALID" + taddr1 + "\"] " + taddr2,
         "Unknown address format: INVALID" + taddr1);
 
     // bad from address
-    CheckRPCThrows("z_mergetoaddress ** " + taddr2,
-        "Error parsing JSON:**");
+    CheckRPCThrows("z_mergetoaddress", "* *" + taddr2,
+        "Error parsing JSON:*");
 
     // bad from address
-    CheckRPCThrows("z_mergetoaddress [\"**\"] " + taddr2,
+    CheckRPCThrows("z_mergetoaddress", "[\"**\"] " + taddr2,
         "Unknown address format: **");
 
     // bad from address
-    CheckRPCThrows("z_mergetoaddress " + taddr1 + " " + taddr2,
+    CheckRPCThrows("z_mergetoaddress", taddr1 + " " + taddr2,
         "Error parsing JSON:" + taddr1);
 
     // bad from address
-    CheckRPCThrows("z_mergetoaddress [" + taddr1 + "] " + taddr2,
+    CheckRPCThrows("z_mergetoaddress", "[" + taddr1 + "] " + taddr2,
         "Error parsing JSON:[" + taddr1 + "]");
 
     // bad to address
-    CheckRPCThrows("z_mergetoaddress [\"" + taddr1 + "\"] INVALID" + taddr2,
+    CheckRPCThrows("z_mergetoaddress", "[\"" + taddr1 + "\"] INVALID" + taddr2,
         "Invalid parameter, unknown address format: INVALID" + taddr2);
 
     // duplicate address
-    CheckRPCThrows("z_mergetoaddress [\"" + taddr1 + "\",\"" + taddr1 + "\"] " + taddr2,
+    CheckRPCThrows("z_mergetoaddress", "[\"" + taddr1 + "\",\"" + taddr1 + "\"] " + taddr2,
         "Invalid parameter, duplicated address: " + taddr1);
 
     // invalid fee amount, cannot be negative
-    CheckRPCThrows("z_mergetoaddress [\"" + taddr1 + "\"] " + taddr2 + " -0.0001",
+    CheckRPCThrows("z_mergetoaddress", "[\"" + taddr1 + "\"] " + taddr2 + " -0.0001",
         "Amount out of range");
 
     // invalid fee amount, bigger than MAX_MONEY
-    CheckRPCThrows("z_mergetoaddress [\"" + taddr1 + "\"] "  + taddr2 + " 210000000001",
+    CheckRPCThrows("z_mergetoaddress", "[\"" + taddr1 + "\"] " + taddr2 + " 210000000001",
         "Amount out of range");
 
     // invalid transparent limit, must be at least 0
-    CheckRPCThrows("z_mergetoaddress [\"" + taddr1 + "\"] " + taddr2 + " 0.0001 -1",
+    CheckRPCThrows("z_mergetoaddress", "[\"" + taddr1 + "\"] " + taddr2 + " 0.0001 -1",
         "Limit on maximum number of UTXOs cannot be negative");
 
     // invalid shielded limit, must be at least 0
-    CheckRPCThrows("z_mergetoaddress [\"" + taddr1 + "\"] " + taddr2 + " 0.0001 100 -1",
+    CheckRPCThrows("z_mergetoaddress", "[\"" + taddr1 + "\"] " + taddr2 + " 0.0001 100 -1",
         "Limit on maximum number of notes cannot be negative");
 
-    CheckRPCThrows("z_mergetoaddress [\"ANY_TADDR\",\"" + taddr1 + "\"] " + taddr2,
+    CheckRPCThrows("z_mergetoaddress", "[\"ANY_TADDR\",\"" + taddr1 + "\"] " + taddr2,
         "Cannot specify specific taddrs when using \"ANY_TADDR\"");
 
-    CheckRPCThrows("z_mergetoaddress [\"ANY_SAPLING\",\"" + aSaplingAddr + "\"] " + taddr2,
+    CheckRPCThrows("z_mergetoaddress", "[\"ANY_SAPLING\",\"" + aSaplingAddr + "\"] " + taddr2,
         "Cannot specify specific zaddrs when using \"ANY_SAPLING\"");
 
     // Mutable tx containing contextual information we need to build tx
-    UniValue retValue = CallRPC("getblockcount");
+    UniValue retValue = TestCallRPC("getblockcount");
     int nHeight = retValue.get_int();
     CMutableTransaction mtx = CreateNewContextualCMutableTransaction(Params().GetConsensus(), nHeight + 1);
 

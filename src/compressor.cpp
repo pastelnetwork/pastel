@@ -1,20 +1,21 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+// file COPYING or http2://www.opensource.org/licenses/mit-license.php.
 
-#include "compressor.h"
+#include <compressor.h>
 
-#include "hash.h"
-#include "pubkey.h"
-#include "script/standard.h"
+#include <hash.h>
+#include <pubkey.h>
+#include <script/standard.h>
 
 bool CScriptCompressor::IsToKeyID(CKeyID &hash) const
 {
     if (script.size() == 25 && script[0] == OP_DUP && script[1] == OP_HASH160
                             && script[2] == 20 && script[23] == OP_EQUALVERIFY
                             && script[24] == OP_CHECKSIG) {
-        memcpy(&hash, &script[3], 20);
+        memcpy(&hash, &script[3], uint160::SIZE);
         return true;
     }
     return false;
@@ -24,7 +25,7 @@ bool CScriptCompressor::IsToScriptID(CScriptID &hash) const
 {
     if (script.size() == 23 && script[0] == OP_HASH160 && script[1] == 20
                             && script[22] == OP_EQUAL) {
-        memcpy(&hash, &script[2], 20);
+        memcpy(&hash, &script[2], uint160::SIZE);
         return true;
     }
     return false;
@@ -48,21 +49,24 @@ bool CScriptCompressor::IsToPubKey(CPubKey &pubkey) const
 bool CScriptCompressor::Compress(v_uint8& out) const
 {
     CKeyID keyID;
-    if (IsToKeyID(keyID)) {
+    if (IsToKeyID(keyID))
+    {
         out.resize(21);
         out[0] = 0x00;
-        memcpy(&out[1], &keyID, 20);
+        memcpy(&out[1], &keyID, uint160::SIZE);
         return true;
     }
     CScriptID scriptID;
-    if (IsToScriptID(scriptID)) {
+    if (IsToScriptID(scriptID))
+    {
         out.resize(21);
         out[0] = 0x01;
-        memcpy(&out[1], &scriptID, 20);
+        memcpy(&out[1], &scriptID, uint160::SIZE);
         return true;
     }
     CPubKey pubkey;
-    if (IsToPubKey(pubkey)) {
+    if (IsToPubKey(pubkey))
+    {
         out.resize(33);
         memcpy(&out[1], &pubkey[1], 32);
         if (pubkey[0] == 0x02 || pubkey[0] == 0x03) {
@@ -93,7 +97,7 @@ bool CScriptCompressor::Decompress(const unsigned int nSize, const v_uint8& in)
         script[0] = OP_DUP;
         script[1] = OP_HASH160;
         script[2] = 20;
-        memcpy(&script[3], &in[0], 20);
+        memcpy(&script[3], &in[0], uint160::SIZE);
         script[23] = OP_EQUALVERIFY;
         script[24] = OP_CHECKSIG;
         return true;
@@ -101,7 +105,7 @@ bool CScriptCompressor::Decompress(const unsigned int nSize, const v_uint8& in)
         script.resize(23);
         script[0] = OP_HASH160;
         script[1] = 20;
-        memcpy(&script[2], &in[0], 20);
+        memcpy(&script[2], &in[0], uint160::SIZE);
         script[22] = OP_EQUAL;
         return true;
     case 0x02:

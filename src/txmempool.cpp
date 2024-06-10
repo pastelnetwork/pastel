@@ -1,11 +1,12 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <utils/util.h>
 #include <utils/streams.h>
+#include <chain_options.h>
 #include <txmempool.h>
 #include <clientversion.h>
 #include <consensus/consensus.h>
@@ -24,7 +25,7 @@ CTxMemPool::CTxMemPool(const CFeeRate& _minRelayFee) :
     nTransactionsUpdated(0), 
     totalTxSize(0),
     cachedInnerUsage(0),
-    mapSaplingNullifiers()
+    m_mapSaplingNullifiers()
 {
     // Sanity checks off by default for performance, because otherwise
     // accepting transactions becomes O(N^2) where N is the number
@@ -68,6 +69,51 @@ void CTxMemPool::AddTransactionsUpdated(unsigned int n)
     nTransactionsUpdated += n;
 }
 
+/**
+* Returns transaction count in the mempool (thread-safe).
+* 
+* \return 
+*/
+size_t CTxMemPool::size() const
+{
+    LOCK(cs);
+    return mapTx.size();
+}
+
+/**
+* Returns total size of all transactions in the mempool (thread-safe).
+* 
+* \return tx pool size
+*/
+uint64_t CTxMemPool::GetTotalTxSize() const
+{
+    LOCK(cs);
+    return totalTxSize;
+}
+
+/**
+* Returns true if transaction with txid exists (not thread-safe - need external cs lock).
+* 
+* \param txid - hash of the transaction
+* \return true if transactions with the specified hash exists in the mempool
+*/
+bool CTxMemPool::exists_nolock(const uint256& txid) const
+{
+    return (mapTx.count(txid) != 0);
+}
+
+/**
+* Returns true if transaction with txid exists (thread-safe).
+* 
+* \param txid - hash of the transaction
+* \return true if transactions with the specified hash exists in the mempool
+*/
+bool CTxMemPool::exists(const uint256 &txid) const
+{
+    LOCK(cs);
+    return exists_nolock(txid);
+}
+
 bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate)
 {
     // Add to memory pool without checking anything.
@@ -79,7 +125,7 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
     for (unsigned int i = 0; i < tx.vin.size(); i++)
         mapNextTx[tx.vin[i].prevout] = CInPoint(&tx, i);
     for (const auto &spendDescription : tx.vShieldedSpend)
-        mapSaplingNullifiers[spendDescription.nullifier] = &tx;
+        m_mapSaplingNullifiers[spendDescription.nullifier] = &tx;
     nTransactionsUpdated++;
     totalTxSize += entry.GetTxSize();
     cachedInnerUsage += entry.DynamicMemoryUsage();
@@ -89,15 +135,64 @@ bool CTxMemPool::addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry,
     return true;
 }
 
+void CTxMemPool::addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view)
+{
+    LOCK(cs);
+
+    const auto& tx = entry.GetTx();
+    vector<CMempoolAddressDeltaKey> vInserted;
+    vInserted.reserve(tx.vin.size() + tx.vout.size());
+
+    const auto &txid = tx.GetHash();
+    unsigned int index = 0;
+    for (const CTxIn& input : tx.vin)
+    {
+        const CTxOut &prevout = view.GetOutputFor(input);
+        auto type = prevout.scriptPubKey.GetType();
+        if (type == ScriptType::UNKNOWN)
+        {
+            ++index;
+            continue;
+        }
+
+        auto addressHash = prevout.scriptPubKey.AddressHash();
+        CMempoolAddressDeltaKey key(type, addressHash, txid, index, 1);
+        CMempoolAddressDelta delta(entry.GetTime(), prevout.nValue * -1, input.prevout.hash, input.prevout.n);
+        m_mapAddress.emplace(key, delta);
+        vInserted.push_back(key);
+        ++index;
+    }
+
+    index = 0;
+    for (const CTxOut& output : tx.vout)
+	{
+		auto type = output.scriptPubKey.GetType();
+		if (type == ScriptType::UNKNOWN)
+		{
+			++index;
+			continue;
+		}
+
+		auto addressHash = output.scriptPubKey.AddressHash();
+		CMempoolAddressDeltaKey key(type, addressHash, txid, index, 0);
+		CMempoolAddressDelta delta(entry.GetTime(), output.nValue);
+		m_mapAddress.emplace(key, delta);
+		vInserted.push_back(key);
+		++index;
+	}
+
+    m_mapAddressInserted.emplace(txid, move(vInserted));
+}
+
 void CTxMemPool::getAddressIndex(
     const vector<pair<uint160, ScriptType>>& vAddresses,
-    vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results)
+    vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results) const
 {
     LOCK(cs);
     for (const auto& [addressHash, addressType] : vAddresses)
     {
-        auto ait = mapAddress.lower_bound(CMempoolAddressDeltaKey(addressType, addressHash));
-        while (ait != mapAddress.end() && (*ait).first.addressBytes == addressHash && (*ait).first.type == addressType)
+        auto ait = m_mapAddress.lower_bound(CMempoolAddressDeltaKey(addressType, addressHash));
+        while (ait != m_mapAddress.end() && (ait->first.addressBytes == addressHash) && (ait->first.type == addressType))
         {
             results.push_back(*ait);
             ait++;
@@ -105,17 +200,69 @@ void CTxMemPool::getAddressIndex(
     }
 }
 
-bool CTxMemPool::getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value)
+void CTxMemPool::removeAddressIndex(const uint256& txHash)
 {
     LOCK(cs);
-    auto it = mapSpent.find(key);
-    if (it != mapSpent.end())
+    auto it = m_mapAddressInserted.find(txHash);
+
+    if (it != m_mapAddressInserted.end())
+    {
+        auto keys = it->second;
+        for (const auto& mit : keys)
+            m_mapAddress.erase(mit);
+        m_mapAddressInserted.erase(it);
+    }
+}
+
+void CTxMemPool::addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view)
+{
+    LOCK(cs);
+    const auto& tx = entry.GetTx();
+    const auto txHash = tx.GetHash();
+    vector<CSpentIndexKey> vInserted;
+    vInserted.reserve(tx.vin.size());
+
+    unsigned int index = 0;
+    for (const CTxIn& input : tx.vin)
+	{
+		const CTxOut &prevout = view.GetOutputFor(input);
+		CSpentIndexKey key = CSpentIndexKey(input.prevout.hash, input.prevout.n);
+		CSpentIndexValue value = CSpentIndexValue(txHash, index, -1, prevout.nValue,
+			prevout.scriptPubKey.GetType(),
+			prevout.scriptPubKey.AddressHash());
+		m_mapSpent.emplace(key, value);
+		vInserted.push_back(key);
+		++index;
+	}
+    m_mapSpentInserted.emplace(txHash, vInserted);
+}
+
+bool CTxMemPool::getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value) const
+{
+    LOCK(cs);
+    auto it = m_mapSpent.find(key);
+    if (it != m_mapSpent.end())
     {
         value = it->second;
         return true;
     }
     return false;
 }
+
+void CTxMemPool::removeSpentIndex(const uint256 &txHash)
+{
+    LOCK(cs);
+    auto it = m_mapSpentInserted.find(txHash);
+
+    if (it != m_mapSpentInserted.end())
+    {
+        auto keys = it->second;
+        for (const auto& key : keys)
+            m_mapSpent.erase(key);
+        m_mapSpentInserted.erase(it);
+    }
+}
+// END insightexplorer
 
 /**
  * Remove the transaction from the memory pool.
@@ -137,7 +284,7 @@ void CTxMemPool::remove(const CTransaction& origTx, const bool fRecursive, list<
             // be sure to remove any children that are in the pool. This can
             // happen during chain re-orgs if origTx isn't re-accepted into
             // the mempool for any reason.
-            for (unsigned int i = 0; i < origTx.vout.size(); i++)
+            for (uint32_t i = 0; i < origTx.vout.size(); ++i)
             {
                 const auto it = mapNextTx.find(COutPoint(txid, i));
                 if (it == mapNextTx.cend())
@@ -147,17 +294,17 @@ void CTxMemPool::remove(const CTransaction& origTx, const bool fRecursive, list<
         }
         while (!txToRemove.empty())
         {
-            const uint256 hash = txToRemove.front();
+            const uint256 txid = txToRemove.front();
             txToRemove.pop_front();
-            const auto itTx = mapTx.find(hash);
+            const auto itTx = mapTx.find(txid);
             if (itTx == mapTx.cend())
                 continue;
             const auto& tx = itTx->GetTx();
             if (fRecursive)
             {
-                for (unsigned int i = 0; i < tx.vout.size(); i++)
+                for (uint32_t i = 0; i < tx.vout.size(); ++i)
                 {
-                    const auto it = mapNextTx.find(COutPoint(hash, i));
+                    const auto it = mapNextTx.find(COutPoint(txid, i));
                     if (it == mapNextTx.cend())
                         continue;
                     txToRemove.emplace_back(it->second.ptx->GetHash());
@@ -167,19 +314,27 @@ void CTxMemPool::remove(const CTransaction& origTx, const bool fRecursive, list<
             for (const auto& txin : tx.vin)
                 mapNextTx.erase(txin.prevout);
             for (const auto &spendDescription : tx.vShieldedSpend)
-                mapSaplingNullifiers.erase(spendDescription.nullifier);
+                m_mapSaplingNullifiers.erase(spendDescription.nullifier);
 
             if (pRemovedTxList)
                 pRemovedTxList->emplace_back(tx);
             totalTxSize -= itTx->GetTxSize();
             cachedInnerUsage -= itTx->DynamicMemoryUsage();
-            // actually erase transaction from mempool map
-            // no access to iterator itTx after this point
-            mapTx.erase(hash);
-            nTransactionsUpdated++;
+
+            // insightexplorer
+            if (fAddressIndex)
+                removeAddressIndex(txid);
+            if (fSpentIndex)
+                removeSpentIndex(txid);
+
             // notify all trackers that transaction was removed
             for (auto pTracker : m_vTxMemPoolTracker)
-                pTracker->removeTx(hash);
+                pTracker->removeTx(txid);
+
+            // actually erase transaction from mempool map
+            // no access to iterator itTx after this point
+            mapTx.erase(txid);
+            nTransactionsUpdated++;
         }
     }
 }
@@ -270,8 +425,8 @@ void CTxMemPool::removeConflicts(const CTransaction &tx, list<CTransaction>& rem
 
     for (const auto &spendDescription : tx.vShieldedSpend)
     {
-        auto it = mapSaplingNullifiers.find(spendDescription.nullifier);
-        if (it != mapSaplingNullifiers.end())
+        auto it = m_mapSaplingNullifiers.find(spendDescription.nullifier);
+        if (it != m_mapSaplingNullifiers.end())
         {
             const auto& txConflict = *it->second;
             if (txConflict != tx)
@@ -318,7 +473,7 @@ void CTxMemPool::removeForBlock(const vector<CTransaction>& vtx, unsigned int nB
     {
         remove(tx, false);
         removeConflicts(tx, conflicts);
-        ClearPrioritisation(tx.GetHash());
+        ClearPrioritization(tx.GetHash());
     }
     // After the txs in the new block have been removed from the mempool, update policy estimates
     minerPolicyEstimator->processBlock(nBlockHeight, entries, fCurrentEstimate);
@@ -456,11 +611,11 @@ void CTxMemPool::check(const CCoinsViewCache *pcoins) const
 
 void CTxMemPool::checkNullifiers(ShieldedType type) const
 {
-    const decltype(mapSaplingNullifiers)* mapToUse;
+    const decltype(m_mapSaplingNullifiers)* mapToUse;
     switch (type)
     {
         case SAPLING:
-            mapToUse = &mapSaplingNullifiers;
+            mapToUse = &m_mapSaplingNullifiers;
             break;
 
         default:
@@ -579,7 +734,7 @@ bool CTxMemPool::ReadFeeEstimates(CAutoFile& filein)
     return true;
 }
 
-void CTxMemPool::PrioritiseTransaction(const uint256& hash, const string strHash, double dPriorityDelta, const CAmount& nFeeDelta)
+void CTxMemPool::PrioritizeTransaction(const uint256& hash, const string strHash, double dPriorityDelta, const CAmount& nFeeDelta)
 {
     {
         LOCK(cs);
@@ -587,7 +742,7 @@ void CTxMemPool::PrioritiseTransaction(const uint256& hash, const string strHash
         deltas.first += dPriorityDelta;
         deltas.second += nFeeDelta;
     }
-    LogPrintf("PrioritiseTransaction: %s priority += %f, fee += %d\n", strHash, dPriorityDelta, FormatMoney(nFeeDelta));
+    LogPrintf("PrioritizeTransaction: %s priority += %f, fee += %d\n", strHash, dPriorityDelta, FormatMoney(nFeeDelta));
 }
 
 void CTxMemPool::ApplyDeltas(const uint256& hash, double &dPriorityDelta, CAmount &nFeeDelta)
@@ -601,7 +756,7 @@ void CTxMemPool::ApplyDeltas(const uint256& hash, double &dPriorityDelta, CAmoun
     nFeeDelta += deltas.second;
 }
 
-void CTxMemPool::ClearPrioritisation(const uint256& hash)
+void CTxMemPool::ClearPrioritization(const uint256& hash)
 {
     LOCK(cs);
     mapDeltas.erase(hash);
@@ -622,7 +777,7 @@ bool CTxMemPool::nullifierExists(const uint256& nullifier, ShieldedType type) co
     switch (type)
     {
         case SAPLING:
-            return mapSaplingNullifiers.count(nullifier);
+            return m_mapSaplingNullifiers.count(nullifier);
 
         default:
             throw runtime_error("Unknown nullifier type");
@@ -657,11 +812,27 @@ bool CCoinsViewMemPool::HaveCoins(const uint256 &txid) const
 
 size_t CTxMemPool::DynamicMemoryUsage() const
 {
+    size_t nTotalSize = 0;
+
     LOCK(cs);
+
     // Estimate the overhead of mapTx to be 6 pointers + an allocation, as no exact formula for boost::multi_index_contained is implemented.
-    return memusage::MallocUsage(sizeof(CTxMemPoolEntry) + 
-        6 * sizeof(void*)) * mapTx.size() + 
-        memusage::DynamicUsage(mapNextTx) + 
-        memusage::DynamicUsage(mapDeltas) + 
-        cachedInnerUsage;
+    nTotalSize += memusage::MallocUsage(sizeof(CTxMemPoolEntry) + 6 * sizeof(void*)) * mapTx.size();
+
+    nTotalSize += memusage::DynamicUsage(mapNextTx) + memusage::DynamicUsage(mapDeltas);
+
+    nTotalSize += cachedInnerUsage;
+
+    // Nullifier set tracking
+    nTotalSize += memusage::DynamicUsage(m_mapSaplingNullifiers);
+
+    // Insight-related structures
+    size_t nInsightTotalSize = 0;
+    nInsightTotalSize += memusage::DynamicUsage(m_mapAddress);
+    nInsightTotalSize += memusage::DynamicUsage(m_mapAddressInserted);
+    nInsightTotalSize += memusage::DynamicUsage(m_mapSpent);
+    nInsightTotalSize += memusage::DynamicUsage(m_mapSpentInserted);
+    nTotalSize += nInsightTotalSize;
+
+    return nTotalSize;
 }

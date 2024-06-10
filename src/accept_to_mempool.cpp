@@ -1099,6 +1099,14 @@ bool AcceptToMemoryPool(
 
         // Store transaction in memory
         pool.addUnchecked(hash, entry, !fnIsInitialBlockDownload(consensusParams));
+
+        // insightexplorer: add memory address index
+        if (fAddressIndex)
+            pool.addAddressIndex(entry, view);
+
+        // insightexplorer: add memory spent index
+        if (fSpentIndex)
+            pool.addSpentIndex(entry, view);
     }
 
     SyncWithWallets(tx, nullptr);

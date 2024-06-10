@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #pragma once 
@@ -23,16 +23,19 @@ struct CSpentIndexKey
         READWRITE(outputIndex);
     }
 
-    CSpentIndexKey(uint256 t, unsigned int i) {
+    CSpentIndexKey(uint256 t, unsigned int i) noexcept
+    {
         txid = t;
         outputIndex = i;
     }
 
-    CSpentIndexKey() {
+    CSpentIndexKey() noexcept
+    {
         SetNull();
     }
 
-    void SetNull() {
+    void SetNull() noexcept
+    {
         txid.SetNull();
         outputIndex = 0;
     }
@@ -41,8 +44,8 @@ struct CSpentIndexKey
 struct CSpentIndexValue
 {
     uint256 txid;
-    unsigned int inputIndex;
-    int blockHeight;
+    uint32_t inputIndex;
+    uint32_t blockHeight;
     CAmount patoshis;
     ScriptType addressType;
     uint160 addressHash;
@@ -69,22 +72,24 @@ struct CSpentIndexValue
         READWRITE(addressHash);
     }
 
-    CSpentIndexValue(const uint256 t, const unsigned int i, const int h, const CAmount s, const ScriptType type, const uint160 a)
+    CSpentIndexValue(const uint256 &_txid, const uint32_t _inputIndex, const int height, 
+        const CAmount s, const ScriptType type, const uint160 &a) noexcept
     {
-        txid = t;
-        inputIndex = i;
-        blockHeight = h;
+        txid = _txid;
+        inputIndex = _inputIndex;
+        blockHeight = height;
         patoshis = s;
         addressType = type;
         addressHash = a;
     }
 
-    CSpentIndexValue()
+    CSpentIndexValue() noexcept
     {
         SetNull();
     }
 
-    void SetNull() {
+    void SetNull() noexcept
+    {
         txid.SetNull();
         inputIndex = 0;
         blockHeight = 0;
@@ -93,12 +98,13 @@ struct CSpentIndexValue
         addressHash.SetNull();
     }
 
-    bool IsNull() const
+    bool IsNull() const noexcept
     {
         try
         {
             return txid.IsNull();
-        } catch ([[maybe_unused]] const std::runtime_error& e) {
+        } catch ([[maybe_unused]] const std::runtime_error& e)
+        {
             return true;
         }
     }
@@ -106,7 +112,8 @@ struct CSpentIndexValue
 
 struct CSpentIndexKeyCompare
 {
-    bool operator()(const CSpentIndexKey& a, const CSpentIndexKey& b) const {
+    bool operator()(const CSpentIndexKey& a, const CSpentIndexKey& b) const
+    {
         if (a.txid == b.txid) {
             return a.outputIndex < b.outputIndex;
         } else {

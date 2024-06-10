@@ -7,6 +7,7 @@
 #include <utils/sync.h>
 #include <utils/svc_thread.h>
 #include <main.h>
+#include <rpc/rpc_consts.h>
 #include <rpc/protocol.h>
 #include <rpc/coin-supply.h>
 #include <rpc/chain-rpc-utils.h>
@@ -68,6 +69,6 @@ Returns the total supply of coins as of current active chain height.
     UniValue retObj(UniValue::VOBJ);
     retObj.pushKV("totalCoinSupply", GetTruncatedPSLAmount(nTotalCoinSupply.load()));
     retObj.pushKV("totalCoinSupplyPat", nTotalCoinSupply.load());
-    retObj.pushKV("height", static_cast<uint64_t>(nCurrentHeight));
+    retObj.pushKV(RPC_KEY_HEIGHT, nCurrentHeight);
     return retObj;
 }

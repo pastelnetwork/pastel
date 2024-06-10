@@ -198,7 +198,7 @@ protected:
     std::condition_variable m_condVar;
 };
 
-static constexpr size_t INVALID_THREAD_OBJECT_ID = std::numeric_limits<size_t>::max();
+constexpr size_t INVALID_THREAD_OBJECT_ID = std::numeric_limits<size_t>::max();
 
 /** 
  * Group of threads.

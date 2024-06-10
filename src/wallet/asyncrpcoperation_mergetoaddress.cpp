@@ -1,5 +1,5 @@
 // Copyright (c) 2017 The Zcash developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -337,7 +337,7 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
         } else {
             // Test mode does not send the transaction to the network.
             o.pushKV("test", 1);
-            o.pushKV("txid", tx_.GetHash().ToString());
+            o.pushKV(RPC_KEY_TXID, tx_.GetHash().ToString());
             o.pushKV("hex", move(signedtxn));
         }
         set_result(move(o));

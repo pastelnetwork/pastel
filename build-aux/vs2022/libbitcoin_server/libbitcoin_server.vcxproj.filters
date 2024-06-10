@@ -41,6 +41,9 @@
     <Filter Include="Source Files\mining\pow\tromp">
       <UniqueIdentifier>{e3bac48b-ebee-45eb-8049-f714583aa511}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\txdb">
+      <UniqueIdentifier>{a590095b-2af1-432f-b1a9-fe35b44e4d8b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\sendalert.cpp">
@@ -122,9 +125,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\torcontrol.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\txdb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\txmempool.cpp">
@@ -367,6 +367,12 @@
     <ClCompile Include="..\..\..\src\mnode\tickets\contract.cpp">
       <Filter>Source Files\mnode\tickets</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\experimental_features.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\txdb\txdb.cpp">
+      <Filter>Source Files\txdb</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -427,9 +433,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\torcontrol.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\txdb.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\txmempool.h">
@@ -752,6 +755,21 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\tickets\contract.h">
       <Filter>Source Files\mnode\tickets</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\experimental_features.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\txdb\txdb.h">
+      <Filter>Source Files\txdb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\txdb\addressindex.h">
+      <Filter>Source Files\txdb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\txdb\spentindex.h">
+      <Filter>Source Files\txdb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\txdb\timestampindex.h">
+      <Filter>Source Files\txdb</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

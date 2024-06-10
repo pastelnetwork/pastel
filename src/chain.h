@@ -9,7 +9,7 @@
 #include <utils/vector_types.h>
 #include <utils/tinyformat.h>
 #include <utils/uint256.h>
-#include <arith_uint256.h>
+#include <utils/arith_uint256.h>
 #include <primitives/block.h>
 #include <mining/pow.h>
 
@@ -221,6 +221,7 @@ public:
     CDiskBlockPos GetBlockPos() const noexcept;
     CDiskBlockPos GetUndoPos() const noexcept;
     CBlockHeader GetBlockHeader() const noexcept;
+    uint32_t GetHeight() const noexcept { return static_cast<uint32_t>(nHeight); }
 
     uint256 GetBlockHash() const noexcept
     {

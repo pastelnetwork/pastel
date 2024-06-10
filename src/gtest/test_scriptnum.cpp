@@ -1,14 +1,14 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#include <climits>
+#include <cstdint>
 
-#include "bignum.h"
-#include "script/script.h"
 #include <gtest/gtest.h>
 
-#include <limits.h>
-#include <stdint.h>
+#include <bignum.h>
+#include <script/script.h>
 
 using namespace std;
 

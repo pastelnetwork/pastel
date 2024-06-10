@@ -3,17 +3,16 @@
 # Distributed under the MIT/X11 software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #
+import os
+import time
 
 from test_framework.mininode import CBlockHeader, CInv, NodeConn, NodeConnCB, \
     NetworkThread, msg_block, msg_headers, msg_inv, msg_ping, msg_pong, \
     mininode_lock
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, initialize_chain_clean, \
+from test_framework.util import assert_equal,  \
     start_node, p2p_port
 from test_framework.blocktools import create_block, create_coinbase
-
-import os
-import time
 
 '''
 AcceptBlockTest -- test processing of unrequested blocks.
@@ -113,13 +112,16 @@ class TestNode(NodeConnCB):
 
 
 class AcceptBlockTest(BitcoinTestFramework):
+    
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+        self.num_nodes = 2
+    
     def add_options(self, parser):
         parser.add_argument("--testbinary", dest="testbinary",
                           default=os.getenv("PASTELD", "pasteld"),
                           help="pasteld binary to test")
-
-    def setup_chain(self):
-        initialize_chain_clean(self.options.tmpdir, 2)
 
     def setup_network(self):
         # Node0 will be used to test behavior of processing unrequested blocks

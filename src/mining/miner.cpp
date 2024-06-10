@@ -362,7 +362,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         txNew.vout.resize(1);
         txNew.vout[0].scriptPubKey = scriptPubKeyIn;
 
-        CAmount blockReward = nFees + GetBlockSubsidy(nHeight, consensusParams);        
+        const CAmount blockReward = nFees + GetBlockSubsidy(nHeight, consensusParams);        
         txNew.vout[0].nValue = blockReward;
 
         FillOtherBlockPayments(txNew, nHeight, blockReward, pblock->txoutMasternode, pblock->txoutGovernance);
@@ -372,7 +372,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
         pblock->vtx[0] = txNew;
         pblocktemplate->vTxFees[0] = -nFees;
 
-        // Randomise nonce
+        // Randomize nonce
         arith_uint256 nonce = UintToArith256(GetRandHash());
         // Clear the top and bottom 16 bits (for local use as thread flags and counters)
         nonce <<= 32;

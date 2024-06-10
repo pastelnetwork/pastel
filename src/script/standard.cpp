@@ -3,7 +3,6 @@
 // Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
-
 #include <script/standard.h>
 #include <script/script.h>
 #include <utils/base58.h>
@@ -15,7 +14,9 @@ using namespace std;
 
 unsigned nMaxDatacarrierBytes = MAX_OP_RETURN_RELAY;
 
-CScriptID::CScriptID(const CScript& in) : uint160(Hash160(in.begin(), in.end())) {}
+CScriptID::CScriptID(const CScript& in) : 
+    uint160(Hash160(in.begin(), in.end()))
+{}
 
 const char* GetTxnOutputType(const txnouttype t)
 {
@@ -41,18 +42,18 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<v_uint8>& v
     if (mTemplates.empty())
     {
         // Standard tx, sender provides pubkey, receiver adds signature
-        mTemplates.insert(make_pair(TX_PUBKEY, CScript() << OP_PUBKEY << OP_CHECKSIG));
+        mTemplates.emplace(TX_PUBKEY, CScript() << OP_PUBKEY << OP_CHECKSIG);
 
         // Bitcoin address tx, sender provides hash of pubkey, receiver provides signature and pubkey
-        mTemplates.insert(make_pair(TX_PUBKEYHASH, CScript() << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
+        mTemplates.emplace(TX_PUBKEYHASH, CScript() << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG);
 
         // Sender provides N pubkeys, receivers provides M signatures
-        mTemplates.insert(make_pair(TX_MULTISIG, CScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
+        mTemplates.emplace(TX_MULTISIG, CScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG);
 
         // Empty, provably prunable, data-carrying output
         if (GetBoolArg("-datacarrier", true))
-            mTemplates.insert(make_pair(TX_NULL_DATA, CScript() << OP_RETURN << OP_SMALLDATA));
-        mTemplates.insert(make_pair(TX_NULL_DATA, CScript() << OP_RETURN));
+            mTemplates.emplace(TX_NULL_DATA, CScript() << OP_RETURN << OP_SMALLDATA);
+        mTemplates.emplace(TX_NULL_DATA, CScript() << OP_RETURN);
     }
 
     // Shortcut for pay-to-script-hash, which are more constrained than the other types:
@@ -68,7 +69,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<v_uint8>& v
     v_uint8 vch1, vch2;
     // Scan templates
     const CScript& script1 = scriptPubKey;
-    for(const auto &[txOut, script2] : mTemplates)
+    for (const auto &[txOut, script2] : mTemplates)
     {
         vSolutionsRet.clear();
         vch1.clear();
@@ -157,7 +158,7 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<v_uint8>& v
     return false;
 }
 
-int ScriptSigArgsExpected(txnouttype t, const vector<v_uint8 >& vSolutions)
+int ScriptSigArgsExpected(txnouttype t, const vector<v_uint8>& vSolutions)
 {
     switch (t)
     {
@@ -350,7 +351,7 @@ bool IsScriptDestination(const CTxDestination& dest) noexcept
 }
 
 // insightexplorer
-CTxDestination DestFromAddressHash(ScriptType scriptType, uint160& addressHash)
+CTxDestination DestFromAddressHash(const ScriptType scriptType, uint160& addressHash)
 {
     switch (scriptType)
     {

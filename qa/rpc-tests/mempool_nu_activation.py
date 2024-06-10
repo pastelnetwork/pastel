@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
+# Copyright (c) 2018-2024 The Pastel Code developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -37,9 +38,6 @@ class MempoolUpgradeActivationTest(BitcoinTestFramework):
         self.is_network_split = False
         self.sync_all
 
-    def setup_chain(self):
-        print(f'Initializing test directory {self.options.tmpdir}')
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def run_test(self):
         self.nodes[1].generate(100)

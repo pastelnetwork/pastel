@@ -26,11 +26,11 @@ typedef unsigned char uchar;
 #define NDIGITS		(WK+1)
 #define DIGITBITS	(WN/(NDIGITS))
 
-static constexpr u32 PROOFSIZE = 1<<WK;
-static constexpr u32 BASE = 1<<DIGITBITS;
-static constexpr u32 NHASHES = 2*BASE;
-static constexpr u32 HASHESPERBLAKE = 512/WN;
-static constexpr u32 HASHOUT = HASHESPERBLAKE*WN/8;
+constexpr u32 PROOFSIZE = 1<<WK;
+constexpr u32 BASE = 1<<DIGITBITS;
+constexpr u32 NHASHES = 2*BASE;
+constexpr u32 HASHESPERBLAKE = 512/WN;
+constexpr u32 HASHOUT = HASHESPERBLAKE*WN/8;
 
 typedef u32 proof[PROOFSIZE];
 

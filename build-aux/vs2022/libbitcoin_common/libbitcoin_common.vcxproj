@@ -91,7 +91,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\amount.cpp" />
-    <ClCompile Include="..\..\..\src\arith_uint256.cpp" />
     <ClCompile Include="..\..\..\src\chainparams.cpp" />
     <ClCompile Include="..\..\..\src\chain_options.cpp" />
     <ClCompile Include="..\..\..\src\coins.cpp" />
@@ -120,7 +119,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\amount.h" />
-    <ClInclude Include="..\..\..\src\arith_uint256.h" />
     <ClInclude Include="..\..\..\src\chainparams.h" />
     <ClInclude Include="..\..\..\src\chain_options.h" />
     <ClInclude Include="..\..\..\src\coins.h" />

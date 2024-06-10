@@ -55,11 +55,12 @@
 #include <script/standard.h>
 #include <key_io.h>
 #include <script/sigcache.h>
-#include <txdb.h>
+#include <txdb/txdb.h>
 #include <torcontrol.h>
 #include <ui_interface.h>
 #include <utilmoneystr.h>
 #include <validationinterface.h>
+#include <experimental_features.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
@@ -343,8 +344,8 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-alerts", strprintf(translate("Receive and display P2P network alerts (default: %u)"), DEFAULT_ALERTS));
     strUsage += HelpMessageOpt("-alertnotify=<cmd>", translate("Execute command when a relevant alert is received or we see a really long fork (%s in cmd is replaced by message)"));
     strUsage += HelpMessageOpt("-blocknotify=<cmd>", translate("Execute command when the best block changes (%s in cmd is replaced by block hash)"));
-    strUsage += HelpMessageOpt("-checkblocks=<n>", strprintf(translate("How many blocks to check at startup (default: %u, 0 = all)"), FORK_BLOCK_LIMIT));
-    strUsage += HelpMessageOpt("-checklevel=<n>", strprintf(translate("How thorough the block verification of -checkblocks is (0-4, default: %u)"), 3));
+    strUsage += HelpMessageOpt("-checkblocks=<n>", strprintf(translate("How many blocks to check at startup (default: %u, 0 = all)"), DEFAULT_BLOCKDB_CHECKBLOCKS));
+    strUsage += HelpMessageOpt("-checklevel=<n>", strprintf(translate("How thorough the block verification of -checkblocks is (0-4, default: %u)"), DEFAULT_BLOCKDB_CHECKLEVEL));
     strUsage += HelpMessageOpt("-conf=<file>", strprintf(translate("Specify configuration file (default: %s)"), "pastel.conf"));
     if (mode == HMM_BITCOIND) //-V547
     {
@@ -461,7 +462,7 @@ string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-nuparams=hexBranchId:activationHeight", "Use given activation height for specified network upgrade (regtest-only)");
     }
     string debugCategories = "addrman, alert, bench, coindb, compress, db, estimatefee, http, libevent, lock, mempool, mining, net, partitioncheck, pow, proxy, prune, "
-                             "rand, reindex, rpc, selectcoins, tor, zmq, zrpc, zrpcunsafe (implies zrpc)"; // Don't translate these
+                             "rand, reindex, rpc, selectcoins, tor, txdb, zmq, zrpc, zrpcunsafe (implies zrpc)"; // Don't translate these
     strUsage += HelpMessageOpt("-debug=<category>,...", strprintf(translate("Output debugging information (default: %u, supplying <category> is optional)"), 0) + ". " +
         translate("If <category> is not supplied or if <category> = 1, output all debugging information.") + " " + translate("<category> can be:") + " " + debugCategories + ".");
     strUsage += HelpMessageOpt("-experimentalfeatures", translate("Enable use of experimental features"));
@@ -858,22 +859,10 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     const CChainParams& chainparams = Params();
     KeyIO keyIO(chainparams);
 
-    // Set this early so that experimental features are correctly enabled/disabled
-    fExperimentalMode = GetBoolArg("-experimentalfeatures", false);
-
-    // Fail early if user has set experimental options without the global flag
-    if (!fExperimentalMode) {
-        if (mapArgs.count("-developerencryptwallet")) {
-            return InitError(translate("Wallet encryption requires -experimentalfeatures."));
-        }
-        else if (mapArgs.count("-paymentdisclosure")) {
-            return InitError(translate("Payment disclosure requires -experimentalfeatures."));
-        } else if (mapArgs.count("-zmergetoaddress")) {
-            return InitError(translate("RPC method z_mergetoaddress requires -experimentalfeatures."));
-        } else if (mapArgs.count("-savesproutr1cs")) {
-            return InitError(translate("Saving the Sprout R1CS requires -experimentalfeatures."));
-        }
-    }
+    // initialize experimental features
+    auto expFeaturesErrorMsg = InitExperimentalFeatures();
+    if (expFeaturesErrorMsg)
+        return InitError(expFeaturesErrorMsg.value());
 
     // Set this early so that parameter interactions go to console
     string error;
@@ -1474,7 +1463,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     // ********************************************************* Step 7: load block chain
     fReindex = GetBoolArg("-reindex", false);
     if (fReindex)
-        LogPrintf("Reindexing mode\n");
+        LogFnPrintf("Reindexing mode");
 
     // Upgrading to 0.8; hard-link the old blknnnn.dat files into /blocks/
     fs::path blocksDir = GetDataDir() / "blocks";
@@ -1508,8 +1497,23 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     nTotalCache = max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
     nTotalCache = min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greated than nMaxDbcache
     int64_t nBlockTreeDBCache = nTotalCache / 8;
-    if (nBlockTreeDBCache > (1 << 21) && !GetBoolArg("-txindex", false))
+    if (nBlockTreeDBCache > (1 << 21) && !fTxIndex)
         nBlockTreeDBCache = (1 << 21); // block tree db cache shouldn't be larger than 2 MiB
+
+    fTxIndex = GetBoolArg("-txindex", false);
+    LogFnPrintf("(option) transaction index %s", fTxIndex ? "enabled" : "disabled");
+
+    fInsightExplorer = GetBoolArg("-insightexplorer", false);
+    LogFnPrintf("(option) insight explorer %s", fInsightExplorer ? "enabled" : "disabled");
+    if (fInsightExplorer)
+    {
+        if (!fTxIndex)
+            return InitError(translate("-insightexplorer requires -txindex."));
+
+        // increase cache if additional indices are needed
+        nBlockTreeDBCache = nTotalCache * 3 / 4;
+    }
+    SetInsightExplorer(fInsightExplorer);
     nTotalCache -= nBlockTreeDBCache;
     int64_t nCoinDBCache = min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
     nTotalCache -= nCoinDBCache;
@@ -1553,9 +1557,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         CleanupBlockRevFiles();
                 }
 
-                if (!LoadBlockIndex())
+                if (!LoadBlockIndex(strLoadError))
                 {
-                    strLoadError = translate("Error loading block database");
+                    strLoadError = translate("Error loading block database. ") + strLoadError;
                     break;
                 }
 
@@ -1568,13 +1572,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                 if (!InitBlockIndex(chainparams))
                 {
                     strLoadError = translate("Error initializing block database");
-                    break;
-                }
-
-                // Check for changed -txindex state
-                if (fTxIndex != GetBoolArg("-txindex", false))
-                {
-                    strLoadError = translate("You need to rebuild the database using -reindex to change -txindex");
                     break;
                 }
 
@@ -1599,15 +1596,16 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                 // Initialize the ticket database
                 masterNodeCtrl.InitTicketDB();
 
-                const int64_t nCheckBlocks = GetArg("-checkblocks", FORK_BLOCK_LIMIT);
-                uiInterface.InitMessage(strprintf(translate("Verifying last %" PRId64 " blocks..."), nCheckBlocks));
-                if (fHavePruned && nCheckBlocks > MIN_BLOCKS_TO_KEEP)
+                const uint32_t nBlockDBCheckBlocks = static_cast<uint32_t>(GetArg("-checkblocks", DEFAULT_BLOCKDB_CHECKBLOCKS));
+                const uint32_t nBlockDBCheckLevel = static_cast<uint32_t>(GetArg("-checklevel", DEFAULT_BLOCKDB_CHECKLEVEL));
+
+                uiInterface.InitMessage(strprintf(translate("Verifying last %u blocks..."), nBlockDBCheckBlocks));
+                if (fHavePruned && nBlockDBCheckBlocks > MIN_BLOCKS_TO_KEEP)
                 {
-                    LogPrintf("Prune: pruned datadir may not have more than %d blocks; -checkblocks=%" PRId64 " may fail\n",
-                        MIN_BLOCKS_TO_KEEP, nCheckBlocks);
+                    LogPrintf("Prune: pruned datadir may not have more than %u blocks; -checkblocks=%u may fail\n",
+                        DEFAULT_BLOCKDB_CHECKBLOCKS, nBlockDBCheckBlocks);
                 }
-                if (!CVerifyDB().VerifyDB(chainparams, gl_pCoinsDbView.get(), static_cast<int>(GetArg("-checklevel", 3)),
-                               static_cast<int>(nCheckBlocks)))
+                if (!CVerifyDB().VerifyDB(chainparams, gl_pCoinsDbView.get(), nBlockDBCheckLevel, nBlockDBCheckBlocks))
                 {
                     strLoadError = translate("Corrupted block database detected");
                     break;

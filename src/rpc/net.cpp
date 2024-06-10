@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -127,6 +127,7 @@ Examples:
     CopyNodeStats(vstats);
 
     UniValue ret(UniValue::VARR);
+    ret.reserve(vstats.size());
 
     for(const auto& stats : vstats)
     {
@@ -153,20 +154,21 @@ Examples:
         // their ver message.
         obj.pushKV("subver", stats.cleanSubVer);
         obj.pushKV("inbound", stats.fInbound);
-        obj.pushKV("startingheight", static_cast<int64_t>(stats.nStartingHeight));
+        obj.pushKV("startingheight", stats.nStartingHeight);
         if (fStateStats)
         {
             obj.pushKV("banscore", statestats.nMisbehavior);
             obj.pushKV("synced_headers", statestats.nSyncHeight);
             obj.pushKV("synced_blocks", statestats.nCommonHeight);
             UniValue heights(UniValue::VARR);
+            heights.reserve(statestats.vHeightInFlight.size());
             for (const auto height : statestats.vHeightInFlight)
                 heights.push_back(height);
-            obj.pushKV("inflight", heights);
+            obj.pushKV("inflight", move(heights));
         }
         obj.pushKV("whitelisted", stats.fWhitelisted);
 
-        ret.push_back(obj);
+        ret.push_back(move(obj));
     }
 
     return ret;
@@ -205,7 +207,7 @@ Examples:
     }
 
     LOCK(cs_vAddedNodes);
-    vector<string>::iterator it = vAddedNodes.begin();
+    auto it = vAddedNodes.begin();
     for(; it != vAddedNodes.end(); it++)
         if (strNode == *it)
             break;
@@ -453,8 +455,8 @@ Examples:
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("version", CLIENT_VERSION);
     obj.pushKV("subversion",
-        FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, std::vector<string>()));
-    obj.pushKV("deprecationheight", static_cast<uint64_t>(DEPRECATION_HEIGHT));
+        FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, v_strings()));
+    obj.pushKV("deprecationheight", DEPRECATION_HEIGHT);
 
     return obj;
 }
@@ -510,7 +512,7 @@ Examples:
     obj.pushKV("protocolversion", PROTOCOL_VERSION);
     obj.pushKV("localservices",       strprintf("%016x", nLocalServices));
     obj.pushKV("timeoffset",    GetTimeOffset());
-    obj.pushKV("connections",   static_cast<uint64_t>(gl_NodeManager.GetNodeCount()));
+    obj.pushKV("connections",   gl_NodeManager.GetNodeCount());
     obj.pushKV("networks",      GetNetworksInfo());
     obj.pushKV("relayfee",      ValueFromAmount(gl_ChainOptions.minRelayTxFee.GetFeePerK()));
     UniValue localAddresses(UniValue::VARR);
@@ -617,12 +619,13 @@ Examples:
     CNode::GetBanned(banMap);
 
     UniValue bannedAddresses(UniValue::VARR);
-    for (std::map<CSubNet, int64_t>::iterator it = banMap.begin(); it != banMap.end(); it++)
+    bannedAddresses.reserve(banMap.size());
+    for (const auto& [address, banTime] : banMap)
     {
         UniValue rec(UniValue::VOBJ);
-        rec.pushKV("address", (*it).first.ToString());
-        rec.pushKV("banned_until", (*it).second);
-        bannedAddresses.push_back(rec);
+        rec.pushKV("address", address.ToString());
+        rec.pushKV("banned_until", banTime);
+        bannedAddresses.push_back(move(rec));
     }
 
     return bannedAddresses;

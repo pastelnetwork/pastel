@@ -23,6 +23,7 @@
 #include <net.h>
 #include <primitives/transaction.h>
 #include <rpc/server.h>
+#include <rpc/rpc_consts.h>
 #include <script/script.h>
 #include <script/script_error.h>
 #include <script/sign.h>
@@ -91,16 +92,16 @@ UniValue TxShieldedOutputsToJSON(const CTransaction& tx) {
 void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 {
     const uint256 &txid = tx.GetHash();
-    entry.pushKV("txid", txid.GetHex());
-    entry.pushKV("size", static_cast<uint64_t>(::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION)));
+    entry.pushKV(RPC_KEY_TXID, txid.GetHex());
+    entry.pushKV("size", ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
     entry.pushKV("overwintered", tx.fOverwintered);
     entry.pushKV("version", tx.nVersion);
     if (tx.fOverwintered) {
         entry.pushKV("versiongroupid", HexInt(tx.nVersionGroupId));
     }
-    entry.pushKV("locktime", (int64_t)tx.nLockTime);
+    entry.pushKV("locktime", tx.nLockTime);
     if (tx.fOverwintered) {
-        entry.pushKV("expiryheight", (int64_t)tx.nExpiryHeight);
+        entry.pushKV("expiryheight", tx.nExpiryHeight);
     }
     entry.pushKV("hex", EncodeHexTx(tx));
 
@@ -114,7 +115,7 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
         else
         {
             in.pushKV("txid", txin.prevout.hash.GetHex());
-            in.pushKV("vout", (int64_t)txin.prevout.n);
+            in.pushKV("vout", txin.prevout.n);
             UniValue o(UniValue::VOBJ);
             o.pushKV("asm", ScriptToAsmStr(txin.scriptSig, true));
             o.pushKV("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
@@ -132,7 +133,7 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
                     in.pushKV("address", keyIO.EncodeDestination(dest));
             }
         }
-        in.pushKV("sequence", (int64_t)txin.nSequence);
+        in.pushKV("sequence", txin.nSequence);
         vin.push_back(move(in));
     }
     entry.pushKV("vin", vin);
@@ -143,10 +144,11 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
         UniValue out(UniValue::VOBJ);
         out.pushKV("value", ValueFromAmount(txout.nValue));
         out.pushKV("valuePat", txout.nValue);
-        out.pushKV("n", (int64_t)i);
+        out.pushKV("n", i);
+
         UniValue o(UniValue::VOBJ);
         ScriptPubKeyToJSON(txout.scriptPubKey, o, true);
-        out.pushKV("scriptPubKey", o);
+        out.pushKV("scriptPubKey", move(o));
 
         // Add spent information if spentindex is enabled
         CSpentIndexValue spentInfo;
@@ -154,10 +156,10 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
         if (fSpentIndex && GetSpentIndex(spentKey, spentInfo))
         {
             out.pushKV("spentTxId", spentInfo.txid.GetHex());
-            out.pushKV("spentIndex", (int)spentInfo.inputIndex);
+            out.pushKV("spentIndex", spentInfo.inputIndex);
             out.pushKV("spentHeight", spentInfo.blockHeight);
         }
-        vout.push_back(out);
+        vout.push_back(move(out));
     }
     entry.pushKV("vout", vout);
 
@@ -183,14 +185,14 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
             const auto pindex = mi->second;
             if (chainActive.Contains(pindex))
             {
-                entry.pushKV("height", pindex->nHeight);
+                entry.pushKV(RPC_KEY_HEIGHT, pindex->nHeight);
                 entry.pushKV("confirmations", 1 + chainActive.Height() - pindex->nHeight);
                 entry.pushKV("time", pindex->GetBlockTime());
                 entry.pushKV("blocktime", pindex->GetBlockTime());
             }
             else
             {
-                entry.pushKV("height", -1);
+                entry.pushKV(RPC_KEY_HEIGHT, -1);
                 entry.pushKV("confirmations", 0);
             }
         }
@@ -715,12 +717,12 @@ Examples:
 static void TxInErrorToJSON(const CTxIn& txin, UniValue& vErrorsRet, const string& strMessage)
 {
     UniValue entry(UniValue::VOBJ);
-    entry.pushKV("txid", txin.prevout.hash.ToString());
-    entry.pushKV("vout", (uint64_t)txin.prevout.n);
+    entry.pushKV(RPC_KEY_TXID, txin.prevout.hash.ToString());
+    entry.pushKV("vout", txin.prevout.n);
     entry.pushKV("scriptSig", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
-    entry.pushKV("sequence", (uint64_t)txin.nSequence);
+    entry.pushKV("sequence", txin.nSequence);
     entry.pushKV("error", strMessage);
-    vErrorsRet.push_back(entry);
+    vErrorsRet.push_back(move(entry));
 }
 
 UniValue signrawtransaction(const UniValue& params, bool fHelp)

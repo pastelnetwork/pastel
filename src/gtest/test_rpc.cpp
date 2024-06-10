@@ -1,12 +1,12 @@
-// Copyright (c) 2018-2023 The Pastel developers
+// Copyright (c) 2018-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <regex>
 #include <gtest/gtest.h>
 #include <univalue.h>
 
 #include <utils/utilstrencodings.h>
+#include <chain_options.h>
+#include <rpc/rpc_consts.h>
 #include <rpc/server.h>
 #include <rpc/client.h>
 #include <rpc/register.h>
@@ -15,6 +15,7 @@
 #include <main.h>
 
 #include <pastel_gtest_main.h>
+#include <pastel_gtest_utils.h>
 
 using namespace std;
 using namespace testing;
@@ -47,36 +48,6 @@ UniValue createArgs(int nRequired, const char* address1=nullptr, const char* add
     return result;
 }
 
-UniValue CallRPC(string args)
-{
-    vector<string> vArgs;
-
-    regex pattern("\\ |\t");
-    vArgs = vector<string>(
-                    sregex_token_iterator(args.begin(), args.end(), pattern, -1),
-                    sregex_token_iterator()
-                    );
-
-    string strMethod = vArgs[0];
-    vArgs.erase(vArgs.begin());
-    // Handle empty strings the same way as CLI
-    for (auto i = 0; i < vArgs.size(); i++)
-    {
-        if (vArgs[i] == "\"\"")
-            vArgs[i] = "";
-    }
-    UniValue params = RPCConvertValues(strMethod, vArgs);
-    EXPECT_TRUE(tableRPC[strMethod] != nullptr);
-    rpcfn_type method = tableRPC[strMethod]->actor;
-    try {
-        UniValue result = (*method)(params, false);
-        return result;
-    }
-    catch (const UniValue& objError) {
-        throw runtime_error(find_value(objError, "message").get_str());
-    }
-}
-
 class TestRpc : public Test
 {
 public:
@@ -89,20 +60,35 @@ public:
     {
         gl_pPastelTestEnv->FinalizeRegTest();
     }
+
+protected:
+    string getRpcDisabledThrowMsg(const string& rpcMethod)
+    {
+        return strprintf(ERRMSG_RPC_DISABLED, rpcMethod, rpcMethod);
+    }
+
+    void checkRpcDisabled(const string& sRpcMethod, const string& sRpcParams)
+	{
+        CheckRPCThrows(sRpcMethod, sRpcParams, getRpcDisabledThrowMsg(sRpcMethod));
+    }
 };
 
-void CheckRPCThrows(string rpcString, string expectedErrorMessage) {
-    try {
-        CallRPC(rpcString);
-        // Note: CallRPC catches (const UniValue& objError) and rethrows a runtime_error
-        // "Should have caused an error";
-    } catch (const runtime_error& e) {
-        EXPECT_EQ(expectedErrorMessage, e.what());
-    } catch([[maybe_unused]] const exception& e) {
-        // string("Unexpected exception: ") + typeid(e).name() + ", message=\"" + e.what() + "\"";
-    }
-}
+class TestInsightExplorerRPC : public TestRpc
+{
+public:
+    // valid regtest address
+    static constexpr auto sRegtestAddr = "tPX7unuh4oFzT1wrPfK1N3VviSYkB36mctG";
 
+	void SetUp() override
+	{
+        SetInsightExplorer(true);
+	}
+
+    void TearDown() override
+	{
+		SetInsightExplorer(false);
+	}
+};
 
 TEST_F(TestRpc, rpc_rawparams)
 {
@@ -110,44 +96,44 @@ TEST_F(TestRpc, rpc_rawparams)
     // Test raw transaction API argument handling
     UniValue r;
 
-    EXPECT_THROW(CallRPC("getrawtransaction"), runtime_error);
-    EXPECT_THROW(CallRPC("getrawtransaction not_hex"), runtime_error);
-    EXPECT_THROW(CallRPC("getrawtransaction a3b807410df0b60fcb9736768df5823938b2f838694939ba45f3c0a1bff150ed not_int"), runtime_error);
+    EXPECT_THROW(TestCallRPC("getrawtransaction"), runtime_error);
+    EXPECT_THROW(TestCallRPC("getrawtransaction not_hex"), runtime_error);
+    EXPECT_THROW(TestCallRPC("getrawtransaction a3b807410df0b60fcb9736768df5823938b2f838694939ba45f3c0a1bff150ed not_int"), runtime_error);
 
-    EXPECT_THROW(CallRPC("createrawtransaction"), runtime_error);
-    EXPECT_THROW(CallRPC("createrawtransaction null null"), runtime_error);
-    EXPECT_THROW(CallRPC("createrawtransaction not_array"), runtime_error);
-    EXPECT_THROW(CallRPC("createrawtransaction [] []"), runtime_error);
-    EXPECT_THROW(CallRPC("createrawtransaction {} {}"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("createrawtransaction [] {}"));
-    EXPECT_THROW(CallRPC("createrawtransaction [] {} extra"), runtime_error);
-    EXPECT_NO_THROW(CallRPC("createrawtransaction [] {} 0"));
-    EXPECT_THROW(CallRPC("createrawtransaction [] {} 0 0"), runtime_error); // Overwinter is not active
+    EXPECT_THROW(TestCallRPC("createrawtransaction"), runtime_error);
+    EXPECT_THROW(TestCallRPC("createrawtransaction null null"), runtime_error);
+    EXPECT_THROW(TestCallRPC("createrawtransaction not_array"), runtime_error);
+    EXPECT_THROW(TestCallRPC("createrawtransaction [] []"), runtime_error);
+    EXPECT_THROW(TestCallRPC("createrawtransaction {} {}"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("createrawtransaction [] {}"));
+    EXPECT_THROW(TestCallRPC("createrawtransaction [] {} extra"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC("createrawtransaction [] {} 0"));
+    EXPECT_THROW(TestCallRPC("createrawtransaction [] {} 0 0"), runtime_error); // Overwinter is not active
 
-    EXPECT_THROW(CallRPC("decoderawtransaction"), runtime_error);
-    EXPECT_THROW(CallRPC("decoderawtransaction null"), runtime_error);
-    EXPECT_THROW(CallRPC("decoderawtransaction DEADBEEF"), runtime_error);
+    EXPECT_THROW(TestCallRPC("decoderawtransaction"), runtime_error);
+    EXPECT_THROW(TestCallRPC("decoderawtransaction null"), runtime_error);
+    EXPECT_THROW(TestCallRPC("decoderawtransaction DEADBEEF"), runtime_error);
     string rawtx = "0100000001a15d57094aa7a21a28cb20b59aab8fc7d1149a3bdbcddba9c622e4f5f6a99ece010000006c493046022100f93bb0e7d8db7bd46e40132d1f8242026e045f03a0efe71bbb8e3f475e970d790221009337cd7f1f929f00cc6ff01f03729b069a7c21b59b1736ddfee5db5946c5da8c0121033b9b137ee87d5a812d6f506efdd37f0affa7ffc310711c06c7f3e097c9447c52ffffffff0100e1f505000000001976a9140389035a9225b3839e2bbf32d826a1e222031fd888ac00000000";
-    EXPECT_NO_THROW(r = CallRPC(string("decoderawtransaction ")+rawtx));
+    EXPECT_NO_THROW(r = TestCallRPC(string("decoderawtransaction ")+rawtx));
     EXPECT_EQ(find_value(r.get_obj(), "version").get_int(), 1);
     EXPECT_EQ(find_value(r.get_obj(), "locktime").get_int(), 0);
-    EXPECT_THROW(r = CallRPC(string("decoderawtransaction ")+rawtx+" extra"), runtime_error);
+    EXPECT_THROW(r = TestCallRPC(string("decoderawtransaction ")+rawtx+" extra"), runtime_error);
 
-    EXPECT_THROW(CallRPC("signrawtransaction"), runtime_error);
-    EXPECT_THROW(CallRPC("signrawtransaction null"), runtime_error);
-    EXPECT_THROW(CallRPC("signrawtransaction ff00"), runtime_error);
-    EXPECT_NO_THROW(CallRPC(string("signrawtransaction ")+rawtx));
-    EXPECT_NO_THROW(CallRPC(string("signrawtransaction ")+rawtx+" null null NONE|ANYONECANPAY"));
-    EXPECT_NO_THROW(CallRPC(string("signrawtransaction ")+rawtx+" [] [] NONE|ANYONECANPAY"));
-    EXPECT_THROW(CallRPC(string("signrawtransaction ")+rawtx+" null null badenum"), runtime_error);
-    EXPECT_NO_THROW(CallRPC(string("signrawtransaction ")+rawtx+" [] [] NONE|ANYONECANPAY 5ba81b19"));
-    EXPECT_THROW(CallRPC(string("signrawtransaction ")+rawtx+" [] [] ALL NONE|ANYONECANPAY 123abc"), runtime_error);
+    EXPECT_THROW(TestCallRPC("signrawtransaction"), runtime_error);
+    EXPECT_THROW(TestCallRPC("signrawtransaction null"), runtime_error);
+    EXPECT_THROW(TestCallRPC("signrawtransaction ff00"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC(string("signrawtransaction ")+rawtx));
+    EXPECT_NO_THROW(TestCallRPC(string("signrawtransaction ")+rawtx+" null null NONE|ANYONECANPAY"));
+    EXPECT_NO_THROW(TestCallRPC(string("signrawtransaction ")+rawtx+" [] [] NONE|ANYONECANPAY"));
+    EXPECT_THROW(TestCallRPC(string("signrawtransaction ")+rawtx+" null null badenum"), runtime_error);
+    EXPECT_NO_THROW(TestCallRPC(string("signrawtransaction ")+rawtx+" [] [] NONE|ANYONECANPAY 5ba81b19"));
+    EXPECT_THROW(TestCallRPC(string("signrawtransaction ")+rawtx+" [] [] ALL NONE|ANYONECANPAY 123abc"), runtime_error);
 
     // Only check failure cases for sendrawtransaction, there's no network to send to...
-    EXPECT_THROW(CallRPC("sendrawtransaction"), runtime_error);
-    EXPECT_THROW(CallRPC("sendrawtransaction null"), runtime_error);
-    EXPECT_THROW(CallRPC("sendrawtransaction DEADBEEF"), runtime_error);
-    EXPECT_THROW(CallRPC(string("sendrawtransaction ")+rawtx+" extra"), runtime_error);
+    EXPECT_THROW(TestCallRPC("sendrawtransaction"), runtime_error);
+    EXPECT_THROW(TestCallRPC("sendrawtransaction null"), runtime_error);
+    EXPECT_THROW(TestCallRPC("sendrawtransaction DEADBEEF"), runtime_error);
+    EXPECT_THROW(TestCallRPC(string("sendrawtransaction ")+rawtx+" extra"), runtime_error);
 }
 
 TEST_F(TestRpc, rpc_rawsign)
@@ -159,20 +145,20 @@ TEST_F(TestRpc, rpc_rawsign)
       "[{\"txid\":\"b4cc287e58f87cdae59417329f710f3ecd75a4ee1d2872b7248f50977c8493f3\","
       "\"vout\":1,\"scriptPubKey\":\"a914b10c9df5f7edf436c697f02f1efdba4cf399615187\","
       "\"redeemScript\":\"512103debedc17b3df2badbcdd86d5feb4562b86fe182e5998abd8bcd4f122c6155b1b21027e940bb73ab8732bfdf7f9216ecefca5b94d6df834e77e108f68e66f126044c052ae\"}]";
-    r = CallRPC(string("createrawtransaction ")+prevout+" "+
+    r = TestCallRPC(string("createrawtransaction ")+prevout+" "+
       "{\"ptEg3T6LmUjonhxHzU419tbVXkoRycNGLZ8\":11}");
     string notsigned = r.get_str();
     string privkey1 = "\"KzsXybp9jX64P5ekX1KUxRQ79Jht9uzW7LorgwE65i5rWACL6LQe\"";
     string privkey2 = "\"Kyhdf5LuKTRx4ge69ybABsiUAWjVRK4XGxAKk2FQLp2HjGMy87Z4\"";
-    r = CallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"[]");
+    r = TestCallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"[]");
     EXPECT_FALSE(find_value(r.get_obj(), "complete").get_bool());
-    r = CallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"["+privkey1+","+privkey2+"]");
+    r = TestCallRPC(string("signrawtransaction ")+notsigned+" "+prevout+" "+"["+privkey1+","+privkey2+"]");
     EXPECT_TRUE(find_value(r.get_obj(), "complete").get_bool());
 }
 
 TEST_F(TestRpc, help)
 {
-    UniValue r = CallRPC("help");
+    UniValue r = TestCallRPC("help");
     EXPECT_TRUE(r.isStr() && !r.getValStr().empty());
 }
 
@@ -300,23 +286,23 @@ TEST(test_rpc, json_parse_errors)
 
 TEST_F(TestRpc, rpc_ban)
 {
-    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(TestCallRPC(string("clearbanned")));
     
     UniValue r;
-    EXPECT_NO_THROW(r = CallRPC(string("setban 127.0.0.0 add")));
-    EXPECT_THROW(r = CallRPC(string("setban 127.0.0.0:8334")), runtime_error); //portnumber for setban not allowed
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("setban 127.0.0.0 add")));
+    EXPECT_THROW(r = TestCallRPC(string("setban 127.0.0.0:8334")), runtime_error); //portnumber for setban not allowed
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     UniValue ar = r.get_array();
     UniValue o1 = ar[0].get_obj();
     UniValue adr = find_value(o1, "address");
     EXPECT_EQ(adr.get_str(), "127.0.0.0/255.255.255.255");
-    EXPECT_NO_THROW(CallRPC(string("setban 127.0.0.0 remove")));;
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(TestCallRPC(string("setban 127.0.0.0 remove")));;
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     ar = r.get_array();
     EXPECT_EQ(ar.size(), 0);
 
-    EXPECT_NO_THROW(r = CallRPC(string("setban 127.0.0.0/24 add 1607731200 true")));
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("setban 127.0.0.0/24 add 1607731200 true")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
@@ -324,10 +310,10 @@ TEST_F(TestRpc, rpc_ban)
     EXPECT_EQ(adr.get_str(), "127.0.0.0/255.255.255.0");
     EXPECT_EQ(banned_until.get_int64(), 1607731200); // absolute time check
 
-    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(TestCallRPC(string("clearbanned")));
 
-    EXPECT_NO_THROW(r = CallRPC(string("setban 127.0.0.0/24 add 200")));
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("setban 127.0.0.0/24 add 200")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
@@ -338,42 +324,42 @@ TEST_F(TestRpc, rpc_ban)
     EXPECT_TRUE(banned_until.get_int64()-now <= 200);
 
     // must throw an exception because 127.0.0.1 is in already banned subnet range
-    EXPECT_THROW(r = CallRPC(string("setban 127.0.0.1 add")), runtime_error);
+    EXPECT_THROW(r = TestCallRPC(string("setban 127.0.0.1 add")), runtime_error);
 
-    EXPECT_NO_THROW(CallRPC(string("setban 127.0.0.0/24 remove")));;
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(TestCallRPC(string("setban 127.0.0.0/24 remove")));;
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     ar = r.get_array();
     EXPECT_EQ(ar.size(), 0);
 
-    EXPECT_NO_THROW(r = CallRPC(string("setban 127.0.0.0/255.255.0.0 add")));
-    EXPECT_THROW(r = CallRPC(string("setban 127.0.1.1 add")), runtime_error);
+    EXPECT_NO_THROW(r = TestCallRPC(string("setban 127.0.0.0/255.255.0.0 add")));
+    EXPECT_THROW(r = TestCallRPC(string("setban 127.0.1.1 add")), runtime_error);
 
-    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(TestCallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     ar = r.get_array();
     EXPECT_EQ(ar.size(), 0);
 
-    EXPECT_THROW(r = CallRPC(string("setban test add")), runtime_error); //invalid IP
+    EXPECT_THROW(r = TestCallRPC(string("setban test add")), runtime_error); //invalid IP
 
     //IPv6 tests
-    EXPECT_NO_THROW(r = CallRPC(string("setban FE80:0000:0000:0000:0202:B3FF:FE1E:8329 add")));
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("setban FE80:0000:0000:0000:0202:B3FF:FE1E:8329 add")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
     EXPECT_EQ(adr.get_str(), "fe80::202:b3ff:fe1e:8329/ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
 
-    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
-    EXPECT_NO_THROW(r = CallRPC(string("setban 2001:db8::/30 add")));
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(TestCallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("setban 2001:db8::/30 add")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
     EXPECT_EQ(adr.get_str(), "2001:db8::/ffff:fffc:0:0:0:0:0:0");
 
-    EXPECT_NO_THROW(CallRPC(string("clearbanned")));
-    EXPECT_NO_THROW(r = CallRPC(string("setban 2001:4d48:ac57:400:cacf:e9ff:fe1d:9c63/128 add")));
-    EXPECT_NO_THROW(r = CallRPC(string("listbanned")));
+    EXPECT_NO_THROW(TestCallRPC(string("clearbanned")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("setban 2001:4d48:ac57:400:cacf:e9ff:fe1d:9c63/128 add")));
+    EXPECT_NO_THROW(r = TestCallRPC(string("listbanned")));
     ar = r.get_array();
     o1 = ar[0].get_obj();
     adr = find_value(o1, "address");
@@ -393,10 +379,10 @@ TEST_F(TestRpc, rpc_raw_create_overwinter_v3)
     string prevout =
       "[{\"txid\":\"b4cc287e58f87cdae59417329f710f3ecd75a4ee1d2872b7248f50977c8493f3\","
       "\"vout\":1}]";
-    r = CallRPC(string("createrawtransaction ") + prevout + " " +
+    r = TestCallRPC(string("createrawtransaction ") + prevout + " " +
       "{\"ttTigMmXu3SJwFsJfBxyTcAY3zD2CxrE9YG\":11}");
     string rawhex = r.get_str();
-    EXPECT_NO_THROW(r = CallRPC(string("decoderawtransaction ") + rawhex));
+    EXPECT_NO_THROW(r = TestCallRPC(string("decoderawtransaction ") + rawhex));
     EXPECT_EQ(find_value(r.get_obj(), "overwintered").get_bool(), true);
     EXPECT_EQ(find_value(r.get_obj(), "version").get_int(), 3);
     EXPECT_EQ(find_value(r.get_obj(), "expiryheight").get_int(), 21);
@@ -420,37 +406,113 @@ TEST_F(TestRpc, rpc_raw_create_overwinter_v3)
 
 TEST(test_rpc, rpc_getnetworksolps)
 {
-    EXPECT_NO_THROW(CallRPC("getnetworksolps"));
-    EXPECT_NO_THROW(CallRPC("getnetworksolps 120"));
-    EXPECT_NO_THROW(CallRPC("getnetworksolps 120 -1"));
+    EXPECT_NO_THROW(TestCallRPC("getnetworksolps"));
+    EXPECT_NO_THROW(TestCallRPC("getnetworksolps 120"));
+    EXPECT_NO_THROW(TestCallRPC("getnetworksolps 120 -1"));
 }
 
 
-// Test parameter processing (not functionality)
+// Test insightexplorer RPC APIs parameter processing (not functionality)
+// These tests also ensure that src/rpc/client.cpp has the correct entries.
 TEST_F(TestRpc, rpc_insightexplorer)
 {
-    SelectParams(ChainNetwork::MAIN);
-    
-    CheckRPCThrows("getblockdeltas \"a\"",
-        "Error: getblockdeltas is disabled. "
-        "Run './pastel-cli help getblockdeltas' for instructions on how to enable this feature.");
+    checkRpcDisabled(RPC_API_GETBLOCKDELTAS, R"("a")");
+    checkRpcDisabled(RPC_API_GETBLOCKHASHES, "0 0");
+    checkRpcDisabled(RPC_API_GETADDRESSBALANCE, R"("a")");
+    checkRpcDisabled(RPC_API_GETADDRESSDELTAS, R"("a")");
+    checkRpcDisabled(RPC_API_GETADDRESSMEMPOOL, R"("a")");
+    checkRpcDisabled(RPC_API_GETADDRESSTXIDS, R"("a")");
+    checkRpcDisabled(RPC_API_GETADDRESSUTXOS, R"("a")");
+    checkRpcDisabled(RPC_API_GETSPENTINFO, R"({"txid":"a","index":1})");
+}
 
-    CheckRPCThrows("getaddressmempool \"a\"",
-        "Error: getaddressmempool is disabled. "
-        "Run './pastel-cli help getaddressmempool' for instructions on how to enable this feature.");
-
-    fExperimentalMode = true;
-    fInsightExplorer = true;
-
-    string addr = "PthhsEaVCV8WZHw5eoyufm8pQhT8iQdKJPi";
-
-    EXPECT_NO_THROW(CallRPC("getaddressmempool \"" + addr + "\""));
-    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\"]}"));
-    EXPECT_NO_THROW(CallRPC("getaddressmempool {\"addresses\":[\"" + addr + "\",\"" + addr + "\"]}")); 
-
-    CheckRPCThrows("getblockdeltas \"00040fe8ec8471911baa1db1266ea15dd06b4a8a5c453883c000b031973dce08\"",
+TEST_F(TestInsightExplorerRPC, getblockdeltas)
+{
+    EXPECT_NO_THROW(TestCallRPC_Params( // check regtest genesis block
+        RPC_API_GETBLOCKDELTAS, R"("065c1d8ea9abb121b8b12e4e483e46f60e743bb149de4bc82e4dd81598b99338")"));
+    CheckRPCThrows(
+        RPC_API_GETBLOCKDELTAS, R"("065c1d8ea9abb121b8b12e4e483e46f60e743bb149de4bc82e4dd81598b99339")",
         "Block not found");
-    // revert
-    fExperimentalMode = false;
-    fInsightExplorer = false;
+}
+
+TEST_F(TestInsightExplorerRPC, getaddressmempool)
+{
+    EXPECT_NO_THROW(TestCallRPC_Params(
+        RPC_API_GETADDRESSMEMPOOL, strprintf(R"("%s")", sRegtestAddr)));
+    EXPECT_NO_THROW(TestCallRPC_Params(
+        RPC_API_GETADDRESSMEMPOOL, strprintf(R"({"addresses":["%s"]})", sRegtestAddr)));
+    EXPECT_NO_THROW(TestCallRPC_Params(
+        RPC_API_GETADDRESSMEMPOOL, strprintf(R"({"addresses":["%s","%s"]})", sRegtestAddr, sRegtestAddr))); 
+}
+
+TEST_F(TestInsightExplorerRPC, getaddressutxos)
+{
+    EXPECT_NO_THROW(TestCallRPC_Params(
+        RPC_API_GETADDRESSUTXOS, R"({"addresses":[],"chainInfo":true})"));
+    CheckRPCThrows(RPC_API_GETADDRESSUTXOS, "{}",
+        "Addresses is expected to be an array");
+    CheckRPCThrows(RPC_API_GETADDRESSUTXOS, R"({"addressesmisspell":[]})",
+        "Addresses is expected to be an array");
+    CheckRPCThrows(RPC_API_GETADDRESSUTXOS, R"({"addresses":[],"chainInfo":1})",
+        "JSON value is not a boolean as expected");
+}
+
+TEST_F(TestInsightExplorerRPC, getaddressdeltas)
+{
+    EXPECT_NO_THROW(TestCallRPC_Params(
+        RPC_API_GETADDRESSDELTAS, R"({"addresses":[]})"));
+    
+    CheckRPCThrows(RPC_API_GETADDRESSDELTAS, R"({"addresses":[],"start":0,"end":0,"chainInfo":true})",
+        "Start and end are expected to be greater than zero");
+    
+    CheckRPCThrows(RPC_API_GETADDRESSDELTAS, R"({"addresses":[],"start":3,"end":2,"chainInfo":true})",
+        "End value is expected to be greater than or equal to start");
+    
+    // In this test environment, only the genesis block (0) exists
+    CheckRPCThrows(RPC_API_GETADDRESSDELTAS, R"({"addresses":[],"start":2,"end":3,"chainInfo":true})",
+        "Start or end is outside chain range");
+}
+
+TEST_F(TestInsightExplorerRPC, getaddressbalance)
+{
+    EXPECT_NO_THROW(TestCallRPC_Params(R"(getaddressbalance)", R"({"addresses":[]})"));
+}
+
+TEST_F(TestInsightExplorerRPC, getaddresstxids)
+{
+    EXPECT_NO_THROW(TestCallRPC_Params(
+        RPC_API_GETADDRESSTXIDS, R"({"addresses":[]})"));
+    
+    CheckRPCThrows(RPC_API_GETADDRESSTXIDS, R"({"addresses":[],"start":0,"end":0,"chainInfo":true})",
+        "Start and end are expected to be greater than zero");
+    
+    CheckRPCThrows(RPC_API_GETADDRESSTXIDS, R"({"addresses":[],"start":3,"end":2,"chainInfo":true})",
+        "End value is expected to be greater than or equal to start");
+    
+    // In this test environment, only the genesis block (0) exists
+    CheckRPCThrows(RPC_API_GETADDRESSTXIDS, R"({"addresses":[],"start":2,"end":3,"chainInfo":true})",
+        "Start or end is outside chain range");
+}
+
+TEST_F(TestInsightExplorerRPC, getspentinfo)
+{
+    CheckRPCThrows(RPC_API_GETSPENTINFO, R"({"txid":"b4cc287e58f87cdae59417329f710f3ecd75a4ee1d2872b7248f50977c8493f3","index":0})",
+        "Unable to get spent info");
+    CheckRPCThrows(RPC_API_GETSPENTINFO, R"({"txid":"b4cc287e58f87cdae59417329f710f3ecd75a4ee1d2872b7248f50977c8493f3"})",
+        "Invalid index, must be an integer");
+    CheckRPCThrows(RPC_API_GETSPENTINFO, R"({"txid":"hello","index":0})",
+        "txid must be hexadecimal string (not 'hello')");
+}
+
+TEST_F(TestInsightExplorerRPC, getblockhashes)
+{
+    EXPECT_NO_THROW(TestCallRPC_Params(RPC_API_GETBLOCKHASHES, R"(1477641360 1477641360)"));
+    EXPECT_NO_THROW(TestCallRPC_Params(RPC_API_GETBLOCKHASHES, R"(1477641360 1477641360 {"noOrphans":true,"logicalTimes":true})"));
+    // Unfortunately, an unknown or mangled key is ignored
+    EXPECT_NO_THROW(TestCallRPC_Params(RPC_API_GETBLOCKHASHES, R"(1477641360 1477641360 {"AAAnoOrphans":true,"logicalTimes":true})"));
+    
+    CheckRPCThrows(RPC_API_GETBLOCKHASHES, R"(1477641360 1477641360 {"noOrphans":true,"logicalTimes":1})",
+        "JSON value is not a boolean as expected");
+    CheckRPCThrows(RPC_API_GETBLOCKHASHES, R"(1477641360 1477641360 {"noOrphans":True,"logicalTimes":false})",
+        "Error parsing JSON:{\"noOrphans\":True,\"logicalTimes\":false}");
 }

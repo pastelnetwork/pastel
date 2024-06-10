@@ -319,7 +319,7 @@ CAmount CActionActivateTicket::GetExtraOutputs(v_txouts& outputs, const CBlockIn
                 "The Pastel ID [%s] from the %s ticket with this txid [%s] has invalid MN's address", 
                 mnPastelID, CActionRegTicket::GetTicketDescription(), m_regTicketTxId));
 
-        // caclulate MN fee in patoshis
+        // calculate MN fee in patoshis
         const CAmount nAmount = mn == CActionRegTicket::SIGN_MAIN ? getPrincipalMNFee() : getOtherMNFee();
         nAllAmount += nAmount;
 

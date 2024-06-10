@@ -9,9 +9,9 @@
 #include <memory>
 
 #include <utils/enum_util.h>
+#include <utils/arith_uint256.h>
 #include <key.h>
 #include <consensus/validation.h>
-#include <arith_uint256.h>
 #include <timedata.h>
 #include <net.h>
 #include <mnode/mnode-config.h>

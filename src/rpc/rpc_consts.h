@@ -25,4 +25,14 @@ constexpr auto RPC_KEY_GLOBAL_FEE_MULTIPLIER     = "globalFeeMultiplier";
 constexpr auto RPC_RESULT_FAILED				= "failed";
 constexpr auto RPC_RESULT_SUCCESS				= "successful";
 
+// rpc API methods
+constexpr auto RPC_API_GETBLOCKDELTAS			= "getblockdeltas";
+constexpr auto RPC_API_GETBLOCKHASHES			= "getblockhashes";
+constexpr auto RPC_API_GETADDRESSBALANCE		= "getaddressbalance";
+constexpr auto RPC_API_GETADDRESSDELTAS		    = "getaddressdeltas";
+constexpr auto RPC_API_GETADDRESSMEMPOOL		= "getaddressmempool";
+constexpr auto RPC_API_GETADDRESSTXIDS			= "getaddresstxids";
+constexpr auto RPC_API_GETADDRESSUTXOS			= "getaddressutxos";
+constexpr auto RPC_API_GETSPENTINFO				= "getspentinfo";
+
 inline const char *get_rpc_result(const bool bSucceeded) noexcept { return bSucceeded ? RPC_RESULT_SUCCESS : RPC_RESULT_FAILED; }

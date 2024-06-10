@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
-// Copyright (c) 2018-2023 The Pastel developers
+// Copyright (c) 2018-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdio>
@@ -8,7 +8,7 @@
 
 #include <utils/uint256.h>
 #include <utils/utilstrencodings.h>
-#include <arith_uint256.h>
+#include <utils/arith_uint256.h>
 #include <crypto/common.h>
 
 using namespace std;
@@ -226,15 +226,16 @@ uint32_t arith_uint256::GetCompact(bool fNegative) const
 {
     int nSize = (bits() + 7) / 8;
     uint32_t nCompact = 0;
-    if (nSize <= 3) {
-        nCompact = GetLow64() << 8 * (3 - nSize);
-    } else {
+    if (nSize <= 3)
+        nCompact = static_cast<uint32_t>(GetLow64() << 8 * (3 - nSize));
+    else {
         arith_uint256 bn = *this >> 8 * (nSize - 3);
-        nCompact = bn.GetLow64();
+        nCompact = static_cast<uint32_t>(bn.GetLow64());
     }
     // The 0x00800000 bit denotes the sign.
     // Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
-    if (nCompact & 0x00800000) {
+    if (nCompact & 0x00800000)
+    {
         nCompact >>= 8;
         nSize++;
     }

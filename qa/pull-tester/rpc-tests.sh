@@ -37,6 +37,9 @@ EOF
 
 # groups of test scripts - can be executed independently
 declare -a testScripts=(
+    'addressindex.py'
+    'spentindex.py'
+    'timestampindex.py'
     'framework.py'
     'wallet_anchorfork.py'
     'wallet_changeindicator.py'
