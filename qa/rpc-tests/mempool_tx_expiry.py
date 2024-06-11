@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -9,7 +10,7 @@
 
 from test_framework.authproxy import JSONRPCException
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, initialize_chain_clean, \
+from test_framework.util import assert_equal, \
     connect_nodes_bi, sync_blocks, start_nodes, \
     wait_and_assert_operationid_status
 
@@ -24,10 +25,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
     def __init__(self):
         super().__init__()
         self.setup_clean_chain = True
-
-    def setup_chain(self):
-        print(f"Initializing test directory {self.options.tmpdir}")
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
+        self.num_nodes = 3
 
     def setup_nodes(self):
         return start_nodes(self.num_nodes, self.options.tmpdir,

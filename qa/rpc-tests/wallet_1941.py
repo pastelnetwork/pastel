@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) 2016 The Zcash developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 # This is a regression test for #1941.
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, initialize_chain_clean, \
+from test_framework.util import assert_equal, \
     initialize_datadir, start_nodes, start_node, connect_nodes_bi, \
     pasteld_processes, wait_and_assert_operationid_status
 
@@ -18,9 +19,10 @@ starttime = 1608854400
 
 class Wallet1941RegressionTest (BitcoinTestFramework):
 
-    def setup_chain(self):
-        print(f"Initializing test directory {self.options.tmpdir}")
-        initialize_chain_clean(self.options.tmpdir, 1)
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+        self.num_nodes = 1
 
     def setup_network(self, split=False):
         self.nodes = start_nodes(1, self.options.tmpdir, extra_args=[['-debug=zrpc']] )

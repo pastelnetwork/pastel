@@ -17,7 +17,7 @@ enum class MN_FEE: uint32_t
 	COUNT
 };
 
-static constexpr CAmount DEFAULT_MIN_MN_FEE_PSL = 1; // 1 PSL
+constexpr CAmount DEFAULT_MIN_MN_FEE_PSL = 1; // 1 PSL
 
 enum class GetTopMasterNodeStatus: int
 {
@@ -45,35 +45,35 @@ enum class MNCacheItem : uint8_t
     COUNT
 };
 
-static constexpr int DATASTREAM_VERSION = 1;
+constexpr int DATASTREAM_VERSION = 1;
 
 // used to define block hash to use in masternode ping
-static constexpr uint32_t MN_PING_HEIGHT_OFFSET = 12;
-static constexpr uint32_t MN_PING_HEIGHT_EXPIRATION = 24;
+constexpr uint32_t MN_PING_HEIGHT_OFFSET = 12;
+constexpr uint32_t MN_PING_HEIGHT_EXPIRATION = 24;
 // 7 days, 1 block per 2.5 minutes -> 4032
-static constexpr uint32_t MAX_IN_PROCESS_COLLECTION_TICKET_AGE = 7 * 24 * static_cast<uint32_t>(60 / 2.5);
-static constexpr int64_t SN_ELIGIBILITY_CHECK_DELAY_SECS = 5 * 60;
-static constexpr int SN_ELIGIBILITY_LAST_SEEN_TIME_SECS = 150;
-static constexpr uint32_t MN_RECOVERY_LOOKBACK_BLOCKS = 100;
+constexpr uint32_t MAX_IN_PROCESS_COLLECTION_TICKET_AGE = 7 * 24 * static_cast<uint32_t>(60 / 2.5);
+constexpr int64_t SN_ELIGIBILITY_CHECK_DELAY_SECS = 5 * 60;
+constexpr int SN_ELIGIBILITY_LAST_SEEN_TIME_SECS = 150;
+constexpr uint32_t MN_RECOVERY_LOOKBACK_BLOCKS = 100;
 
-static constexpr int DSEG_UPDATE_SECONDS        = 3 * 60 * 60;
+constexpr int DSEG_UPDATE_SECONDS        = 3 * 60 * 60;
 
-static constexpr int LAST_PAID_SCAN_BLOCKS      = 100;
+constexpr int LAST_PAID_SCAN_BLOCKS      = 100;
 
-static constexpr int MIN_POSE_PROTO_VERSION     = 70203;
-static constexpr int MAX_POSE_CONNECTIONS       = 10;
-static constexpr int MAX_POSE_RANK              = 10;
-static constexpr int MAX_POSE_BLOCKS            = 10;
+constexpr int MIN_POSE_PROTO_VERSION     = 70203;
+constexpr int MAX_POSE_CONNECTIONS       = 10;
+constexpr int MAX_POSE_RANK              = 10;
+constexpr int MAX_POSE_BLOCKS            = 10;
 
-static constexpr size_t MNB_RECOVERY_QUORUM_TOTAL   = 10;
-static constexpr size_t MNB_RECOVERY_QUORUM_REQUIRED   = 6;
-static constexpr int MNB_RECOVERY_MAX_ASK_ENTRIES   = 10;
-static constexpr int MNB_RECOVERY_WAIT_SECONDS      = 60;
-static constexpr int MNB_RECOVERY_RETRY_SECONDS     = 3 * 60 * 60;
+constexpr size_t MNB_RECOVERY_QUORUM_TOTAL   = 10;
+constexpr size_t MNB_RECOVERY_QUORUM_REQUIRED   = 6;
+constexpr int MNB_RECOVERY_MAX_ASK_ENTRIES   = 10;
+constexpr int MNB_RECOVERY_WAIT_SECONDS      = 60;
+constexpr int MNB_RECOVERY_RETRY_SECONDS     = 3 * 60 * 60;
 
-static constexpr auto MNCACHE_FILENAME = "mncache.dat";
-static constexpr auto MNCACHE_CACHE_MAGIC_STR = "magicMasternodeCache";
-static constexpr auto MNCACHE_SERIALIZATION_VERSION_PREFIX = "CMasternodeMan-Version-";
-static constexpr uint32_t MNCACHE_VERSION_OLD = 7;
-static constexpr uint32_t MNCACHE_VERSION_PROTECTED = 8;
+constexpr auto MNCACHE_FILENAME = "mncache.dat";
+constexpr auto MNCACHE_CACHE_MAGIC_STR = "magicMasternodeCache";
+constexpr auto MNCACHE_SERIALIZATION_VERSION_PREFIX = "CMasternodeMan-Version-";
+constexpr uint32_t MNCACHE_VERSION_OLD = 7;
+constexpr uint32_t MNCACHE_VERSION_PROTECTED = 8;
 

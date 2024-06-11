@@ -432,7 +432,7 @@ Get only masternodes eligible for mining next block:
     const auto vMnEligibility = gl_pMiningEligibilityManager->GetMnEligibilityInfo(nMiningEnabledCount, nNewBlockHeight, eligibilityFilter);
 
     UniValue obj(UniValue::VOBJ);
-    obj.pushKV("height", static_cast<uint64_t>(nNewBlockHeight));
+    obj.pushKV("height", nNewBlockHeight);
     obj.pushKV("miningEnabledCount", nMiningEnabledCount);
     const uint64_t nMnEligibilityThreshold = CMiningEligibilityManager::GetMnEligibilityThreshold(nMiningEnabledCount);
     obj.pushKV("blocksChecked", nMnEligibilityThreshold);
@@ -446,7 +446,7 @@ Get only masternodes eligible for mining next block:
 		node.pushKV("eligible", mnEligibility.bEligibleForMining);
 		node.pushKV("collateralid", mnEligibility.sCollateralId);
 		node.pushKV("mnstate", MasternodeStateToString(mnEligibility.mnstate));
-		node.pushKV("minedBlocks", static_cast<uint64_t>(mnEligibility.nMinedBlockCount));
+		node.pushKV("minedBlocks", mnEligibility.nMinedBlockCount);
         node.pushKV("lastMinedBlockHeight", mnEligibility.nLastMinedBlockHeight);
         if (mnEligibility.nLastMinedBlockHeight >= 0)
         {
@@ -495,12 +495,12 @@ Examples:
     LOCK(cs_main);
 
     UniValue obj(UniValue::VOBJ);
-    obj.pushKV("blocks",           (int)chainActive.Height());
-    obj.pushKV("currentblocksize", (uint64_t)nLastBlockSize);
-    obj.pushKV("currentblocktx",   (uint64_t)nLastBlockTx);
+    obj.pushKV("blocks",           chainActive.Height());
+    obj.pushKV("currentblocksize", nLastBlockSize);
+    obj.pushKV("currentblocktx",   nLastBlockTx);
     obj.pushKV("difficulty",       (double)GetNetworkDifficulty());
     obj.pushKV("errors",           GetWarnings("statusbar"));
-    obj.pushKV("genproclimit",     (int)GetArg("-genproclimit", -1));
+    obj.pushKV("genproclimit",     GetArg("-genproclimit", -1));
     obj.pushKV("localsolps"  ,     getlocalsolps(params, false));
     obj.pushKV("networksolps",     getnetworksolps(params, false));
     obj.pushKV("networkhashps",    getnetworksolps(params, false));
@@ -666,7 +666,7 @@ Examples:
 	UniValue obj(UniValue::VOBJ);
 	obj.pushKV("pastelid", sGenId);
     obj.pushKV("signature", HexStr(string_to_vector(sMerkelRootSignature)));
-	obj.pushKV("utc_timestamp", static_cast<uint64_t>(GetTime()));
+	obj.pushKV("utc_timestamp", GetTime());
 	obj.pushKV("blockhash", pChainTip->GetBlockHashString());
 	obj.pushKV("height", pChainTip->nHeight);
 	return obj;
@@ -702,7 +702,7 @@ Examples:
     uint256 hash = ParseHashStr(params[0].get_str(), "txid");
     CAmount nAmount = params[2].get_int64();
 
-    mempool.PrioritiseTransaction(hash, params[0].get_str(), params[1].get_real(), nAmount);
+    mempool.PrioritizeTransaction(hash, params[0].get_str(), params[1].get_real(), nAmount);
     return true;
 }
 
@@ -1024,18 +1024,18 @@ Examples:
         result.pushKV("coinbasetxn", txCoinbase);
     } else {
         result.pushKV("coinbaseaux", aux);
-        result.pushKV("coinbasevalue", (int64_t)pblock->vtx[0].vout[0].nValue);
+        result.pushKV("coinbasevalue", pblock->vtx[0].vout[0].nValue);
     }
     result.pushKV("longpollid", chainActive.Tip()->GetBlockHash().GetHex() + to_string(nTransactionsUpdatedLast));
     result.pushKV("target", hashTarget.GetHex());
-    result.pushKV("mintime", (int64_t)pindexPrev->GetMedianTimePast()+1);
+    result.pushKV("mintime", pindexPrev->GetMedianTimePast()+1);
     result.pushKV("mutable", aMutable);
     result.pushKV("noncerange", "00000000ffffffff");
-    result.pushKV("sigoplimit", (int64_t)MAX_BLOCK_SIGOPS);
-    result.pushKV("sizelimit", (int64_t)MAX_BLOCK_SIZE);
+    result.pushKV("sigoplimit", MAX_BLOCK_SIGOPS);
+    result.pushKV("sizelimit", MAX_BLOCK_SIZE);
     result.pushKV("curtime", pblock->GetBlockTime());
     result.pushKV("bits", strprintf("%08x", pblock->nBits));
-    result.pushKV("height", (int64_t)(pindexPrev->nHeight) + 1);
+    result.pushKV("height", pindexPrev->nHeight + 1);
 
     //PASTEL-->
     //MN payment

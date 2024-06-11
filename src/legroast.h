@@ -4,13 +4,13 @@
  * Based on LegRoast implementation https://github.com/WardBeullens/LegRoast
  * by Ward Beullens
  *
- * Copyright (c) 2021-2023 The Pastel Core developers
+ * Copyright (c) 2021-2024 The Pastel Core developers
  * 
  * \date   June 2021
  *********************************************************************/
 #pragma once
-#include <string.h>
-#include <stdint.h>
+#include <cstring>
+#include <cstdint>
 #include <memory>
 #include <array>
 

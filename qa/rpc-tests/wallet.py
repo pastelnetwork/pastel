@@ -11,7 +11,6 @@ from test_framework.util import (
     assert_true,
     assert_raises_rpc,
     assert_shows_help,
-    initialize_chain_clean,
     start_nodes,
     start_node,
     connect_nodes_bi,
@@ -36,9 +35,6 @@ class WalletTest (BitcoinTestFramework):
         self.num_nodes = 4
         self.mining_node_num = 1
 
-    def setup_chain(self):
-        print(f"Initializing test directory {self.options.tmpdir}")
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
         self.nodes = start_nodes(3, self.options.tmpdir)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -7,7 +8,7 @@
 
 from test_framework.authproxy import JSONRPCException
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, initialize_chain_clean, \
+from test_framework.util import assert_equal, \
     start_nodes, start_node, pasteld_processes
 
 def check_array_result(object_array, to_match, expected):
@@ -36,10 +37,6 @@ class KeyPoolTest(BitcoinTestFramework):
         super().__init__()
         self.setup_clean_chain = False
         self.num_nodes = 1
-
-    def setup_chain(self):
-        print(f'Initializing test directory {self.options.tmpdir}')
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir, extra_args=[['-experimentalfeatures', '-developerencryptwallet']])

@@ -325,7 +325,7 @@ TEST_F(ReadAlerts, AlertNotify)
     vector<string> r = read_lines(temp);
     EXPECT_EQ(r.size(), 6u);
 
-// Windows built-in echo semantics are different than posixy shells. Quotes and
+// Windows built-in echo semantics are different than posix shells. Quotes and
 // whitespace are printed literally.
 
 #ifndef WIN32

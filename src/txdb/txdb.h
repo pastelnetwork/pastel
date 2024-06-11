@@ -12,7 +12,9 @@
 
 #include <coins.h>
 #include <dbwrapper.h>
-#include <spentindex.h>
+#include <txdb/addressindex.h>
+#include <txdb/timestampindex.h>
+#include <txdb/spentindex.h>
 #include <chainparams.h>
 #include <chain.h>
 
@@ -27,6 +29,28 @@ static const int64_t nDefaultDbCache = 450;
 static const int64_t nMaxDbCache = sizeof(void*) > 4 ? 16384 : 1024;
 //! min. -dbcache in (MiB)
 static const int64_t nMinDbCache = 4;
+
+constexpr auto TXDB_FLAG_INSIGHT_EXPLORER = "insightexplorer";
+constexpr auto TXDB_FLAG_TXINDEX = "txindex";
+constexpr auto TXDB_FLAG_PRUNEDBLOCKFILES = "prunedblockfiles";
+
+// START insightexplorer
+struct CAddressUnspentKey;
+struct CAddressUnspentValue;
+struct CAddressIndexKey;
+struct CAddressIndexIteratorKey;
+struct CAddressIndexIteratorHeightKey;
+struct CSpentIndexKey;
+struct CSpentIndexValue;
+struct CTimestampIndexKey;
+struct CTimestampIndexIteratorKey;
+struct CTimestampBlockIndexKey;
+struct CTimestampBlockIndexValue;
+
+typedef std::pair<CAddressUnspentKey, CAddressUnspentValue> CAddressUnspentDbEntry;
+typedef std::pair<CAddressIndexKey, CAmount> CAddressIndexDbEntry;
+typedef std::pair<CSpentIndexKey, CSpentIndexValue> CSpentIndexDbEntry;
+// END insightexplorer
 
 /** CCoinsView backed by the coin database (chainstate/) */
 class CCoinsViewDB : public CCoinsView
@@ -67,13 +91,29 @@ public:
     bool ReadLastBlockFile(int &nFile) const;
     bool WriteReindexing(bool fReindex);
     bool ReadReindexing(bool &fReindex) const;
-    bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const;
     bool ReadTxIndex(const uint256 &txid, CDiskTxPos &pos);
     bool WriteTxIndex(const std::vector<std::pair<uint256, CDiskTxPos> > &list);
     bool WriteFlag(const std::string &name, bool fValue);
     bool ReadFlag(const std::string &name, bool &fValue) const;
     bool ReadFlag(const std::string &name, std::atomic_bool &fValue) const;
-    bool LoadBlockIndexGuts(const CChainParams& chainparams);
+    bool LoadBlockIndexGuts(const CChainParams& chainparams, std::string &strLoadError);
+
+    // START insightexplorer
+    bool UpdateAddressUnspentIndex(const std::vector<CAddressUnspentDbEntry> &vect);
+    bool ReadAddressUnspentIndex(const uint160 &addressHash, const uint8_t type, std::vector<CAddressUnspentDbEntry> &vect) const;
+    bool WriteAddressIndex(const std::vector<CAddressIndexDbEntry> &vect);
+    bool EraseAddressIndex(const std::vector<CAddressIndexDbEntry> &vect);
+    bool ReadAddressIndex(const uint160 &addressHash, const uint8_t type, std::vector<CAddressIndexDbEntry> &addressIndex, 
+        const uint32_t nStartHeight = 0, const uint32_t nEndHeight = 0) const;
+    bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const;
+    bool UpdateSpentIndex(const std::vector<CSpentIndexDbEntry> &vect);
+    bool WriteTimestampIndex(const CTimestampIndexKey &timestampIndex);
+    bool ReadTimestampIndex(unsigned int high, unsigned int low,
+            const bool fActiveOnly, std::vector<std::pair<uint256, unsigned int> > &vect);
+    bool WriteTimestampBlockIndex(const CTimestampBlockIndexKey &blockhashIndex,
+            const CTimestampBlockIndexValue &logicalts);
+    bool ReadTimestampBlockIndex(const uint256 &hash, unsigned int &logicalTS) const;
+    // END insightexplorer
 
 private:
     CBlockTreeDB(const CBlockTreeDB&);

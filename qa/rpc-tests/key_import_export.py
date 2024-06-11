@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2017 The Zcash developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
@@ -7,7 +8,7 @@ from decimal import Decimal, getcontext
 getcontext().prec = 16
 from functools import reduce
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_greater_than, start_nodes, initialize_chain_clean, connect_nodes_bi
+from test_framework.util import assert_equal, assert_greater_than, start_nodes, connect_nodes_bi
 
 import logging
 import sys
@@ -20,10 +21,6 @@ class KeyImportExportTest (BitcoinTestFramework):
         super().__init__()
         self.num_nodes = 4
         self.setup_clean_chain = True
-
-    def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir )

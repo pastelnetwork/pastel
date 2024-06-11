@@ -246,6 +246,7 @@ PASTELID_H = \
   pastelid/ed.h
 
 UTILS_CPP = \
+  utils/arith_uint256.cpp \
   utils/ascii85.cpp \
   utils/base58.cpp \
   utils/bech32.cpp \
@@ -259,6 +260,7 @@ UTILS_CPP = \
   utils/utilstrencodings.cpp
 
 UTILS_H = \
+  utils/arith_uint256.h \
   utils/ascii85.h \
   utils/base58.h \
   utils/bech32.h \
@@ -289,8 +291,8 @@ UTILS_H = \
 
 
 .PHONY: FORCE collate-libsnark check-symbols check-security
-# bitcoin core #
-BITCOIN_CORE_H = \
+# pastel core #
+PASTEL_CORE_H = \
   accept_to_mempool.h \
   addrman.h \
   alert.h \
@@ -300,7 +302,6 @@ BITCOIN_CORE_H = \
   amqp/amqpnotificationinterface.h \
   amqp/amqppublishnotifier.h \
   amqp/amqpsender.h \
-  arith_uint256.h \
   asyncrpcoperation.h \
   asyncrpcqueue.h \
   chain.h \
@@ -324,8 +325,13 @@ BITCOIN_CORE_H = \
   consensus/validation.h \
   core_io.h \
   core_memusage.h \
+  txdb/addressindex.h \
+  txdb/spentindex.h \
+  txdb/timestampindex.h \
+  txdb/txdb.h \
   deprecation.h \
   ecc_context.h \
+  experimental_features.h \
   hash.h \
   httprpc.h \
   httpserver.h \
@@ -391,7 +397,6 @@ BITCOIN_CORE_H = \
   timedata.h \
   torcontrol.h \
   transaction_builder.h \
-  txdb.h \
   txmempool.h \
   txmempool_entry.h\
   ui_interface.h \
@@ -439,6 +444,7 @@ libbitcoin_server_a_SOURCES = \
   chain_options.cpp \
   checkpoints.cpp \
   deprecation.cpp \
+  experimental_features.cpp \
   httprpc.cpp \
   httpserver.cpp \
   init.cpp \
@@ -475,12 +481,12 @@ libbitcoin_server_a_SOURCES = \
   script_check.cpp \
   timedata.cpp \
   torcontrol.cpp \
-  txdb.cpp \
+  txdb/txdb.cpp \
   txmempool.cpp \
   validationinterface.cpp \
   $(MNODE_CPP) \
   $(PASTELID_CPP) \
-  $(BITCOIN_CORE_H) \
+  $(PASTEL_CORE_H) \
   $(LIBZCASH_H)
 
 
@@ -519,7 +525,7 @@ libbitcoin_wallet_a_SOURCES = \
   wallet/wallet.cpp \
   wallet/wallet_ismine.cpp \
   wallet/walletdb.cpp \
-  $(BITCOIN_CORE_H) \
+  $(PASTEL_CORE_H) \
   $(LIBZCASH_H)
 
 # crypto primitives library
@@ -560,7 +566,6 @@ libbitcoin_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 libbitcoin_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_common_a_SOURCES = \
   amount.cpp \
-  arith_uint256.cpp \
   chainparams.cpp \
   coins.cpp \
   compressor.cpp \
@@ -585,7 +590,7 @@ libbitcoin_common_a_SOURCES = \
   transaction_builder.cpp \
   utiltest.cpp \
   $(UTILS_H) \
-  $(BITCOIN_CORE_H) \
+  $(PASTEL_CORE_H) \
   $(LIBZCASH_H)
 
 # util: shared between all executables.
@@ -608,7 +613,7 @@ libbitcoin_util_a_SOURCES =\
   utiltime.cpp \
   $(UTILS_CPP) \
   $(UTILS_H) \
-  $(BITCOIN_CORE_H) \
+  $(PASTEL_CORE_H) \
   $(LIBZCASH_H)
 
 if GLIBC_BACK_COMPAT
@@ -620,7 +625,7 @@ libbitcoin_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
 libbitcoin_cli_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbitcoin_cli_a_SOURCES = \
   rpc/client.cpp \
-  $(BITCOIN_CORE_H) \
+  $(PASTEL_CORE_H) \
   $(LIBZCASH_H)
 
 nodist_libbitcoin_util_a_SOURCES = $(srcdir)/obj/build.h

@@ -49,7 +49,7 @@ class Status {
   }
 
   // Returns true iff the status indicates success.
-  bool ok() const { return (state_ == NULL); }
+  bool ok() const { return (state_ == nullptr); }
 
   // Returns true iff the status indicates a NotFound error.
   bool IsNotFound() const { return code() == kNotFound; }
@@ -59,6 +59,12 @@ class Status {
 
   // Returns true iff the status indicates an IOError.
   bool IsIOError() const { return code() == kIOError; }
+
+  // Returns true iff the status indicates a NotSupportedError.
+  bool IsNotSupportedError() const { return code() == kNotSupported; }
+
+  // Returns true iff the status indicates an InvalidArgument.
+  bool IsInvalidArgument() const { return code() == kInvalidArgument; }
 
   // Return a string representation of this status suitable for printing.
   // Returns the string "OK" for success.

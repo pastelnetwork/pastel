@@ -1,12 +1,10 @@
+#pragma once
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
-// file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_CRYPTO_SHA512_H
-#define BITCOIN_CRYPTO_SHA512_H
-
-#include <stdint.h>
-#include <stdlib.h>
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <cstdint>
+#include <cstdlib>
 
 /** A hasher class for SHA-512. */
 class CSHA512
@@ -24,5 +22,3 @@ public:
     void Finalize(unsigned char hash[OUTPUT_SIZE]);
     CSHA512& Reset();
 };
-
-#endif // BITCOIN_CRYPTO_SHA512_H

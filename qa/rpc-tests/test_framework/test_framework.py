@@ -31,6 +31,11 @@ from .util import (
 
 getcontext().prec = 16
 
+node_id_0: int = 0
+node_id_1: int = 1
+node_id_2: int = 2
+node_id_3: int = 3
+
 class BitcoinTestFramework(object):
     _coin       = Decimal('100000')
     _maxmoney   = Decimal('21000000000')
@@ -67,7 +72,10 @@ class BitcoinTestFramework(object):
 
     def setup_chain(self):
         print(f'Initializing test directory {self.options.tmpdir}')
-        initialize_chain(self.options.tmpdir)
+        if self.setup_clean_chain:
+            initialize_chain_clean(self.options.tmpdir, self.num_nodes)
+        else:
+            initialize_chain(self.options.tmpdir)
 
     def setup_nodes(self):
         return start_nodes(self.num_nodes, self.options.tmpdir)
@@ -83,11 +91,13 @@ class BitcoinTestFramework(object):
         # on outward.  This ensures that chains are properly reorganised.
         if not split:
             connect_nodes_bi(self.nodes, 1, 2)
-            sync_blocks(self.nodes[1:3])
-            sync_mempools(self.nodes[1:3])
+            max_node_no = 3 if self.num_nodes >= 4 else 2
+            sync_blocks(self.nodes[1:max_node_no])
+            sync_mempools(self.nodes[1:max_node_no])
 
         connect_nodes_bi(self.nodes, 0, 1)
-        connect_nodes_bi(self.nodes, 2, 3)
+        if self.num_nodes > 3:
+            connect_nodes_bi(self.nodes, 2, 3)
         self.is_network_split = split
         self.sync_all()
 
@@ -251,10 +261,6 @@ class ComparisonTestFramework(BitcoinTestFramework):
         parser.add_argument("--refbinary", dest="refbinary",
                           default=os.getenv("PASTELD", "pasteld"),
                           help="pasteld binary to use for reference nodes (if any)")
-
-    def setup_chain(self):
-        print(f'Initializing test directory {self.options.tmpdir}')
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,

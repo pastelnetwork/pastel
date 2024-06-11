@@ -378,7 +378,7 @@ UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsC
 
     UniValue obj(UniValue::VOBJ);
 
-    obj.pushKV("height", nHeight);
+    obj.pushKV(RPC_KEY_HEIGHT, nHeight);
     obj.pushKV("IP:port", mnInfo.get_address());
     obj.pushKV("protocol", (int64_t)mnInfo.nProtocolVersion);
     obj.pushKV("outpoint", mnInfo.GetDesc());

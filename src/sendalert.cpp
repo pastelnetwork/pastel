@@ -75,15 +75,20 @@ void ThreadSendAlert()
     CAlert alert;
     alert.nRelayUntil   = GetTime() + 15 * 60;
     alert.nExpiration   = GetTime() + 10 * 365 * DAYS;
-    alert.nID           = 1012;  // alert ID
-    alert.nCancel       = 1011;  // cancels previous messages up to this ID number
+    alert.nID           = 1014;  // alert ID
+    alert.nCancel       = 1013;  // cancels previous messages up to this ID number
 
     // These versions are protocol versions
     // 170002 : 1.0.0
     // 170006 : 1.1.2
     // 170007 : 2.0.0
-    alert.nMinVer       = 170002;
-    alert.nMaxVer       = 170010;
+    // 170008 : Sapling
+    // 170009 : Cezanne v1.1.4 (1007,1008) 
+    // 170010 : Monet   v2.0.0 (1009,1010)
+    // 170011 : Vermeer v2.1.0 (1011,1012)
+    // 170012 : Matisse v2.2.0 (1013,1014)
+    alert.nMinVer       = 170010;
+    alert.nMaxVer       = 170011;
 
     //
     // main.cpp:
@@ -92,6 +97,7 @@ void ThreadSendAlert()
     //  Higher numbers mean higher priority
     //  4000 or higher will put the RPC into safe mode
     alert.nPriority     = ALERT_PRIORITY_SAFE_MODE;
+    // alert.nPriority     = 1000;
     alert.strComment    = "";
     alert.strStatusBar  = "WARNING: You are running a version that is no longer compatible-- upgrade your node here, or you won't be able to connect to the network: https://github.com/PastelNetwork/Pastel";
     alert.strRPCError   = alert.strStatusBar;

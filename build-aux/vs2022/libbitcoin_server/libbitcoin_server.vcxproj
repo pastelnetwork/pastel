@@ -96,6 +96,7 @@
     <ClCompile Include="..\..\..\src\checkpoints.cpp" />
     <ClCompile Include="..\..\..\src\dbwrapper.cpp" />
     <ClCompile Include="..\..\..\src\deprecation.cpp" />
+    <ClCompile Include="..\..\..\src\experimental_features.cpp" />
     <ClCompile Include="..\..\..\src\httprpc.cpp" />
     <ClCompile Include="..\..\..\src\httpserver.cpp" />
     <ClCompile Include="..\..\..\src\init.cpp" />
@@ -195,7 +196,7 @@
     <ClCompile Include="..\..\..\src\sendalert.cpp" />
     <ClCompile Include="..\..\..\src\timedata.cpp" />
     <ClCompile Include="..\..\..\src\torcontrol.cpp" />
-    <ClCompile Include="..\..\..\src\txdb.cpp" />
+    <ClCompile Include="..\..\..\src\txdb\txdb.cpp" />
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
     <ClCompile Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.cpp" />
@@ -216,6 +217,7 @@
     <ClInclude Include="..\..\..\src\core_memusage.h" />
     <ClInclude Include="..\..\..\src\dbwrapper.h" />
     <ClInclude Include="..\..\..\src\deprecation.h" />
+    <ClInclude Include="..\..\..\src\experimental_features.h" />
     <ClInclude Include="..\..\..\src\httprpc.h" />
     <ClInclude Include="..\..\..\src\httpserver.h" />
     <ClInclude Include="..\..\..\src\init.h" />
@@ -322,7 +324,10 @@
     <ClInclude Include="..\..\..\src\script_check.h" />
     <ClInclude Include="..\..\..\src\timedata.h" />
     <ClInclude Include="..\..\..\src\torcontrol.h" />
-    <ClInclude Include="..\..\..\src\txdb.h" />
+    <ClInclude Include="..\..\..\src\txdb\addressindex.h" />
+    <ClInclude Include="..\..\..\src\txdb\spentindex.h" />
+    <ClInclude Include="..\..\..\src\txdb\timestampindex.h" />
+    <ClInclude Include="..\..\..\src\txdb\txdb.h" />
     <ClInclude Include="..\..\..\src\txmempool.h" />
     <ClInclude Include="..\..\..\src\txmempool_entry.h" />
     <ClInclude Include="..\..\..\src\ui_interface.h" />

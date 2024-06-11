@@ -11,8 +11,8 @@
 
 class CMasternodePaymentVote;
 
-static constexpr size_t MNPAYMENTS_SIGNATURES_REQUIRED  = 6;
-static constexpr size_t MNPAYMENTS_SIGNATURES_TOTAL     = 20;
+constexpr size_t MNPAYMENTS_SIGNATURES_REQUIRED  = 6;
+constexpr size_t MNPAYMENTS_SIGNATURES_TOTAL     = 20;
 constexpr auto MNPAYMENTS_CACHE_MAGIC_STR = "magicMasternodePaymentsCache";
 constexpr auto MNPAYMENTS_CACHE_FILENAME = "mnpayments.dat";
 

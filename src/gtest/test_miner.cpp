@@ -8,7 +8,7 @@
 
 #include <utils/uint256.h>
 #include <utils/util.h>
-#include <arith_uint256.h>
+#include <utils/arith_uint256.h>
 #include <consensus/validation.h>
 #include <chainparams.h>
 #include <key.h>

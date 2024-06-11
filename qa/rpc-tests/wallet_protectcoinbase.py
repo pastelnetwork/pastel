@@ -5,16 +5,16 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 # PASTEL doesnt support protected coinbase, so this test will NOT test for this!!!
+import sys
+import timeit
+from decimal import getcontext, Decimal
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
 from test_framework.mininode import COIN
-from test_framework.util import assert_equal, initialize_chain_clean, \
+from test_framework.util import assert_equal, \
     start_nodes, connect_nodes_bi, wait_and_assert_operationid_status
 
-import sys
-import timeit
-from decimal import Decimal, getcontext, ROUND_DOWN, ROUND_UP
 getcontext().prec = 16
 
 def check_value_pool(node, name, total):
@@ -30,12 +30,13 @@ def check_value_pool(node, name, total):
 
 class WalletProtectCoinbaseTest (BitcoinTestFramework):
 
-    def setup_chain(self):
-        print(f'Initializing test directory {self.options.tmpdir}')
-        initialize_chain_clean(self.options.tmpdir, 4)
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+        self.num_nodes = 4
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(4, self.options.tmpdir, extra_args=[['-debug=zrpcunsafe']] * 4 )
+        self.nodes = start_nodes(4, self.options.tmpdir, extra_args=[['-debug=zrpcunsafe']] * self.num_nodes )
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)

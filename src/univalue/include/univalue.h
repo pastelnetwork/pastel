@@ -27,6 +27,15 @@ public:
     UniValue(int64_t val_) {
         setInt(val_);
     }
+    UniValue(uint32_t val_) {
+        setInt(val_);
+    }
+
+    // Template constructor for size_t, enabled only if size_t is not the same as uint64_t
+    template <typename _T = size_t, typename std::enable_if<!std::is_same<_T, uint64_t>::value>::type* = nullptr>
+    UniValue(size_t val_) {
+        setInt(static_cast<uint64_t>(val_));
+    }
     UniValue(bool val_) {
         setBool(val_);
     }
@@ -62,6 +71,7 @@ public:
     bool setNumStr(const std::string& val);
     bool setNumStr(std::string&& val);
     bool setInt(uint64_t val);
+    bool setInt(uint32_t val);
     bool setInt(int64_t val);
     bool setInt(int val_) { return setInt((int64_t)val_); }
     bool setFloat(double val);

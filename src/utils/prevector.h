@@ -383,6 +383,11 @@ public:
         return *item_ptr(pos);
     }
 
+    const T& at(size_type pos) const noexcept
+	{
+		return *item_ptr(pos);
+	}
+
     void resize(size_type new_size)
     {
         while (size() > new_size)

@@ -1,12 +1,12 @@
 // Copyright 2014 BitPay, Inc.
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include <stdint.h>
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <map>
+
 #include <univalue.h>
 #include <gtest/gtest.h>
 
@@ -218,10 +218,13 @@ TEST(test_univalue, univalue_object)
     EXPECT_TRUE(obj.pushKV(strKey, cVal));
 
     strKey = "distance";
-    EXPECT_TRUE(obj.pushKV(strKey, (int64_t) 25));
+    EXPECT_TRUE(obj.pushKV(strKey, static_cast<int64_t>(25)));
 
     strKey = "time";
-    EXPECT_TRUE(obj.pushKV(strKey, (uint64_t) 3600));
+    EXPECT_TRUE(obj.pushKV(strKey, static_cast<uint64_t>(3600)));
+
+    strKey = "index";
+    EXPECT_TRUE(obj.pushKV(strKey, static_cast<uint32_t>(1234)));
 
     strKey = "calories";
     EXPECT_TRUE(obj.pushKV(strKey, (int) 12));
@@ -236,13 +239,14 @@ TEST(test_univalue, univalue_object)
     EXPECT_TRUE(obj.pushKVs(obj2));
 
     EXPECT_FALSE(obj.empty());
-    EXPECT_EQ(obj.size(), 9);
+    EXPECT_EQ(obj.size(), 10);
 
     EXPECT_EQ(obj["age"].getValStr(), "100");
     EXPECT_EQ(obj["first"].getValStr(), "John");
     EXPECT_EQ(obj["last"].getValStr(), "Smith");
     EXPECT_EQ(obj["distance"].getValStr(), "25");
     EXPECT_EQ(obj["time"].getValStr(), "3600");
+    EXPECT_EQ(obj["index"].getValStr(), "1234");
     EXPECT_EQ(obj["calories"].getValStr(), "12");
     EXPECT_EQ(obj["temperature"].getValStr(), "90.012");
     EXPECT_EQ(obj["cat1"].getValStr(), "9000");

@@ -272,14 +272,14 @@ As json rpc
         {
             retVal.pushKV("type", GetTicketName(get<0>(result.value())));
             retVal.pushKV("owns", true);
-            retVal.pushKV("txid", move(get<1>(result.value())));
+            retVal.pushKV(RPC_KEY_TXID, move(get<1>(result.value())));
             retVal.pushKV("transfer", move(get<2>(result.value())));
         }
         else 
         {
             retVal.pushKV("type", "unknown");
             retVal.pushKV("owns", false);
-            retVal.pushKV("txid", "");
+            retVal.pushKV(RPC_KEY_TXID, "");
             retVal.pushKV("transfer", "");
         }
     }
@@ -395,7 +395,7 @@ UniValue thumbids_search(const search_thumbids_t &p)
             return resultArray.size();
         string sThumbHash = jNftAppTicket["thumbnail_hash"];
         UniValue matchObj(UniValue::VOBJ);
-        matchObj.pushKV("txid", pNftTicket->GetTxId());
+        matchObj.pushKV(RPC_KEY_TXID, pNftTicket->GetTxId());
         matchObj.pushKV("thumbnail_hash", move(sThumbHash));
         resultArray.push_back(move(matchObj));
         return resultArray.size();

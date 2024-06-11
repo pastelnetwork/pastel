@@ -26,7 +26,7 @@ public:
 };
 
 // 0-based indexes of the params to convert
-static const array<CRPCConvertParam, 80> gl_vRPCConvertParams =
+static const array<CRPCConvertParam, 86> gl_vRPCConvertParams =
 {{
     { "addmultisigaddress", nullptr, {0, 1} },
     { "createmultisig", nullptr, {0, 1} },
@@ -38,10 +38,15 @@ static const array<CRPCConvertParam, 80> gl_vRPCConvertParams =
     { "generate", nullptr, {0} },
     { "getaddednodeinfo", nullptr, {0} },
     { "getaddressmempool", nullptr, {0} },
+    { "getaddressutxos", nullptr, {0} },
+    { "getaddressdeltas", nullptr, {0} },
+    { "getaddressbalance", nullptr, {0} },
+    { "getaddresstxids", nullptr, {0} },
     { "getbalance", nullptr, {1, 2} },
     { "getblock", nullptr, {1} },
     { "getblockdeltas", nullptr, {0} },
     { "getblockhash", nullptr, {0, 1} },
+    { "getblockhashes", nullptr, {0, 1, 2} },
     { "getblockheader", nullptr, {1} },
     { "getblockmininginfo", nullptr, {1} },
     { "getblocksignature", nullptr, {0, 1} },
@@ -54,6 +59,7 @@ static const array<CRPCConvertParam, 80> gl_vRPCConvertParams =
     { "getrawtransaction", nullptr, {1} },
     { "getreceivedbyaccount", nullptr, {1} },
     { "getreceivedbyaddress", nullptr, {1} },
+    { "getspentinfo", nullptr, {0} },
     { "gettransaction", nullptr, {1} },
     { "gettxout", nullptr, {1, 2} },
     { "gettxoutproof", nullptr, {0} },

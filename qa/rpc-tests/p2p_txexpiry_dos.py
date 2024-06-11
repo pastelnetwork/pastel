@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
+# Copyright (c) 2018-2024 The Pastel developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 from test_framework.mininode import NodeConn, NetworkThread, \
     msg_tx, LATEST_PROTO_VERSION
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import initialize_chain_clean, start_nodes, \
+from test_framework.util import  start_nodes, \
     p2p_port, assert_equal
 from tx_expiry_helper import TestNode, create_transaction
 
@@ -19,10 +20,6 @@ class TxExpiryDoSTest(BitcoinTestFramework):
         super().__init__()
         self.num_nodes = 1
         self.setup_clean_chain = True
-
-    def setup_chain(self):
-        print("Initializing test directory " + self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,

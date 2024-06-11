@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -282,27 +282,30 @@ unsigned int CScript::GetSigOpCount(const CScript& scriptSig) const
 }
 
 // insightexplorer
-bool CScript::IsPayToPublicKeyHash() const
+bool CScript::IsPayToPublicKeyHash() const noexcept
 {
     // Extra-fast test for pay-to-pubkey-hash CScripts:
-    if (this->size() != 25) return false;
+    if (size() != 25)
+        return false;
 
-    return (this->size() == 25 &&
-	    (*this)[0] == OP_DUP &&
-	    (*this)[1] == OP_HASH160 &&
-	    (*this)[2] == 0x14 &&
-	    (*this)[23] == OP_EQUALVERIFY &&
-	    (*this)[24] == OP_CHECKSIG);
+    return (size() == 25 &&
+	    at(0) == OP_DUP &&
+	    at(1) == OP_HASH160 &&
+	    at(2) == 0x14 &&
+	    at(23) == OP_EQUALVERIFY &&
+	    at(24) == OP_CHECKSIG);
 }
-bool CScript::IsPayToScriptHash() const
+
+bool CScript::IsPayToScriptHash() const noexcept
 {
     // Extra-fast test for pay-to-script-hash CScripts:
-    if (this->size() != 23) return false;
+    if (size() != 23)
+        return false;
 
-    return (this->size() == 23 &&
-            (*this)[0] == OP_HASH160 &&
-            (*this)[1] == 0x14 &&
-            (*this)[22] == OP_EQUAL);
+    return (size() == 23 &&
+            at(0) == OP_HASH160 &&
+            at(1) == 0x14 &&
+            at(22) == OP_EQUAL);
 }
 
 bool CScript::IsPushOnly() const
@@ -347,13 +350,23 @@ string CScript::ToString() const
 }
 
 // insightexplorer
+ScriptType CScript::GetType() const noexcept
+{
+    if (IsPayToPublicKeyHash())
+        return ScriptType::P2PKH;
+    if (IsPayToScriptHash())
+        return ScriptType::P2SH;
+    // We don't know this script type
+    return ScriptType::UNKNOWN;
+}
+
 uint160 CScript::AddressHash() const
 {
     // where the address bytes begin depends on the script type
     int start;
-    if (this->IsPayToPublicKeyHash())
+    if (IsPayToPublicKeyHash())
         start = 3;
-    else if (this->IsPayToScriptHash())
+    else if (IsPayToScriptHash())
         start = 2;
     else {
         // unknown script type; return zeros (this can happen)
@@ -372,4 +385,19 @@ uint160 CScript::AddressHash() const
     
     v_uint8 hashBytes(this->begin() + start, this->begin() + start + 20);
     return uint160(hashBytes);
+}
+
+optional<ScriptType> toScriptType(const uint8_t type)
+{
+    switch (type)
+    {
+        case static_cast<uint8_t>(ScriptType::UNKNOWN):
+            return ScriptType::UNKNOWN;
+        case static_cast<uint8_t>(ScriptType::P2PKH):
+            return ScriptType::P2PKH;
+        case static_cast<uint8_t>(ScriptType::P2SH):
+            return ScriptType::P2SH;
+        default:
+            return std::nullopt;
+    }
 }

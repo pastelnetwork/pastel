@@ -1,21 +1,12 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #
 # Test REST interface
 #
-
-from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import (
-    assert_equal, 
-    assert_greater_than,
-    initialize_chain_clean, 
-    start_nodes, 
-    connect_nodes_bi
-)
 
 import struct
 import binascii
@@ -24,9 +15,17 @@ from io import BytesIO
 from codecs import encode
 from decimal import Decimal, getcontext
 getcontext().prec = 16
-
 import http.client
 import urllib.parse
+
+from test_framework.test_framework import BitcoinTestFramework
+from test_framework.util import (
+    assert_equal, 
+    assert_greater_than,
+    start_nodes,
+    connect_nodes_bi,
+)
+
 
 def deser_uint256(f):
     r = 0
@@ -62,10 +61,6 @@ class RESTTest (BitcoinTestFramework):
         super().__init__()
         self.setup_clean_chain = True
         self.num_nodes = 3
-
-    def setup_chain(self):
-        print(f"Initializing test directory {self.options.tmpdir}")
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir)

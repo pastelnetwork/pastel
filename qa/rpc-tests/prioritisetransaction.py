@@ -1,26 +1,23 @@
 #!/usr/bin/env python3
 # Copyright (c) 2017 The Zcash developers
-# Copyright (c) 2022 The Pastel developers
+# Copyright (c) 2022-2024 The Pastel developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
+import time
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_equal,
     connect_nodes,
-    initialize_chain_clean,
     start_node,
 )
 from test_framework.mininode import COIN
 
-import time
-
-
 class PrioritiseTransactionTest (BitcoinTestFramework):
-
-    def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 4)
+    def __init__(self):
+        super().__init__()
+        self.setup_clean_chain = True
+        self.num_nodes = 4
 
     def setup_network(self, split=False):
         self.nodes = []

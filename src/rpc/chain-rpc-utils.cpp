@@ -72,19 +72,51 @@ variant<uint32_t, uint256> rpc_get_block_hash_or_height(const UniValue& paramVal
 	return nBlockHeight;
 }
 
-uint32_t rpc_get_height_param(const UniValue& params, size_t no)
+uint32_t rpc_parse_height_param(const UniValue& param)
 {
     uint32_t nChainHeight = gl_nChainHeight;
-    if (params.size() > no)
+    const int64_t nHeight = get_long_number(param);
+    if (nHeight < 0 || nHeight >= numeric_limits<uint32_t>::max())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, 
+            "<height> parameter cannot be negative or greater than " + to_string(numeric_limits<uint32_t>::max()));
+    if (nHeight != 0)
+        nChainHeight = static_cast<uint32_t>(nHeight);
+	return nChainHeight;
+}
+
+uint32_t rpc_get_height_param(const UniValue& params, size_t no)
+{
+    return (params.size() > no) ? rpc_parse_height_param(params[no]) : gl_nChainHeight.load();
+}
+
+tuple<uint32_t, uint32_t> rpc_get_height_range(const UniValue& params)
+{
+    uint32_t nStartHeight = 0;
+    uint32_t nEndHeight = 0;
+    if (params[0].isObject())
     {
-        const int64_t nHeight = get_long_number(params[no]);
-        if (nHeight < 0 || nHeight >= numeric_limits<uint32_t>::max())
-            throw JSONRPCError(RPC_INVALID_PARAMETER, 
-                "<height> parameter cannot be negative or greater than " + to_string(numeric_limits<uint32_t>::max()));
-        if (nHeight != 0)
-            nChainHeight = static_cast<uint32_t>(nHeight);
+        const auto &startValue = find_value(params[0].get_obj(), "start");
+        const auto &endValue = find_value(params[0].get_obj(), "end");
+
+        // If either is not specified, the other is ignored.
+        if (!startValue.isNull() && !endValue.isNull())
+        {
+            nStartHeight = rpc_parse_height_param(startValue);
+            nEndHeight = rpc_parse_height_param(endValue);
+
+            if (nEndHeight < nStartHeight)
+            {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                    "End value is expected to be greater than or equal to start");
+            }
+        }
     }
-    return nChainHeight;
+
+    const uint32_t nChainHeight = gl_nChainHeight;
+    if (nStartHeight > nChainHeight || nEndHeight > nChainHeight)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Start or end is outside chain range");
+
+    return make_tuple(nStartHeight, nEndHeight);
 }
 
 CBlockScanner::CBlockScanner(const uint256& hashBlockStart)

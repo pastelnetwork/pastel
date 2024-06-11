@@ -2305,7 +2305,7 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
 {
     if (!pindex)
         return;
-    nCachedBlockHeight = pindex->nHeight;
+    nCachedBlockHeight = pindex->GetHeight();
 
     CheckSameAddr();
 

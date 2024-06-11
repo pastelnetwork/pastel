@@ -1,5 +1,5 @@
 // Copyright (c) 2017 The Zcash developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -19,6 +19,7 @@
 #include <main.h>
 #include <net.h>
 #include <netbase.h>
+#include <rpc/rpc_consts.h>
 #include <rpc/protocol.h>
 #include <rpc/server.h>
 #include <timedata.h>
@@ -222,11 +223,11 @@ bool ShieldToAddress::operator()(const libzcash::SaplingPaymentAddress &zaddr) c
             throw JSONRPCError(RPC_WALLET_ERROR, "sendrawtransaction did not return an error or a txid.");
 
         auto txid = sendResultValue.get_str();
-        o.pushKV("txid", move(txid));
+        o.pushKV(RPC_KEY_TXID, move(txid));
     } else {
         // Test mode does not send the transaction to the network.
         o.pushKV("test", 1);
-        o.pushKV("txid", m_op->tx_.GetHash().ToString());
+        o.pushKV(RPC_KEY_TXID, m_op->tx_.GetHash().ToString());
         o.pushKV("hex", move(signedtxn));
     }
     m_op->set_result(move(o));
@@ -290,7 +291,7 @@ void AsyncRPCOperation_shieldcoinbase::sign_send_raw_transaction(UniValue obj)
         stream >> tx;
 
         o.pushKV("test", 1);
-        o.pushKV("txid", tx.GetHash().ToString());
+        o.pushKV(RPC_KEY_TXID, tx.GetHash().ToString());
         o.pushKV("hex", signedtxn);
     }
     set_result(move(o));

@@ -4,11 +4,11 @@
 // Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
 #include <assert.h>
 #include <climits>
 #include <limits>
 #include <stdexcept>
+#include <optional>
 
 #include <utils/vector_types.h>
 #include <utils/uint256.h>
@@ -527,9 +527,9 @@ public:
      */
     unsigned int GetSigOpCount(const CScript& scriptSig) const;
 
-    bool IsPayToPublicKeyHash() const;
-    bool IsPayToScriptHash() const;
-
+    bool IsPayToPublicKeyHash() const noexcept;
+    bool IsPayToScriptHash() const noexcept;
+    ScriptType GetType() const noexcept;
     uint160 AddressHash() const;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
@@ -566,6 +566,8 @@ template<typename Stream> inline void Unserialize(Stream& s, ScriptType& a )
 {
     a = (ScriptType)ser_readdata32(s);
 }
+
+std::optional<ScriptType> toScriptType(const uint8_t type);
 
 #ifdef _MSC_VER
 #pragma warning(pop)

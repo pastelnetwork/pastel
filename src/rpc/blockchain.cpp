@@ -14,11 +14,13 @@
 #include <amount.h>
 #include <chain.h>
 #include <chainparams.h>
+#include <chain_options.h>
 #include <checkpoints.h>
 #include <consensus/validation.h>
 #include <key_io.h>
 #include <main.h>
 #include <primitives/transaction.h>
+#include <rpc/rpc_consts.h>
 #include <rpc/server.h>
 #include <rpc/coin-supply.h>
 #include <rpc/rpc-utils.h>
@@ -109,11 +111,11 @@ UniValue blockheaderToJSON(const CBlockIndex* blockindex)
     if (chainActive.Contains(blockindex))
         confirmations = chainActive.Height() - blockindex->nHeight + 1;
     result.pushKV("confirmations", confirmations);
-    result.pushKV("height", blockindex->nHeight);
+    result.pushKV(RPC_KEY_HEIGHT, blockindex->nHeight);
     result.pushKV("version", blockindex->nVersion);
     result.pushKV("merkleroot", blockindex->hashMerkleRoot.GetHex());
     result.pushKV("finalsaplingroot", blockindex->hashFinalSaplingRoot.GetHex());
-    result.pushKV("time", (int64_t)blockindex->nTime);
+    result.pushKV("time", blockindex->nTime);
     result.pushKV("nonce", blockindex->nNonce.GetHex());
     result.pushKV("solution", HexStr(blockindex->nSolution));
     result.pushKV("bits", strprintf("%08x", blockindex->nBits));
@@ -142,8 +144,8 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     if (chainActive.Contains(blockindex))
         confirmations = chainActive.Height() - blockindex->nHeight + 1;
     result.pushKV("confirmations", confirmations);
-    result.pushKV("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
-    result.pushKV("height", blockindex->nHeight);
+    result.pushKV("size", ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
+    result.pushKV(RPC_KEY_HEIGHT, blockindex->nHeight);
     result.pushKV("version", block.nVersion);
     result.pushKV("merkleroot", block.hashMerkleRoot.GetHex());
     result.pushKV("finalsaplingroot", block.hashFinalSaplingRoot.GetHex());
@@ -262,10 +264,10 @@ UniValue mempoolToJSON(bool fVerbose = false)
             const uint256& hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
             info.reserve(7);
-            info.pushKV("size", static_cast<uint64_t>(e.GetTxSize()));
+            info.pushKV("size", e.GetTxSize());
             info.pushKV("fee", ValueFromAmount(e.GetFee()));
             info.pushKV("time", e.GetTime());
-            info.pushKV("height", (int)e.GetHeight());
+            info.pushKV(RPC_KEY_HEIGHT, e.GetHeight());
             info.pushKV("startingpriority", e.GetPriority(e.GetHeight()));
             info.pushKV("currentpriority", e.GetPriority(chainActive.Height()));
             const CTransaction& tx = e.GetTx();
@@ -403,7 +405,7 @@ Examples:
     {
 		CBlockIndex* pblockindex = chainActive[nHeight + i];
 		UniValue entry(UniValue::VOBJ);
-		entry.pushKV("height", pblockindex->nHeight);
+		entry.pushKV(RPC_KEY_HEIGHT, pblockindex->GetHeight());
 		entry.pushKV("hash", pblockindex->GetBlockHash().GetHex());
 		result.push_back(move(entry));
 	}
@@ -615,11 +617,11 @@ Examples:
     FlushStateToDisk();
     if (gl_pCoinsTip->GetStats(stats))
     {
-        ret.pushKV("height", (int64_t)stats.nHeight);
+        ret.pushKV(RPC_KEY_HEIGHT, stats.nHeight);
         ret.pushKV("bestblock", stats.hashBlock.GetHex());
-        ret.pushKV("transactions", (int64_t)stats.nTransactions);
-        ret.pushKV("txouts", (int64_t)stats.nTransactionOutputs);
-        ret.pushKV("bytes_serialized", (int64_t)stats.nSerializedSize);
+        ret.pushKV("transactions", stats.nTransactions);
+        ret.pushKV("txouts", stats.nTransactionOutputs);
+        ret.pushKV("bytes_serialized", stats.nSerializedSize);
         ret.pushKV("hash_serialized", stats.hashSerialized.GetHex());
         ret.pushKV("total_amount", ValueFromAmount(stats.nTotalAmount));
     }
@@ -733,8 +735,8 @@ Examples:
 
     LOCK(cs_main);
 
-    int nCheckLevel = static_cast<int>(GetArg("-checklevel", 3));
-    int nCheckDepth = static_cast<int>(GetArg("-checkblocks", FORK_BLOCK_LIMIT));
+    uint32_t nCheckLevel = static_cast<uint32_t>(GetArg("-checklevel", DEFAULT_BLOCKDB_CHECKLEVEL));
+    uint32_t nCheckDepth = static_cast<uint32_t>(GetArg("-checkblocks", DEFAULT_BLOCKDB_CHECKBLOCKS));
     if (params.size() > 0)
         nCheckLevel = params[0].get_int();
     if (params.size() > 1)
@@ -871,7 +873,7 @@ Examples:
 
     UniValue obj(UniValue::VOBJ);
     obj.pushKV("chain",                 Params().NetworkIDString());
-    obj.pushKV("blocks",                (int)chainActive.Height());
+    obj.pushKV("blocks",                chainActive.Height());
     obj.pushKV("headers",               pindexBestHeader ? pindexBestHeader->nHeight : -1);
     obj.pushKV("bestblockhash",         chainActive.Tip()->GetBlockHash().GetHex());
     obj.pushKV("difficulty",            (double)GetNetworkDifficulty());
@@ -881,7 +883,7 @@ Examples:
 
     SproutMerkleTree tree;
     gl_pCoinsTip->GetSproutAnchorAt(gl_pCoinsTip->GetBestAnchor(SPROUT), tree);
-    obj.pushKV("commitments",           static_cast<uint64_t>(tree.size()));
+    obj.pushKV("commitments",           tree.size());
 
     CBlockIndex* tip = chainActive.Tip();
     UniValue valuePools(UniValue::VARR);
@@ -997,7 +999,7 @@ Examples:
     for (const auto block : setTips)
     {
         UniValue obj(UniValue::VOBJ);
-        obj.pushKV("height", block->nHeight);
+        obj.pushKV(RPC_KEY_HEIGHT, block->nHeight);
         obj.pushKV("hash", block->phashBlock->GetHex());
 
         const int branchLen = block->nHeight - chainActive.FindFork(block)->nHeight;
@@ -1034,9 +1036,9 @@ Examples:
 UniValue mempoolInfoToJSON()
 {
     UniValue ret(UniValue::VOBJ);
-    ret.pushKV("size", (int64_t) mempool.size());
-    ret.pushKV("bytes", (int64_t) mempool.GetTotalTxSize());
-    ret.pushKV("usage", (int64_t) mempool.DynamicMemoryUsage());
+    ret.pushKV("size", mempool.size());
+    ret.pushKV("bytes", mempool.GetTotalTxSize());
+    ret.pushKV("usage", mempool.DynamicMemoryUsage());
 
     return ret;
 }
@@ -1160,25 +1162,30 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block is an orphan");
     int confirmations = chainActive.Height() - blockindex->nHeight + 1;
     result.pushKV("confirmations", confirmations);
-    result.pushKV("size", (int)::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
-    result.pushKV("height", blockindex->nHeight);
+    result.pushKV("size", ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
+    result.pushKV(RPC_KEY_HEIGHT, blockindex->GetHeight());
     result.pushKV("version", block.nVersion);
     result.pushKV("merkleroot", block.hashMerkleRoot.GetHex());
 
     KeyIO keyIO(Params());
     UniValue deltas(UniValue::VARR);
+    deltas.reserve(block.vtx.size());
     uint64_t i = 0;
-    for (const auto &tx : block.vtx) {
-        const uint256 txhash = tx.GetHash();
+    for (const auto &tx : block.vtx)
+    {
+        const uint256 &txid = tx.GetHash();
 
         UniValue entry(UniValue::VOBJ);
-        entry.pushKV("txid", txhash.GetHex());
+        entry.pushKV(RPC_KEY_TXID, txid.GetHex());
         entry.pushKV("index", i);
 
+        size_t index = 0;
         UniValue inputs(UniValue::VARR);
-        if (!tx.IsCoinBase()) {
-            uint64_t index = 0;
-            for (const auto &input : tx.vin) {
+        inputs.reserve(tx.vin.size());
+        if (!tx.IsCoinBase())
+        {
+            for (const auto &input : tx.vin)
+            {
                 UniValue delta(UniValue::VOBJ);
                 CSpentIndexValue spentInfo;
                 CSpentIndexKey spentKey(input.prevout.hash, input.prevout.n);
@@ -1187,49 +1194,49 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
                     throw JSONRPCError(RPC_INTERNAL_ERROR, "Spent information not available");
                 }
                 CTxDestination dest = DestFromAddressHash(spentInfo.addressType, spentInfo.addressHash);
-                if (IsValidDestination(dest)) {
+                if (IsValidDestination(dest))
                     delta.pushKV("address", keyIO.EncodeDestination(dest));
-                }
                 delta.pushKV("patoshis", -1 * spentInfo.patoshis);
                 delta.pushKV("index", index);
                 delta.pushKV("prevtxid", input.prevout.hash.GetHex());
-                delta.pushKV("prevout", (int)input.prevout.n);
+                delta.pushKV("prevout", input.prevout.n);
 
                 inputs.push_back(move(delta));
-                index ++;
+                ++index;
             }
         }
         entry.pushKV("inputs", move(inputs));
 
         UniValue outputs(UniValue::VARR);
+        outputs.reserve(tx.vout.size());
         
-        uint64_t outIndex = 0;
-        for (const auto &out : tx.vout) {
+        index = 0;
+        for (const auto &out : tx.vout)
+        {
             UniValue delta(UniValue::VOBJ);
             const uint160 addrhash = out.scriptPubKey.AddressHash();
             CTxDestination dest;
 
-            if (out.scriptPubKey.IsPayToScriptHash()) {
+            if (out.scriptPubKey.IsPayToScriptHash())
                 dest = CScriptID(addrhash);
-            } else if (out.scriptPubKey.IsPayToPublicKeyHash()) {
+            else if (out.scriptPubKey.IsPayToPublicKeyHash())
                 dest = CKeyID(addrhash);
-            }
-            if (IsValidDestination(dest)) {
+            
+            if (IsValidDestination(dest))
                 delta.pushKV("address", keyIO.EncodeDestination(dest));
-            }
             delta.pushKV("patoshis", out.nValue);
-            delta.pushKV("index", outIndex);
+            delta.pushKV("index", index);
 
             outputs.push_back(move(delta));
-            outIndex ++;
+            ++index;
         }
         entry.pushKV("outputs", move(outputs));
         deltas.push_back(move(entry));
-        i ++;
+        ++i;
     }
     result.pushKV("deltas", move(deltas));
     result.pushKV("time", block.GetBlockTime());
-    result.pushKV("mediantime", (int64_t)blockindex->GetMedianTimePast());
+    result.pushKV("mediantime", blockindex->GetMedianTimePast());
     result.pushKV("nonce", block.nNonce.GetHex());
     result.pushKV("bits", strprintf("%08x", block.nBits));
     result.pushKV("difficulty", GetDifficulty(blockindex));
@@ -1246,17 +1253,12 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
 // insightexplorer
 UniValue getblockdeltas(const UniValue& params, bool fHelp)
 {
-    const string enableArg = "insightexplorer";
-    const bool enabled = fExperimentalMode && fInsightExplorer;
-    string disabledMsg = "";
-    if (!enabled) {
-        disabledMsg = experimentalDisabledHelpMsg("getblockdeltas", enableArg);
-    }
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETBLOCKDELTAS);
+
     if (fHelp || params.size() != 1)
         throw runtime_error(
 R"(getblockdeltas blockhash
-Returns the txid and index where an output is spent.)"
-            + disabledMsg +
+Returns the txid and index where an output is spent.)" + disabledMsg +
 R"(Arguments:
 1. "hash"          (string, required) The block hash
 
@@ -1301,18 +1303,16 @@ Result:
 }
 
 Examples:)"
-            + HelpExampleCli("getblockdeltas", "00227e566682aebd6a7a5b772c96d7a999cadaebeaf1ce96f4191a3aad58b00b")
-            + HelpExampleRpc("getblockdeltas", "\"00227e566682aebd6a7a5b772c96d7a999cadaebeaf1ce96f4191a3aad58b00b\"")
+            + HelpExampleCli(RPC_API_GETBLOCKDELTAS, "00227e566682aebd6a7a5b772c96d7a999cadaebeaf1ce96f4191a3aad58b00b")
+            + HelpExampleRpc(RPC_API_GETBLOCKDELTAS, "\"00227e566682aebd6a7a5b772c96d7a999cadaebeaf1ce96f4191a3aad58b00b\"")
         );
 
-    if (!enabled) {
-        throw JSONRPCError(RPC_MISC_ERROR, "Error: getblockdeltas is disabled. "
-            "Run './pastel-cli help getblockdeltas' for instructions on how to enable this feature.");
-    }
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETBLOCKDELTAS);
 
     string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
 
+    LOCK(cs_main);
     if (mapBlockIndex.count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
@@ -1327,6 +1327,90 @@ Examples:)"
 
     return blockToDeltasJSON(block, pblockindex);
 }
+
+// insightexplorer
+UniValue getblockhashes(const UniValue& params, bool fHelp)
+{
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETBLOCKHASHES);
+
+    if (fHelp || params.size() < 2)
+        throw runtime_error(
+R"(getblockhashes high low ( {"noOrphans": true|false, "logicalTimes": true|false} )
+
+Returns array of hashes of blocks within the timestamp range provided,
+greater or equal to low, less than high.
+)" + disabledMsg + R"(
+Arguments:
+1. high                            (numeric, required) The newer block timestamp
+2. low                             (numeric, required) The older block timestamp
+3. options                         (string, optional) A json object
+    {
+      "noOrphans": true|false      (boolean) will only include blocks on the main chain
+      "logicalTimes": true|false   (boolean) will include logical timestamps with hashes
+    }
+
+Result:
+[
+  "xxxx"                   (hex string) The block hash
+]
+or
+[
+  {
+    "blockhash": "xxxx"    (hex string) The block hash
+    "logicalts": n         (numeric) The logical timestamp
+  }
+]
+
+Examples:
+)" + HelpExampleCli(RPC_API_GETBLOCKHASHES, R"(1558141697 1558141576)") +
+     HelpExampleRpc(RPC_API_GETBLOCKHASHES, R"(1558141697, 1558141576)") +
+     HelpExampleCli(RPC_API_GETBLOCKHASHES, R"(1558141697 1558141576 '{"noOrphans":false, "logicalTimes":true}')"));
+
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETBLOCKHASHES);
+
+    unsigned int high = params[0].get_int();
+    unsigned int low = params[1].get_int();
+    bool fActiveOnly = false;
+    bool fLogicalTS = false;
+
+    if (params.size() > 2)
+    {
+        UniValue noOrphans = find_value(params[2].get_obj(), "noOrphans");
+        if (!noOrphans.isNull())
+            fActiveOnly = noOrphans.get_bool();
+
+        UniValue returnLogical = find_value(params[2].get_obj(), "logicalTimes");
+        if (!returnLogical.isNull())
+            fLogicalTS = returnLogical.get_bool();
+    }
+
+    vector<pair<uint256, unsigned int> > blockHashes;
+    {
+        LOCK(cs_main);
+        if (!GetTimestampIndex(high, low, fActiveOnly, blockHashes))
+        {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                "No information available for block hashes");
+        }
+    }
+    UniValue result(UniValue::VARR);
+    result.reserve(blockHashes.size());
+    for (const auto &[hash, ts] : blockHashes)
+    {
+        if (!fLogicalTS)
+        {
+            result.push_back(hash.GetHex());
+            continue;
+        }
+
+        UniValue item(UniValue::VOBJ);
+        item.pushKV("blockhash", hash.GetHex());
+        item.pushKV("logicalts", ts);
+        result.push_back(move(item));
+    }
+    return result;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
@@ -1347,6 +1431,7 @@ static const CRPCCommand commands[] =
 
     // insightexplorer
     { "blockchain",         "getblockdeltas",         &getblockdeltas,         false },    
+    { "blockchain",         "getblockhashes",         &getblockhashes,         true },
     
     /* Not shown in help */
     { "hidden",             "invalidateblock",        &invalidateblock,        true  },

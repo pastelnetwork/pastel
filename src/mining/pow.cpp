@@ -10,7 +10,7 @@
 #include <utils/uint256.h>
 #include <utils/util.h>
 #include <utils/streams.h>
-#include <arith_uint256.h>
+#include <utils/arith_uint256.h>
 #include <chain.h>
 #include <chainparams.h>
 #include <primitives/block.h>

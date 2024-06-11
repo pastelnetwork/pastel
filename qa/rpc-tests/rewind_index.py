@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
+import time
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, initialize_chain_clean, \
+from test_framework.util import assert_equal, \
     nuparams, sync_blocks, OVERWINTER_BRANCH_ID, SAPLING_BRANCH_ID, \
     start_nodes, start_node, connect_nodes_bi, pasteld_processes
-
-import time
 
 FAKE_SPROUT = [nuparams(OVERWINTER_BRANCH_ID, 210), nuparams(SAPLING_BRANCH_ID, 220)]
 FAKE_OVERWINTER = [nuparams(OVERWINTER_BRANCH_ID, 10), nuparams(SAPLING_BRANCH_ID, 220)]
@@ -19,10 +19,6 @@ class RewindBlockIndexTest (BitcoinTestFramework):
         super().__init__()
         self.num_nodes = 3
         self.setup_clean_chain = True
-
-    def setup_chain(self):
-        print(f"Initializing test directory {self.options.tmpdir}")
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self, split=False):
         # Node 0 - Overwinter, then Sprout, then Overwinter again

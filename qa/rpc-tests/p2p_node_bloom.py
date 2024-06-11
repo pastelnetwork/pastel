@@ -6,7 +6,7 @@
 from test_framework.mininode import NodeConn, NodeConnCB, NetworkThread, \
     msg_filteradd, msg_filterclear, mininode_lock, LATEST_PROTO_VERSION
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import initialize_chain_clean, start_nodes, \
+from test_framework.util import start_nodes, \
     p2p_port, assert_equal
 
 import time
@@ -50,10 +50,6 @@ class NodeBloomTest(BitcoinTestFramework):
        super().__init__()
        self.num_nodes = 2
        self.setup_clean_chain = True
-
-    def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
 
     def setup_network(self):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,

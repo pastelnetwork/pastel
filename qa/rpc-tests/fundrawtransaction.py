@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
-# Copyright (c) 2018-2022 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import (
+    BitcoinTestFramework,
+    node_id_0,
+    node_id_1,
+    node_id_2,
+)
 from test_framework.authproxy import JSONRPCException
 from test_framework.util import (
     assert_equal, 
@@ -27,10 +32,6 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.setup_clean_chain = True
         self.num_nodes = 4
 
-    def setup_chain(self):
-        print(f"Initializing test directory {self.options.tmpdir}")
-        initialize_chain_clean(self.options.tmpdir, self.num_nodes)
-
     def setup_network(self, split=False):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir,
                            extra_args=[['-experimentalfeatures', '-developerencryptwallet']] 
@@ -48,14 +49,14 @@ class RawTransactionsTest(BitcoinTestFramework):
         print("Mining blocks...")
         feeTolerance = self._2patoshi #if the fee's positive delta is higher than this value tests will fail, neg. delta always fail the tests
 
-        self.generate_and_sync_inc(1, 2)
-        self.generate_and_sync_inc(201, 0)
+        self.generate_and_sync_inc(1, node_id_2)
+        self.generate_and_sync_inc(201, node_id_0)
 
         print("Sending node0->node2  1.5, 1.0, 5.0 PSL")
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),1.5);
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),1.0);
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),5.0);
-        self.generate_and_sync_inc(1, 0)
+        self.generate_and_sync_inc(1, node_id_0)
 
         ###############
         # simple test #
@@ -297,7 +298,7 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         assert_equal(matchingOuts, 2)
         assert_equal(len(dec_tx['vout']), 3)
-        self.generate_and_sync_inc(1, 0)
+        self.generate_and_sync_inc(1, node_id_0)
 
         ##############################################
         # test a fundrawtransaction with invalid vin #
@@ -425,7 +426,7 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         # send 1.2 BTC to msig addr
         txId = self.nodes[0].sendtoaddress(mSigObj, 1.2)
-        self.generate_and_sync_inc(1, 1)
+        self.generate_and_sync_inc(1, node_id_1)
 
         oldBalance = self.nodes[1].getbalance()
         inputs = []
@@ -435,7 +436,7 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         signedTx = self.nodes[2].signrawtransaction(fundedTx['hex'])
         txId = self.nodes[2].sendrawtransaction(signedTx['hex'])
-        self.generate_and_sync_inc(1, 1)
+        self.generate_and_sync_inc(1, node_id_1)
 
         # make sure funds are received at node1
         assert_equal(oldBalance+Decimal('1.10000'), self.nodes[1].getbalance())
@@ -476,7 +477,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         self.nodes[1].walletpassphrase("test", 300)
         signedTx = self.nodes[1].signrawtransaction(fundedTx['hex'])
         txId = self.nodes[1].sendrawtransaction(signedTx['hex'])
-        self.generate_and_sync_inc(1, 1)
+        self.generate_and_sync_inc(1, node_id_1)
 
         newBalance = self.nodes[0].getbalance()
         print(f"node0 balance after: {newBalance}")
@@ -492,12 +493,12 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         #empty node1, send some small coins from node0 to node1
         self.nodes[1].sendtoaddress(self.nodes[0].getnewaddress(), self.nodes[1].getbalance(), "", "", True);
-        self.generate_and_sync_inc(1, 0)
+        self.generate_and_sync_inc(1, node_id_0)
 
         print("Send 10 PSL from node0 to 20 new addresses on node1")
         for i in range(0,20):
             self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 10)
-        self.generate_and_sync_inc(1, 0)
+        self.generate_and_sync_inc(1, node_id_0)
 
         #fund a tx with ~20 small inputs
         inputs = []
@@ -520,11 +521,11 @@ class RawTransactionsTest(BitcoinTestFramework):
 
         #again, empty node1, send some small coins from node0 to node1
         self.nodes[1].sendtoaddress(self.nodes[0].getnewaddress(), self.nodes[1].getbalance(), "", "", True)
-        self.generate_and_sync_inc(1, 0)
+        self.generate_and_sync_inc(1, node_id_0)
 
         for i in range(0,20):
             self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 10)
-        self.generate_and_sync_inc(1, 0)
+        self.generate_and_sync_inc(1, node_id_0)
 
         #fund a tx with ~20 small inputs
         oldBalance = self.nodes[0].getbalance()
@@ -536,7 +537,7 @@ class RawTransactionsTest(BitcoinTestFramework):
         fundedTx = self.nodes[1].fundrawtransaction(rawTx)
         fundedAndSignedTx = self.nodes[1].signrawtransaction(fundedTx['hex'])
         txId = self.nodes[1].sendrawtransaction(fundedAndSignedTx['hex'])
-        self.generate_and_sync_inc(1, 0)
+        self.generate_and_sync_inc(1, node_id_0)
         newBalance = self.nodes[0].getbalance()
         print(f"node0 balance : {newBalance}")
         assert_equal(oldBalance+self._reward+Decimal('190'), newBalance) #190+block reward

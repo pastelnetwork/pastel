@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <list>
@@ -11,8 +11,8 @@
 #include <utils/vector_types.h>
 #include <utils/sync.h>
 #include <coins.h>
-#include <addressindex.h>
-#include <spentindex.h>
+#include <txdb/addressindex.h>
+#include <txdb/spentindex.h>
 #include <script/scripttype.h>
 #include <txmempool_entry.h>
 #include <policy/fees.h>
@@ -44,7 +44,7 @@ struct mempoolentry_txid
 class CompareTxMemPoolEntryByFee
 {
 public:
-    bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b) noexcept
+    bool operator()(const CTxMemPoolEntry& a, const CTxMemPoolEntry& b) const noexcept
     {
         if (a.GetFeeRate() == b.GetFeeRate())
             return a.GetTime() < b.GetTime();
@@ -100,9 +100,11 @@ private:
     uint64_t totalTxSize = 0; //! sum of all mempool tx' byte sizes
     uint64_t cachedInnerUsage; //! sum of dynamic memory usage of all the map elements (NOT the maps themselves)
 
-    std::unordered_map<uint256, const CTransaction*> mapSaplingNullifiers;
-    std::map<CSpentIndexKey, CSpentIndexValue, CSpentIndexKeyCompare> mapSpent;
-    std::map<CMempoolAddressDeltaKey, CMempoolAddressDelta, CMempoolAddressDeltaKeyCompare> mapAddress;
+    std::unordered_map<uint256, const CTransaction*> m_mapSaplingNullifiers;
+    std::map<CSpentIndexKey, CSpentIndexValue, CSpentIndexKeyCompare> m_mapSpent;
+    std::unordered_map<uint256, std::vector<CSpentIndexKey>> m_mapSpentInserted;
+    std::map<CMempoolAddressDeltaKey, CMempoolAddressDelta, CMempoolAddressDeltaKeyCompare> m_mapAddress;
+    std::unordered_map<uint256, std::vector<CMempoolAddressDeltaKey> > m_mapAddressInserted;
     // array of objects to notify for transactions add/remove events
     std::vector<std::shared_ptr<ITxMemPoolTracker>> m_vTxMemPoolTracker;
 
@@ -136,10 +138,14 @@ public:
     void check(const CCoinsViewCache *pcoins) const;
     void setSanityCheck(const double dFrequency = 1.0) noexcept { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
 
+    void addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view);
 	void getAddressIndex(const std::vector<std::pair<uint160, ScriptType>>& addresses,
-                         std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results);
+                         std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results) const;
+    void removeAddressIndex(const uint256& txHash);
 
-    bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value);
+    void addSpentIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view);
+    bool getSpentIndex(const CSpentIndexKey &key, CSpentIndexValue &value) const;
+    void removeSpentIndex(const uint256 &txHash);
 
 	bool addUnchecked(const uint256& hash, const CTxMemPoolEntry &entry, bool fCurrentEstimate = true);
     void remove(const CTransaction& tx, const bool fRecursive = true, std::list<CTransaction>* pRemovedTxList = nullptr);
@@ -161,58 +167,22 @@ public:
      */
     bool HasNoInputsOf(const CTransaction& tx) const;
 
-    /** Affect CreateNewBlock prioritisation of transactions */
-    void PrioritiseTransaction(const uint256& hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);
+    /** Affect CreateNewBlock prioritization of transactions */
+    void PrioritizeTransaction(const uint256& hash, const std::string strHash, double dPriorityDelta, const CAmount& nFeeDelta);
     void ApplyDeltas(const uint256& hash, double &dPriorityDelta, CAmount &nFeeDelta);
-    void ClearPrioritisation(const uint256& hash);
+    void ClearPrioritization(const uint256& hash);
 
     bool nullifierExists(const uint256& nullifier, ShieldedType type) const;
     // add object to track all add/remove events for transactions in mempool
     void AddTxMemPoolTracker(std::shared_ptr<ITxMemPoolTracker> pTracker);
-    /**
-     * Returns transaction count in the mempool (thread-safe).
-     * 
-     * \return 
-     */
-    size_t size() const
-    {
-        LOCK(cs);
-        return mapTx.size();
-    }
-
-    /**
-     * Returns total size of all transactions in the mempool (thread-safe).
-     * 
-     * \return tx pool size
-     */
-    uint64_t GetTotalTxSize() const
-    {
-        LOCK(cs);
-        return totalTxSize;
-    }
-
-    /**
-     * Returns true if transaction with txid exists (not thread-safe - need external cs lock).
-     * 
-     * \param txid - hash of the transaction
-     * \return true if transactions with the specified hash exists in the mempool
-     */
-    bool exists_nolock(const uint256& txid) const
-    {
-        return (mapTx.count(txid) != 0);
-    }
-
-    /**
-     * Returns true if transaction with txid exists (thread-safe).
-     * 
-     * \param txid - hash of the transaction
-     * \return true if transactions with the specified hash exists in the mempool
-     */
-    bool exists(const uint256 &txid) const
-    {
-        LOCK(cs);
-        return exists_nolock(txid);
-    }
+    // Returns transaction count in the mempool (thread-safe).
+    size_t size() const;
+    // Returns total size of all transactions in the mempool (thread-safe).
+    uint64_t GetTotalTxSize() const;
+    // Returns true if transaction with txid exists (not thread-safe - need external cs lock).
+    bool exists_nolock(const uint256& txid) const;
+    // Returns true if transaction with txid exists (thread-safe).
+    bool exists(const uint256& txid) const;
 
     // Lookup for the transaction with the specific hash (txid).
     virtual bool lookup(const uint256 &txid, CTransaction& tx, uint32_t * pnBlockHeight = nullptr) const;

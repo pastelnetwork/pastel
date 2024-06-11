@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <array>
@@ -18,12 +18,13 @@
 #include <main.h>
 #include <httpserver.h>
 #include <rpc/server.h>
+#include <rpc/rpc_consts.h>
 #include <txmempool.h>
 #include <version.h>
 
 using namespace std;
 
-static constexpr size_t MAX_GETUTXOS_OUTPOINTS = 15; //allow a max of 15 outpoints to be queried at once
+constexpr size_t MAX_GETUTXOS_OUTPOINTS = 15; //allow a max of 15 outpoints to be queried at once
 
 enum class RetFormat : uint32_t
 {
@@ -41,12 +42,12 @@ typedef struct _RF_NAME
     const char* name;
 } RF_NAME;
 
-static constexpr auto to_index(const RetFormat rf)
+constexpr auto to_index(const RetFormat rf)
 {
     return static_cast<std::underlying_type_t<RetFormat>>(rf);
 }
 
-static constexpr std::array<RF_NAME, to_index(RetFormat::COUNT)> rf_names =
+constexpr std::array<RF_NAME, to_index(RetFormat::COUNT)> rf_names =
 {{
     { RetFormat::UNDEF,     ""    },
     { RetFormat::BINARY,    "bin" },
@@ -587,8 +588,8 @@ static bool rest_getutxos(HTTPRequest* req, const string& strURIPart)
             for (const auto& coin : outs)
             {
                 UniValue utxo(UniValue::VOBJ);
-                utxo.pushKV("txvers", (int32_t)coin.nTxVer);
-                utxo.pushKV("height", (int32_t)coin.nHeight);
+                utxo.pushKV("txvers", coin.nTxVer);
+                utxo.pushKV(RPC_KEY_HEIGHT, coin.nHeight);
                 utxo.pushKV("value", ValueFromAmount(coin.out.nValue));
 
                 // include the script in a json output

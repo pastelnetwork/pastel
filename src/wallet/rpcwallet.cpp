@@ -22,6 +22,7 @@
 #include <net.h>
 #include <netbase.h>
 #include <coincontrol.h>
+#include <rpc/rpc_consts.h>
 #include <rpc/server.h>
 #include <rpc/rpc-utils.h>
 #include <rpc/chain-rpc-utils.h>
@@ -92,7 +93,7 @@ void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
         entry.pushKV("blockhash", wtx.hashBlock.GetHex());
         entry.pushKV("blockindex", wtx.nIndex);
         entry.pushKV("blocktime", mapBlockIndex[wtx.hashBlock]->GetBlockTime());
-        entry.pushKV("expiryheight", (int64_t)wtx.nExpiryHeight);
+        entry.pushKV("expiryheight", wtx.nExpiryHeight);
         status = "mined";
     }
     else
@@ -106,14 +107,14 @@ void WalletTxToJSON(const CWalletTx& wtx, UniValue& entry)
     entry.pushKV("status", status);
 
     const uint256 hash = wtx.GetHash();
-    entry.pushKV("txid", hash.GetHex());
+    entry.pushKV(RPC_KEY_TXID, hash.GetHex());
 
     UniValue conflicts(UniValue::VARR);
     for (const auto& conflict : wtx.GetConflicts())
         conflicts.push_back(conflict.GetHex());
     entry.pushKV("walletconflicts", conflicts);
     entry.pushKV("time", wtx.GetTxTime());
-    entry.pushKV("timereceived", (int64_t)wtx.nTimeReceived);
+    entry.pushKV("timereceived", wtx.nTimeReceived);
     for (const auto &[key, value] : wtx.mapValue)
         entry.pushKV(key, value);
 }
@@ -1592,7 +1593,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
             entry.pushKV("fee", ValueFromAmount(-nFee));
             if (fLong)
                 WalletTxToJSON(wtx, entry);
-            entry.pushKV("size", static_cast<uint64_t>(GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION)));
+            entry.pushKV("size", GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION));
             ret.push_back(entry);
         }
     }
@@ -1630,7 +1631,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 entry.pushKV("vout", r.vout);
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
-                entry.pushKV("size", static_cast<uint64_t>(GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION)));
+                entry.pushKV("size", GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION));
                 ret.push_back(move(entry));
             }
         }
@@ -2447,9 +2448,10 @@ As a json rpc call
         const UniValue& o = output.get_obj();
 
         RPCTypeCheckObj(o, {
-            {"txid", UniValue::VSTR}, {"vout", UniValue::VNUM}});
+            {RPC_KEY_TXID, UniValue::VSTR},
+            {"vout", UniValue::VNUM}});
 
-        string txid = find_value(o, "txid").get_str();
+        string txid = find_value(o, RPC_KEY_TXID).get_str();
         if (!IsHex(txid))
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected hex txid");
 
@@ -2508,13 +2510,12 @@ As a json rpc call
     pwalletMain->ListLockedCoins(vOutPoints);
 
     UniValue ret(UniValue::VARR);
-
+    ret.reserve(vOutPoints.size());
     for (const auto &outpt : vOutPoints)
     {
         UniValue o(UniValue::VOBJ);
-
-        o.pushKV("txid", outpt.hash.GetHex());
-        o.pushKV("vout", (int)outpt.n);
+        o.pushKV(RPC_KEY_TXID, outpt.hash.GetHex());
+        o.pushKV("vout", outpt.n);
         ret.push_back(move(o));
     }
 
@@ -2591,9 +2592,9 @@ Examples:
     obj.pushKV("balance",       ValueFromAmount(pwalletMain->GetBalance()));
     obj.pushKV("unconfirmed_balance", ValueFromAmount(pwalletMain->GetUnconfirmedBalance()));
     obj.pushKV("immature_balance",    ValueFromAmount(pwalletMain->GetImmatureBalance()));
-    obj.pushKV("txcount",       static_cast<int64_t>(pwalletMain->mapWallet.size()));
+    obj.pushKV("txcount",       pwalletMain->mapWallet.size());
     obj.pushKV("keypoololdest", pwalletMain->GetOldestKeyPoolTime());
-    obj.pushKV("keypoolsize",   static_cast<int64_t>(pwalletMain->GetKeyPoolSize()));
+    obj.pushKV("keypoolsize",   pwalletMain->GetKeyPoolSize());
     if (pwalletMain->IsCrypted())
         obj.pushKV("unlocked_until", nWalletUnlockTime);
     obj.pushKV("paytxfee",      ValueFromAmount(payTxFee.GetFeePerK()));
@@ -2729,7 +2730,7 @@ Examples
             continue;
 
         UniValue entry(UniValue::VOBJ);
-        entry.pushKV("txid", out.tx->GetHash().GetHex());
+        entry.pushKV(RPC_KEY_TXID, out.tx->GetHash().GetHex());
         entry.pushKV("vout", out.i);
         entry.pushKV("generated", out.tx->IsCoinBase());
 
@@ -2882,8 +2883,8 @@ Examples:
         for (const auto & entry : saplingEntries)
         {
             UniValue obj(UniValue::VOBJ);
-            obj.pushKV("txid", entry.op.hash.ToString());
-            obj.pushKV("outindex", (int)entry.op.n);
+            obj.pushKV(RPC_KEY_TXID, entry.op.hash.ToString());
+            obj.pushKV("outindex", entry.op.n);
             obj.pushKV("confirmations", entry.confirmations);
             const bool hasSaplingSpendingKey = HaveSpendingKeyForPaymentAddress(pwalletMain)(entry.address);
             obj.pushKV("spendable", hasSaplingSpendingKey);
@@ -3287,11 +3288,11 @@ Examples:
         for (const auto &entry : saplingEntries)
         {
             UniValue obj(UniValue::VOBJ);
-            obj.pushKV("txid", entry.op.hash.ToString());
+            obj.pushKV(RPC_KEY_TXID, entry.op.hash.ToString());
             obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value())));
             obj.pushKV("amountPat", CAmount(entry.note.value()));
             obj.pushKV("memo", HexStr(entry.memo));
-            obj.pushKV("outindex", (int)entry.op.n);
+            obj.pushKV("outindex", entry.op.n);
             obj.pushKV("confirmations", entry.confirmations);
 
             txblock BlockData(entry.op.hash);
@@ -3488,7 +3489,7 @@ Examples:
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
     const CWalletTx& wtx = pwalletMain->mapWallet[hash];
 
-    entry.pushKV("txid", hash.GetHex());
+    entry.pushKV(RPC_KEY_TXID, hash.GetHex());
 
     UniValue spends(UniValue::VARR);
     UniValue outputs(UniValue::VARR);
@@ -4178,9 +4179,9 @@ Examples:
 
     // Return continuation information
     UniValue o(UniValue::VOBJ);
-    o.pushKV("remainingUTXOs", static_cast<uint64_t>(utxoCounter - numUtxos));
+    o.pushKV("remainingUTXOs", utxoCounter - numUtxos);
     o.pushKV("remainingValue", ValueFromAmount(remainingValue));
-    o.pushKV("shieldingUTXOs", static_cast<uint64_t>(numUtxos));
+    o.pushKV("shieldingUTXOs", numUtxos);
     o.pushKV("shieldingValue", ValueFromAmount(shieldedValue));
     o.pushKV("opid", operationId);
     return o;
@@ -4535,13 +4536,13 @@ Examples:
 
     // Return continuation information
     UniValue o(UniValue::VOBJ);
-    o.pushKV("remainingUTXOs", static_cast<uint64_t>(utxoCounter - numUtxos));
+    o.pushKV("remainingUTXOs", utxoCounter - numUtxos);
     o.pushKV("remainingTransparentValue", ValueFromAmount(remainingUTXOValue));
-    o.pushKV("remainingNotes", static_cast<uint64_t>(noteCounter - numNotes));
+    o.pushKV("remainingNotes", noteCounter - numNotes);
     o.pushKV("remainingShieldedValue", ValueFromAmount(remainingNoteValue));
-    o.pushKV("mergingUTXOs", static_cast<uint64_t>(numUtxos));
+    o.pushKV("mergingUTXOs", numUtxos);
     o.pushKV("mergingTransparentValue", ValueFromAmount(mergedUTXOValue));
-    o.pushKV("mergingNotes", static_cast<uint64_t>(numNotes));
+    o.pushKV("mergingNotes", numNotes);
     o.pushKV("mergingShieldedValue", ValueFromAmount(mergedNoteValue));
     o.pushKV("opid", operationId);
     return o;
@@ -4635,7 +4636,7 @@ Examples:
             nSaplingNoteCount += wtx.mapSaplingNoteData.size();
     }
     UniValue ret(UniValue::VOBJ);
-    ret.pushKV("sapling", static_cast<int64_t>(nSaplingNoteCount));
+    ret.pushKV("sapling", nSaplingNoteCount);
 
     return ret;
 }
@@ -4680,7 +4681,7 @@ As json rpc:
     string error;
     uint256 txid;
     // extract and validate ticket txid
-    if (!parse_uint256(error, txid, sTxId, "txid"))
+    if (!parse_uint256(error, txid, sTxId, RPC_KEY_TXID))
         throw JSONRPCError(RPC_INVALID_PARAMETER, 
             strprintf("Invalid 'txid' parameter. %s", error.c_str()));
 
@@ -4692,9 +4693,9 @@ As json rpc:
         !GetWalletTransaction(txid, tx, hashBlock))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available about transaction");
 
-    resultObj.pushKV("txid", sTxId);
+    resultObj.pushKV(RPC_KEY_TXID, sTxId);
     if (nTicketHeight != numeric_limits<uint32_t>::max())
-        resultObj.pushKV("height", static_cast<uint64_t>(nTicketHeight));
+        resultObj.pushKV(RPC_KEY_HEIGHT, nTicketHeight);
     if (!hashBlock.IsNull())
         resultObj.pushKV("blockHash", hashBlock.GetHex());
 
@@ -4955,10 +4956,10 @@ Examples:
                         }
 
                         UniValue txObj(UniValue::VOBJ);
-                        txObj.pushKV("txid", tx.GetHash().GetHex());
+                        txObj.pushKV(RPC_KEY_TXID, tx.GetHash().GetHex());
                         txObj.pushKV("blockhash", hashBlock.GetHex());
-                        txObj.pushKV("blockindex", static_cast<uint64_t>(nBlockHeight));
-                        txObj.pushKV("confirmations", static_cast<uint64_t>(nCurrentHeight - nBlockHeight + 1));
+                        txObj.pushKV("blockindex", nBlockHeight);
+                        txObj.pushKV("confirmations", nCurrentHeight - nBlockHeight + 1);
                         txObj.pushKV("timestamp", block.GetBlockTime());
                         txObj.pushKV("from_address", keyIO.EncodeDestination(address));
                         txObj.pushKV("amount", ValueFromAmount(txout.nValue));
@@ -5026,7 +5027,7 @@ Examples:
 						continue;
 
 					UniValue txObj(UniValue::VOBJ);
-					txObj.pushKV("txid", tx.GetHash().GetHex());
+					txObj.pushKV(RPC_KEY_TXID, tx.GetHash().GetHex());
                     txObj.pushKV("blockhash", "NA");
 					txObj.pushKV("blockindex", 0);
 					txObj.pushKV("confirmations", 0);

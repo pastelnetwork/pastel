@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_true, initialize_chain_clean, start_node
+from test_framework.util import assert_equal, assert_true, start_node
 from test_framework.authproxy import JSONRPCException
 
-from decimal import Decimal
-
-
 class SignOfflineTest (BitcoinTestFramework):
-    # Setup Methods
-    def setup_chain(self):
-        print("Initializing test directory " + self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, 2)
-
+    
+    def __init__(self):
+        super().__init__()
+        self.num_nodes = 2
+        self.setup_clean_chain = True
+    
     def setup_network(self):
         self.nodes = [ start_node(0, self.options.tmpdir, ["-nuparams=76b809bb:10"]) ]
         self.is_network_split = False

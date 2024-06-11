@@ -23,7 +23,7 @@ typedef struct _MNFeeInfo
     const char* szSetRPCCommand;
 } MNFeeInfo;
 
-static constexpr std::array<MNFeeInfo, to_integral_type<MN_FEE>(MN_FEE::COUNT)> MN_FEE_INFO =
+constexpr std::array<MNFeeInfo, to_integral_type<MN_FEE>(MN_FEE::COUNT)> MN_FEE_INFO =
 {{
     { MN_FEE::StorageFeePerMB,            "storageFeePerMb",            "localStorageFeePerMb",            "storage" },
     { MN_FEE::TicketChainStorageFeePerKB, "ticketChainStorageFeePerKb", "localTicketChainStorageFeePerKb", "ticket" },
@@ -32,7 +32,7 @@ static constexpr std::array<MNFeeInfo, to_integral_type<MN_FEE>(MN_FEE::COUNT)> 
 }};
 
 // for backward compatilibity
-static constexpr std::array<MNFeeInfo, to_integral_type<MN_FEE>(MN_FEE::COUNT)> MN_FEE_INFO_OLD =
+constexpr std::array<MNFeeInfo, to_integral_type<MN_FEE>(MN_FEE::COUNT)> MN_FEE_INFO_OLD =
 {{
     { MN_FEE::StorageFeePerMB,            "networkfee",                 "localfee" },
     { MN_FEE::TicketChainStorageFeePerKB, "nftticketfee",               nullptr },
@@ -176,7 +176,7 @@ UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
 
     retObj.pushKV(sOptionName, nFee);
     retObj.pushKV(sOptionName + "Pat", nFee * COIN);
-    retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
+    retObj.pushKV(RPC_KEY_HEIGHT, nChainHeight);
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
     retObj.pushKV(RPC_KEY_GLOBAL_FEE_MULTIPLIER, nGlobalFeeAdjustmentMultiplier);
     retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, nFeeAdjustmentMultiplier);
@@ -186,7 +186,7 @@ UniValue storagefee_getfee(const UniValue& params, const MN_FEE mnFee)
 UniValue storagefee_getfees(const UniValue& params)
 {
     UniValue retObj(UniValue::VOBJ);
-    const uint32_t nChainHeight = rpc_get_height_param(params);
+    const uint32_t nChainHeight = rpc_get_height_param(params, 2);
     const auto &consensusParams = Params().GetConsensus();
     const auto nGlobalFeeAdjustmentMultiplier = consensusParams.nGlobalFeeAdjustmentMultiplier;
     const double fChainDeflatorFactor = masterNodeCtrl.GetChainDeflatorFactor(nChainHeight);
@@ -216,7 +216,7 @@ UniValue storagefee_getfees(const UniValue& params)
             retObj.pushKV(sOptionName + "Pat", nFee * COIN);
         }
     }
-    retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
+    retObj.pushKV(RPC_KEY_HEIGHT, nChainHeight);
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
     retObj.pushKV(RPC_KEY_GLOBAL_FEE_MULTIPLIER, nGlobalFeeAdjustmentMultiplier);
     retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, nFeeAdjustmentMultiplier);
@@ -261,7 +261,7 @@ Returns:
     //  - use fee adjustment multiplier = global_fee_adjustment_multiplier * chain_deflator_factor
     const auto feeMap = CActionRegTicket::GetActionFees(nDataSizeInMB, nChainHeight, true, true);
     retObj.pushKV("datasize", static_cast<uint64_t>(nDataSizeInMB));
-    retObj.pushKV(RPC_KEY_HEIGHT, static_cast<uint64_t>(nChainHeight));
+    retObj.pushKV(RPC_KEY_HEIGHT, nChainHeight);
     retObj.pushKV(RPC_KEY_CHAIN_DEFLATOR_FACTOR, fChainDeflatorFactor);
     retObj.pushKV(RPC_KEY_GLOBAL_FEE_MULTIPLIER, nGlobalFeeAdjustmentMultiplier);
     retObj.pushKV(RPC_KEY_FEE_ADJUSTMENT_MULTIPLIER, fChainDeflatorFactor * nGlobalFeeAdjustmentMultiplier);

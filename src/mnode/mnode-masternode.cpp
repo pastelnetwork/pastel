@@ -32,7 +32,7 @@
 
 using namespace std;
 
-static constexpr array<MNStateInfo, to_integral_type<MASTERNODE_STATE>(MASTERNODE_STATE::COUNT)> MN_STATE_INFO =
+constexpr array<MNStateInfo, to_integral_type<MASTERNODE_STATE>(MASTERNODE_STATE::COUNT)> MN_STATE_INFO =
 {{
     { MASTERNODE_STATE::PRE_ENABLED,            "PRE_ENABLED" },
     { MASTERNODE_STATE::ENABLED,                "ENABLED" },
@@ -159,7 +159,7 @@ CMasterNodePing::MNP_CHECK_RESULT CMasterNodePing::SimpleCheck(int& nDos) const 
 			return MNP_CHECK_RESULT::INVALID_BLOCK_INDEX;
 		}
 
-        nBlockHeight = static_cast<uint32_t>(pindex->nHeight);
+        nBlockHeight = pindex->GetHeight();
         // Check ping expiration by block height (should be within last 24 (MN_PING_HEIGHT_EXPIRATION) blocks).
         if (nBlockHeight < gl_nChainHeight - MN_PING_HEIGHT_EXPIRATION)
         {

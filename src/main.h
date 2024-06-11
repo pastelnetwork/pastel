@@ -34,8 +34,8 @@
 #include <script/script.h>
 #include <script/sigcache.h>
 #include <script/standard.h>
-#include <spentindex.h>
 #include <txmempool.h>
+#include <txdb/txdb.h>
 #include <script_check.h>
 #include <netmsg/netconsts.h>
 
@@ -50,50 +50,50 @@ struct PrecomputedTransactionData;
 struct CNodeStateStats;
 
 /** Default for -blockmaxsize and -blockminsize, which control the range of sizes the mining code will create **/
-static constexpr uint32_t DEFAULT_BLOCK_MAX_SIZE = MAX_BLOCK_SIZE;
-static constexpr uint32_t DEFAULT_BLOCK_MIN_SIZE = 0;
+constexpr uint32_t DEFAULT_BLOCK_MAX_SIZE = MAX_BLOCK_SIZE;
+constexpr uint32_t DEFAULT_BLOCK_MIN_SIZE = 0;
 /** Default for -blockprioritysize, maximum space for zero/low-fee transactions **/
-static constexpr uint32_t DEFAULT_BLOCK_PRIORITY_SIZE = DEFAULT_BLOCK_MAX_SIZE / 2;
+constexpr uint32_t DEFAULT_BLOCK_PRIORITY_SIZE = DEFAULT_BLOCK_MAX_SIZE / 2;
 /** Default for accepting alerts from the P2P network. */
-static const bool DEFAULT_ALERTS = true;
+const bool DEFAULT_ALERTS = true;
 /** Minimum alert priority for enabling safe mode. */
-static constexpr int ALERT_PRIORITY_SAFE_MODE = 4000;
+constexpr int ALERT_PRIORITY_SAFE_MODE = 4000;
 /** Maximum reorg length we will accept before we shut down and alert the user. */
-static constexpr unsigned int MAX_REORG_LENGTH = COINBASE_MATURITY - 1;
+constexpr unsigned int MAX_REORG_LENGTH = COINBASE_MATURITY - 1;
 /** Maximum number of signature check operations in an IsStandard() P2SH script */
-static constexpr unsigned int MAX_P2SH_SIGOPS = 15;
+constexpr unsigned int MAX_P2SH_SIGOPS = 15;
 /** The maximum number of sigops we're willing to relay/mine in a single tx */
-static constexpr unsigned int MAX_STANDARD_TX_SIGOPS = MAX_BLOCK_SIGOPS/5;
+constexpr unsigned int MAX_STANDARD_TX_SIGOPS = MAX_BLOCK_SIGOPS/5;
 /** The maximum size of a blk?????.dat file (since 0.8) */
-static constexpr unsigned int MAX_BLOCKFILE_SIZE = 0x8000000; // 128 MiB
+constexpr unsigned int MAX_BLOCKFILE_SIZE = 0x8000000; // 128 MiB
 /** The pre-allocation chunk size for blk?????.dat files (since 0.8) */
-static constexpr unsigned int BLOCKFILE_CHUNK_SIZE = 0x1000000; // 16 MiB
+constexpr unsigned int BLOCKFILE_CHUNK_SIZE = 0x1000000; // 16 MiB
 /** The pre-allocation chunk size for rev?????.dat files (since 0.8) */
-static constexpr unsigned int UNDOFILE_CHUNK_SIZE = 0x100000; // 1 MiB
+constexpr unsigned int UNDOFILE_CHUNK_SIZE = 0x100000; // 1 MiB
 /** Number of blocks that can be requested at any given time from a single peer. */
-static constexpr uint32_t MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
+constexpr uint32_t MAX_BLOCKS_IN_TRANSIT_PER_PEER = 16;
 /** Timeout in seconds during which a peer must stall block download progress before being disconnected. */
-static constexpr unsigned int BLOCK_STALLING_TIMEOUT_SECS = 2;
+constexpr unsigned int BLOCK_STALLING_TIMEOUT_SECS = 2;
 /** Timeout in micro-seconds during which a peer must stall block download progress before being disconnected. */
-static constexpr int64_t BLOCK_STALLING_TIMEOUT_MICROSECS = BLOCK_STALLING_TIMEOUT_SECS * 1'000'000;
+constexpr int64_t BLOCK_STALLING_TIMEOUT_MICROSECS = BLOCK_STALLING_TIMEOUT_SECS * 1'000'000;
 /** Timeout in seconds to log block download timeout reduction */
-static constexpr int64_t BLOCK_STALLING_LOG_TIMEOUT_MICROSECS = 60 * 1'000'000;
+constexpr int64_t BLOCK_STALLING_LOG_TIMEOUT_MICROSECS = 60 * 1'000'000;
 /** Number of headers sent in one getheaders result. We rely on the assumption that if a peer sends
  *  less than this number, we reached its tip. Changing this value is a protocol upgrade. */
-static constexpr size_t MAX_HEADERS_RESULTS = 160;
+constexpr size_t MAX_HEADERS_RESULTS = 160;
 /** Size of the "block download window": how far ahead of our current height do we fetch?
  *  Larger windows tolerate larger download speed differences between peer, but increase the potential
  *  degree of disordering of blocks on disk (which make reindexing and in the future perhaps pruning
  *  harder). We'll probably want to make this a per-peer adaptive value at some point. */
-static constexpr unsigned int BLOCK_DOWNLOAD_WINDOW = 1024;
+constexpr unsigned int BLOCK_DOWNLOAD_WINDOW = 1024;
 /** Time to wait (in seconds) between writing blocks/block index to disk. */
-static constexpr unsigned int DATABASE_WRITE_INTERVAL = 60 * 60;
+constexpr unsigned int DATABASE_WRITE_INTERVAL = 60 * 60;
 /** Time to wait (in seconds) between flushing chainstate to disk. */
-static constexpr unsigned int DATABASE_FLUSH_INTERVAL = 24 * 60 * 60;
+constexpr unsigned int DATABASE_FLUSH_INTERVAL = 24 * 60 * 60;
 /** Maximum length of reject messages. */
-static constexpr unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
-static constexpr int64_t DEFAULT_MAX_TIP_AGE = 24 * 60 * 60;
-static constexpr int64_t BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS = 30 * 60;
+constexpr unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
+constexpr int64_t DEFAULT_MAX_TIP_AGE = 24 * 60 * 60;
+constexpr int64_t BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS = 30 * 60;
 
 // Sanity check the magic numbers when we change them
 static_assert(DEFAULT_BLOCK_MAX_SIZE <= MAX_BLOCK_SIZE);
@@ -107,19 +107,6 @@ struct BlockHasher
 {
     size_t operator()(const uint256& hash) const { return hash.GetCheapHash(); }
 };
-
-// START insightexplorer
-extern std::atomic_bool fInsightExplorer;
-
-// The following flags enable specific indices (DB tables), but are not exposed as
-// separate command-line options; instead they are enabled by experimental feature "-insightexplorer"
-// and are always equal to the overall controlling flag, fInsightExplorer.
-
-// Maintain a full address index, used to query for the balance, txids and unspent outputs for addresses
-extern std::atomic_bool fAddressIndex;
-
-// Maintain a full spent index, used to query the spending txid and input index for an outpoint
-extern std::atomic_bool fSpentIndex;
 
 extern std::string STR_MSG_MAGIC;
 extern CScript COINBASE_FLAGS;
@@ -148,7 +135,7 @@ extern int64_t nMaxTipAge;
 extern CBlockIndex *pindexBestHeader;
 
 /** Minimum disk space required - used in CheckDiskSpace() */
-static constexpr uint64_t nMinDiskSpace = 52428800;
+constexpr uint64_t nMinDiskSpace = 52428800;
 
 /** Pruning-related variables and constants */
 /** True if any block files have ever been pruned. */
@@ -157,8 +144,6 @@ extern std::atomic_bool fHavePruned;
 extern std::atomic_bool fPruneMode;
 /** Number of MiB of block files that we're trying to stay below. */
 extern uint64_t nPruneTarget;
-/** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of chainActive.Tip() will not be pruned. */
-static constexpr uint32_t MIN_BLOCKS_TO_KEEP = 288;
 
 // Require that user allocate at least 550MB for block & undo files (blk???.dat and rev???.dat)
 // At 1MB per block, 288 blocks = 288MB.
@@ -168,7 +153,7 @@ static constexpr uint32_t MIN_BLOCKS_TO_KEEP = 288;
 // full block file chunks, we need the high water mark which triggers the prune to be
 // one 128MB block file + added 15% undo data = 147MB greater for a total of 545MB
 // Setting the target to > than 550MB will make it likely we can respect the target.
-static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
+constexpr uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 
 /** Register with a network node to receive its signals */
 void RegisterNodeSignals(CNodeSignals& nodeSignals);
@@ -211,7 +196,7 @@ bool LoadExternalBlockFile(const CChainParams& chainparams, FILE* fileIn, CDiskB
 /** Initialize a new block tree database + block data on disk */
 bool InitBlockIndex(const CChainParams& chainparams);
 /** Load the block tree and coins database from disk */
-bool LoadBlockIndex();
+bool LoadBlockIndex(std::string &strLoadError);
 /** Unload database information */
 void UnloadBlockIndex();
 /** Process protocol messages received from a given node */
@@ -353,6 +338,13 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 } // namespace Consensus
 
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
+bool GetAddressIndex(const uint160& addressHash, const ScriptType type,
+    std::vector<CAddressIndexDbEntry>& vAddressIndex,
+    const std::tuple<uint32_t, uint32_t>& height_range);
+bool GetAddressUnspent(const uint160& addressHash, const ScriptType type,
+    std::vector<CAddressUnspentDbEntry>& unspentOutputs);
+bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
+    std::vector<std::pair<uint256, unsigned int> >& vHashes);
 
 /** Functions for disk access for blocks */
 bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos, const CMessageHeader::MessageStartChars& messageStart);
@@ -362,17 +354,24 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus
 
 /** Functions for validating blocks and updating the block tree */
 
+typedef enum class _BlockDisconnectResult
+{
+    OK,      // All good.
+    UNCLEAN, // Rolled back, but UTXO set was inconsistent with block.
+    FAILED   // Something else went wrong.
+} BlockDisconnectResult;
+
 /** Undo the effects of this block (with given index) on the UTXO set represented by coins.
  *  In case pfClean is provided, operation will try to be tolerant about errors, and *pfClean
  *  will be true if no problems were found. Otherwise, the return value will be false in case
  *  of problems. Note that in any case, coins may be modified. */
-bool DisconnectBlock(
+BlockDisconnectResult DisconnectBlock(
     const CBlock& block,
     CValidationState& state,
     const CChainParams& chainparams,
     CBlockIndex* pindex,
     CCoinsViewCache& coins,
-    bool* pfClean = nullptr);
+    const bool bUpdateIndices);
 
 /** Apply the effects of this block (with given index) on the UTXO set represented by coins.
  *  Validity checks that depend on the UTXO set are also done; ConnectBlock()
@@ -522,7 +521,8 @@ class CVerifyDB {
 public:
     CVerifyDB();
     ~CVerifyDB();
-    bool VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview, int nCheckLevel, int nCheckDepth);
+    bool VerifyDB(const CChainParams& chainparams, CCoinsView* coinsview, 
+        uint32_t nCheckLevel, uint32_t nCheckDepth);
 };
 
 /** Find the last common block between the parameter chain and a locator. */

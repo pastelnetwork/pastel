@@ -1,7 +1,7 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <map>
@@ -65,7 +65,7 @@ class CFeeRate;
  */
 
 /** Decay of .998 is a half-life of 346 blocks or about 2.4 days */
-static constexpr double DEFAULT_DECAY = .998;
+constexpr double DEFAULT_DECAY = .998;
 
 /**
  * We will instantiate two instances of this class, one to track transactions
@@ -183,34 +183,34 @@ public:
 };
 
 /** Track confirm delays up to 25 blocks, can't estimate beyond that */
-static constexpr unsigned int MAX_BLOCK_CONFIRMS = 25;
+constexpr unsigned int MAX_BLOCK_CONFIRMS = 25;
 
 /** Require greater than 85% of X fee transactions to be confirmed within Y blocks for X to be big enough */
-static constexpr double MIN_SUCCESS_PCT = .85;
-static constexpr double UNLIKELY_PCT = .5;
+constexpr double MIN_SUCCESS_PCT = .85;
+constexpr double UNLIKELY_PCT = .5;
 
 /** Require an avg of 1 tx in the combined fee bucket per block to have stat significance */
-static constexpr double SUFFICIENT_FEETXS = 1;
+constexpr double SUFFICIENT_FEETXS = 1;
 
 /** Require only an avg of 1 tx every 5 blocks in the combined pri bucket (way less pri txs) */
-static constexpr double SUFFICIENT_PRITXS = .2;
+constexpr double SUFFICIENT_PRITXS = .2;
 
 // Minimum and Maximum values for tracking fees and priorities
-static constexpr double MIN_FEERATE = 10;
-static constexpr double MAX_FEERATE = 1e7;
-static constexpr double INF_FEERATE = MAX_MONEY;
-static constexpr double MIN_FEE_PRIORITY = 10;
-static constexpr double MAX_FEE_PRIORITY = 1e16;
-static constexpr double INF_PRIORITY = 1e9 * MAX_MONEY;
+constexpr double MIN_FEERATE = 10;
+constexpr double MAX_FEERATE = 1e7;
+constexpr double INF_FEERATE = MAX_MONEY;
+constexpr double MIN_FEE_PRIORITY = 10;
+constexpr double MAX_FEE_PRIORITY = 1e16;
+constexpr double INF_PRIORITY = 1e9 * MAX_MONEY;
 
 // We have to lump transactions into buckets based on fee or priority, but we want to be able
 // to give accurate estimates over a large range of potential fees and priorities
 // Therefore it makes sense to exponentially space the buckets
 /** Spacing of FeeRate buckets */
-static constexpr double FEE_SPACING = 1.1;
+constexpr double FEE_SPACING = 1.1;
 
 /** Spacing of Priority buckets */
-static constexpr double PRI_SPACING = 2;
+constexpr double PRI_SPACING = 2;
 
 /**
  *  We want to be able to estimate fees or priorities that are needed on txs to be included in

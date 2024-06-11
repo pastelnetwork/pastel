@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <univalue.h>
@@ -8,12 +8,13 @@
 #include <utils/utilstrencodings.h>
 #include <utils/serialize.h>
 #include <utils/streams.h>
+#include <utilmoneystr.h>
 #include <core_io.h>
 #include <key_io.h>
 #include <primitives/transaction.h>
+#include <rpc/rpc_consts.h>
 #include <script/script.h>
 #include <script/standard.h>
-#include <utilmoneystr.h>
 #include <script/interpreter.h>
 
 using namespace std;
@@ -168,45 +169,50 @@ void ScriptPubKeyToUniv(const CScript& scriptPubKey,
 
 void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 {
-    entry.pushKV("txid", tx.GetHash().GetHex());
+    entry.pushKV(RPC_KEY_TXID, tx.GetHash().GetHex());
     entry.pushKV("version", tx.nVersion);
-    entry.pushKV("locktime", (int64_t)tx.nLockTime);
+    entry.pushKV("locktime", tx.nLockTime);
 
     UniValue vin(UniValue::VARR);
+    vin.reserve(tx.vin.size());
+
     for (const auto& txin : tx.vin)
     {
         UniValue in(UniValue::VOBJ);
         if (tx.IsCoinBase())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
         else {
-            in.pushKV("txid", txin.prevout.hash.GetHex());
-            in.pushKV("vout", (int64_t)txin.prevout.n);
+            in.pushKV(RPC_KEY_TXID, txin.prevout.hash.GetHex());
+            in.pushKV("vout", txin.prevout.n);
             UniValue o(UniValue::VOBJ);
             o.pushKV("asm", ScriptToAsmStr(txin.scriptSig, true));
             o.pushKV("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
             in.pushKV("scriptSig", o);
         }
-        in.pushKV("sequence", (int64_t)txin.nSequence);
-        vin.push_back(in);
+        in.pushKV("sequence", txin.nSequence);
+        vin.push_back(move(in));
     }
-    entry.pushKV("vin", vin);
+    entry.pushKV("vin", move(vin));
 
     UniValue vout(UniValue::VARR);
-    for (unsigned int i = 0; i < tx.vout.size(); i++) {
+    vout.reserve(tx.vout.size());
+
+    for (uint32_t i = 0; i < tx.vout.size(); i++)
+    {
         const CTxOut& txout = tx.vout[i];
 
         UniValue out(UniValue::VOBJ);
 
         UniValue outValue(UniValue::VNUM, FormatMoney(txout.nValue));
         out.pushKV("value", outValue);
-        out.pushKV("n", (int64_t)i);
+        out.pushKV("n", i);
 
         UniValue o(UniValue::VOBJ);
         ScriptPubKeyToUniv(txout.scriptPubKey, o, true);
         out.pushKV("scriptPubKey", o);
-        vout.push_back(out);
+        vout.push_back(move(out));
     }
-    entry.pushKV("vout", vout);
+    entry.pushKV("vout", move(vout));
 
     if (!hashBlock.IsNull())
         entry.pushKV("blockhash", hashBlock.GetHex());
