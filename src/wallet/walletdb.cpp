@@ -1072,7 +1072,7 @@ bool BackupWallet(const CWallet& wallet, const string& strDest)
                     pathDest /= wallet.strWalletFile;
 
                 try {
-                    fs::copy_file(pathSrc, pathDest, fs::copy_options::overwrite_if_exists);
+                    fs::copy_file(pathSrc, pathDest, fs::copy_options::overwrite_existing);
                     LogPrintf("copied wallet.dat to %s\n", pathDest.string());
                     return true;
                 } catch (const fs::filesystem_error& e) {
