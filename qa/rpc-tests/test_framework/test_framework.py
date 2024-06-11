@@ -91,11 +91,13 @@ class BitcoinTestFramework(object):
         # on outward.  This ensures that chains are properly reorganised.
         if not split:
             connect_nodes_bi(self.nodes, 1, 2)
-            sync_blocks(self.nodes[1:3])
-            sync_mempools(self.nodes[1:3])
+            max_node_no = 3 if self.num_nodes >= 3 else 2
+            sync_blocks(self.nodes[1:max_node_no])
+            sync_mempools(self.nodes[1:max_node_no])
 
         connect_nodes_bi(self.nodes, 0, 1)
-        connect_nodes_bi(self.nodes, 2, 3)
+        if self.num_nodes > 2:
+            connect_nodes_bi(self.nodes, 2, 3)
         self.is_network_split = split
         self.sync_all()
 

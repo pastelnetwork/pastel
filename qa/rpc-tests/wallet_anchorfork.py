@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, initialize_chain_clean, \
+from test_framework.util import assert_equal, \
     start_nodes, stop_nodes, connect_nodes_bi, \
     wait_and_assert_operationid_status, wait_pastelds, \
     sync_blocks, sync_mempools
@@ -18,7 +19,10 @@ class WalletAnchorForkTest (BitcoinTestFramework):
 
 
     def setup_network(self, split=False):
-        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=[['-debug=zrpc']] * self.num_nodes) )
+        self.nodes = start_nodes(3, self.options.tmpdir, extra_args=
+                                [[
+                                     '-debug=zrpc',
+                                ]] * self.num_nodes)
         connect_nodes_bi(self.nodes,0,1)
         connect_nodes_bi(self.nodes,1,2)
         connect_nodes_bi(self.nodes,0,2)

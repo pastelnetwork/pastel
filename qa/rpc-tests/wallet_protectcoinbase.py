@@ -5,6 +5,9 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 # PASTEL doesnt support protected coinbase, so this test will NOT test for this!!!
+import sys
+import timeit
+from decimal import getcontext, Decimal
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.authproxy import JSONRPCException
@@ -12,9 +15,6 @@ from test_framework.mininode import COIN
 from test_framework.util import assert_equal, \
     start_nodes, connect_nodes_bi, wait_and_assert_operationid_status
 
-import sys
-import timeit
-from decimal import Decimal
 getcontext().prec = 16
 
 def check_value_pool(node, name, total):

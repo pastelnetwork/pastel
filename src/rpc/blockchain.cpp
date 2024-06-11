@@ -1163,7 +1163,7 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
     int confirmations = chainActive.Height() - blockindex->nHeight + 1;
     result.pushKV("confirmations", confirmations);
     result.pushKV("size", ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
-    result.pushKV(RPC_KEY_HEIGHT, blockindex->nHeight);
+    result.pushKV(RPC_KEY_HEIGHT, blockindex->GetHeight());
     result.pushKV("version", block.nVersion);
     result.pushKV("merkleroot", block.hashMerkleRoot.GetHex());
 

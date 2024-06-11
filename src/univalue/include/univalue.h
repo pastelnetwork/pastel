@@ -30,6 +30,12 @@ public:
     UniValue(uint32_t val_) {
         setInt(val_);
     }
+
+    // Template constructor for size_t, enabled only if size_t is not the same as uint64_t
+    template <typename _T = size_t, typename std::enable_if<!std::is_same<_T, uint64_t>::value>::type* = nullptr>
+    UniValue(size_t val_) {
+        setInt(static_cast<uint64_t>(val_));
+    }
     UniValue(bool val_) {
         setBool(val_);
     }

@@ -96,13 +96,11 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
     entry.pushKV("size", ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
     entry.pushKV("overwintered", tx.fOverwintered);
     entry.pushKV("version", tx.nVersion);
-    if (tx.fOverwintered) {
+    if (tx.fOverwintered)
         entry.pushKV("versiongroupid", HexInt(tx.nVersionGroupId));
-    }
     entry.pushKV("locktime", tx.nLockTime);
-    if (tx.fOverwintered) {
+    if (tx.fOverwintered)
         entry.pushKV("expiryheight", tx.nExpiryHeight);
-    }
     entry.pushKV("hex", EncodeHexTx(tx));
 
     KeyIO keyIO(Params());

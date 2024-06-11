@@ -1,8 +1,13 @@
 #!/bin/bash
+# Copyright (c) 2018-2024 The Pastel Core developers
+# Distributed under the MIT software license, see the accompanying
+# file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#
 # Usage:
-#  Linux: ./build.sh
-#  MingW: HOST=x86_64-w64-mingw32 ./build.sh
-#  macOS: HOST=x86_64-apple-darwin14 ./build.sh
+#  Linux: ./build.sh -j<job_count>
+#  MingW: HOST=x86_64-w64-mingw32 ./build.sh -j<job_count>
+#  macOS: HOST=x86_64-apple-darwin14 ./build.sh -j<job_count>
+#
 set -euo pipefail
 
 function cmd_pref()

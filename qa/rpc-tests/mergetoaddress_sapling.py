@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 The Zcash developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 from test_framework.test_framework import BitcoinTestFramework
 from mergetoaddress_helper import MergeToAddressHelper
-
 
 class MergeToAddressSapling (BitcoinTestFramework):
     # 13505 would be the maximum number of utxos based on the transaction size limits for Sapling

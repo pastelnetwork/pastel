@@ -10,7 +10,7 @@
 from test_framework.authproxy import JSONRPCException
 from test_framework.util import assert_equal, connect_nodes_bi, fail, \
     start_node, sync_blocks, sync_mempools, \
-    wait_and_assert_operationid_status
+    wait_and_assert_operationid_status, initialize_chain_clean
 
 from decimal import Decimal
 
@@ -38,6 +38,11 @@ class MergeToAddressHelper:
         self.utxos_in_tx2 = utxos_in_tx2
         self.setup_clean_chain = True
         self.num_nodes = 4
+
+    def setup_chain(self, test):
+        print(f"Initializing test directory {test.options.tmpdir}")
+        initialize_chain_clean(test.options.tmpdir, 4)
+        
 
     def setup_network(self, test, additional_args=[]):
         args = ['-debug=zrpcunsafe', '-experimentalfeatures', '-zmergetoaddress']
