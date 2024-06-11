@@ -1173,10 +1173,10 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
     uint64_t i = 0;
     for (const auto &tx : block.vtx)
     {
-        const uint256 &txhash = tx.GetHash();
+        const uint256 &txid = tx.GetHash();
 
         UniValue entry(UniValue::VOBJ);
-        entry.pushKV(RPC_KEY_TXID, txhash.GetHex());
+        entry.pushKV(RPC_KEY_TXID, txid.GetHex());
         entry.pushKV("index", i);
 
         size_t index = 0;
@@ -1312,6 +1312,7 @@ Examples:)"
     string strHash = params[0].get_str();
     uint256 hash(uint256S(strHash));
 
+    LOCK(cs_main);
     if (mapBlockIndex.count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
