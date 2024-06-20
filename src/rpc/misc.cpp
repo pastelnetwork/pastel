@@ -858,7 +858,7 @@ Examples:
         addresses.push_back(addr_obj);
     }
     UniValue result(UniValue::VOBJ);
-    result.pushKV("deltas", addresses);
+    result.pushKV("addresses", addresses);
     result.pushKV("balance", balance);
     result.pushKV("received", received);
     return result;
