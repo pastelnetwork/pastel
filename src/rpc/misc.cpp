@@ -854,7 +854,7 @@ Examples:
 
         UniValue addr_obj(UniValue::VOBJ);
         addr_obj.pushKV("address", address);
-        addr_obj.pushKV("balance", it.first.index);
+        addr_obj.pushKV("balance", it.second);
         addresses.push_back(addr_obj);
     }
     UniValue result(UniValue::VOBJ);
