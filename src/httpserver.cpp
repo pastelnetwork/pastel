@@ -2,15 +2,18 @@
 // Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <signal.h>
 #include <cstdio>
 #include <cstdlib>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <cinttypes>
 #include <deque>
 #include <thread>
 #include <functional>
+#include <atomic>
+
+#include <compat.h>
 
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
@@ -19,7 +22,6 @@
 #include <event2/util.h>
 #include <event2/http_compat.h>
 #include <event2/listener.h>
-
 
 #include <utils/vector_types.h>
 #include <utils/enum_util.h>
@@ -464,6 +466,7 @@ bool CHTTPServer::BindAddresses()
     // Create listeners
     m_vListeners.clear();
     m_vListeners.reserve(endpoints.size());
+    string sListenerInitError;
     for (const auto &[address, port] : endpoints)
     {
         LogFnPrint("http", "Binding RPC on address %s port %hu", address, port);
@@ -495,18 +498,24 @@ bool CHTTPServer::BindAddresses()
         }
         if (nRet != 1)
 		{
-			m_sInitError = strprintf("Invalid address %s", address);
-			return false;
+            str_append_field(sListenerInitError, strprintf("Invalid address %s", address).c_str(), ". ");
+			continue;
 		}
 
         if (!listener)
         {
-			m_sInitError = strprintf("Binding RPC on address %s port %hu failed.", address, port);
-			return false;
+			str_append_field(sListenerInitError, strprintf("Binding RPC on address %s port %hu failed. %s",
+                address, port, SAFE_SZ(evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()))).c_str(), ". ");
+			continue;
 		}
         m_vListeners.push_back(listener);
         LogFnPrintf("HTTP RPC Server is listening on address %s port %hu", address, port);
     }
+    if (m_vListeners.empty())
+    {
+		m_sInitError = strprintf("Failed to bind any endpoint for RPC server. %s", sListenerInitError);
+		return false;
+	}
     return !m_vListeners.empty();
 }
 

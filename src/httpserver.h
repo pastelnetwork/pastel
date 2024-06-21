@@ -232,7 +232,7 @@ public:
 
 private:
     /** Mutex protects entire object */
-    CWaitableCriticalSection cs;
+    mutable CWaitableCriticalSection cs;
     CConditionVariable cond;
     std::atomic_bool m_bRunning;
     std::deque<std::unique_ptr<WorkItem>> m_queue;

@@ -12,15 +12,13 @@
 #include <algorithm>
 #include <functional>
 #include <random>
+
+#include <compat.h>
+
 #ifdef WIN32
 #include <string.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <wininet.h>
-#else
-#include <fcntl.h>
-#include <ifaddrs.h>
 #endif
 
 #include <extlibs/scope_guard.hpp>

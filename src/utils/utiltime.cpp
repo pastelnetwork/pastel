@@ -55,9 +55,9 @@ string DateTimeStrFormat(const char* pszFormat, int64_t nTime)
     time_t time = system_clock::to_time_t(tp);
     tm tm;
 #ifdef _WIN32
-    localtime_s(&tm, &time);
+    gmtime_s(&tm, &time);
 #else
-    localtime_r(&time, &tm);
+    gmtime_r(&time, &tm);
 #endif
     // Format the time into a string
     stringstream ss;

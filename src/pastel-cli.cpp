@@ -3,11 +3,12 @@
 // Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <stdio.h>
+#include <cstdio>
+#include <compat.h>
 
 #include <event2/buffer.h>
 #include <event2/keyvalq_struct.h>
-#include "support/events.h"
+#include <support/events.h>
 #include <univalue.h>
 
 #include <config/port_config.h>

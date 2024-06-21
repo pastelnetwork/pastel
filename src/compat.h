@@ -1,11 +1,9 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_COMPAT_H
-#define BITCOIN_COMPAT_H
-
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
 #endif
@@ -14,7 +12,7 @@
 #ifdef _WIN32_WINNT
 #undef _WIN32_WINNT
 #endif
-#define _WIN32_WINNT 0x0501
+#define _WIN32_WINNT 0x0601
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1
 #endif
@@ -100,5 +98,3 @@ bool static inline IsSelectableSocket(SOCKET s) {
     return (s < FD_SETSIZE);
 #endif
 }
-
-#endif // BITCOIN_COMPAT_H
