@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <stdio.h>
@@ -10,6 +10,7 @@
 #include "support/events.h"
 #include <univalue.h>
 
+#include <config/port_config.h>
 #include <utils/enum_util.h>
 #include <utils/vector_types.h>
 #include <utils/util.h>
@@ -20,9 +21,8 @@
 #include <rpc/client.h>
 #include <rpc/protocol.h>
 #include <rpc/rpc_consts.h>
-#include <port_config.h>
 
-constexpr int DEFAULT_HTTP_CLIENT_TIMEOUT = 900;
+constexpr int DEFAULT_HTTP_CLIENT_TIMEOUT_SECS = 900;
 constexpr int CONTINUE_EXECUTION = -1;
 
 using namespace std;
@@ -35,6 +35,7 @@ string HelpMessageCli()
     strUsage += HelpMessageOpt("-conf=<file>", strprintf(translate("Specify configuration file (default: %s)"), "pastel.conf"));
     strUsage += HelpMessageOpt("-datadir=<dir>", translate("Specify data directory"));
     strUsage += HelpMessageOpt("-testnet", translate("Use the test network"));
+    strUsage += HelpMessageOpt("-devnet", translate("Use the devnet network"));
     strUsage += HelpMessageOpt("-regtest", translate("Enter regression test mode, which uses a special chain in which blocks can be "
                                              "solved instantly. This is intended for regression testing tools and app development."));
     strUsage += HelpMessageOpt("-rpcconnect=<ip>", strprintf(translate("Send commands to node running on <ip> (default: %s)"), "127.0.0.1"));
@@ -42,7 +43,7 @@ string HelpMessageCli()
     strUsage += HelpMessageOpt("-rpcwait", translate("Wait for RPC server to start"));
     strUsage += HelpMessageOpt("-rpcuser=<user>", translate("Username for JSON-RPC connections"));
     strUsage += HelpMessageOpt("-rpcpassword=<pw>", translate("Password for JSON-RPC connections"));
-    strUsage += HelpMessageOpt("-rpcclienttimeout=<n>", strprintf(translate("Timeout in seconds during HTTP requests, or 0 for no timeout. (default: %d)"), DEFAULT_HTTP_CLIENT_TIMEOUT));
+    strUsage += HelpMessageOpt("-rpcclienttimeout=<n>", strprintf(translate("Timeout in seconds during HTTP requests, or 0 for no timeout. (default: %d)"), DEFAULT_HTTP_CLIENT_TIMEOUT_SECS));
     strUsage += HelpMessageOpt("-stdin", translate("Read extra arguments from standard input, one per line until EOF/Ctrl-D (recommended for sensitive information such as passphrases)"));
 
     return strUsage;
@@ -96,13 +97,13 @@ static int AppInitRPC(int argc, char* argv[])
 
         fprintf(stdout, "%s", strUsage.c_str());
         if (argc < 2) {
-            fprintf(stderr, "Error: too few parameters\n");
+            fprintf(stderr, "ERROR: too few parameters\n");
             return EXIT_FAILURE;
         }
         return EXIT_SUCCESS;
     }
     if (!fs::is_directory(GetDataDir(false))) {
-        fprintf(stderr, "Error: Specified data directory \"%s\" does not exist.\n", mapArgs["-datadir"].c_str());
+        fprintf(stderr, "ERROR: Specified data directory \"%s\" does not exist.\n", mapArgs["-datadir"].c_str());
         return EXIT_FAILURE;
     }
     try {
@@ -111,14 +112,15 @@ static int AppInitRPC(int argc, char* argv[])
         fprintf(stderr,"Error reading configuration file: %s\n", e.what());
         return EXIT_FAILURE;
     }
-    // Check for -testnet or -regtest parameter (BaseParams() calls are only valid after this clause)
-    if (!SelectBaseParamsFromCommandLine()) {
-        fprintf(stderr, "Error: Invalid combination of -regtest and -testnet.\n");
+    // Check for -testnet, -devnet or -regtest parameters (BaseParams() calls are only valid after this clause)
+    if (!SelectBaseParamsFromCommandLine())
+    {
+        fprintf(stderr, "ERROR: Invalid combination of chain network type parameters (-regtest,-testnet or -devnet).\n");
         return EXIT_FAILURE;
     }
     if (GetBoolArg("-rpcssl", false))
     {
-        fprintf(stderr, "Error: SSL mode for RPC (-rpcssl) is no longer supported.\n");
+        fprintf(stderr, "ERROR: SSL mode for RPC (-rpcssl) is no longer supported.\n");
         return EXIT_FAILURE;
     }
     return CONTINUE_EXECUTION;
@@ -195,7 +197,7 @@ UniValue CallRPC(const string& strMethod, const UniValue& params)
 {
     const string host = GetArg("-rpcconnect", "127.0.0.1");
     const int port = static_cast<int>(GetArg("-rpcport", BaseParams().RPCPort()));
-    const int nHttpClientTimeout = static_cast<int>(GetArg("-rpcclienttimeout", DEFAULT_HTTP_CLIENT_TIMEOUT));
+    const int nHttpClientTimeout = static_cast<int>(GetArg("-rpcclienttimeout", DEFAULT_HTTP_CLIENT_TIMEOUT_SECS));
 
     // Obtain event base
     raii_event_base base = obtain_event_base();

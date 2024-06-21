@@ -27,12 +27,13 @@
 #include <utils/str_types.h>
 #include <utils/vector_types.h>
 #include <utils/tinyformat.h>
-#include <utiltime.h>
+#include <utils/utiltime.h>
 
-
-static const bool DEFAULT_LOGTIMEMICROS = false;
-static const bool DEFAULT_LOGIPS        = false;
-static const bool DEFAULT_LOGTIMESTAMPS = true;
+constexpr bool DEFAULT_LOGTIMEMICROS = false;
+constexpr bool DEFAULT_LOGIPS        = false;
+constexpr bool DEFAULT_LOGTIMESTAMPS = true;
+/** Default file descriptor soft limit. */
+constexpr uint32_t DEFAULT_FD_SOFT_LIMIT = 2048;
 
 /** Signals for translation. */
 class CTranslationInterface
@@ -184,7 +185,7 @@ void ParseParameters(int argc, const char*const argv[]);
 void FileCommit(FILE *fileout);
 void LogFlush();
 bool TruncateFile(FILE *file, unsigned int length);
-size_t RaiseFileDescriptorLimit(const size_t nMinFD);
+uint32_t RaiseFileDescriptorLimit(const uint32_t nMinFD);
 void AllocateFileRange(FILE *file, unsigned int offset, unsigned int length);
 bool RenameOver(fs::path src, fs::path dest);
 bool TryCreateDirectory(const fs::path& p);

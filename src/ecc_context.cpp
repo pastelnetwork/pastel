@@ -1,10 +1,10 @@
-// Copyright (c) 2023 Pastel Core developers
+// Copyright (c) 2023-2024 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
 
 #include <support/allocators/secure.h>
-#include <random.h>
+#include <utils/random.h>
 #include <ecc_context.h>
 
 using namespace std;

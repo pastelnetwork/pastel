@@ -4,13 +4,13 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <iomanip>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
+#include <config/port_config.h>
 #include <utils/str_utils.h>
 #include <utils/util.h>
 #include <netbase.h>
 #include <chainparams.h>
-#include <port_config.h>
 
 #include <mnode/mnode-config.h>
 #include <mnode/mnode-controller.h>

@@ -1,9 +1,11 @@
+// Copyright (c) 2018-2024 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
-
 #include <gtest/data/sapling_key_components.json.h>
 
+#include <utils/random.h>
 #include <keystore.h>
-#include <random.h>
 #include <utiltest.h>
 #ifdef ENABLE_WALLET
 #include <wallet/crypter.h>

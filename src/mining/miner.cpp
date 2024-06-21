@@ -9,7 +9,7 @@
 #endif
 
 #include <sodium.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 
 #include <mining/miner.h>
 #include <mining/mining-settings.h>
@@ -20,6 +20,7 @@
 
 #include <utils/util.h>
 #include <utils/str_utils.h>
+#include <utils/random.h>
 #include <amount.h>
 #include <chainparams.h>
 #include <chain_options.h>
@@ -36,7 +37,6 @@
 #include <net.h>
 #include <mining/pow.h>
 #include <primitives/transaction.h>
-#include <random.h>
 #include <timedata.h>
 #include <ui_interface.h>
 #include <utilmoneystr.h>

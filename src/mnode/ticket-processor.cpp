@@ -3,7 +3,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <cinttypes>
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #if defined(HAVE_CONFIG_H)
 #include "config/bitcoin-config.h"
@@ -743,6 +743,7 @@ PastelTicketPtr CPastelTicketProcessor::GetTicket(const string& _txid, const Tic
 
 EraseTicketResult CPastelTicketProcessor::EraseIfTicketTransaction(const uint256& txid, string& error)
 {
+    error.erase();
     ticket_parse_data_t data;
     if (!SerializeTicketToStream(txid, error, data, true))
     {
@@ -760,9 +761,9 @@ EraseTicketResult CPastelTicketProcessor::EraseIfTicketTransaction(const uint256
 
     // deserialize data to ticket object
     data.data_stream >> *ticket;
-    if (!EraseTicketFromDB(*ticket))
+    if (!EraseTicketFromDB(error, *ticket))
     {
-        error = strprintf("Failed to erase ticket from DB by txid=%s.", txid.GetHex());
+        error = strprintf("Failed to erase ticket from DB by txid=%s. %s", txid.GetHex(), error);
 		return EraseTicketResult::EraseFromDBError;
     }
     return EraseTicketResult::Success;
@@ -892,15 +893,19 @@ bool CPastelTicketProcessor::FindTicket(CPastelTicket& ticket, const CBlockIndex
 /**
  * Delete ticket from TicketDB by primary key.
  *
- * \param ticket - ticket object to return
+ * \param error - returned error message if failed to delete ticket
+ * \param ticket - ticket object to erase
  * \return true if ticket was found and successfully deleted from DB
  */
-bool CPastelTicketProcessor::EraseTicketFromDB(const CPastelTicket& ticket) const
+bool CPastelTicketProcessor::EraseTicketFromDB(string &error, const CPastelTicket& ticket) const
 {
-    const auto sKey = ticket.KeyOne();
     const auto itDB = dbs.find(ticket.ID());
     if (itDB == dbs.cend())
+    {
+        error = strprintf("Ticket DB for ticket type [%s] not found", ::GetTicketDescription(ticket.ID()));
         return false;
+    }
+    const auto sKey = ticket.KeyOne();
     return itDB->second->Erase(sKey);
 }
 
@@ -2550,8 +2555,10 @@ bool CPastelTicketProcessor::FindAndValidateTicketTransaction(const CPastelTicke
     if (bHaveToEraseFromDB)
     {
         bTicketFound = false;
-        bool bErasedFromDb = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(ticket);
-        sMessage += strprintf(". %s from Ticket DB", bErasedFromDb ? "Successfully removed" : "Failed to remove");
+        string error;
+        const bool bErasedFromDb = masterNodeCtrl.masternodeTickets.EraseTicketFromDB(error, ticket);
+        sMessage += strprintf(". %s from Ticket DB. %s", 
+            bErasedFromDb ? "Successfully removed" : "Failed to remove", error);
     }
     sMessage += strprintf(" [%sfound ticket block=%u, txid=%s]",
                         bPreReg ? "" : strprintf("this ticket block=%u, txid=%s; ", nNewHeight, new_txid),

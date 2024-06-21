@@ -1,12 +1,11 @@
-#include "Note.hpp"
-#include "prf.h"
 #include <crypto/sha256.h>
-
 #include <utils/svc_thread.h>
 #include <utils/streams.h>
-#include <random.h>
+#include <utils/random.h>
 #include <version.h>
 
+#include <zcash/Note.hpp>
+#include <zcash/prf.h>
 #include <zcash/util.h>
 #include <librustzcash.h>
 

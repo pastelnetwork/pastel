@@ -1,5 +1,5 @@
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <utils/str_utils.h>
@@ -7,19 +7,20 @@
 #include <utils/enum_util.h>
 #include <utils/utilstrencodings.h>
 #include <utils/sync.h>
+#include <utils/utiltime.h>
+#include <utils/random.h>
 #include <httprpc.h>
 #include <chainparams.h>
 #include <httpserver.h>
 #include <key_io.h>
 #include <rpc/protocol.h>
 #include <rpc/server.h>
-#include <random.h>
 #include <ui_interface.h>
 
 using namespace std;
 
 /** WWW-Authenticate to present with 401 Unauthorized response */
-static const char* WWW_AUTH_HEADER_DATA = "Basic realm=\"jsonrpc\"";
+static const char* WWW_AUTH_HEADER_DATA = R"(Basic realm="jsonrpc")";
 
 /** Simple one-shot callback timer to be used by the RPC mechanism to e.g.
  * re-lock the wallet.
@@ -27,12 +28,12 @@ static const char* WWW_AUTH_HEADER_DATA = "Basic realm=\"jsonrpc\"";
 class HTTPRPCTimer : public RPCTimerBase
 {
 public:
-    HTTPRPCTimer(struct event_base* eventBase, function<void(void)>& func, int64_t millis) :
+    HTTPRPCTimer(struct event_base* eventBase, function<void(void)>& func, const int64_t millis) :
         ev(eventBase, false, func)
     {
         struct timeval tv;
         tv.tv_sec = static_cast<decltype(tv.tv_sec)>(millis / 1000);
-        tv.tv_usec = (millis%1000)*1000;
+        tv.tv_usec = (millis % 1000) * 1000;
         ev.trigger(&tv);
     }
 private:
@@ -42,14 +43,15 @@ private:
 class HTTPRPCTimerInterface : public RPCTimerInterface
 {
 public:
-    HTTPRPCTimerInterface(struct event_base* base) : base(base)
-    {
-    }
-    const char* Name()
+    HTTPRPCTimerInterface(struct event_base* base) : 
+        base(base)
+    {}
+
+    const char* Name() const noexcept override
     {
         return "HTTP";
     }
-    RPCTimerBase* NewTimer(function<void(void)>& func, int64_t millis)
+    RPCTimerBase* NewTimer(function<void(void)>& func, int64_t millis) override
     {
         return new HTTPRPCTimer(base, func, millis);
     }
@@ -66,18 +68,18 @@ static HTTPRPCTimerInterface* httpRPCTimerInterface = 0;
 static void JSONErrorReply(HTTPRequest* req, const UniValue& objError, const UniValue& id)
 {
     // Send error reply from json-rpc error object
-    int nStatus = to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR);
+    HTTPStatusCode status = HTTPStatusCode::INTERNAL_SERVER_ERROR;
     int code = find_value(objError, "code").get_int();
 
     if (code == RPC_INVALID_REQUEST)
-        nStatus = to_integral_type(HTTPStatusCode::BAD_REQUEST);
+        status = HTTPStatusCode::BAD_REQUEST;
     else if (code == RPC_METHOD_NOT_FOUND)
-        nStatus = to_integral_type(HTTPStatusCode::NOT_FOUND);
+        status = HTTPStatusCode::NOT_FOUND;
 
     string strReply = JSONRPCReply(NullUniValue, objError, id);
 
     req->WriteHeader("Content-Type", "application/json");
-    req->WriteReply(nStatus, strReply);
+    req->WriteReply(status, strReply);
 }
 
 static bool RPCAuthorized(const string& strAuth)
@@ -95,20 +97,22 @@ static bool RPCAuthorized(const string& strAuth)
 static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
 {
     // JSONRPC handles only POST
-    if (req->GetRequestMethod() != HTTPRequest::POST)
+    if (req->GetRequestMethod() != RequestMethod::POST)
     {
-        req->WriteReply(to_integral_type(HTTPStatusCode::BAD_METHOD), "JSONRPC server handles only POST requests");
+        req->WriteReply(HTTPStatusCode::BAD_METHOD, "JSONRPC server handles only POST requests");
         return false;
     }
     // Check authorization
     pair<bool, string> authHeader = req->GetHeader("authorization");
-    if (!authHeader.first) {
+    if (!authHeader.first)
+    {
         req->WriteHeader("WWW-Authenticate", WWW_AUTH_HEADER_DATA);
-        req->WriteReply(to_integral_type(HTTPStatusCode::UNAUTHORIZED));
+        req->WriteReply(HTTPStatusCode::UNAUTHORIZED);
         return false;
     }
 
-    if (!RPCAuthorized(authHeader.second)) {
+    if (!RPCAuthorized(authHeader.second))
+    {
         LogPrintf("ThreadRPCServer incorrect password attempt from %s\n", req->GetPeer().ToString());
 
         /* Deter brute-forcing
@@ -117,7 +121,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
         MilliSleep(250);
 
         req->WriteHeader("WWW-Authenticate", WWW_AUTH_HEADER_DATA);
-        req->WriteReply(to_integral_type(HTTPStatusCode::UNAUTHORIZED));
+        req->WriteReply(HTTPStatusCode::UNAUTHORIZED);
         return false;
     }
 
@@ -130,13 +134,18 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
 
         string strReply;
         // singleton request
-        if (valRequest.isObject()) {
+        if (valRequest.isObject())
+        {
             jreq.parse(valRequest);
 
-            UniValue result = tableRPC.execute(jreq.strMethod, jreq.params);
-
+            CSimpleTimer timer(true);
+            string sMethod = jreq.method();
+            UniValue result = tableRPC.execute(sMethod, jreq.params());
+            if (sMethod != "getblocktemplate")
+                LogPrint("rpc", "RPC method=%s (%s)\n", 
+                    SanitizeString(sMethod), timer.elapsed_time_str());
             // Send reply
-            strReply = JSONRPCReply(result, NullUniValue, jreq.id);
+            strReply = JSONRPCReply(result, NullUniValue, jreq.id());
 
         // array of requests
         } else if (valRequest.isArray())
@@ -145,12 +154,14 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
             throw JSONRPCError(RPC_PARSE_ERROR, "Top-level object parse error");
 
         req->WriteHeader("Content-Type", "application/json");
-        req->WriteReply(to_integral_type(HTTPStatusCode::OK), strReply);
-    } catch (const UniValue& objError) {
-        JSONErrorReply(req, objError, jreq.id);
+        req->WriteReply(HTTPStatusCode::OK, strReply);
+
+    } catch (const UniValue& objError)
+    {
+        JSONErrorReply(req, objError, jreq.id());
         return false;
     } catch (const exception& e) {
-        JSONErrorReply(req, JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id);
+        JSONErrorReply(req, JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id());
         return false;
     }
     return true;
@@ -181,8 +192,9 @@ bool StartHTTPRPC()
 
     RegisterHTTPHandler("/", true, HTTPReq_JSONRPC);
 
-    assert(EventBase());
-    httpRPCTimerInterface = new HTTPRPCTimerInterface(EventBase());
+    auto base = gl_HttpServer->GetEventBase();
+    assert(base);
+    httpRPCTimerInterface = new HTTPRPCTimerInterface(base);
     RPCRegisterTimerInterface(httpRPCTimerInterface);
     return true;
 }
@@ -196,7 +208,8 @@ void StopHTTPRPC()
 {
     LogPrint("rpc", "Stopping HTTP RPC server\n");
     UnregisterHTTPHandler("/", true);
-    if (httpRPCTimerInterface) {
+    if (httpRPCTimerInterface)
+    {
         RPCUnregisterTimerInterface(httpRPCTimerInterface);
         delete httpRPCTimerInterface;
         httpRPCTimerInterface = 0;

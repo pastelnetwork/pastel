@@ -4327,8 +4327,8 @@ bool RewindChainToBlock(string &error, const CChainParams& chainparams, const st
         }
         if (pindex == chainActive.Tip())
         {
-			error = strprintf("%s. Block with hash %s (%u) is already the active tip", REWIND_ERRMSG, sBlockHash, pindex->GetHeight());
-			return false;
+			warning_msgFn("%s. Block with hash %s (%u) is already the active tip", REWIND_ERRMSG, sBlockHash, pindex->GetHeight());
+			return true;
 		}
         const uint32_t nOldChainHeight = gl_nChainHeight;
         if (pindex->GetHeight() > nOldChainHeight)

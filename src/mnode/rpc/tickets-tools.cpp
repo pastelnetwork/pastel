@@ -2,7 +2,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <univalue.h>
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #include <utils/vector_types.h>
 #include <utils/map_types.h>

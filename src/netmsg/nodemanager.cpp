@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
@@ -23,7 +23,7 @@ CAddrMan addrman;
 
 namespace
 {
-    constexpr size_t MAX_OUTBOUND_CONNECTIONS = 8;
+    constexpr uint32_t MAX_OUTBOUND_CONNECTIONS = 8;
 }
 
 class CompareNetGroupKeyed
@@ -589,7 +589,7 @@ void CNodeManager::AcceptConnection(const ListenSocket& hListenSocket)
     SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
     CAddress addr;
     size_t nInbound = 0;
-    size_t nMaxInbound = nMaxConnections - MAX_OUTBOUND_CONNECTIONS;
+    size_t nMaxInbound = gl_nMaxConnections - MAX_OUTBOUND_CONNECTIONS;
 
     if (hSocket != INVALID_SOCKET)
         if (!addr.SetSockAddr((const struct sockaddr*)&sockaddr))

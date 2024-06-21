@@ -4,6 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
+#include <config/port_config.h>
 #include <utils/enum_util.h>
 #include <utils/base58.h>
 #include <utils/util.h>
@@ -12,7 +13,6 @@
 #include <key_io.h>
 #include <script/standard.h>
 #include <main.h>
-#include <port_config.h>
 
 #include <mining/mining-settings.h>
 #include <mnode/mnode-active.h>

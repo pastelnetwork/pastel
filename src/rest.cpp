@@ -82,7 +82,7 @@ extern UniValue blockheaderToJSON(const CBlockIndex* blockindex);
 static bool RESTERR(HTTPRequest* req, enum HTTPStatusCode status, string message)
 {
     req->WriteHeader("Content-Type", "text/plain");
-    req->WriteReply(to_integral_type(status), message + "\r\n");
+    req->WriteReply(status, message + "\r\n");
     return false;
 }
 
@@ -179,14 +179,14 @@ static bool rest_headers(HTTPRequest* req, const string& strURIPart)
         case RetFormat::BINARY: {
             string binaryHeader = ssHeader.str();
             req->WriteHeader("Content-Type", "application/octet-stream");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), binaryHeader);
+            req->WriteReply(HTTPStatusCode::OK, binaryHeader);
             return true;
         }
 
         case RetFormat::HEX: {
             string strHex = HexStr(ssHeader.begin(), ssHeader.end()) + "\n";
             req->WriteHeader("Content-Type", "text/plain");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strHex);
+            req->WriteReply(HTTPStatusCode::OK, strHex);
             return true;
         }
         case RetFormat::JSON: {
@@ -195,7 +195,7 @@ static bool rest_headers(HTTPRequest* req, const string& strURIPart)
                 jsonHeaders.push_back(blockheaderToJSON(pindex));
             string strJSON = jsonHeaders.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strJSON);
+            req->WriteReply(HTTPStatusCode::OK, strJSON);
             return true;
         }
         default: {
@@ -244,14 +244,14 @@ static bool rest_block(HTTPRequest* req,
         case RetFormat::BINARY: {
             string binaryBlock = ssBlock.str();
             req->WriteHeader("Content-Type", "application/octet-stream");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), binaryBlock);
+            req->WriteReply(HTTPStatusCode::OK, binaryBlock);
             return true;
         }
 
         case RetFormat::HEX: {
             string strHex = HexStr(ssBlock.begin(), ssBlock.end()) + "\n";
             req->WriteHeader("Content-Type", "text/plain");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strHex);
+            req->WriteReply(HTTPStatusCode::OK, strHex);
             return true;
         }
 
@@ -259,7 +259,7 @@ static bool rest_block(HTTPRequest* req,
             UniValue objBlock = blockToJSON(block, pblockindex, showTxDetails);
             string strJSON = objBlock.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strJSON);
+            req->WriteReply(HTTPStatusCode::OK, strJSON);
             return true;
         }
 
@@ -298,7 +298,7 @@ static bool rest_chaininfo(HTTPRequest* req, const string& strURIPart)
             UniValue chainInfoObject = getblockchaininfo(rpcParams, false);
             string strJSON = chainInfoObject.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strJSON);
+            req->WriteReply(HTTPStatusCode::OK, strJSON);
             return true;
         }
 
@@ -324,7 +324,7 @@ static bool rest_mempool_info(HTTPRequest* req, const string& strURIPart)
 
             string strJSON = mempoolInfoObject.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strJSON);
+            req->WriteReply(HTTPStatusCode::OK, strJSON);
             return true;
         }
 
@@ -350,7 +350,7 @@ static bool rest_mempool_contents(HTTPRequest* req, const string& strURIPart)
 
             string strJSON = mempoolObject.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strJSON);
+            req->WriteReply(HTTPStatusCode::OK, strJSON);
             return true;
         }
 
@@ -387,14 +387,14 @@ static bool rest_tx(HTTPRequest* req, const string& strURIPart)
         case RetFormat::BINARY: {
             string binaryTx = ssTx.str();
             req->WriteHeader("Content-Type", "application/octet-stream");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), binaryTx);
+            req->WriteReply(HTTPStatusCode::OK, binaryTx);
             return true;
         }
 
         case RetFormat::HEX: {
             string strHex = HexStr(ssTx.begin(), ssTx.end()) + "\n";
             req->WriteHeader("Content-Type", "text/plain");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strHex);
+            req->WriteReply(HTTPStatusCode::OK, strHex);
             return true;
         }
 
@@ -403,7 +403,7 @@ static bool rest_tx(HTTPRequest* req, const string& strURIPart)
             TxToJSON(tx, hashBlock, objTx);
             string strJSON = objTx.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strJSON);
+            req->WriteReply(HTTPStatusCode::OK, strJSON);
             return true;
         }
 
@@ -561,7 +561,7 @@ static bool rest_getutxos(HTTPRequest* req, const string& strURIPart)
             string ssGetUTXOResponseString = ssGetUTXOResponse.str();
 
             req->WriteHeader("Content-Type", "application/octet-stream");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), ssGetUTXOResponseString);
+            req->WriteReply(HTTPStatusCode::OK, ssGetUTXOResponseString);
             return true;
         }
 
@@ -571,7 +571,7 @@ static bool rest_getutxos(HTTPRequest* req, const string& strURIPart)
             string strHex = HexStr(ssGetUTXOResponse.begin(), ssGetUTXOResponse.end()) + "\n";
 
             req->WriteHeader("Content-Type", "text/plain");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strHex);
+            req->WriteReply(HTTPStatusCode::OK, strHex);
             return true;
         }
 
@@ -603,7 +603,7 @@ static bool rest_getutxos(HTTPRequest* req, const string& strURIPart)
             // return json string
             string strJSON = objGetUTXOResponse.write() + "\n";
             req->WriteHeader("Content-Type", "application/json");
-            req->WriteReply(to_integral_type(HTTPStatusCode::OK), strJSON);
+            req->WriteReply(HTTPStatusCode::OK, strJSON);
             return true;
         }
 

@@ -18,7 +18,7 @@ constexpr size_t MAPASKFOR_MAX_SZ = MAX_INV_SZ;
 /** The maximum number of entries in setAskFor (larger due to getdata latency)*/
 constexpr size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
 /** The maximum number of peer connections to maintain. */
-constexpr size_t DEFAULT_MAX_PEER_CONNECTIONS = 125;
+constexpr uint32_t DEFAULT_MAX_PEER_CONNECTIONS = 125;
 /** Maximum length of incoming protocol messages (no message over 2 MiB is currently acceptable). */
 constexpr unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 2 * 1024 * 1024;
 
