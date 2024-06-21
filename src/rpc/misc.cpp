@@ -810,8 +810,15 @@ Arguments:
 
 Result:
 {
-  "balance"  (string) The current balance in )" + MINOR_CURRENCY_UNIT + R"(
-  "received"  (string) The total number of )" + MINOR_CURRENCY_UNIT + R"( received (including change)
+  "addressess":
+    [
+      {
+        "address"     (string)  The base58check encoded address
+        "balance"     (string)  (string) The current balance of the address in )" + MINOR_CURRENCY_UNIT + R"(
+      }, ...
+    ],
+  "balance"  (string) The total current balance in )" + MINOR_CURRENCY_UNIT + R"(on all addresses in the request
+  "received"  (string) The total number of )" + MINOR_CURRENCY_UNIT + R"( received (including change) by all addresses in the request
 }
 
 Examples:
@@ -827,6 +834,8 @@ Examples:
     // to zero (full range, entire blockchain)
     getAddressesInHeightRange(params, make_tuple(0, 0), vAddresses, vAddressIndex);
 
+    UniValue addresses(UniValue::VARR);
+    addresses.reserve(vAddressIndex.size());
     CAmount balance = 0;
     CAmount received = 0;
     for (const auto& it : vAddressIndex)
@@ -835,8 +844,21 @@ Examples:
             received += it.second;
 
         balance += it.second;
+
+        string address;
+        auto scriptTypeOpt = toScriptType(it.first.type);
+        if (!scriptTypeOpt)
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
+        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+
+        UniValue addr_obj(UniValue::VOBJ);
+        addr_obj.pushKV("address", address);
+        addr_obj.pushKV("balance", it.second);
+        addresses.push_back(addr_obj);
     }
     UniValue result(UniValue::VOBJ);
+    result.pushKV("addresses", addresses);
     result.pushKV("balance", balance);
     result.pushKV("received", received);
     return result;
