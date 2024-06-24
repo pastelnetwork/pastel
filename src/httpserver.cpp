@@ -99,10 +99,19 @@ bool HTTPPathHandler::IsHandlerMatch(const string& sPathPrefix, const bool bExac
 static void ThreadHTTP(struct event_base* base)
 {
     RenameThread("psl-httplsnr");
-    LogFnPrint("http", "Entering http event loop");
-    event_base_dispatch(base);
+    LogFnPrint("http", "Entering http listener event loop");
+    try
+    {
+        event_base_dispatch(base);
+    } catch (const exception& e)
+	{
+		LogFnPrintf("exception in http listener event loop: %s", e.what());
+	} catch (...)
+	{
+		LogFnPrintf("unknown exception in http listener event loop");
+	}
     // Event loop will be interrupted by InterruptHTTPServer()
-    LogFnPrint("http", "Exited http event loop");
+    LogFnPrint("http", "Exited http listener event loop");
 }
 
 void accept_connection_cb(struct evconnlistener* listener, evutil_socket_t client_socket, struct sockaddr* addr, int addrlen, void* arg)
@@ -115,7 +124,7 @@ void accept_connection_cb(struct evconnlistener* listener, evutil_socket_t clien
 		return;
 	}
 
-    LogFnPrint("http", "Accepted connection, client socket %" PRId64, static_cast<int64_t>(client_socket));
+    LogFnPrint("http", "Accepted connection (fd %" PRId64 ")", client_socket);
     auto request = make_unique<HTTPRequest>(client_socket, addr, addrlen);
     auto [rejectedRequest, nQueueSize] = pWorkQueue->Enqueue(move(request));
     if (rejectedRequest)
@@ -154,8 +163,11 @@ static void http_connection_close_cb(struct evhttp_connection* evcon, void* arg)
     }
     auto clientSocket = bufferevent_getfd(bev);
     auto pHttpRequest = pWorkerContext->ExtractHttpRequest(clientSocket);
-	LogPrint("http", "Closing connection for %s (fd %" PRId64 ")\n", 
-		pHttpRequest->GetPeer().ToString(), pHttpRequest->GetClientSocket());
+    if (pHttpRequest)
+	    LogPrint("http", "Closing connection for %s (fd %" PRId64 ")\n", 
+		    pHttpRequest->GetPeer().ToString(), clientSocket);
+    else
+        LogPrint("http", "Closing connection (fd %" PRId64 ")\n", clientSocket);
 }
 
 /** libevent event log callback */
@@ -314,31 +326,46 @@ bool CHTTPServer::Initialize()
 
 bool CHTTPServer::Start()
 {
-    if (!m_bInitialized)
+    try
     {
-		m_sInitError = "HTTP server not initialized";
-		return false;
-	}
-    LogFnPrint("http", "Starting HTTP server");
-    LogFnPrintf("HTTP: starting %zu worker threads", m_nRpcWorkerThreads);
+        if (!m_bInitialized)
+        {
+            m_sInitError = "HTTP server not initialized";
+            return false;
+        }
+        LogFnPrint("http", "Starting HTTP server");
+        LogFnPrintf("HTTP: starting %zu worker threads", m_nRpcWorkerThreads);
 
-    m_MainThread = thread(&ThreadHTTP, m_pMainEventBase);
+        m_MainThread = thread(&ThreadHTTP, m_pMainEventBase);
+        if (!m_MainThread.joinable())
+        {
+            m_sInitError = "Failed to start HTTP event thread";
+            return false;
+        }
 
-    string error;
-    for (size_t i = 0; i < m_nRpcWorkerThreads; i++)
-    {
-        const size_t nID = m_WorkerThreadPool.add_func_thread(error, strprintf("httpworker%zu", i + 1).c_str(),
-            [this, i]()
+        string error;
+        for (size_t i = 0; i < m_nRpcWorkerThreads; i++)
+        {
+            const size_t nID = m_WorkerThreadPool.add_func_thread(error, strprintf("httpworker%zu", i + 1).c_str(),
+                [this, i]()
             {
                 if (m_pWorkQueue)
                     m_pWorkQueue->worker(i + 1);
             }, true);
-        if (nID == INVALID_THREAD_OBJECT_ID)
-        {
-            m_sInitError = strprintf("Failed to create HTTP worker thread. %s", error);
-			return false;
+            if (nID == INVALID_THREAD_OBJECT_ID)
+            {
+                m_sInitError = strprintf("Failed to create HTTP worker thread. %s", error);
+                return false;
+            }
         }
-    }
+    } catch (const exception& e)
+    {
+        m_sInitError = strprintf("Exception starting HTTP server: %s", e.what());
+		return false;
+    } catch (...) {
+		m_sInitError = "Unknown exception starting HTTP server";
+		return false;
+	}
     return true;
 }
 
@@ -557,6 +584,15 @@ bool CHTTPServer::FindHTTPHandler(const string& sURI, string &sPath, HTTPRequest
     return bFoundMatch;
 }
 
+void ReplyInternalServerError(struct evhttp_request* req, const char *szErrorDesc)
+{
+    if (!req)
+        return;
+    LogFnPrintf("HTTP Internal server error, status %d. %s", 
+        to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), SAFE_SZ(szErrorDesc));
+	evhttp_send_error(req, to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), "Internal server error");
+}
+
 /**
  * HTTP request callback.
  * This is called when a new HTTP request is received.
@@ -572,101 +608,108 @@ bool CHTTPServer::FindHTTPHandler(const string& sURI, string &sPath, HTTPRequest
  */
 static void http_request_cb(struct evhttp_request* req, void* arg)
 {
-    if (!req)
-	{
-		LogFnPrint("http", "Invalid HTTP request");
-		return;
-	}
-    auto pWorkerContext = static_cast<WorkerContext<HTTPRequest>*>(arg);
-    if (!pWorkerContext)
+    try
     {
-        LogFnPrint("http", "No worker context available");
-        evhttp_send_error(req, to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), "Internal server error");
-        return;
-    }
-    // get evhttp connection
-    auto evcon = evhttp_request_get_connection(req);
-    if (!evcon)
-	{
-		LogFnPrint("http", "No evhttp connection available");
-		evhttp_send_error(req, to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), "Internal server error");
-		return;
-	}
-    auto bev = evhttp_connection_get_bufferevent(evcon);
-    if (!bev)
-    {
-        LogFnPrint("http", "No bufferevent available");
-		evhttp_send_error(req, to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), "Internal server error");
-		return;
-	}
-    const auto clientSocket = bufferevent_getfd(bev);
-    if (clientSocket < 0)
-	{
-		LogFnPrint("http", "Invalid client socket");
-        evhttp_send_error(req, to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), "Internal server error");
-        return;
-    }
-    auto pHttpRequest = pWorkerContext->ExtractHttpRequest(clientSocket);
-    if (!pHttpRequest)
-    {
-		LogFnPrint("http", "No HTTP request object available");
-		evhttp_send_error(req, to_integral_type(HTTPStatusCode::INTERNAL_SERVER_ERROR), "Internal server error");
-		return;
-	}
-    const size_t nWorkerID = pWorkerContext->GetWorkerID();
-    pHttpRequest->SetEvRequest(req);
-    const CService &peer = pHttpRequest->GetPeer();
-    const RequestMethod method = pHttpRequest->GetRequestMethod();
-    const string sURI = pHttpRequest->GetURI();
-    LogFnPrint("http", "Received a %s request for %s from %s (fd %" PRId64 ")",
-        RequestMethodString(method), sURI, peer.ToString(), clientSocket);
-
-    bool bUsesKeepAliveConnection = pHttpRequest->UsesKeepAliveConnection();
-    // Early address-based allow check
-    if (!bUsesKeepAliveConnection && !gl_HttpServer->IsClientAllowed(peer))
-    {
-        pHttpRequest->WriteReply(HTTPStatusCode::FORBIDDEN);
-        return;
-    }
-    if (!bUsesKeepAliveConnection)
-    {
-        const auto &[bHeaderPresent, sHeaderValue] = pHttpRequest->GetHeader("Connection");
-        if (bHeaderPresent && str_icmp(sHeaderValue, "keep-alive"))
+        if (!req)
         {
-            pHttpRequest->SetUsesKeepAliveConnection();
-            bUsesKeepAliveConnection = true;
-            LogPrint("http", "[httpworker #%zu] Connection from %s (fd %" PRId64 ") is alive\n",
-                nWorkerID, peer.ToString(), clientSocket);
-            evhttp_connection_set_closecb(evcon, http_connection_close_cb, pWorkerContext);
+            LogFnPrint("http", "Invalid HTTP request");
+            return;
         }
-    }
-    // Early reject unknown HTTP methods
-    if (method == RequestMethod::UNKNOWN)
-    {
-        pHttpRequest->WriteReply(HTTPStatusCode::BAD_METHOD);
-        return;
-    }
+        auto pWorkerContext = static_cast<WorkerContext<HTTPRequest>*>(arg);
+        if (!pWorkerContext)
+        {
+            ReplyInternalServerError(req, "No worker context available");
+            return;
+        }
+        // get evhttp connection
+        auto evcon = evhttp_request_get_connection(req);
+        if (!evcon)
+        {
+            ReplyInternalServerError(req, "No evhttp connection available");
+            return;
+        }
+        auto bev = evhttp_connection_get_bufferevent(evcon);
+        if (!bev)
+        {
+            ReplyInternalServerError(req, "No bufferevent available");
+            return;
+        }
+        const auto clientSocket = bufferevent_getfd(bev);
+        if (clientSocket < 0)
+        {
+            ReplyInternalServerError(req, "Invalid client socket");
+            return;
+        }
+        auto pHttpRequest = pWorkerContext->ExtractHttpRequest(clientSocket);
+        if (!pHttpRequest)
+        {
+            ReplyInternalServerError(req, strprintf("No HTTP request object available for fd %" PRId64, clientSocket).c_str());
+            return;
+        }
+        const size_t nWorkerID = pWorkerContext->GetWorkerID();
+        pHttpRequest->SetEvRequest(req);
+        const CService& peer = pHttpRequest->GetPeer();
+        const RequestMethod method = pHttpRequest->GetRequestMethod();
+        const string sURI = pHttpRequest->GetURI();
+        LogFnPrint("http", "Received a %s request for %s from %s (fd %" PRId64 ")",
+            RequestMethodString(method), sURI, peer.ToString(), clientSocket);
 
-    // Find registered handler by URI prefix, dispatch to worker thread
-    string sPath;
-    HTTPRequestHandler fnRequestHandler;
-    if (!gl_HttpServer->FindHTTPHandler(sURI, sPath, fnRequestHandler))
-    {
-        LogFnPrint("http", "No handler found for '%s'", sURI);
-        pHttpRequest->WriteReply(HTTPStatusCode::NOT_FOUND);
-    }
+        bool bUsesKeepAliveConnection = pHttpRequest->UsesKeepAliveConnection();
+        // Early address-based allow check
+        if (!bUsesKeepAliveConnection && !gl_HttpServer->IsClientAllowed(peer))
+        {
+            pHttpRequest->WriteReply(HTTPStatusCode::FORBIDDEN);
+            return;
+        }
+        if (!bUsesKeepAliveConnection)
+        {
+            const auto& [bHeaderPresent, sHeaderValue] = pHttpRequest->GetHeader("Connection");
+            if (bHeaderPresent && str_icmp(sHeaderValue, "keep-alive"))
+            {
+                pHttpRequest->SetUsesKeepAliveConnection();
+                bUsesKeepAliveConnection = true;
+                LogPrint("http", "[httpworker #%zu] Connection from %s (fd %" PRId64 ") is alive\n",
+                    nWorkerID, peer.ToString(), clientSocket);
+            }
+        }
+        evhttp_connection_set_closecb(evcon, http_connection_close_cb, pWorkerContext);
 
-    pHttpRequest->SetRequestHandler(sPath, fnRequestHandler);
+        // Early reject unknown HTTP methods
+        if (method == RequestMethod::UNKNOWN)
+        {
+            pHttpRequest->WriteReply(HTTPStatusCode::BAD_METHOD);
+            return;
+        }
 
-    // Process the request
-    (*pHttpRequest)();
-    pHttpRequest->Cleanup();
+        // Find registered handler by URI prefix, dispatch to worker thread
+        string sPath;
+        HTTPRequestHandler fnRequestHandler;
+        if (!gl_HttpServer->FindHTTPHandler(sURI, sPath, fnRequestHandler))
+        {
+            LogFnPrint("http", "No handler found for '%s'", sURI);
+            pHttpRequest->WriteReply(HTTPStatusCode::NOT_FOUND);
+        }
 
-    LogPrint("http", "[httpworker #%zu] Finished processing HTTP request (fd %" PRId64 ")\n", 
-        nWorkerID, clientSocket);
+        pHttpRequest->SetRequestHandler(sPath, fnRequestHandler);
 
-    if (bUsesKeepAliveConnection)
+        // Process the request
+        (*pHttpRequest)();
+        pHttpRequest->Cleanup();
+
+        LogPrint("http", "[httpworker #%zu] Finished processing HTTP request (fd %" PRId64 ")\n",
+            nWorkerID, clientSocket);
+
+        // adding the request back to the map, request will be removed from the map when connection is closed
         pWorkerContext->AddHttpRequest(clientSocket, move(pHttpRequest));
+    } catch (const exception& e)
+	{
+		LogFnPrintf("Exception in HTTP request callback: %s", e.what());
+        ReplyInternalServerError(req, e.what());
+    } catch (...)
+    {
+        LogFnPrintf("Unknown exception in HTTP request callback");
+        ReplyInternalServerError(req, "Unknown exception");
+    }
 }
 
 /** Callback to reject HTTP requests after shutdown. */
@@ -772,7 +815,7 @@ void WorkerContext<WorkItem>::TriggerEvent() noexcept
 }
 
 template <typename WorkItem>
-void WorkerContext<WorkItem>::CreateConnection(std::unique_ptr<WorkItem> &&pWorkItem)
+void WorkerContext<WorkItem>::CreateConnection(unique_ptr<WorkItem> &&pWorkItem)
 {
     const evutil_socket_t clientSocket = pWorkItem->GetClientSocket();
     struct sockaddr addr;
@@ -784,6 +827,7 @@ void WorkerContext<WorkItem>::CreateConnection(std::unique_ptr<WorkItem> &&pWork
 
     event_base_loopbreak(m_base);
     evhttp_get_request(m_http, clientSocket, &addr, addrlen);
+
     TriggerEvent();
 }
 
@@ -800,7 +844,7 @@ template <typename WorkItem>
 void WorkerContext<WorkItem>::AddHttpRequest(const evutil_socket_t clientSocket, unique_ptr<WorkItem> &&request)
 {
     SIMPLE_LOCK(m_RequestMapLock);
-    m_RequestMap.emplace(clientSocket, std::move(request));
+    m_RequestMap.emplace(clientSocket, move(request));
 }
 
 template <typename WorkItem>
@@ -810,7 +854,7 @@ unique_ptr<WorkItem> WorkerContext<WorkItem>::ExtractHttpRequest(const evutil_so
 	auto it = m_RequestMap.find(clientSocket);
 	if (it != m_RequestMap.end())
 	{
-		auto request = std::move(it->second);
+		auto request = move(it->second);
 		m_RequestMap.erase(it);
 		return request;
 	}
@@ -877,27 +921,36 @@ void WorkQueue<WorkItem>::worker(const size_t nWorkerID)
     evhttp_set_max_body_size(http, MAX_DATA_SIZE);
     evhttp_set_gencb(http, http_request_cb, pWorkerContext.get());
 
-    while (true)
+    try
     {
-        unique_ptr<HTTPRequest> pHttpRequest;
+        while (true)
         {
-            unique_lock<mutex> lock(cs);
-            cond.wait(lock, [this] { return !m_bRunning || !m_queue.empty(); });
-            if (!m_bRunning && m_queue.empty())
-                break;
-            pHttpRequest = move(m_queue.front());
-            m_queue.pop_front();
-        }
-        // Get the HTTPRequest from the work item
-        if (!pHttpRequest)
-        {
-            LogPrintf("[httpworker #%zu] Invalid HTTP request\n", nWorkerID);
-			continue;
-        }
-        LogPrint("http", "[httpworker #%zu] Processing HTTP request (fd %" PRId64 ")\n",
-            nWorkerID, pHttpRequest->GetClientSocket());
+            unique_ptr<HTTPRequest> pHttpRequest;
+            {
+                unique_lock<mutex> lock(cs);
+                cond.wait(lock, [this] { return !m_bRunning || !m_queue.empty(); });
+                if (!m_bRunning && m_queue.empty())
+                    break;
+                pHttpRequest = move(m_queue.front());
+                m_queue.pop_front();
+            }
+            // Get the HTTPRequest from the work item
+            if (!pHttpRequest)
+            {
+                LogPrintf("[httpworker #%zu] Invalid HTTP request\n", nWorkerID);
+                continue;
+            }
+            LogPrint("http", "[httpworker #%zu] Processing HTTP request (fd %" PRId64 ")\n",
+                nWorkerID, pHttpRequest->GetClientSocket());
 
-        pWorkerContext->CreateConnection(move(pHttpRequest));
+            pWorkerContext->CreateConnection(move(pHttpRequest));
+        }
+    } catch (const exception& e)
+	{
+		LogPrintf("Exception in http worker thread #%zu: %s\n", nWorkerID, e.what());
+    } catch (...)
+    {
+        LogPrintf("Unknown exception in http worker thread #%zu\n", nWorkerID);
     }
     pWorkerContext->waitForStop();
 }
@@ -1042,8 +1095,26 @@ RequestMethod HTTPRequest::GetRequestMethod() const noexcept
 
 void HTTPRequest::operator()()
 {
-    if (m_RequestHandler)
+    if (!m_RequestHandler)
+    {
+        if (m_clientSocket < 0)
+			LogPrint("http", "No request handler available\n");
+		else
+            LogPrint("http", "No request handler available (fd %" PRId64 ")\n", m_clientSocket);
+        return;
+    }
+    try
+    {
         (*m_RequestHandler)(this, m_sPath);
+    } catch (const exception& e)
+	{
+		LogPrintf("Exception in HTTP request handler: %s\n", e.what());
+		WriteReply(HTTPStatusCode::INTERNAL_SERVER_ERROR, "Internal server error");
+	} catch (...)
+	{
+		LogPrint("http", "Unknown exception in HTTP request handler\n");
+		WriteReply(HTTPStatusCode::INTERNAL_SERVER_ERROR, "Internal server error");
+	}
 }
 
 void HTTPRequest::SetRequestHandler(const string &sPath, const HTTPRequestHandler& handler)

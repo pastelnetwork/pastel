@@ -755,7 +755,8 @@ void static PastelMiner(const int nThreadNo)
 #else
                         [&pblock, &hashTarget, &m_cs, &cancelSolver, &chainparams]
 #endif
-                    (const v_uint8 &soln) {
+                    (const v_uint8 &soln)
+                {
                     // Write the solution to the hash and compute the result.
                     LogPrint("pow", "- Checking solution against target\n");
                     pblock->nSolution = soln;
@@ -814,7 +815,8 @@ void static PastelMiner(const int nThreadNo)
                     eq.digit0(0);
                     eq.xfull = eq.bfull = eq.hfull = 0;
                     eq.showbsizes(0);
-                    for (uint32_t r = 1; r < WK; r++) {
+                    for (uint32_t r = 1; r < WK; r++)
+                    {
                         (r&1) ? eq.digitodd(r, 0) : eq.digiteven(r, 0);
                         eq.xfull = eq.bfull = eq.hfull = 0;
                         eq.showbsizes(r);
@@ -840,7 +842,8 @@ void static PastelMiner(const int nThreadNo)
                         }
                     }
                 } else {
-                    try {
+                    try
+                    {
                         // If we find a valid block, we rebuild
                         bool found = EhOptimisedSolve(n, k, curr_state, validBlock, cancelled);
                         ehSolverRuns.increment();

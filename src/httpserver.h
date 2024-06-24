@@ -17,7 +17,7 @@
 #include <netbase.h>
 
 // default number of threads for the HTTP server
-constexpr int DEFAULT_HTTP_WORKER_THREADS = 8;
+constexpr int DEFAULT_HTTP_WORKER_THREADS = 4;
 // maximum number of threads for the HTTP server
 constexpr size_t MAX_HTTP_THREADS = 64;
 // default number of workqueue items for the HTTP server

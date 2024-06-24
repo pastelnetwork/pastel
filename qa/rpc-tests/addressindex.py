@@ -52,7 +52,7 @@ class AddressIndexTest(BitcoinTestFramework):
     def setup_network(self, split = False):
         # -insightexplorer causes addressindex to be enabled (fAddressIndex = true)
         args = [
-            '-debug=rpc',
+            '-debug=rpc,http',
             '-txindex',
             '-insightexplorer'
         ]
@@ -175,7 +175,7 @@ class AddressIndexTest(BitcoinTestFramework):
         self.sync_all()
 
         txFeePat = self.nodes[0].gettxfee(txid)["txFeePat"]
-        
+
         # the one tx in the mempool refers to addresses addr1 and addr2,
         # check that duplicate addresses are processed correctly
         # change by default goes back to the sender, so there will be one 

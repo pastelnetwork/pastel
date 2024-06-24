@@ -35,10 +35,10 @@
 
 import base64
 import decimal
-import simplejson as json
-import logging
 from http.client import HTTPConnection, HTTPSConnection, BadStatusLine
 from urllib.parse import urlparse
+import logging
+import simplejson as json
 
 USER_AGENT = "AuthServiceProxy/0.1"
 
@@ -129,6 +129,7 @@ class AuthServiceProxy():
         headers = {'Host': self.__url.hostname,
                    'User-Agent': USER_AGENT,
                    'Authorization': self.__auth_header,
+                   'Connection': 'keep-alive',
                    'Content-type': 'application/json'}
         try:
             self.__conn.request(method, path, postdata, headers)

@@ -9,7 +9,10 @@
 #
 
 from test_framework.authproxy import JSONRPCException
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import (
+    BitcoinTestFramework,
+    node_id_0,
+)
 from test_framework.util import assert_equal, \
     connect_nodes_bi, sync_blocks, start_nodes, \
     wait_and_assert_operationid_status
@@ -45,7 +48,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         tsendamount_bob = Decimal('0.01')
         tsendamount_alice = Decimal('0.1')
         zsendamount = self._reward/10 - self._fee
-        final_balance = self._reward - 2*(self._reward/10) - self._fee 
+        final_balance = self._reward - 2*(self._reward/10) - self._fee
 
         print("Splitting network...")
         self.split_network()
@@ -55,7 +58,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         firstTxInfo = self.nodes[0].getrawtransaction(firstTx, 1)
         assert_equal(firstTxInfo["version"], 4)
         assert_equal(firstTxInfo["overwintered"], True)
-        assert("expiryheight" in firstTxInfo)
+        assert "expiryheight" in firstTxInfo
         print("First tx expiry height:", firstTxInfo['expiryheight'])
         # Mine first transaction
         self.nodes[0].generate(1)
@@ -67,7 +70,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         outputs = {alice: tsendamount_alice}
         rawTx = self.nodes[0].createrawtransaction(inputs, outputs)
         rawTxSigned = self.nodes[0].signrawtransaction(rawTx)
-        assert(rawTxSigned['complete'])
+        assert rawTxSigned['complete']
         secondTx = self.nodes[0].sendrawtransaction(rawTxSigned['hex'])
         secondTxInfo = self.nodes[0].getrawtransaction(secondTx, 1)
         print("Second tx expiry height:", secondTxInfo['expiryheight'])
@@ -89,8 +92,7 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         ## Shield one of Alice's coinbase funds to her zaddr
         res = self.nodes[0].z_shieldcoinbase("*", z_alice, self._fee, 1)
         wait_and_assert_operationid_status(self.nodes[0], res['opid'])
-        self.nodes[0].generate(1)
-        self.sync_all()
+        self.generate_and_sync_inc(1, node_id_0)
 
         # Get balance on node 0
         bal = self.nodes[0].z_gettotalbalance()
@@ -122,8 +124,8 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         assert_equal(rawtx["expiryheight"], blockheight + 1 + TX_EXPIRY_DELTA)
 
         print("\nBlockheight advances to less than expiry block height. After reorg, txs should persist in mempool")
-        assert(persist_transparent in self.nodes[0].getrawmempool())
-        assert(persist_shielded in self.nodes[0].getrawmempool())
+        assert persist_transparent in self.nodes[0].getrawmempool()
+        assert persist_shielded in self.nodes[0].getrawmempool()
         assert_equal(set(self.nodes[2].getrawmempool()), set())
         print("mempool node 0:", self.nodes[0].getrawmempool())
         print("mempool node 2:", self.nodes[2].getrawmempool())
@@ -155,8 +157,8 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print("Blockheight node 2:", self.nodes[2].getblockchaininfo()['blocks'])
         print("mempool node 0: ", self.nodes[0].getrawmempool())
         print("mempool node 2: ", self.nodes[2].getrawmempool())
-        assert(persist_transparent in self.nodes[0].getrawmempool())
-        assert(persist_shielded in self.nodes[0].getrawmempool())
+        assert persist_transparent in self.nodes[0].getrawmempool()
+        assert persist_shielded in self.nodes[0].getrawmempool()
         bal = self.nodes[0].z_gettotalbalance()
         # Mine txs to get them out of the way of mempool sync in split_network()
         print("Generating another block on node 0 to clear txs from mempool")
@@ -190,8 +192,8 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print("Blockheight node 2:", self.nodes[2].getblockchaininfo()['blocks'])
         print("mempool node 0: ", self.nodes[0].getrawmempool())
         print("mempool node 2: ", self.nodes[2].getrawmempool())
-        assert(persist_transparent_2 in self.nodes[0].getrawmempool())
-        assert(persist_shielded_2 in self.nodes[0].getrawmempool())
+        assert persist_transparent_2 in self.nodes[0].getrawmempool()
+        assert persist_shielded_2 in self.nodes[0].getrawmempool()
         # Mine persist txs to get them out of the way of mempool sync in split_network()
         self.nodes[0].generate(1)
         assert_equal(set(self.nodes[0].getrawmempool()), set())
@@ -210,8 +212,8 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print("Blockheight node 2 at expire_shielded creation:", self.nodes[2].getblockchaininfo()['blocks'])
         print("Expiryheight of expire_transparent:", self.nodes[0].getrawtransaction(expire_transparent, 1)['expiryheight'])
         print("Expiryheight of expire_shielded:", self.nodes[0].getrawtransaction(expire_shielded, 1)['expiryheight'])
-        assert(expire_transparent in self.nodes[0].getrawmempool())
-        assert(expire_shielded in self.nodes[0].getrawmempool())
+        assert expire_transparent in self.nodes[0].getrawmempool()
+        assert expire_shielded in self.nodes[0].getrawmempool()
         blocks = self.nodes[2].generate(1 + TX_EXPIRY_DELTA + 1)
         for block in blocks:
             blk = self.nodes[2].getblock(block)
@@ -241,8 +243,8 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print("Blockheight node 2 at expire_shielded creation:", self.nodes[2].getblockchaininfo()['blocks'])
         print("Expiryheight of expire_transparent:", self.nodes[0].getrawtransaction(expire_transparent, 1)['expiryheight'])
         print("Expiryheight of expire_shielded:", self.nodes[0].getrawtransaction(expire_shielded, 1)['expiryheight'])
-        assert(expire_transparent in self.nodes[0].getrawmempool())
-        assert(expire_shielded in self.nodes[0].getrawmempool())
+        assert expire_transparent in self.nodes[0].getrawmempool()
+        assert expire_shielded in self.nodes[0].getrawmempool()
         blocks = self.nodes[2].generate(1 + TX_EXPIRY_DELTA - TX_EXPIRING_SOON_THRESHOLD - 1)
         for block in blocks:
             blk = self.nodes[2].getblock(block)
@@ -254,10 +256,10 @@ class MempoolTxExpiryTest(BitcoinTestFramework):
         print("Ensure that expire_transparent & expire_shielded are in node 0 mempool but not node 2 mempool")
         print("mempool node 0: ", self.nodes[0].getrawmempool())
         print("mempool node 2: ", self.nodes[2].getrawmempool())
-        assert(expire_transparent in self.nodes[0].getrawmempool())
-        assert(expire_shielded in self.nodes[0].getrawmempool())
-        assert(expire_transparent not in self.nodes[2].getrawmempool())
-        assert(expire_shielded not in self.nodes[2].getrawmempool())
+        assert expire_transparent in self.nodes[0].getrawmempool()
+        assert expire_shielded in self.nodes[0].getrawmempool()
+        assert expire_transparent not in self.nodes[2].getrawmempool()
+        assert expire_shielded not in self.nodes[2].getrawmempool()
 
         # Now try to add the transactions to Node 2 mempool.
         # Node 2 mempool will accept a transaction since block height has not reached the expiring soon threshold.

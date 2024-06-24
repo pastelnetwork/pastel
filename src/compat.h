@@ -29,11 +29,11 @@
 #include <mswsock.h>
 #include <windows.h>
 #include <ws2tcpip.h>
+#include <sys/types.h>
 #else
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <sys/types.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -62,11 +62,19 @@ typedef u_int SOCKET;
 #define SOCKET_ERROR        -1
 #endif
 
+
 #ifdef WIN32
+
 #ifndef S_IRUSR
 #define S_IRUSR             0400
 #define S_IWUSR             0200
 #endif
+#ifndef SHUT_RD
+#define SHUT_RD             SD_RECEIVE
+#define SHUT_WR             SD_SEND
+#define SHUT_RDWR           SD_BOTH
+#endif
+
 #else
 #define MAX_PATH            1024
 #endif
