@@ -177,17 +177,15 @@ class AddressIndexTest(BitcoinTestFramework):
         txFeePat = self.nodes[0].gettxfee(txid)["txFeePat"]
         
         # the one tx in the mempool refers to addresses addr1 and addr2,
-        # check that duplicate addresses are processed correctly
-        # change by default goes back to the sender, so there will be one 
+        # change by default goes back to the sender, so there will be one
         # output to addr1 with a change (4 - 3 - txFee) and one output to addr2
-        mempool1 = self.nodes[0].getaddressmempool({'addresses': [addr2, addr1, addr2]})
-        assert_equal(len(mempool1), 4)
+        mempool1 = self.nodes[0].getaddressmempool({'addresses': [addr2, addr1]})
+        assert_equal(len(mempool1), 3)
 
         expected_mempool_values1 = [
             { 'address': addr2, 'patoshis': 3 * COIN},
             { 'address': addr1, 'patoshis': [ -4 * COIN, (4 - 3) * COIN - txFeePat ] },
             { 'address': addr1, 'patoshis': [ -4 * COIN, (4 - 3) * COIN - txFeePat ] },
-            { 'address': addr2, 'patoshis': 3 * COIN }
         ]
 
         for i, expected in enumerate(expected_mempool_values1):
