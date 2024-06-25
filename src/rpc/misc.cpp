@@ -589,7 +589,7 @@ static bool getAddressesFromParams(
     const UniValue& params,
     vector<pair<uint160, ScriptType>> &vAddresses)
 {
-    std::map<std::string, bool> vParamAddresses;
+    unordered_map<string, bool> vParamAddresses;
     if (params[0].isStr())
         vParamAddresses[params[0].get_str()] = true;
     else if (params[0].isObject())

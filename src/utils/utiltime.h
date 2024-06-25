@@ -14,9 +14,11 @@ int64_t GetTimeMicros() noexcept;
 void SetMockTime(int64_t nMockTimeIn) noexcept;
 void MilliSleep(int64_t n);
 
+// decode UTC time from string in format "YYYY-MM-DD HH:MM:SS"
 int64_t DecodeDumpTime(const std::string& str);
+// encode UTC time to string in format "YYYY-MM-DD HH:MM:SS"
 std::string EncodeDumpTime(const int64_t nTime);
-
+// format UTC time to string with the given format
 std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime);
 
 class CSimpleTimer

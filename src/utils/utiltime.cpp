@@ -78,7 +78,11 @@ int64_t DecodeDumpTime(const string &str)
     if (iss.fail())
 		return 0;
 
-    return static_cast<int64_t>(mktime(&tm));
+#ifdef _WIN32
+    return static_cast<int64_t>(_mkgmtime(&tm));
+#else
+    return static_cast<int64_t>(timegm(&tm));
+#endif
 }
 
 string EncodeDumpTime(const int64_t nTime)
