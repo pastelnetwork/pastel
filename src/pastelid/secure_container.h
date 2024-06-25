@@ -8,7 +8,7 @@
 #include <utils/vector_types.h>
 #include <support/allocators/secure.h>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 #include <sodium.h>
 
 namespace secure_container

@@ -8,7 +8,7 @@
 #include <openssl/aes.h>
 #include <openssl/evp.h>
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/util.h>
 #include <utils/streams.h>
 #include <wallet/crypter.h>

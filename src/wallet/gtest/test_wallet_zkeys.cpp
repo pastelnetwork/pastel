@@ -5,7 +5,7 @@
 
 #include <utils/fs.h>
 #include <utils/util.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <zcash/Address.hpp>
 #include <chainparams.h>
 #include <wallet/wallet.h>

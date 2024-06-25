@@ -6,7 +6,7 @@
 
 #include <gtest/gtest.h>
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #ifdef ENABLE_WALLET
 #include <init.h>
 #include <key_io.h>

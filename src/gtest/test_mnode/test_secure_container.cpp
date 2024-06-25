@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <unistd.h>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 #include <gtest/gtest.h>
 
 #include <utils/fs.h>

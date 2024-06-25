@@ -252,12 +252,14 @@ UTILS_CPP = \
   utils/bech32.cpp \
   utils/datacompressor.cpp \
   utils/ping_util.cpp \
+  utils/random.cpp \
   utils/scheduler.cpp \
   utils/sync.cpp \
   utils/trimmean.cpp \
   utils/uint256.cpp \
   utils/util.cpp \
-  utils/utilstrencodings.cpp
+  utils/utilstrencodings.cpp \
+  utils/utiltime.cpp
 
 UTILS_H = \
   utils/arith_uint256.h \
@@ -271,6 +273,7 @@ UTILS_H = \
   utils/numeric_range.h \
   utils/ping_util.h \
   utils/prevector.h \
+  utils/random.h \
   utils/reverselock.h \
   utils/scheduler.h \
   utils/serialize.h \
@@ -287,6 +290,7 @@ UTILS_H = \
   utils/uint252.h \
   utils/util.h \
   utils/utilstrencodings.h \
+  utils/utiltime.h \
   utils/vector_types.h
 
 
@@ -319,6 +323,7 @@ PASTEL_CORE_H = \
   compat/endian.h \
   compat/sanity.h \
   compressor.h \
+  config/port_config.h \
   consensus/consensus.h \
   consensus/params.h \
   consensus/upgrades.h \
@@ -366,12 +371,10 @@ PASTEL_CORE_H = \
   noui.h \
   orphan-tx.h\
   policy/fees.h \
-  port_config.h \
   primitives/block.h \
   primitives/transaction.h \
   protocol.h \
   pubkey.h \
-  random.h \
   rpc/client.h \
   rpc/chain-rpc-utils.h \
   rpc/coin-supply.h \
@@ -403,7 +406,6 @@ PASTEL_CORE_H = \
   undo.h \
   utilmoneystr.h \
   utiltest.h \
-  utiltime.h \
   validationinterface.h \
   version.h \
   wallet/asyncrpcoperation_mergetoaddress.h \
@@ -606,11 +608,9 @@ libbitcoin_util_a_SOURCES =\
   support/cleanse.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
-  random.cpp \
   rpc/protocol.cpp \
   rpc/rpc-utils.cpp \
   utilmoneystr.cpp \
-  utiltime.cpp \
   $(UTILS_CPP) \
   $(UTILS_H) \
   $(PASTEL_CORE_H) \

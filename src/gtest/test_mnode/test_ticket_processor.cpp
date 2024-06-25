@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #include <mnode/ticket-processor.h>
 #include <pastel_gtest_main.h>

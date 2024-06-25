@@ -7,7 +7,7 @@
 #include <optional>
 #include <atomic>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #include <utils/str_types.h>
 #include <utils/map_types.h>
@@ -122,7 +122,7 @@ public:
     // check whether ticket exists (use keyOne as a key)
     bool CheckTicketExist(const CPastelTicket& ticket, const CBlockIndex* pindexPrev = nullptr) const;
     bool FindTicket(CPastelTicket& ticket, const CBlockIndex* pindexPrev = nullptr) const;
-    bool EraseTicketFromDB(const CPastelTicket& ticket) const;
+    bool EraseTicketFromDB(std::string &error, const CPastelTicket& ticket) const;
     EraseTicketResult EraseIfTicketTransaction(const uint256& txid, std::string &error);
     size_t EraseTicketsFromDbByList(const block_index_cvector_t& vBlockIndex);
     void RepairTicketDB(const bool bUpdateUI);

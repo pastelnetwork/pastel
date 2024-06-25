@@ -52,7 +52,7 @@ class AddressIndexTest(BitcoinTestFramework):
     def setup_network(self, split = False):
         # -insightexplorer causes addressindex to be enabled (fAddressIndex = true)
         args = [
-            '-debug=rpc',
+            '-debug=rpc,http',
             '-txindex',
             '-insightexplorer'
         ]
@@ -175,27 +175,28 @@ class AddressIndexTest(BitcoinTestFramework):
         self.sync_all()
 
         txFeePat = self.nodes[0].gettxfee(txid)["txFeePat"]
-        
+
         # the one tx in the mempool refers to addresses addr1 and addr2,
         # change by default goes back to the sender, so there will be one
         # output to addr1 with a change (4 - 3 - txFee) and one output to addr2
         mempool1 = self.nodes[0].getaddressmempool({'addresses': [addr2, addr1]})
         assert_equal(len(mempool1), 3)
 
-        expected_mempool_values1 = [
-            { 'address': addr2, 'patoshis': 3 * COIN},
-            { 'address': addr1, 'patoshis': [ -4 * COIN, (4 - 3) * COIN - txFeePat ] },
-            { 'address': addr1, 'patoshis': [ -4 * COIN, (4 - 3) * COIN - txFeePat ] },
-        ]
+        expected_mempool_values1 = {
+            addr1 : [ -4 * COIN, (4 - 3) * COIN - txFeePat ],
+            addr2 : 3 * COIN,
+        }
 
-        for i, expected in enumerate(expected_mempool_values1):
-            # make sure we compare the entry with the correct output index
-            assert_equal(mempool1[i]['address'], expected['address'])
-            if isinstance(expected['patoshis'], list):
-                assert_true(mempool1[i]['patoshis'] in expected['patoshis'])
+        for item in mempool1:
+            # find the address in the expected_mempool_values1
+            addr = item['address']
+            assert_true(addr in expected_mempool_values1)
+            expected = expected_mempool_values1[addr]
+            if isinstance(expected, list):
+                assert_true(item['patoshis'] in expected)
             else:
-                assert_equal(mempool1[i]['patoshis'], expected['patoshis'])
-            assert_equal(mempool1[i]['txid'], txid)
+                assert_equal(item['patoshis'], expected)
+            assert_equal(item['txid'], txid)
 
         # a single address can be specified as a string (not json object)
         addr1_mempool = self.nodes[0].getaddressmempool(addr1)

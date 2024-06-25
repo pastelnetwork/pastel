@@ -29,6 +29,7 @@
 #endif
 #include <librustzcash.h>
 
+#include <config/port_config.h>
 #include <utils/str_utils.h>
 #include <utils/scheduler.h>
 #include <utils/util.h>
@@ -66,16 +67,15 @@
 #include <wallet/walletdb.h>
 #endif
 #include <mnode/mnode-controller.h>
-#include <port_config.h>
 #include <script_check.h>
 #include <orphan-tx.h>
 #include <netmsg/netconsts.h>
 #include <netmsg/nodemanager.h>
 
+using namespace std;
+
 //MasterNode
 CMasterNodeController masterNodeCtrl;
-
-using namespace std;
 
 extern void ThreadSendAlert();
 
@@ -96,9 +96,9 @@ static AMQPNotificationInterface* pAMQPNotificationInterface = nullptr;
 // Win32 LevelDB doesn't use file descriptors, and the ones used for
 // accessing block files don't count towards the fd_set size limit
 // anyway.
-constexpr size_t MIN_CORE_FILEDESCRIPTORS = 0;
+constexpr uint32_t MIN_CORE_FILEDESCRIPTORS = 0;
 #else
-constexpr size_t MIN_CORE_FILEDESCRIPTORS = 150;
+constexpr uint32_t MIN_CORE_FILEDESCRIPTORS = 150;
 #endif
 
 /** Used to pass flags to the Bind() function */
@@ -174,7 +174,8 @@ static unique_ptr<CCoinsViewErrorCatcher> pCoinsCatcher;
 
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
-    InterruptHTTPServer();
+    if (gl_HttpServer)
+        gl_HttpServer->Interrupt();
     InterruptHTTPRPC();
     InterruptRPC();
     InterruptREST();
@@ -200,7 +201,8 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     StopHTTPRPC();
     StopREST();
     StopRPC();
-    StopHTTPServer();
+    if (gl_HttpServer)
+        gl_HttpServer->Stop();
 #ifdef ENABLE_WALLET
     if (pwalletMain)
         pwalletMain->Flush(false);
@@ -388,6 +390,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-listen", translate("Accept connections from outside (default: 1 if no -proxy or -connect)"));
     strUsage += HelpMessageOpt("-listenonion", strprintf(translate("Automatically create Tor hidden service (default: %d)"), DEFAULT_LISTEN_ONION));
     strUsage += HelpMessageOpt("-maxconnections=<n>", strprintf(translate("Maintain at most <n> connections to peers (default: %u)"), DEFAULT_MAX_PEER_CONNECTIONS));
+    strUsage += HelpMessageOpt("-fdsoftlimit=<n>", strprintf(translate("Set the file descriptor soft limit to <n> (default: %u)"), DEFAULT_FD_SOFT_LIMIT));
     strUsage += HelpMessageOpt("-maxreceivebuffer=<n>", strprintf(translate("Maximum per-connection receive buffer, <n>*1000 bytes (default: %u)"), 5000));
     strUsage += HelpMessageOpt("-maxsendbuffer=<n>", strprintf(translate("Maximum per-connection send buffer, <n>*1000 bytes (default: %u)"), 1000));
     strUsage += HelpMessageOpt("-onion=<ip:port>", strprintf(translate("Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)"), "-proxy"));
@@ -525,10 +528,11 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-rpcpassword=<pw>", translate("Password for JSON-RPC connections"));
     strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(translate("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u)"), 9932, 19932));
     strUsage += HelpMessageOpt("-rpcallowip=<ip>", translate("Allow JSON-RPC connections from specified source. Valid for <ip> are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24). This option can be specified multiple times"));
-    strUsage += HelpMessageOpt("-rpcthreads=<n>", strprintf(translate("Set the number of threads to service RPC calls (default: %d)"), DEFAULT_HTTP_THREADS));
+    strUsage += HelpMessageOpt("-rpcthreads=<n>", strprintf(translate("Set the number of threads to service RPC calls (default: %d)"), DEFAULT_HTTP_WORKER_THREADS));
+    strUsage += HelpMessageOpt("-rpcacceptbacklog=<n>", strprintf(translate("Set the maximum number of pending connections that can be queued before the system starts rejecting new incoming connections (default: %d, use system default)"), DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG));
     if (showDebug) {
-        strUsage += HelpMessageOpt("-rpcworkqueue=<n>", strprintf("Set the depth of the work queue to service RPC calls (default: %d)", DEFAULT_HTTP_WORKQUEUE));
-        strUsage += HelpMessageOpt("-rpcservertimeout=<n>", strprintf("Timeout during HTTP requests (default: %d)", DEFAULT_HTTP_SERVER_TIMEOUT));
+        strUsage += HelpMessageOpt("-rpcworkqueue=<n>", strprintf("Set the depth of the work queue to service RPC calls (default: %d)", DEFAULT_HTTP_WORKQUEUE_MAX_SIZE));
+        strUsage += HelpMessageOpt("-rpcservertimeout=<n>", strprintf("Timeout in secs for HTTP requests (default: %d)", DEFAULT_HTTP_SERVER_TIMEOUT_SECS));
     }
 
     // Disabled until we can lock notes and also tune performance of libsnark which by default uses multiple threads
@@ -772,21 +776,41 @@ static void ZC_LoadParams(
         gl_pOrphanTxManager = make_unique<COrphanTxManager>();
 }
 
-bool AppInitServers()
+bool AppInitServers(string &error)
 {
     RPCServer::OnStopped(&OnRPCStopped);
     RPCServer::OnPreCommand(&OnRPCPreCommand);
-    if (!InitHTTPServer())
-        return false;
-    if (!StartRPC())
-        return false;
-    if (!StartHTTPRPC())
-        return false;
-    if (GetBoolArg("-rest", false) && !StartREST())
-        return false;
-    if (!StartHTTPServer())
-        return false;
-    return true;
+
+    bool bInitialized = false;
+    do
+    {
+        if (!gl_HttpServer)
+            gl_HttpServer = make_unique<CHTTPServer>();
+
+        if (!gl_HttpServer)
+        {
+            error = "Failed to create RPC HTTP Server";
+            break;
+        }
+        if (!gl_HttpServer->Initialize())
+        {
+            error = gl_HttpServer->GetInitError();
+            break;
+        }
+        if (!StartRPC())
+            return false;
+        if (!StartHTTPRPC())
+            return false;
+        if (GetBoolArg("-rest", false) && !StartREST())
+            return false;
+        if (!gl_HttpServer->Start())
+        {
+            error = gl_HttpServer->GetInitError();
+            break;
+        }
+        bInitialized = true;
+    } while (false);
+    return bInitialized;
 }
 
 /** Initialize pasteld.
@@ -935,13 +959,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // Make sure enough file descriptors are available
     int nBind = max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
-    nMaxConnections = static_cast<size_t>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
-    nMaxConnections = min(nMaxConnections, static_cast<size_t>(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS));
-    const size_t nFD = RaiseFileDescriptorLimit(nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
-    if (nFD < MIN_CORE_FILEDESCRIPTORS)
+    uint32_t nFdSoftLimit = static_cast<uint32_t>(GetArg("-fdsoftlimit", DEFAULT_FD_SOFT_LIMIT));
+    gl_nMaxConnections = static_cast<uint32_t>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
+    gl_nMaxConnections = min(gl_nMaxConnections, static_cast<uint32_t>(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS));
+    const uint32_t nFdLimit = RaiseFileDescriptorLimit(max(nFdSoftLimit, gl_nMaxConnections + MIN_CORE_FILEDESCRIPTORS));
+    LogPrintf("File descriptor limit: %u\n", nFdLimit);
+    if (nFdLimit < MIN_CORE_FILEDESCRIPTORS)
         return InitError(translate("Not enough file descriptors available."));
-    if (nFD - MIN_CORE_FILEDESCRIPTORS < nMaxConnections)
-        nMaxConnections = nFD - MIN_CORE_FILEDESCRIPTORS;
+    if (nFdLimit - MIN_CORE_FILEDESCRIPTORS < gl_nMaxConnections)
+        gl_nMaxConnections = nFdLimit - MIN_CORE_FILEDESCRIPTORS;
 
     // if using block pruning, then disable txindex
     // also disable the wallet (for now, until SPV support is implemented in wallet)
@@ -1208,7 +1234,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     LogPrintf("Default data directory %s\n", GetDefaultDataDir().string());
     LogPrintf("Using data directory %s\n", strDataDir);
     LogPrintf("Using config file %s\n", GetConfigFile().string());
-    LogPrintf("Using at most %i connections (%i file descriptors available)\n", nMaxConnections, nFD);
+    LogPrintf("Using at most %u connections (%i file descriptors available)\n", gl_nMaxConnections, nFdLimit);
 #ifdef ENABLE_TICKET_COMPRESS
     LogPrintf("Ticket compression is enabled\n");
 #endif
@@ -1250,8 +1276,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (fServer)
     {
         uiInterface.InitMessage.connect(SetRPCWarmupStatus);
-        if (!AppInitServers())
-            return InitError(translate("Unable to start HTTP server. See debug log for details."));
+        if (!AppInitServers(error))
+            return InitError(
+                strprintf(translate("Unable to start HTTP server. %s"), error));
     }
 
     int64_t nStart;
@@ -1557,6 +1584,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         CleanupBlockRevFiles();
                 }
 
+                // Initialize the ticket database
+                masterNodeCtrl.InitTicketDB();
+
                 if (!LoadBlockIndex(strLoadError))
                 {
                     strLoadError = translate("Error loading block database. ") + strLoadError;
@@ -1592,9 +1622,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         break;
                     }
                 }
-
-                // Initialize the ticket database
-                masterNodeCtrl.InitTicketDB();
 
                 const uint32_t nBlockDBCheckBlocks = static_cast<uint32_t>(GetArg("-checkblocks", DEFAULT_BLOCKDB_CHECKBLOCKS));
                 const uint32_t nBlockDBCheckLevel = static_cast<uint32_t>(GetArg("-checklevel", DEFAULT_BLOCKDB_CHECKLEVEL));

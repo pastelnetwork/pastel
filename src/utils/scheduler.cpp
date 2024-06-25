@@ -6,7 +6,7 @@
 #include <utility>
 #include <unordered_map>
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/scheduler.h>
 #include <utils/reverselock.h>
 

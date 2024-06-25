@@ -305,10 +305,10 @@ Result (if verbose > 0):
     if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true, nullptr, blockindex))
     {
         string errmsg;
-        if (blockindex) {
-            if (!(blockindex->nStatus & BLOCK_HAVE_DATA)) {
+        if (blockindex)
+        {
+            if (!(blockindex->nStatus & BLOCK_HAVE_DATA))
                 throw JSONRPCError(RPC_MISC_ERROR, "Block not available");
-            }
             errmsg = "No such transaction found in the provided block";
         } else {
             errmsg = fTxIndex

@@ -11,7 +11,7 @@
 #include <random>
 #include <fstream>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #include <utils/util.h>
 #include <utils/str_utils.h>

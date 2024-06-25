@@ -7,7 +7,7 @@
 
 #include <univalue.h>
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/util.h>
 #include <amount.h>
 #include <chainparams.h>

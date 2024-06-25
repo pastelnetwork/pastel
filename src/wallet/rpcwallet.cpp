@@ -11,6 +11,7 @@
 #include <sodium.h>
 
 #include <utils/util.h>
+#include <utils/utiltime.h>
 #include <amount.h>
 #include <consensus/upgrades.h>
 #include <consensus/consensus.h>
@@ -33,8 +34,7 @@
 #include <zcbenchmarks.h>
 #include <script/interpreter.h>
 #include <zcash/Address.hpp>
-#include <utfcpp/utf8.h>
-#include <utiltime.h>
+#include <extlibs/utfcpp/utf8.h>
 #include <asyncrpcoperation.h>
 #include <asyncrpcqueue.h>
 #include <wallet/wallet.h>

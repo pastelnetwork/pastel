@@ -589,7 +589,7 @@ static bool getAddressesFromParams(
     const UniValue& params,
     vector<pair<uint160, ScriptType>> &vAddresses)
 {
-    std::map<std::string, bool> vParamAddresses;
+    unordered_map<string, bool> vParamAddresses;
     if (params[0].isStr())
         vParamAddresses[params[0].get_str()] = true;
     else if (params[0].isObject())
@@ -809,7 +809,7 @@ Arguments:
 
 Result:
 {
-  "addressess":
+  "addresses":
     [
       {
         "address"     (string)  The base58check encoded address
@@ -835,7 +835,8 @@ Examples:
 
     CAmount balance = 0;
     CAmount received = 0;
-    auto addressesMap = map<string, CAmount>();
+    unordered_map<string, CAmount> addressesMap;
+    string sAddress;
     for (const auto& it : vAddressIndex)
     {
         if (it.second > 0)
@@ -843,15 +844,16 @@ Examples:
 
         balance += it.second;
 
-        string address;
+        sAddress.clear();
         auto scriptTypeOpt = toScriptType(it.first.type);
         if (!scriptTypeOpt)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
-        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, sAddress))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
-        addressesMap[address] += it.second;
+        addressesMap[sAddress] += it.second;
     }
+
     UniValue addresses(UniValue::VARR);
     addresses.reserve(addressesMap.size());
     for (const auto& it : addressesMap)
@@ -859,11 +861,11 @@ Examples:
         UniValue addr_obj(UniValue::VOBJ);
         addr_obj.pushKV("address", it.first);
         addr_obj.pushKV("balance", it.second);
-        addresses.push_back(addr_obj);
+        addresses.push_back(move(addr_obj));
     }
 
     UniValue result(UniValue::VOBJ);
-    result.pushKV("addresses", addresses);
+    result.pushKV("addresses", move(addresses));
     result.pushKV("balance", balance);
     result.pushKV("received", received);
     return result;

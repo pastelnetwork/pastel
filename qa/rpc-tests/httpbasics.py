@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #
 # Test rpc http basics
 #
+import http.client
+import urllib.parse
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, start_nodes, str_to_b64str
 
-import http.client
-import urllib.parse
-
-class HTTPBasicsTest (BitcoinTestFramework):
+MAX_URI_LENGTH = 1024
+class HTTPBasicsTest(BitcoinTestFramework):
     def __init__(self):
         super().__init__()
         self.num_nodes = 3
@@ -101,9 +102,9 @@ class HTTPBasicsTest (BitcoinTestFramework):
         # Check excessive request size
         conn = http.client.HTTPConnection(urlNode2.hostname, urlNode2.port)
         conn.connect()
-        conn.request('GET', '/' + ('x'*1000), '', headers)
+        conn.request('GET', '/' + ('x'* (MAX_URI_LENGTH + 100)), '', headers)
         out1 = conn.getresponse()
-        assert_equal(out1.status, http.client.NOT_FOUND)
+        assert_equal(out1.status, http.client.REQUEST_URI_TOO_LONG)
 
 if __name__ == '__main__':
     HTTPBasicsTest().main()

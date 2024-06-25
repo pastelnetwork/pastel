@@ -12,18 +12,16 @@
 #include <algorithm>
 #include <functional>
 #include <random>
+
+#include <compat.h>
+
 #ifdef WIN32
 #include <string.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <wininet.h>
-#else
-#include <fcntl.h>
-#include <ifaddrs.h>
 #endif
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/vector_types.h>
 #include <utils/svc_thread.h>
 #include <utils/util.h>
@@ -72,7 +70,7 @@ constexpr int64_t ONE_WEEK = 7 * ONE_DAY;
 // Global state variables
 //
 static vector<CNodeManager::ListenSocket> vhListenSocket;
-size_t nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
+uint32_t gl_nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
 bool fAddressesInitialized = false;
 static node_t pnodeLocalHost;
 
@@ -972,7 +970,7 @@ bool hasWinActiveNetworkInterface()
         adapterAddresses = static_cast<PIP_ADAPTER_ADDRESSES>(malloc(bufferSize));
         if (!adapterAddresses)
         {
-            LogFnPrintf("ERROR: Memory allocation failed for IP_ADAPTER_ADDRESSES struct.");
+            LogFnPrintf("ERROR: Memory allocation failed for IP_ADAPTER_ADDRESSES structure");
             return false;
         }
         // AF_UNSPEC: unspecified address family (both)
@@ -1151,7 +1149,7 @@ bool StartNode(string &error, CServiceThreadGroup& threadGroup, CScheduler &sche
     if (!semOutbound)
     {
         // initialize semaphore
-        const size_t nMaxOutbound = min(gl_NodeManager.GetMaxOutboundConnections(), nMaxConnections);
+        const uint32_t nMaxOutbound = min(static_cast<uint32_t>(gl_NodeManager.GetMaxOutboundConnections()), gl_nMaxConnections);
         semOutbound = new CSemaphore(nMaxOutbound);
     }
 
