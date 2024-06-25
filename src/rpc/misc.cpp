@@ -589,9 +589,9 @@ static bool getAddressesFromParams(
     const UniValue& params,
     vector<pair<uint160, ScriptType>> &vAddresses)
 {
-    v_strings vParamAddresses;
+    std::map<std::string, bool> vParamAddresses;
     if (params[0].isStr())
-        vParamAddresses.push_back(params[0].get_str());
+        vParamAddresses[params[0].get_str()] = true;
     else if (params[0].isObject())
     {
         const auto &addressValues = find_value(params[0].get_obj(), "addresses");
@@ -600,9 +600,8 @@ static bool getAddressesFromParams(
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
                 "Addresses is expected to be an array");
         }
-        vParamAddresses.reserve(addressValues.size());
         for (const auto& it : addressValues.getValues())
-            vParamAddresses.push_back(it.get_str());
+            vParamAddresses[it.get_str()] = true;
     } else
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
@@ -611,7 +610,7 @@ static bool getAddressesFromParams(
     KeyIO keyIO(Params());
     for (const auto& it : vParamAddresses)
     {
-        auto address = keyIO.DecodeDestination(it);
+        auto address = keyIO.DecodeDestination(it.first);
         uint160 hashBytes;
         ScriptType type = ScriptType::UNKNOWN;
         if (!getIndexKey(address, hashBytes, type))
@@ -834,10 +833,9 @@ Examples:
     // to zero (full range, entire blockchain)
     getAddressesInHeightRange(params, make_tuple(0, 0), vAddresses, vAddressIndex);
 
-    UniValue addresses(UniValue::VARR);
-    addresses.reserve(vAddressIndex.size());
     CAmount balance = 0;
     CAmount received = 0;
+    map<string, CAmount> addressesMap;
     string sAddress;
     for (const auto& it : vAddressIndex)
     {
@@ -853,11 +851,18 @@ Examples:
         if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, sAddress))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
+        addressesMap[address] += it.second;
+    }
+    UniValue addresses(UniValue::VARR);
+    addresses.reserve(addressesMap.size());
+    for (const auto& it : addressesMap)
+    {
         UniValue addr_obj(UniValue::VOBJ);
-        addr_obj.pushKV("address", move(sAddress));
+        addr_obj.pushKV("address", it.first);
         addr_obj.pushKV("balance", it.second);
         addresses.push_back(move(addr_obj));
     }
+
     UniValue result(UniValue::VOBJ);
     result.pushKV("addresses", move(addresses));
     result.pushKV("balance", balance);
