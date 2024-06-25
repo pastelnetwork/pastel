@@ -835,7 +835,7 @@ Examples:
 
     CAmount balance = 0;
     CAmount received = 0;
-    map<string, CAmount> addressesMap;
+    unordered_map<string, CAmount> addressesMap;
     string sAddress;
     for (const auto& it : vAddressIndex)
     {
@@ -851,8 +851,9 @@ Examples:
         if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, sAddress))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
-        addressesMap[address] += it.second;
+        addressesMap[sAddress] += it.second;
     }
+
     UniValue addresses(UniValue::VARR);
     addresses.reserve(addressesMap.size());
     for (const auto& it : addressesMap)
