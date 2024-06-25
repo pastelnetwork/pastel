@@ -810,7 +810,7 @@ Arguments:
 
 Result:
 {
-  "addressess":
+  "addresses":
     [
       {
         "address"     (string)  The base58check encoded address
@@ -838,6 +838,7 @@ Examples:
     addresses.reserve(vAddressIndex.size());
     CAmount balance = 0;
     CAmount received = 0;
+    string sAddress;
     for (const auto& it : vAddressIndex)
     {
         if (it.second > 0)
@@ -845,20 +846,20 @@ Examples:
 
         balance += it.second;
 
-        string address;
+        sAddress.clear();
         auto scriptTypeOpt = toScriptType(it.first.type);
         if (!scriptTypeOpt)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
-        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, sAddress))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
         UniValue addr_obj(UniValue::VOBJ);
-        addr_obj.pushKV("address", address);
+        addr_obj.pushKV("address", move(sAddress));
         addr_obj.pushKV("balance", it.second);
-        addresses.push_back(addr_obj);
+        addresses.push_back(move(addr_obj));
     }
     UniValue result(UniValue::VOBJ);
-    result.pushKV("addresses", addresses);
+    result.pushKV("addresses", move(addresses));
     result.pushKV("balance", balance);
     result.pushKV("received", received);
     return result;

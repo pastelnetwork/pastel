@@ -615,24 +615,28 @@ static bool rest_getutxos(HTTPRequest* req, const string& strURIPart)
     return true; // continue to process further HTTP reqs on this cxn
 }
 
-static const struct {
+struct URIPrefix
+{
     const char* prefix;
-    bool (*handler)(HTTPRequest* req, const string& strReq);
-} uri_prefixes[] = {
-      {"/rest/tx/", rest_tx},
-      {"/rest/block/notxdetails/", rest_block_notxdetails},
-      {"/rest/block/", rest_block_extended},
-      {"/rest/chaininfo", rest_chaininfo},
-      {"/rest/mempool/info", rest_mempool_info},
-      {"/rest/mempool/contents", rest_mempool_contents},
-      {"/rest/headers/", rest_headers},
-      {"/rest/getutxos", rest_getutxos},
+    HTTPRequestHandler handler;
 };
+
+static const std::array<URIPrefix, 8> uri_prefixes =
+{{
+    {"/rest/tx/", rest_tx},
+    {"/rest/block/notxdetails/", rest_block_notxdetails},
+    {"/rest/block/", rest_block_extended},
+    {"/rest/chaininfo", rest_chaininfo},
+    {"/rest/mempool/info", rest_mempool_info},
+    {"/rest/mempool/contents", rest_mempool_contents},
+    {"/rest/headers/", rest_headers},
+    {"/rest/getutxos", rest_getutxos},
+}};
 
 bool StartREST()
 {
-    for (unsigned int i = 0; i < ARRAYLEN(uri_prefixes); i++)
-        RegisterHTTPHandler(uri_prefixes[i].prefix, false, uri_prefixes[i].handler);
+    for (const auto& uri_prefix : uri_prefixes)
+        RegisterHTTPHandler("rest", uri_prefix.prefix, false, uri_prefix.handler);
     return true;
 }
 
@@ -642,6 +646,5 @@ void InterruptREST()
 
 void StopREST()
 {
-    for (unsigned int i = 0; i < ARRAYLEN(uri_prefixes); i++)
-        UnregisterHTTPHandler(uri_prefixes[i].prefix, false);
+    UnregisterHTTPHandlers("rest");
 }

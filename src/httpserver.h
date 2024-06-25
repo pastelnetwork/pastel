@@ -27,9 +27,11 @@ constexpr int MIN_HTTP_WORKQUEUE_MAX_SIZE = 16;
 // maximum size of the HTTP headers
 constexpr int DEFAULT_HTTP_MAX_HEADERS_SIZE = 8192;
 // default timeout for the HTTP server
-constexpr int DEFAULT_HTTP_SERVER_TIMEOUT_SECS = 30;
+constexpr int DEFAULT_HTTP_SERVER_TIMEOUT_SECS = 600;
 // default backlog for the HTTP server (use system default)
 constexpr int DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG = -1;
+// maximum size of the HTTP URI
+constexpr size_t MAX_URI_LENGTH = 1024;
 
 enum class RequestMethod
 {
@@ -48,9 +50,10 @@ typedef std::function<void(HTTPRequest* req, const std::string &)> HTTPRequestHa
  * If multiple handlers match a prefix, the first-registered one will
  * be invoked.
  */
-void RegisterHTTPHandler(const std::string &prefix, bool exactMatch, const HTTPRequestHandler &handler);
-/** Unregister handler for prefix */
-void UnregisterHTTPHandler(const std::string &prefix, bool exactMatch);
+void RegisterHTTPHandler(const std::string &sHandlerGroup, const std::string &prefix, 
+    bool exactMatch, const HTTPRequestHandler &handler);
+/** Unregister handler by handler group name */
+void UnregisterHTTPHandlers(const std::string &sHandlerGroup);
 
 template <typename WorkItem>
 class WorkerContext : public CServiceThread 
@@ -244,14 +247,16 @@ private:
 struct HTTPPathHandler
 {
     HTTPPathHandler() noexcept = delete;
-    HTTPPathHandler(const std::string& sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler) noexcept;
+    HTTPPathHandler(const std::string& sGroup, const std::string& sPrefix, 
+        const bool bExactMatch, const HTTPRequestHandler &handler) noexcept;
 
-    bool IsMatch(const std::string& sPathPrefix, const bool bExactMatch) const noexcept;
-    bool IsHandlerMatch(const std::string& sPathPrefix, const bool bExactMatch) const noexcept;
+    bool IsMatch(const std::string& sPathPrefix) const noexcept;
+    bool IsGroup(const std::string& sGroup) const noexcept;
     HTTPRequestHandler GetHandler() const noexcept { return m_handler; }
     size_t GetPrefixSize() const noexcept { return m_sPrefix.size(); }
 
 private:
+    std::string m_sGroup;
     std::string m_sPrefix;
     bool m_bExactMatch;
     HTTPRequestHandler m_handler;
@@ -273,8 +278,8 @@ public:
     bool Start();
     void Stop(); // Stop HTTP server 
     void Interrupt(); // Interrupt HTTP server threads
-    void RegisterHTTPHandler(const std::string &sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler);
-    void UnregisterHTTPHandler(const std::string& sPrefix, const bool bExactMatch);
+    void RegisterHTTPHandler(const std::string& sHandlerGroup, const std::string &sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler);
+    void UnregisterHTTPHandlers(const std::string& sHandlerGroup);
     bool FindHTTPHandler(const std::string& sURI, std::string &sPath, HTTPRequestHandler& handler) const noexcept;
 
     std::string GetInitError() const noexcept { return m_sInitError; }

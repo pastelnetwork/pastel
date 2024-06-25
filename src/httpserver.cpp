@@ -75,24 +75,24 @@ static string RequestMethodString(const RequestMethod method)
     return sMethod;
 }
 
-HTTPPathHandler::HTTPPathHandler(const string &sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler) noexcept :
+HTTPPathHandler::HTTPPathHandler(const std::string& sGroup, const string &sPrefix, 
+        const bool bExactMatch, const HTTPRequestHandler &handler) noexcept :
+    m_sGroup(sGroup),
     m_sPrefix(sPrefix),
     m_bExactMatch(bExactMatch),
     m_handler(handler)
 {}
 
-bool HTTPPathHandler::IsMatch(const string &sPathPrefix, const bool bExactMatch) const noexcept
+bool HTTPPathHandler::IsMatch(const string &sURI) const noexcept
 {
-	if (m_bExactMatch == bExactMatch)
-		return sPathPrefix == m_sPrefix;
-	return sPathPrefix.find(m_sPrefix) == 0;
+	if (m_bExactMatch)
+		return sURI == m_sPrefix;
+	return sURI.find(m_sPrefix) == 0;
 }
 
-bool HTTPPathHandler::IsHandlerMatch(const string& sPathPrefix, const bool bExactMatch) const noexcept
+bool HTTPPathHandler::IsGroup(const string &sGroup) const noexcept
 {
-	if (m_bExactMatch == bExactMatch)
-		return sPathPrefix == m_sPrefix;
-    return false;
+	return str_icmp(m_sGroup, sGroup);
 }
 
 /** Event dispatcher thread */
@@ -546,26 +546,24 @@ bool CHTTPServer::BindAddresses()
     return !m_vListeners.empty();
 }
 
-void CHTTPServer::RegisterHTTPHandler(const string& sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler)
+void CHTTPServer::RegisterHTTPHandler(const string& sHandlerGroup, const string& sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler)
 {
-    LogFnPrint("http", "Registering HTTP handler for %s (exactmatch %d)", sPrefix, bExactMatch);
-    m_vPathHandlers.emplace_back(sPrefix, bExactMatch, handler);
+    LogFnPrint("http", "[%s] registering HTTP handler for %s (exactmatch %d)", 
+        sHandlerGroup, sPrefix, bExactMatch);
+    m_vPathHandlers.emplace_back(sHandlerGroup, sPrefix, bExactMatch, handler);
 }
 
-void CHTTPServer::UnregisterHTTPHandler(const string& sPrefix, const bool bExactMatch)
+void CHTTPServer::UnregisterHTTPHandlers(const string& sHandlerGroup)
 {
+    LogFnPrint("http", "Unregistering %s HTTP handlers", sHandlerGroup);
     auto it = m_vPathHandlers.begin();
-    auto itEnd = m_vPathHandlers.end();
-    for (; it != itEnd; ++it)
-    {
-        if (it->IsHandlerMatch(sPrefix, bExactMatch))
-            break;
-    }
-    if (it != itEnd)
-    {
-        LogFnPrint("http", "Unregistering HTTP handler for %s (exactmatch %d)", sPrefix, bExactMatch);
-        m_vPathHandlers.erase(it);
-    }
+    while (it != m_vPathHandlers.end())
+	{
+        if (!it->IsGroup(sHandlerGroup))
+            ++it;
+
+        it = m_vPathHandlers.erase(it);
+	}
 }
 
 bool CHTTPServer::FindHTTPHandler(const string& sURI, string &sPath, HTTPRequestHandler& handler) const noexcept
@@ -573,7 +571,7 @@ bool CHTTPServer::FindHTTPHandler(const string& sURI, string &sPath, HTTPRequest
     bool bFoundMatch = false;
     for (const auto& pathHandler : m_vPathHandlers)
 	{
-		if (pathHandler.IsMatch(sURI, false))
+		if (pathHandler.IsMatch(sURI))
 		{
 			handler = pathHandler.GetHandler();
             sPath = sURI.substr(pathHandler.GetPrefixSize());
@@ -661,6 +659,11 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             pHttpRequest->WriteReply(HTTPStatusCode::FORBIDDEN);
             return;
         }
+        if (sURI.size() > MAX_URI_LENGTH)
+        {
+            pHttpRequest->WriteReply(HTTPStatusCode::URI_TOO_LONG);
+			return;
+        }
         if (!bUsesKeepAliveConnection)
         {
             const auto& [bHeaderPresent, sHeaderValue] = pHttpRequest->GetHeader("Connection");
@@ -680,7 +683,6 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             pHttpRequest->WriteReply(HTTPStatusCode::BAD_METHOD);
             return;
         }
-
         // Find registered handler by URI prefix, dispatch to worker thread
         string sPath;
         HTTPRequestHandler fnRequestHandler;
@@ -1123,13 +1125,13 @@ void HTTPRequest::SetRequestHandler(const string &sPath, const HTTPRequestHandle
 	m_RequestHandler = handler;
 }
 
-void RegisterHTTPHandler(const string &sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler)
+void RegisterHTTPHandler(const string &sHandlerGroup, const string &sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler)
 {
-    gl_HttpServer->RegisterHTTPHandler(sPrefix, bExactMatch, handler);
+    gl_HttpServer->RegisterHTTPHandler(sHandlerGroup, sPrefix, bExactMatch, handler);
 }
 
-void UnregisterHTTPHandler(const string &sPrefix, bool bExactMatch)
+void UnregisterHTTPHandlers(const string &sHandlerGroup)
 {
-    gl_HttpServer->UnregisterHTTPHandler(sPrefix, bExactMatch);
+    gl_HttpServer->UnregisterHTTPHandlers(sHandlerGroup);
 }
 

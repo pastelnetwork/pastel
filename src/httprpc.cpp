@@ -190,7 +190,7 @@ bool StartHTTPRPC()
     if (!InitRPCAuthentication())
         return false;
 
-    RegisterHTTPHandler("/", true, HTTPReq_JSONRPC);
+    RegisterHTTPHandler("jsonrpc", "/", true, HTTPReq_JSONRPC);
 
     auto base = gl_HttpServer->GetEventBase();
     assert(base);
@@ -207,7 +207,7 @@ void InterruptHTTPRPC()
 void StopHTTPRPC()
 {
     LogPrint("rpc", "Stopping HTTP RPC server\n");
-    UnregisterHTTPHandler("/", true);
+    UnregisterHTTPHandlers("jsonrpc");
     if (httpRPCTimerInterface)
     {
         RPCUnregisterTimerInterface(httpRPCTimerInterface);
