@@ -11,6 +11,7 @@
 #include <variant>
 
 #include <utils/util.h>
+#include <utils/utiltime.h>
 #include <asyncrpcqueue.h>
 #include <consensus/upgrades.h>
 #include <core_io.h>
@@ -25,7 +26,6 @@
 #include <timedata.h>
 #include <utilmoneystr.h>
 #include <script/interpreter.h>
-#include <utiltime.h>
 #include <zcash/IncrementalMerkleTree.hpp>
 #include <sodium.h>
 #include <mining/miner.h>

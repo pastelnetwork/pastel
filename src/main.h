@@ -6,7 +6,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <cstdint>
@@ -35,12 +35,11 @@
 #include <script/sigcache.h>
 #include <script/standard.h>
 #include <txmempool.h>
-#include <txdb/txdb.h>
+#include <txdb/index_defs.h>
 #include <script_check.h>
 #include <netmsg/netconsts.h>
 
 class CBlockIndex;
-class CBlockTreeDB;
 class CBloomFilter;
 class CInv;
 class CValidationInterface;
@@ -78,9 +77,6 @@ constexpr unsigned int BLOCK_STALLING_TIMEOUT_SECS = 2;
 constexpr int64_t BLOCK_STALLING_TIMEOUT_MICROSECS = BLOCK_STALLING_TIMEOUT_SECS * 1'000'000;
 /** Timeout in seconds to log block download timeout reduction */
 constexpr int64_t BLOCK_STALLING_LOG_TIMEOUT_MICROSECS = 60 * 1'000'000;
-/** Number of headers sent in one getheaders result. We rely on the assumption that if a peer sends
- *  less than this number, we reached its tip. Changing this value is a protocol upgrade. */
-constexpr size_t MAX_HEADERS_RESULTS = 160;
 /** Size of the "block download window": how far ahead of our current height do we fetch?
  *  Larger windows tolerate larger download speed differences between peer, but increase the potential
  *  degree of disordering of blocks on disk (which make reindexing and in the future perhaps pruning
@@ -98,10 +94,6 @@ constexpr int64_t BLOCK_AGE_TO_VALIDATE_SIGNATURE_SECS = 30 * 60;
 // Sanity check the magic numbers when we change them
 static_assert(DEFAULT_BLOCK_MAX_SIZE <= MAX_BLOCK_SIZE);
 static_assert(DEFAULT_BLOCK_PRIORITY_SIZE <= DEFAULT_BLOCK_MAX_SIZE);
-
-#define equihash_parameters_acceptable(N, K) \
-    ((CBlockHeader::HEADER_SIZE + equihash_solution_size(N, K))*MAX_HEADERS_RESULTS < \
-     MAX_PROTOCOL_MESSAGE_LENGTH-1000)
 
 struct BlockHasher
 {
@@ -339,10 +331,10 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
 bool GetAddressIndex(const uint160& addressHash, const ScriptType type,
-    std::vector<CAddressIndexDbEntry>& vAddressIndex,
+    address_index_vector_t& vAddressIndex,
     const std::tuple<uint32_t, uint32_t>& height_range);
 bool GetAddressUnspent(const uint160& addressHash, const ScriptType type,
-    std::vector<CAddressUnspentDbEntry>& unspentOutputs);
+    address_unspent_vector_t& unspentOutputs);
 bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
     std::vector<std::pair<uint256, unsigned int> >& vHashes);
 
@@ -448,8 +440,6 @@ bool AcceptBlockHeader(
     const CChainParams& chainparams,
     CBlockIndex** ppindex = nullptr);
 
-
-
 /**
  * When there are blocks in the active chain with missing data (e.g. if the
  * activation height and branch ID of a particular upgrade have been altered),
@@ -486,7 +476,8 @@ public:
         READWRITE(VARINT(nTimeLast));
     }
 
-     void SetNull() {
+     void SetNull() noexcept
+     {
          nBlocks = 0;
          nSize = 0;
          nUndoSize = 0;
@@ -496,14 +487,16 @@ public:
          nTimeLast = 0;
      }
 
-     CBlockFileInfo() {
+     CBlockFileInfo() noexcept
+     {
          SetNull();
      }
 
      std::string ToString() const;
 
      /** update statistics (does not update nSize) */
-     void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) {
+     void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) noexcept
+     {
          if (nBlocks==0 || nHeightFirst > nHeightIn)
              nHeightFirst = nHeightIn;
          if (nBlocks==0 || nTimeFirst > nTimeIn)
@@ -517,7 +510,8 @@ public:
 };
 
 /** RAII wrapper for VerifyDB: Verify consistency of the block and coin databases */
-class CVerifyDB {
+class CVerifyDB
+{
 public:
     CVerifyDB();
     ~CVerifyDB();
@@ -545,9 +539,6 @@ extern CChain chainActive;
 
 /** Global variable that points to the active CCoinsView (protected by cs_main) */
 extern std::unique_ptr<CCoinsViewCache> gl_pCoinsTip;
-
-/** Global variable that points to the active block tree (protected by cs_main) */
-extern std::unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().

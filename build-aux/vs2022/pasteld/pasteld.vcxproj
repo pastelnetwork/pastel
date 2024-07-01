@@ -141,6 +141,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\configure.ac" />
+    <None Include="..\..\..\Makefile.am" />
     <None Include="..\..\..\README.md" />
     <None Include="..\..\..\src\Makefile.am" />
   </ItemGroup>

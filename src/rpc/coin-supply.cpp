@@ -6,11 +6,12 @@
 
 #include <utils/sync.h>
 #include <utils/svc_thread.h>
+#include <chain.h>
 #include <main.h>
+#include <blockscanner.h>
 #include <rpc/rpc_consts.h>
 #include <rpc/protocol.h>
 #include <rpc/coin-supply.h>
-#include <rpc/chain-rpc-utils.h>
 
 using namespace std;
 

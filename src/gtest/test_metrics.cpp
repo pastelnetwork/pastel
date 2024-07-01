@@ -1,7 +1,10 @@
+// Copyright (c) 2018-2024 The Pastel Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
-#include "metrics.h"
-#include "utiltime.h"
+#include <utils/utiltime.h>
+#include <metrics.h>
 
 
 TEST(Metrics, AtomicTimer)

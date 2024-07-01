@@ -252,12 +252,14 @@ UTILS_CPP = \
   utils/bech32.cpp \
   utils/datacompressor.cpp \
   utils/ping_util.cpp \
+  utils/random.cpp \
   utils/scheduler.cpp \
   utils/sync.cpp \
   utils/trimmean.cpp \
   utils/uint256.cpp \
   utils/util.cpp \
-  utils/utilstrencodings.cpp
+  utils/utilstrencodings.cpp \
+  utils/utiltime.cpp
 
 UTILS_H = \
   utils/arith_uint256.h \
@@ -271,6 +273,7 @@ UTILS_H = \
   utils/numeric_range.h \
   utils/ping_util.h \
   utils/prevector.h \
+  utils/random.h \
   utils/reverselock.h \
   utils/scheduler.h \
   utils/serialize.h \
@@ -287,6 +290,7 @@ UTILS_H = \
   utils/uint252.h \
   utils/util.h \
   utils/utilstrencodings.h \
+  utils/utiltime.h \
   utils/vector_types.h
 
 
@@ -304,6 +308,7 @@ PASTEL_CORE_H = \
   amqp/amqpsender.h \
   asyncrpcoperation.h \
   asyncrpcqueue.h \
+  blockscanner.h \
   chain.h \
   chain_options.h \
   chainparams.h \
@@ -319,6 +324,7 @@ PASTEL_CORE_H = \
   compat/endian.h \
   compat/sanity.h \
   compressor.h \
+  config/port_config.h \
   consensus/consensus.h \
   consensus/params.h \
   consensus/upgrades.h \
@@ -326,6 +332,8 @@ PASTEL_CORE_H = \
   core_io.h \
   core_memusage.h \
   txdb/addressindex.h \
+  txdb/burntxindex.h \
+  txdb/index_defs.h \
   txdb/spentindex.h \
   txdb/timestampindex.h \
   txdb/txdb.h \
@@ -366,12 +374,10 @@ PASTEL_CORE_H = \
   noui.h \
   orphan-tx.h\
   policy/fees.h \
-  port_config.h \
   primitives/block.h \
   primitives/transaction.h \
   protocol.h \
   pubkey.h \
-  random.h \
   rpc/client.h \
   rpc/chain-rpc-utils.h \
   rpc/coin-supply.h \
@@ -403,7 +409,6 @@ PASTEL_CORE_H = \
   undo.h \
   utilmoneystr.h \
   utiltest.h \
-  utiltime.h \
   validationinterface.h \
   version.h \
   wallet/asyncrpcoperation_mergetoaddress.h \
@@ -440,6 +445,7 @@ libbitcoin_server_a_SOURCES = \
   alertkeys.h \
   asyncrpcoperation.cpp \
   asyncrpcqueue.cpp \
+  blockscanner.cpp \
   chain.cpp \
   chain_options.cpp \
   checkpoints.cpp \
@@ -481,6 +487,7 @@ libbitcoin_server_a_SOURCES = \
   script_check.cpp \
   timedata.cpp \
   torcontrol.cpp \
+  txdb/burntxindex.cpp \
   txdb/txdb.cpp \
   txmempool.cpp \
   validationinterface.cpp \
@@ -555,10 +562,8 @@ EQUIHASH_TROMP_SOURCES = \
   mining/pow/tromp/equi.h \
   mining/pow/tromp/osx_barrier.h
 
-crypto_libbitcoin_crypto_a_CPPFLAGS += \
-  -DEQUIHASH_TROMP_ATOMIC
-crypto_libbitcoin_crypto_a_SOURCES += \
-  ${EQUIHASH_TROMP_SOURCES}
+crypto_libbitcoin_crypto_a_CPPFLAGS += -DEQUIHASH_TROMP_ATOMIC
+crypto_libbitcoin_crypto_a_SOURCES += ${EQUIHASH_TROMP_SOURCES}
 endif
 
 # common: shared between pasteld and non-server tools
@@ -606,11 +611,9 @@ libbitcoin_util_a_SOURCES =\
   support/cleanse.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
-  random.cpp \
   rpc/protocol.cpp \
   rpc/rpc-utils.cpp \
   utilmoneystr.cpp \
-  utiltime.cpp \
   $(UTILS_CPP) \
   $(UTILS_H) \
   $(PASTEL_CORE_H) \
@@ -719,8 +722,6 @@ pastel_tx_LDADD += \
   $(CRYPTO_LIBS)\
   $(ZSTD_LIBS)
 
-#
-
 # zcash protocol primitives #
 libzcash_a_SOURCES = \
   zcash/IncrementalMerkleTree.cpp \
@@ -742,6 +743,7 @@ libzcash_a_SOURCES = \
 libzcash_a_CPPFLAGS = $(AM_CPPFLAGS) $(PIC_FLAGS) -DMONTGOMERY_OUTPUT -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DBOOST_SPIRIT_THREADSAFE -fvisibility=hidden -DSTATIC $(PASTEL_INCLUDES)
 libzcash_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libzcash_a_LDFLAGS = $(AM_LDFLAGS)
+noinst_LIBRARIES = libzcash.a
 
 # zcashconsensus library #
 if BUILD_PASTEL_LIBS

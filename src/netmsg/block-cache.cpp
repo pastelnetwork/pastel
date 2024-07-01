@@ -4,7 +4,7 @@
 #include <cinttypes>
 
 #include <consensus/validation.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/reverselock.h>
 #include <chain_options.h>
 #include <main.h>

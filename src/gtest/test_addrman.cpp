@@ -1,13 +1,13 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2021 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <gtest/gtest.h>
 
+#include <utils/random.h>
 #include <addrman.h>
 #include <hash.h>
-#include <random.h>
 
 using namespace std;
 using namespace testing;

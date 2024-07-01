@@ -11,7 +11,6 @@
 #include <accept_to_mempool.h>
 #include <chain_options.h>
 #include <timedata.h>
-#include <main.h>
 #include <metrics.h>
 #include <validationinterface.h>
 #include <mnode/ticket-processor.h>

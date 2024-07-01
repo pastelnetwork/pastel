@@ -9,8 +9,8 @@
 #include <utils/fs.h>
 #include <utils/vector_types.h>
 #include <utils/uint256.h>
+#include <utils/random.h>
 #include <dbwrapper.h>
-#include <random.h>
                     
 using namespace std;
 using namespace fs;

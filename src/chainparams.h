@@ -92,6 +92,7 @@ public:
     const std::vector<SeedSpec6>& FixedSeeds() const noexcept { return vFixedSeeds; }
     const CCheckpointData& Checkpoints() const noexcept { return checkpointData; }
     const std::string getPastelBurnAddress() const noexcept { return m_sPastelBurnAddress; }
+    const uint160 &getPastelBurnAddressHash() const noexcept { return m_pastelBurnAddressHash; }
 
     CChainParams(ChainNetwork network) :
         consensus(network)
@@ -109,6 +110,7 @@ public:
         if (IsRegTest())
             consensus.UpdateNetworkUpgradeParameters(idx, nActivationHeight);
     }
+    bool DecodePastelBurnAddress();
 
 protected:
     Consensus::Params consensus;
@@ -122,6 +124,7 @@ protected:
     std::string strNetworkID;
     std::string strCurrencyUnits;
     std::string m_sPastelBurnAddress;
+    uint160 m_pastelBurnAddressHash;
     uint32_t bip44CoinType = 0;
     CBlock genesis;
     std::vector<SeedSpec6> vFixedSeeds;

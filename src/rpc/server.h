@@ -36,12 +36,17 @@ class CNetAddr;
 class JSONRequest
 {
 public:
-    UniValue id;
-    std::string strMethod;
-    UniValue params;
+    JSONRequest() noexcept { m_id = NullUniValue; }
 
-    JSONRequest() { id = NullUniValue; }
     void parse(const UniValue& valRequest);
+    const UniValue& id() const noexcept { return m_id; }
+    const std::string& method() const noexcept { return m_strMethod; }
+    const UniValue& params() const noexcept { return m_params; }
+
+protected:
+    UniValue m_id;
+    std::string m_strMethod;
+    UniValue m_params;
 };
 
 /** Query whether RPC is running */
@@ -93,9 +98,9 @@ public:
 class RPCTimerInterface
 {
 public:
-    virtual ~RPCTimerInterface() {}
+    virtual ~RPCTimerInterface() noexcept {}
     /** Implementation name */
-    virtual const char *Name() = 0;
+    virtual const char *Name() const noexcept = 0;
     /** Factory function for timers.
      * RPC will call the function to create a timer that will call func in *millis* milliseconds.
      * @note As the RPC mechanism is backend-neutral, it can use different implementations of timers.

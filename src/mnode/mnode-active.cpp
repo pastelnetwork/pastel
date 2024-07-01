@@ -4,10 +4,10 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
+#include <config/port_config.h>
 #include <utils/util.h>
 #include <utils/str_utils.h>
 #include <protocol.h>
-#include <port_config.h>
 #include <netmsg/nodemanager.h>
 
 #include <mining/mining-settings.h>
@@ -97,6 +97,23 @@ string CActiveMasternode::GetTypeString() const noexcept
             break;
     }
     return strType;
+}
+
+void CActiveMasternode::SyncFinished()
+{
+    if (!masterNodeCtrl.IsSynced())
+        return;
+
+    const auto &chainparams = Params();
+    if (chainparams.IsRegTest())
+        return;
+ 
+    string error;
+    if (!GenerateBurnTxIndex(chainparams, error))
+    {
+		LogFnPrintf("ERROR: Failed to generate index for the transactions to the burn address. %s", error);
+		return;
+	}
 }
 
 bool CActiveMasternode::SendMasternodePing(const bool bForce)

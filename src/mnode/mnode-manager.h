@@ -8,7 +8,7 @@
 #include <set>
 #include <atomic>
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/vector_types.h>
 #include <utils/map_types.h>
 #include <utils/set_types.h>
