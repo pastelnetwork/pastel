@@ -5,7 +5,7 @@
 #include <cinttypes>
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 #include <utils/str_utils.h>
 #include <utils/util.h>

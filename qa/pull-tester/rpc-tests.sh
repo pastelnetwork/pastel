@@ -37,9 +37,6 @@ EOF
 
 # groups of test scripts - can be executed independently
 declare -a testScripts=(
-    'addressindex.py'
-    'spentindex.py'
-    'timestampindex.py'
     'framework.py'
     'wallet_anchorfork.py'
     'wallet_changeindicator.py'
@@ -122,6 +119,10 @@ declare -a testScriptsMN2=(
     'mn_tickets_contract.py'
     'mn_mining.py'
     'mn_tickets_validation.py'
+    'addressindex.py'
+    'spentindex.py'
+    'timestampindex.py'
+    'burntxindex.py'
 )
 
 declare -a testScriptsMNslow=(

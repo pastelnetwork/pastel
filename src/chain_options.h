@@ -43,6 +43,10 @@ extern std::atomic_bool fSpentIndex;
 
 // Maintain a full timestamp index, used to query for blocks within a time range
 extern std::atomic_bool fTimestampIndex;
+
+// Maintain a full burn tx index, used to query for burn txs
+extern std::atomic_bool fBurnTxIndex;
+
 // END insightexplorer
 
 class CChainOptions

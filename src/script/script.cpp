@@ -360,7 +360,7 @@ ScriptType CScript::GetType() const noexcept
     return ScriptType::UNKNOWN;
 }
 
-uint160 CScript::AddressHash() const
+uint160 CScript::AddressHash() const noexcept
 {
     // where the address bytes begin depends on the script type
     int start;

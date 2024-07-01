@@ -96,6 +96,10 @@ bool IsScriptDestination(const CTxDestination& dest) noexcept;
 /** Get the name of a txnouttype as a C string, or nullptr if unknown. */
 const char* GetTxnOutputType(const txnouttype t);
 
+// This function accepts an address and returns in the output parameters
+// the version and raw bytes for the RIPEMD-160 hash.
+bool GetTxDestinationHash(const CTxDestination& dest, uint160& hashBytes, ScriptType& type);
+
 using txdest_vector_t = std::vector<CTxDestination>;
 
 /**
@@ -138,4 +142,4 @@ CScript GetScriptForDestination(const CTxDestination& dest);
 CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
 
 // insightexplorer
-CTxDestination DestFromAddressHash(const ScriptType scriptType, uint160& addressHash);
+CTxDestination DestFromAddressHash(const ScriptType scriptType, const uint160& addressHash);

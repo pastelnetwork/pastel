@@ -23,12 +23,16 @@
 #include <net.h>
 #include <netbase.h>
 #include <coincontrol.h>
+#include <chain_options.h>
 #include <rpc/rpc_consts.h>
 #include <rpc/server.h>
 #include <rpc/rpc-utils.h>
 #include <rpc/chain-rpc-utils.h>
+#include <blockscanner.h>
 #include <timedata.h>
 #include <transaction_builder.h>
+#include <txdb/burntxindex.h>
+#include <txdb/txdb.h>
 #include <utilmoneystr.h>
 #include <primitives/transaction.h>
 #include <zcbenchmarks.h>
@@ -4853,17 +4857,28 @@ Examples:
     const bool bScanAllAddresses = (sFromAddress == "*");
     if (!bScanAllAddresses)
     {
-        destTrackingAddress = keyIO.DecodeDestination(params[0].get_str());
+        destTrackingAddress = keyIO.DecodeDestination(sFromAddress);
         if (!IsValidDestination(destTrackingAddress))
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel transparent address");
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel tracking transparent address");
     }
+    bool bUsedDefaultBurnAddress = false;
+    string sDefaultDestBurnAddress = chainparams.getPastelBurnAddress();
     string sDestBurnAddress;
     if (params.size() > 2)
+    {
         sDestBurnAddress = params[2].get_str();
+        trim(sDestBurnAddress);
+        bUsedDefaultBurnAddress = str_icmp(sDestBurnAddress, sDefaultDestBurnAddress);
+    } 
     else
-        sDestBurnAddress = chainparams.getPastelBurnAddress();
-    const CTxDestination destBurnAddress = keyIO.DecodeDestination(sDestBurnAddress);
-    if (!IsValidDestination(destBurnAddress))
+    {
+        bUsedDefaultBurnAddress = true;
+        sDestBurnAddress = move(sDefaultDestBurnAddress);
+    }
+    ScriptType destBurnAddressType;
+    uint160 destBurnAddress;
+    const CTxDestination burnAddressTxDest = keyIO.DecodeDestination(sDestBurnAddress);
+    if (!GetTxDestinationHash(burnAddressTxDest, destBurnAddress, destBurnAddressType))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel burn address");
 
     variant<uint32_t, uint256> block_id;
@@ -4872,18 +4887,19 @@ Examples:
     else
         block_id = 0U;
 
-    const uint32_t nCurrentHeight = gl_nChainHeight;
+    uint32_t nStartHeight = 0;
+    const uint32_t nEndHeight = gl_nChainHeight;
     uint256 hashStartBlock;
     {
         LOCK(cs_main);
         if (holds_alternative<uint32_t>(block_id))
         {
-            const uint32_t nBlockHeight = get<uint32_t>(block_id);
-            // chain length could have changed since the block_id was parsed
-            if (nBlockHeight > nCurrentHeight)
+            nStartHeight = get<uint32_t>(block_id);
+            // blockchain length could have changed since the block_id was parsed
+            if (nStartHeight > nEndHeight)
                 throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Block height %u out of range [0..%u]", 
-                    nBlockHeight, nCurrentHeight));
-            hashStartBlock = chainActive[nBlockHeight]->GetBlockHash();
+                    nStartHeight, nEndHeight));
+            hashStartBlock = chainActive[nStartHeight]->GetBlockHash();
         }
         else
             hashStartBlock = get<uint256>(block_id);
@@ -4891,92 +4907,79 @@ Examples:
         auto it = mapBlockIndex.find(hashStartBlock);
         if (it == mapBlockIndex.end())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Block %s not found in index", hashStartBlock.ToString()));
+        nStartHeight = it->second->nHeight;
     }
 
     UniValue resultObj(UniValue::VARR);
     mutex resultMutex;
-    CBlockScanner blockScanner(hashStartBlock);
-    blockScanner.execute("burn-txs", [&](BlockScannerTask* pTask)
+
+    // this will work only for the default burn address:
+    // if we have already burn txindex enabled, we can use it
+    // otherwise, we need to do full blocks scan and create burn txindex
+    if (bUsedDefaultBurnAddress)
     {
-        UniValue resultObjLocal(UniValue::VARR);
+        string error;
+        if (!GenerateBurnTxIndex(chainparams, error))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Failed to generate burn txindex. %s", error));
 
-        // read blocks from disk and process
-        for (size_t i = pTask->nBlockOffsetIndexStart;
-            i < min(pTask->nBlockOffsetIndexStart + pTask->nBlockOffsetIndexCount, pTask->vBlockOffsets.size()); ++i)
+        uint160 trackingAddressHash;
+        ScriptType trackingAddressType = ScriptType::UNKNOWN;
+        if (!bScanAllAddresses && !GetTxDestinationHash(destTrackingAddress, trackingAddressHash, trackingAddressType))
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel tracking transparent address");
+
+        burn_txindex_vector_t vBurnTxIndex;
+        // use burn tx index to find all transactions to the burn address 
+        if (!gl_pBlockTreeDB->ReadBurnTxIndex(trackingAddressHash, trackingAddressType, vBurnTxIndex, nStartHeight,
+            nEndHeight, bScanAllAddresses))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to read burn txindex");
+        resultObj.reserve(vBurnTxIndex.size() + 10);
+        for (const auto& [key, value] : vBurnTxIndex)
+		{
+			UniValue txObj(UniValue::VOBJ);
+			txObj.pushKV(RPC_KEY_TXID, key.txid.GetHex());
+			txObj.pushKV("blockhash", value.blockHash.GetHex());
+			txObj.pushKV("blockindex", key.nBlockHeight);
+			txObj.pushKV("confirmations", nEndHeight - key.nBlockHeight + 1);
+			txObj.pushKV("timestamp", value.nBlockTime);
+			txObj.pushKV("from_address", keyIO.EncodeDestination(DestFromAddressHash(key.addressType, key.addressHash)));
+			txObj.pushKV("amount", ValueFromAmount(value.nValuePat));
+			txObj.pushKV("amountPat", value.nValuePat);
+    		resultObj.push_back(move(txObj));
+		}
+    }
+    else
+	{
+        CBlockScanner blockScanner(hashStartBlock);
+        blockScanner.execute("brntxs", [&](BlockScannerTask* pTask)
         {
-            CDiskBlockPos blockPos(pTask->nBlockFile, pTask->vBlockOffsets[i]);
-            CBlock block;
-            if (!ReadBlockFromDisk(block, blockPos, pTask->consensusParams))
-                throw JSONRPCError(RPC_MISC_ERROR, "ReadBlockFromDisk failed");
+            UniValue resultObjLocal(UniValue::VARR);
 
-            if (block.vtx.empty())
-                continue;
-
-            uint256 hashBlock;
-            uint32_t nBlockHeight;
-            for (const auto& tx : block.vtx)
+            ProcessBurnTxIndexTask(pTask, destBurnAddress, bScanAllAddresses, destTrackingAddress,
+                [&](const uint256& txid, const uint32_t nTxInIndex, const uint256& blockHash, const uint32_t nBlockHeight,
+                    const int64_t nBlockTime, const CTxDestination &address, const CAmount nValuePat)
             {
-                if (tx.IsCoinBase())
-                    continue;
+                UniValue txObj(UniValue::VOBJ);
 
-                for (const auto& txout : tx.vout)
-                {
-                    CTxDestination address;
-                    if (!ExtractDestination(txout.scriptPubKey, address))
-                        continue;
+                txObj.pushKV(RPC_KEY_TXID, txid.GetHex());
+                txObj.pushKV("blockhash", blockHash.GetHex());
+                txObj.pushKV("blockindex", nBlockHeight);
+                txObj.pushKV("confirmations", nEndHeight - nBlockHeight + 1);
+                txObj.pushKV("timestamp", nBlockTime);
+                txObj.pushKV("from_address", keyIO.EncodeDestination(address));
+                txObj.pushKV("amount", ValueFromAmount(nValuePat));
+                txObj.pushKV("amountPat", nValuePat);
 
-                    if (address != destBurnAddress)
-                        continue;
-
-                    for (const auto& txin : tx.vin)
-                    {
-                        if (txin.prevout.IsNull())
-                            continue;
-
-                        CTransaction prevTx;
-                        uint256 hashInputBlock;
-                        if (!GetTransaction(txin.prevout.hash, prevTx, pTask->consensusParams, hashInputBlock, true))
-                            continue;
-                        if (prevTx.vout.size() <= txin.prevout.n)
-							continue;
-                        const auto &prevTxOut = prevTx.vout[txin.prevout.n];
-                        if (!ExtractDestination(prevTxOut.scriptPubKey, address))
-                            continue;
-
-                        if (!bScanAllAddresses && (address != destTrackingAddress))
-                            continue;
-
-                        if (hashBlock.IsNull())
-                        {
-                            hashBlock = block.GetHash();
-                            LOCK(cs_main);
-                            const CBlockIndex* pindex = mapBlockIndex[hashBlock];
-                            if (pindex)
-                                nBlockHeight = pindex->nHeight;
-                        }
-
-                        UniValue txObj(UniValue::VOBJ);
-                        txObj.pushKV(RPC_KEY_TXID, tx.GetHash().GetHex());
-                        txObj.pushKV("blockhash", hashBlock.GetHex());
-                        txObj.pushKV("blockindex", nBlockHeight);
-                        txObj.pushKV("confirmations", nCurrentHeight - nBlockHeight + 1);
-                        txObj.pushKV("timestamp", block.GetBlockTime());
-                        txObj.pushKV("from_address", keyIO.EncodeDestination(address));
-                        txObj.pushKV("amount", ValueFromAmount(txout.nValue));
-                        txObj.pushKV("amountPat", txout.nValue);
-                        resultObjLocal.push_back(move(txObj));
-                    }
-                }
+                resultObjLocal.push_back(move(txObj));
+            });
+            {
+                unique_lock lock(resultMutex);
+                resultObj.reserve(resultObj.size() + resultObjLocal.size() + 10);
+                for (size_t i = 0; i < resultObjLocal.size(); ++i)
+                    resultObj.push_back(move(resultObjLocal[i]));
+                resultObjLocal.clear();
             }
-        }
-        {
-            unique_lock lock(resultMutex);
-            resultObj.reserve(resultObj.size() + resultObjLocal.size() + 10);
-            for (size_t i = 0; i < resultObjLocal.size(); ++i)
-                resultObj.push_back(move(resultObjLocal[i]));
-            resultObjLocal.clear();
-        }
-    });
+        });
+	}
     // sort results by block height
     vector<pair<uint32_t, uint32_t> > vHeights;
     vHeights.reserve(resultObj.size());
@@ -5002,12 +5005,13 @@ Examples:
 
             for (const auto& txout : tx.vout)
             {
-				CTxDestination address;
-				if (!ExtractDestination(txout.scriptPubKey, address))
-					continue;
+                ScriptType scriptType = txout.scriptPubKey.GetType();
+                if (scriptType == ScriptType::UNKNOWN)
+                    continue;
 
-				if (address != destBurnAddress)
-					continue;
+                uint160 addressHash = txout.scriptPubKey.AddressHash();
+                if (addressHash != destBurnAddress)
+                    continue;
 
                 for (const auto& txin : tx.vin)
                 {
@@ -5018,11 +5022,15 @@ Examples:
 					uint256 hashInputBlock;
 					if (!GetTransaction(txin.prevout.hash, prevTx, chainparams.GetConsensus(), hashInputBlock, true))
 						continue;
+
 					if (prevTx.vout.size() <= txin.prevout.n)
 						continue;
+
 					const auto &prevTxOut = prevTx.vout[txin.prevout.n];
+    				CTxDestination address;
 					if (!ExtractDestination(prevTxOut.scriptPubKey, address))
 						continue;
+
 					if (!bScanAllAddresses && (address != destTrackingAddress))
 						continue;
 
@@ -5033,8 +5041,8 @@ Examples:
 					txObj.pushKV("confirmations", 0);
 					txObj.pushKV("timestamp", 0);
 					txObj.pushKV("from_address", keyIO.EncodeDestination(address));
-					txObj.pushKV("amount", ValueFromAmount(txout.nValue));
-					txObj.pushKV("amountPat", txout.nValue);
+					txObj.pushKV("amount", ValueFromAmount(-txout.nValue));
+					txObj.pushKV("amountPat", -txout.nValue);
 					resultObjSorted.push_back(move(txObj));
 				}
 			}

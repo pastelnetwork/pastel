@@ -95,25 +95,6 @@ bool HTTPPathHandler::IsGroup(const string &sGroup) const noexcept
 	return str_icmp(m_sGroup, sGroup);
 }
 
-/** Event dispatcher thread */
-static void ThreadHTTP(struct event_base* base)
-{
-    RenameThread("psl-httplsnr");
-    LogFnPrint("http", "Entering http listener event loop");
-    try
-    {
-        event_base_dispatch(base);
-    } catch (const exception& e)
-	{
-		LogFnPrintf("exception in http listener event loop: %s", e.what());
-	} catch (...)
-	{
-		LogFnPrintf("unknown exception in http listener event loop");
-	}
-    // Event loop will be interrupted by InterruptHTTPServer()
-    LogFnPrint("http", "Exited http listener event loop");
-}
-
 void accept_connection_cb(struct evconnlistener* listener, evutil_socket_t client_socket, struct sockaddr* addr, int addrlen, void* arg)
 {
     auto pWorkQueue = static_cast<WorkQueue<HTTPRequest>*>(arg);
@@ -218,6 +199,7 @@ void HTTPEvent::trigger(struct timeval* tv)
 }
 
 CHTTPServer::CHTTPServer() noexcept :
+    CServiceThread("httplsnr"),
     m_bInitialized(false),
     m_pMainEventBase(nullptr),
     m_nRpcWorkerThreads(DEFAULT_HTTP_WORKER_THREADS),
@@ -324,7 +306,22 @@ bool CHTTPServer::Initialize()
 	return m_bInitialized;
 }
 
-bool CHTTPServer::Start()
+void CHTTPServer::execute()
+{
+    try
+    {
+        event_base_dispatch(m_pMainEventBase);
+    } catch (const exception& e)
+	{
+		LogFnPrintf("exception in http listener event loop: %s", e.what());
+	} catch (...)
+	{
+		LogFnPrintf("unknown exception in http listener event loop");
+	}
+    // Event loop will be interrupted by Interrupt() call
+}
+
+bool CHTTPServer::Start() noexcept
 {
     try
     {
@@ -333,17 +330,15 @@ bool CHTTPServer::Start()
             m_sInitError = "HTTP server not initialized";
             return false;
         }
-        LogFnPrint("http", "Starting HTTP server");
-        LogFnPrintf("HTTP: starting %zu worker threads", m_nRpcWorkerThreads);
+        LogFnPrintf("HTTP Server: starting %zu worker threads", m_nRpcWorkerThreads);
 
-        m_MainThread = thread(&ThreadHTTP, m_pMainEventBase);
-        if (!m_MainThread.joinable())
+        string error;
+        if (!start(error))
         {
-            m_sInitError = "Failed to start HTTP event thread";
+            m_sInitError = strprintf("Failed to start HTTP Server listener thread. %s", error);
             return false;
         }
 
-        string error;
         for (size_t i = 0; i < m_nRpcWorkerThreads; i++)
         {
             const size_t nID = m_WorkerThreadPool.add_func_thread(error, strprintf("httpworker%zu", i + 1).c_str(),
@@ -372,6 +367,7 @@ bool CHTTPServer::Start()
 void CHTTPServer::Interrupt()
 {
     LogFnPrint("http", "Interrupting HTTP server");
+    stop();
     if (m_pMainEventBase)
     {
         // disable listeners
@@ -387,14 +383,13 @@ void CHTTPServer::Interrupt()
 
 void CHTTPServer::Stop()
 {
-    LogFnPrint("http", "Stopping HTTP server");
+    LogFnPrintf("Stopping HTTP server");
     LogFnPrint("http", "Waiting for HTTP worker threads to exit");
     m_WorkerThreadPool.join_all();
     m_pWorkQueue.reset();
     
     LogFnPrint("http", "Waiting for HTTP event thread to exit");
-    if (m_MainThread.joinable())
-        m_MainThread.join();
+    waitForStop();
     if (m_pMainEventBase)
     {
         for (auto listener : m_vListeners)
@@ -403,7 +398,7 @@ void CHTTPServer::Stop()
 		event_base_free(m_pMainEventBase);
 		m_pMainEventBase = nullptr;
     }
-    LogFnPrint("http", "Stopped HTTP server");
+    LogFnPrintf("Stopped HTTP server");
 }
 
 /** Check if a network address is allowed to access the HTTP server */

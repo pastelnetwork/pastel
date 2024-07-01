@@ -5,7 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #ifdef HAVE_CONFIG_H
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #ifdef HAVE_GETADDRINFO_A

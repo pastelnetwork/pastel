@@ -262,7 +262,7 @@ private:
     HTTPRequestHandler m_handler;
 };
 
-class CHTTPServer
+class CHTTPServer final : public CServiceThread
 {
 public:
     CHTTPServer() noexcept;
@@ -275,8 +275,9 @@ public:
      * This is separate from InitHTTPServer to give users race-condition-free time
      * to register their handlers between InitHTTPServer and StartHTTPServer.
      */
-    bool Start();
+    bool Start() noexcept;
     void Stop(); // Stop HTTP server 
+    void execute() override;
     void Interrupt(); // Interrupt HTTP server threads
     void RegisterHTTPHandler(const std::string& sHandlerGroup, const std::string &sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler);
     void UnregisterHTTPHandlers(const std::string& sHandlerGroup);

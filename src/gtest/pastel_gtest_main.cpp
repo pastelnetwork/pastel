@@ -17,6 +17,7 @@
 #include <metrics.h>
 #include <orphan-tx.h>
 #include <accept_to_mempool.h>
+#include <txdb/txdb.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif // ENABLE_WALLET

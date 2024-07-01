@@ -99,6 +99,23 @@ string CActiveMasternode::GetTypeString() const noexcept
     return strType;
 }
 
+void CActiveMasternode::SyncFinished()
+{
+    if (!masterNodeCtrl.IsSynced())
+        return;
+
+    const auto &chainparams = Params();
+    if (chainparams.IsRegTest())
+        return;
+ 
+    string error;
+    if (!GenerateBurnTxIndex(chainparams, error))
+    {
+		LogFnPrintf("ERROR: Failed to generate index for the transactions to the burn address. %s", error);
+		return;
+	}
+}
+
 bool CActiveMasternode::SendMasternodePing(const bool bForce)
 {
     if (!m_bPingerEnabled)

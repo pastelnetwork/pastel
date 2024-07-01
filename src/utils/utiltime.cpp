@@ -9,7 +9,7 @@
 #include <thread>
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <utils/utiltime.h>

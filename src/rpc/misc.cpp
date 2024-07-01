@@ -561,29 +561,6 @@ static bool getAddressFromIndex(
     return true;
 }
 
-// This function accepts an address and returns in the output parameters
-// the version and raw bytes for the RIPEMD-160 hash.
-static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, ScriptType& type)
-{
-    if (!IsValidDestination(dest))
-        return false;
-    if (IsKeyDestination(dest))
-    {
-        auto x = get_if<CKeyID>(&dest);
-        memcpy(&hashBytes, x->begin(), uint160::SIZE);
-        type = ScriptType::P2PKH;
-        return true;
-    }
-    if (IsScriptDestination(dest))
-    {
-        auto x = get_if<CScriptID>(&dest);
-        memcpy(&hashBytes, x->begin(), uint160::SIZE);
-        type = ScriptType::P2SH;
-        return true;
-    }
-    return false;
-}
-
 // insightexplorer
 static bool getAddressesFromParams(
     const UniValue& params,
@@ -611,11 +588,11 @@ static bool getAddressesFromParams(
     for (const auto& it : vParamAddresses)
     {
         auto address = keyIO.DecodeDestination(it.first);
-        uint160 hashBytes;
+        uint160 addressHash;
         ScriptType type = ScriptType::UNKNOWN;
-        if (!getIndexKey(address, hashBytes, type))
+        if (!GetTxDestinationHash(address, addressHash, type))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-        vAddresses.emplace_back(hashBytes, type);
+        vAddresses.emplace_back(addressHash, type);
     }
     return true;
 }
@@ -1075,7 +1052,7 @@ Examples:
     if (!getAddressesFromParams(params, vAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    vector<CAddressUnspentDbEntry> vUnspentOutputs;
+    address_unspent_vector_t vUnspentOutputs;
     for (const auto& it : vAddresses)
     {
         if (!GetAddressUnspent(it.first, it.second, vUnspentOutputs))
@@ -1093,10 +1070,8 @@ Examples:
     for (const auto& it : vUnspentOutputs)
     {
         UniValue output(UniValue::VOBJ);
-        auto scriptTypeOpt = toScriptType(it.first.type);
-        if (!scriptTypeOpt)
-			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
-        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+        auto scriptType = it.first.type;
+        if (!getAddressFromIndex(scriptType, it.first.hashBytes, address))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
         output.pushKV("address", address);

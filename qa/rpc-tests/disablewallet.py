@@ -21,7 +21,6 @@ class DisableWalletTest (BitcoinTestFramework):
 
     def setup_network(self, split=False):
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir, [['-disablewallet']])
-        self.is_network_split = False
         self.sync_all()
 
     def run_test (self):

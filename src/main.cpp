@@ -516,7 +516,6 @@ CBlockIndex* FindForkInGlobalIndex(const CChain& chain, const CBlockLocator& loc
 }
 
 unique_ptr<CCoinsViewCache> gl_pCoinsTip;
-unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
 
 unsigned int GetLegacySigOpCount(const CTransaction& tx)
 {
@@ -609,7 +608,7 @@ bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
 }
 
 bool GetAddressIndex(const uint160& addressHash, const ScriptType type,
-                     vector<CAddressIndexDbEntry>& vAddressIndex,
+                     address_index_vector_t& vAddressIndex,
                      const tuple<uint32_t, uint32_t> &height_range)
 {
     if (!fAddressIndex)
@@ -627,14 +626,14 @@ bool GetAddressIndex(const uint160& addressHash, const ScriptType type,
 }
 
 bool GetAddressUnspent(const uint160& addressHash, const ScriptType type,
-                       vector<CAddressUnspentDbEntry>& unspentOutputs)
+                       address_unspent_vector_t& vUnspentOutputs)
 {
     if (!fAddressIndex)
     {
         LogPrint("rpc", "address index not enabled");
         return false;
     }
-    if (!gl_pBlockTreeDB->ReadAddressUnspentIndex(addressHash, to_integral_type(type), unspentOutputs))
+    if (!gl_pBlockTreeDB->ReadAddressUnspentIndex(addressHash, to_integral_type(type), vUnspentOutputs))
     {
         LogPrint("rpc", "unable to get txids for address");
         return false;
@@ -1355,36 +1354,46 @@ BlockDisconnectResult DisconnectBlock(
         return BlockDisconnectResult::FAILED;
     }
 
-    vector<CAddressIndexDbEntry> vAddressIndex;
-    vector<CAddressUnspentDbEntry> vAddressUnspentIndex;
-    vector<CSpentIndexDbEntry> vSpentIndex;
+    address_index_vector_t vAddressIndex;
+    address_unspent_vector_t vAddressUnspentIndex;
+    spent_index_vector_t vSpentIndex;
+    burn_txindex_vector_t vBurnTxIndex;
 
     // undo transactions in reverse order
     if (!block.vtx.empty())
     {
+        const auto& destBurnAddress = chainparams.getPastelBurnAddressHash();
+
         CSerializeData vTicketData;
         string error;
         for (uint32_t i = static_cast<uint32_t>(block.vtx.size()); i-- > 0;)
         {
             const CTransaction& tx = block.vtx[i];
             const uint256 &txid = tx.GetHash();
+            optional<CAmount> burnAmount;
 
             // insightexplorer
-            if (fAddressIndex && bUpdateIndices)
+            if ((fAddressIndex || fBurnTxIndex) && bUpdateIndices)
             {
                 for (uint32_t k = static_cast<uint32_t>(tx.vout.size()); k-- > 0;)
                 {
-                    const CTxOut &out = tx.vout[k];
-                    ScriptType scriptType = out.scriptPubKey.GetType();
+                    const CTxOut &txout = tx.vout[k];
+                    ScriptType scriptType = txout.scriptPubKey.GetType();
                     if (scriptType == ScriptType::UNKNOWN)
                         continue;
 
-                    uint160 const addrHash = out.scriptPubKey.AddressHash();
+                    uint160 const addrHash = txout.scriptPubKey.AddressHash();
+
+                    if (fBurnTxIndex && (addrHash == destBurnAddress))
+                        burnAmount = txout.nValue;
+
+                    if (!fAddressIndex)
+                        continue;
 
                     // undo receiving activity
                     vAddressIndex.emplace_back(
                         CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, k, false),
-                        out.nValue);
+                        txout.nValue);
 
                     // undo unspent index
                     vAddressUnspentIndex.emplace_back(
@@ -1436,24 +1445,33 @@ BlockDisconnectResult DisconnectBlock(
                     fClean = false;
 
                 // insightexplorer
-                if (fAddressIndex && bUpdateIndices)
+                if ((fAddressIndex || (fBurnTxIndex && burnAmount)) && bUpdateIndices)
                 {
                     const CTxOut &prevout = view.GetOutputFor(input);
                     ScriptType scriptType = prevout.scriptPubKey.GetType();
-                    if (scriptType != ScriptType::UNKNOWN)
+                    if (scriptType == ScriptType::UNKNOWN)
+                        continue;
+
+                    uint160 const addrHash = prevout.scriptPubKey.AddressHash();
+
+                    if (fBurnTxIndex && burnAmount)
                     {
-                        uint160 const addrHash = prevout.scriptPubKey.AddressHash();
-
-                        // undo spending activity
-                        vAddressIndex.emplace_back(
-                            CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, j, true),
-                            prevout.nValue * -1);
-
-                        // restore unspent index
-                        vAddressUnspentIndex.emplace_back(
-                            CAddressUnspentKey(scriptType, addrHash, input.prevout.hash, input.prevout.n),
-                            CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undo.nHeight));
+						vBurnTxIndex.emplace_back(
+							CBurnTxIndexKey(scriptType, addrHash, pindex->GetHeight(), txid, j),
+							CBurnTxIndexValue(burnAmount.value(), pindex->GetBlockHash(), block.GetBlockTime()));
                     }
+
+                    if (!fAddressIndex)
+                        continue;
+                    // undo spending activity
+                    vAddressIndex.emplace_back(
+                        CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, j, true),
+                        prevout.nValue * -1);
+
+                    // restore unspent index
+                    vAddressUnspentIndex.emplace_back(
+                        CAddressUnspentKey(scriptType, addrHash, input.prevout.hash, input.prevout.n),
+                        CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undo.nHeight));
                 }
                 if (fSpentIndex && bUpdateIndices)
                 {
@@ -1494,6 +1512,14 @@ BlockDisconnectResult DisconnectBlock(
         if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(vAddressUnspentIndex))
         {
             AbortNode(state, "Failed to write address unspent index");
+            return BlockDisconnectResult::FAILED;
+        }
+    }
+    if (fBurnTxIndex && bUpdateIndices)
+    {
+        if (!gl_pBlockTreeDB->EraseBurnTxIndex(vBurnTxIndex))
+        {
+            AbortNode(state, "Failed to delete burn transaction index");
             return BlockDisconnectResult::FAILED;
         }
     }
@@ -1679,16 +1705,17 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     vector<pair<uint256, CDiskTxPos> > vPos;
     vPos.reserve(block.vtx.size());
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
-    vector<CAddressIndexDbEntry> vAddressIndex;
-    vector<CAddressUnspentDbEntry> vAddressUnspentIndex;
-    vector<CSpentIndexDbEntry> vSpentIndex;
+    address_index_vector_t vAddressIndex;
+    address_unspent_vector_t vAddressUnspentIndex;
+    spent_index_vector_t vSpentIndex;
+    burn_txindex_vector_t vBurnTxIndex;
 
     // Construct the incremental merkle tree at the current block position
     auto old_sprout_tree_root = view.GetBestAnchor(SPROUT);
     // saving the top anchor in the block index as we go.
-    if (!fJustCheck) {
+    if (!fJustCheck)
         pindex->hashSproutAnchor = old_sprout_tree_root;
-    }
+
     SproutMerkleTree sprout_tree;
     // This should never fail: we should always be able to get the root
     // that is on the tip of our chain
@@ -1708,6 +1735,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
     vector<PrecomputedTransactionData> txdata;
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
+
+    const uint160& destBurnAddress = chainparams.getPastelBurnAddressHash();
 
     for (uint32_t i = 0; i < block.vtx.size(); i++)
     {
@@ -1745,7 +1774,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
                 for (uint32_t j = 0; j < tx.vin.size(); j++)
                 {
 
-                    const CTxIn input = tx.vin[j];
+                    const CTxIn &input = tx.vin[j];
                     const CTxOut &prevout = vAllPrevOutputs[j];
                     ScriptType scriptType = prevout.scriptPubKey.GetType();
                     const uint160 addrHash = prevout.scriptPubKey.AddressHash();
@@ -1803,29 +1832,52 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
         }
 
         // insightexplorer
-        if (fAddressIndex)
+        if (fAddressIndex || fBurnTxIndex)
         {
             for (uint32_t k = 0; k < tx.vout.size(); k++)
             {
-                const CTxOut &out = tx.vout[k];
-                ScriptType scriptType = out.scriptPubKey.GetType();
+                const CTxOut &txout = tx.vout[k];
+                ScriptType scriptType = txout.scriptPubKey.GetType();
                 if (scriptType == ScriptType::UNKNOWN)
                     continue;
 
-                uint160 const addrHash = out.scriptPubKey.AddressHash();
+                const uint160 addrHash = txout.scriptPubKey.AddressHash();
+
+                // add to burn tx index only if transaction destination is burn address
+                if (fBurnTxIndex && (addrHash == destBurnAddress))
+				{
+                    for (uint32_t j = 0; j < tx.vin.size(); j++)
+                    {
+                        const CTxIn& input = tx.vin[j];
+                        const CTxOut& prevout = vAllPrevOutputs[j];
+                        if (prevout.IsNull())
+                            continue;
+
+                        ScriptType scriptTypeIn = prevout.scriptPubKey.GetType();
+                        if (scriptTypeIn == ScriptType::UNKNOWN)
+                            continue;
+
+                        const uint160 addrHash = prevout.scriptPubKey.AddressHash();
+                        vBurnTxIndex.emplace_back(
+                            CBurnTxIndexKey(scriptTypeIn, addrHash, pindex->GetHeight(), txid, j),
+                            CBurnTxIndexValue(txout.nValue * -1, hashBlock, block.GetBlockTime()));
+                    }
+				}
+				
+                if (!fAddressIndex)
+                    continue;
 
                 // record receiving activity
                 vAddressIndex.emplace_back(
                     CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, k, false),
-                    out.nValue);
+                    txout.nValue);
 
                 // record unspent output
                 vAddressUnspentIndex.emplace_back(
                     CAddressUnspentKey(scriptType, addrHash, txid, k),
-                    CAddressUnspentValue(out.nValue, out.scriptPubKey, pindex->GetHeight()));
+                    CAddressUnspentValue(txout.nValue, txout.scriptPubKey, pindex->GetHeight()));
             }
         }
-
 
         CTxUndo undoDummy;
         if (i > 0)
@@ -1930,6 +1982,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
             return AbortNode(state, "Failed to write address index");
         if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(vAddressUnspentIndex))
             return AbortNode(state, "Failed to write address unspent index");
+    }
+    if (fBurnTxIndex)
+    {
+        if (!gl_pBlockTreeDB->UpdateBurnTxIndex(vBurnTxIndex))
+			return AbortNode(state, "Failed to write burn tx index");
     }
     if (fSpentIndex)
     {
@@ -2152,6 +2209,8 @@ void SetInsightExplorer(const bool fEnable)
 	fAddressIndex = fEnable;
 	fSpentIndex = fEnable;
 	fTimestampIndex = fEnable;
+    if (fEnable)
+        fBurnTxIndex = fEnable;
 }
 
 /**
@@ -4037,6 +4096,12 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams, string &strLoadErr
             strLoadError = translate("You need to rebuild the database using -reindex to change -insightexplorer");
             return false;
         }
+
+        bool fBurnTxIndexPreviouslySet = false;
+        gl_pBlockTreeDB->ReadFlag(TXDB_FLAG_BURXTXINDEX, fBurnTxIndexPreviouslySet);
+        LogFnPrintf("(DB option) burn tx index %s", fBurnTxIndex ? "enabled" : "disabled");
+        if (fBurnTxIndexPreviouslySet)
+            fBurnTxIndex = true;
     }
 
     // Fill in-memory data
@@ -4727,6 +4792,7 @@ bool InitBlockIndex(const CChainParams& chainparams)
     // Use the provided setting for -insightexplorer in the new database
     gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_INSIGHT_EXPLORER, fInsightExplorer.load());
 
+    gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_BURXTXINDEX, fBurnTxIndex.load());
     LogFnPrintf("Initializing databases...");
 
     // Only add the genesis block if not reindexing (in which case we reuse the one already on disk)

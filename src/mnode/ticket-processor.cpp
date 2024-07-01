@@ -6,12 +6,11 @@
 #include <extlibs/json.hpp>
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 #include <utils/str_utils.h>
 #include <utils/utilstrencodings.h>
 #include <chain.h>
-#include <main.h>
 #include <deprecation.h>
 #include <script/sign.h>
 #include <core_io.h>
