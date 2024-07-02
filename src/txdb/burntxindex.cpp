@@ -156,5 +156,6 @@ bool GenerateBurnTxIndex(const CChainParams &chainparams, string &error)
 
     LogFnPrintf("Burn transaction index has been generated in %s", timer.elapsed_time_str());
     fBurnTxIndex = true;
+    gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_BURXTXINDEX, true);
     return true;
 }

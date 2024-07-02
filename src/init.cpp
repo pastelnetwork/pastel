@@ -139,14 +139,29 @@ CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 //
 
 atomic_bool fRequestShutdown(false);
+static condition_variable gl_cvShutdown;
+static mutex gl_csShutdown;
 
 void StartShutdown()
 {
+    unique_lock lock(gl_csShutdown);
     fRequestShutdown = true;
+    LogFnPrintf("Shutdown requested");
+	gl_cvShutdown.notify_all();
 }
-bool ShutdownRequested()
+
+bool IsShutdownRequested()
 {
     return fRequestShutdown;
+}
+
+void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
+{
+    unique_lock lock(gl_csShutdown);
+    gl_cvShutdown.wait(lock, [] { return IsShutdownRequested(); });
+
+    LogFnPrintf("Shutdown signal received, exiting...");
+    Interrupt(threadGroup, scheduler);
 }
 
 class CCoinsViewErrorCatcher : public CCoinsViewBacked
@@ -179,7 +194,9 @@ void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     InterruptHTTPRPC();
     InterruptRPC();
     InterruptREST();
+    LogFnPrintf("Stopping Pastel threads...");
     threadGroup.stop_all();
+    LogFnPrintf("Stopping scheduler threads...");
     scheduler.stop(false);
 }
 
@@ -215,7 +232,9 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
  #endif
 #endif
     StopNode();
+    LogFnPrintf("Waiting for Pastel threads to exit...");
     threadGroup.join_all();
+    LogFnPrintf("Waiting for scheduler threads to exit...");
     scheduler.join_all();
     UnregisterNodeSignals(GetNodeSignals());
 
@@ -2005,5 +2024,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (threadGroup.add_func_thread(strError, "sendalert", ThreadSendAlert) == INVALID_THREAD_OBJECT_ID)
 		return InitError(translate("Failed to create sendalert thread. ") + strError);
 
+    LogFnPrintf("Pastel initialization successful");
     return !fRequestShutdown;
 }

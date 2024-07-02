@@ -366,7 +366,7 @@ bool CHTTPServer::Start() noexcept
 
 void CHTTPServer::Interrupt()
 {
-    LogFnPrint("http", "Interrupting HTTP server");
+    LogFnPrintf("Stopping HTTP server");
     stop();
     if (m_pMainEventBase)
     {

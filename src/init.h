@@ -14,11 +14,12 @@ class CWallet;
 extern CWallet* pwalletMain;
 
 void StartShutdown();
-bool ShutdownRequested();
+bool IsShutdownRequested();
 /** Interrupt threads */
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
+void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler& scheduler);
 
 /** The help message mode determines what help message to show */
 enum HelpMessageMode {

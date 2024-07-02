@@ -4212,7 +4212,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             } else
                 nGoodTransactions += block.vtx.size();
         }
-        if (ShutdownRequested())
+        if (IsShutdownRequested())
             return true;
     }
     if (pindexFailure)
@@ -4792,7 +4792,6 @@ bool InitBlockIndex(const CChainParams& chainparams)
     // Use the provided setting for -insightexplorer in the new database
     gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_INSIGHT_EXPLORER, fInsightExplorer.load());
 
-    gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_BURXTXINDEX, fBurnTxIndex.load());
     LogFnPrintf("Initializing databases...");
 
     // Only add the genesis block if not reindexing (in which case we reuse the one already on disk)

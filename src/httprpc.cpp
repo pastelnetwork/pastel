@@ -206,7 +206,8 @@ void InterruptHTTPRPC()
 
 void StopHTTPRPC()
 {
-    LogPrint("rpc", "Stopping HTTP RPC server\n");
+    LogFnPrintf("Stopping HTTP RPC server");
+
     UnregisterHTTPHandlers("jsonrpc");
     if (httpRPCTimerInterface)
     {
