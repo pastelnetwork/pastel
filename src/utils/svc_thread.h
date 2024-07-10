@@ -157,7 +157,9 @@ public:
         if (!m_bRunning)
             return true;
 #ifdef WIN32
-        SetThreadPriority(m_Thread.native_handle(), nPriority);
+        HANDLE hThread = reinterpret_cast<HANDLE>(m_Thread.native_handle());
+        if (SetThreadPriority(hThread, nPriority) == 0)
+            return false;
 #else
 #ifdef PRIO_THREAD
         if (setpriority(PRIO_THREAD, m_Thread.native_handle(), nPriority) != 0)

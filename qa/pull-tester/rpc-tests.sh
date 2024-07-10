@@ -165,13 +165,24 @@ function difftime()
 		return 1
 	fi
 
-	local secs=$(($((10#${1%.*})) - $((10#${2%.*}))))
-	local nsecs=$(($((10#${1#*.})) - $((10#${nsecs_t2%%0}))))
+	local end_secs=${1%.*}
+	local end_nsecs=${1#*.}
+	local start_secs=${2%.*}
+	local start_nsecs=${2#*.}
+
+	local secs=$((end_secs - start_secs))
+	local nsecs=$((end_nsecs - start_nsecs))
 	if (( $nsecs < 0 )); then
 	    secs=$(($secs - 1))
-	    nsecs=$((999999999 + $nsecs))
+	    nsecs=$((1000000000 + $nsecs))
 	fi
-	local timediff=$(printf '%02d:%02d:%02d.%03d' $((10#$secs/3600)) $((10#$secs%3600/60)) $((10#$secs%60)) $((10#$nsecs/1000000)))
+
+	local hours=$((secs / 3600))
+	local minutes=$(( (secs % 3600) / 60))
+	local seconds=$((secs % 60))
+	local millisecs=$((nsecs / 1000000))
+
+	local timediff=$(printf '%02d:%02d:%02d.%03d' $hours $minutes $seconds $millisecs)
 	echo "$timediff"
 }
 
