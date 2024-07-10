@@ -117,7 +117,7 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
             UniValue o(UniValue::VOBJ);
             o.pushKV("asm", ScriptToAsmStr(txin.scriptSig, true));
             o.pushKV("hex", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
-            in.pushKV("scriptSig", move(o));
+            in.pushKV("scriptSig", std::move(o));
 
             // Add address and value info if spentindex enabled
             CSpentIndexValue spentInfo;
@@ -132,7 +132,7 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
             }
         }
         in.pushKV("sequence", txin.nSequence);
-        vin.push_back(move(in));
+        vin.push_back(std::move(in));
     }
     entry.pushKV("vin", vin);
     UniValue vout(UniValue::VARR);
@@ -146,7 +146,7 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
 
         UniValue o(UniValue::VOBJ);
         ScriptPubKeyToJSON(txout.scriptPubKey, o, true);
-        out.pushKV("scriptPubKey", move(o));
+        out.pushKV("scriptPubKey", std::move(o));
 
         // Add spent information if spentindex is enabled
         CSpentIndexValue spentInfo;
@@ -157,7 +157,7 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
             out.pushKV("spentIndex", spentInfo.inputIndex);
             out.pushKV("spentHeight", spentInfo.blockHeight);
         }
-        vout.push_back(move(out));
+        vout.push_back(std::move(out));
     }
     entry.pushKV("vout", vout);
 
@@ -720,7 +720,7 @@ static void TxInErrorToJSON(const CTxIn& txin, UniValue& vErrorsRet, const strin
     entry.pushKV("scriptSig", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
     entry.pushKV("sequence", txin.nSequence);
     entry.pushKV("error", strMessage);
-    vErrorsRet.push_back(move(entry));
+    vErrorsRet.push_back(std::move(entry));
 }
 
 UniValue signrawtransaction(const UniValue& params, bool fHelp)

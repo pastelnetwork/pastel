@@ -3,7 +3,7 @@ AC_PREREQ([2.60])
 define(_CLIENT_VERSION_MAJOR, 2)
 define(_CLIENT_VERSION_MINOR, 2)
 define(_CLIENT_VERSION_REVISION, 4)
-define(_CLIENT_VERSION_BUILD, 1)
+define(_CLIENT_VERSION_BUILD, 3)
 define(_ZC_BUILD_VAL,
     m4_if(m4_eval(_CLIENT_VERSION_BUILD < 25), 1, m4_incr(_CLIENT_VERSION_BUILD),
         m4_eval(_CLIENT_VERSION_BUILD < 50), 1, 
@@ -66,13 +66,21 @@ m4_ifdef([AC_PROG_OBJCXX],[AC_PROG_OBJCXX])
 dnl By default, libtool for mingw refuses to link static libs into a dll for
 dnl fear of mixing pic/non-pic objects, and import/export complications. Since
 dnl we have those under control, re-enable that functionality.
-case $host in
+case "${host}" in
   *mingw*)
      lt_cv_deplibs_check_method="pass_all"
-  ;;
+     dnl Require C++17 compiler (no GNU extensions)
+     AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory], [nodefault])
+     ;;
+  *darwin*)
+     lt_cv_deplibs_check_method="pass_all"
+     dnl Require C++17 compiler (no GNU extensions)
+     AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory], [nodefault])
+     ;;
+  *)
+    dnl Require C++20 compiler (no GNU extensions)
+    AX_CXX_COMPILE_STDCXX([20], [noext], [mandatory], [nodefault])
 esac
-dnl Require C++17 compiler (no GNU extensions)
-AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory], [nodefault])
 dnl Check if -latomic is required for <std::atomic>
 CHECK_ATOMIC
 
@@ -307,7 +315,7 @@ case $host in
        AC_MSG_ERROR("windres not found")
      fi
 
-     CPPFLAGS="$CPPFLAGS -D_MT -DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB"
+     CPPFLAGS="$CPPFLAGS -D_MT -DWIN32 -D_WINDOWS"
      LEVELDB_TARGET_FLAGS="TARGET_OS=OS_WINDOWS_CROSSCOMPILE"
      if test "x$CXXFLAGS_overridden" = "xno"; then
        CXXFLAGS="$CXXFLAGS -w"
@@ -643,7 +651,6 @@ BOOST_REQUIRE([1.82])
 BOOST_SYSTEM
 BOOST_FILESYSTEM
 BOOST_PROGRAM_OPTIONS
-BOOST_THREAD
 
 fi
 
@@ -663,7 +670,7 @@ AC_CHECK_HEADER([zstd.h],, AC_MSG_ERROR(libzstd headers missing),)
 AC_CHECK_LIB([zstd],[main],ZSTD_LIBS=-lzstd,AC_MSG_ERROR(libzstd missing))
 
 if test x$use_boost = xyes; then
-BOOST_LIBS="$BOOST_THREAD_LDFLAGS $BOOST_SYSTEM_LIBS $BOOST_FILESYSTEM_LIBS $BOOST_PROGRAM_OPTIONS_LIBS $BOOST_THREAD_LIBS"
+BOOST_LIBS="$BOOST_SYSTEM_LIBS $BOOST_FILESYSTEM_LIBS $BOOST_PROGRAM_OPTIONS_LIBS"
 AC_MSG_NOTICE([Using boost linker options: [$BOOST_LIBS]])
 fi
 

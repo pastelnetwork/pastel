@@ -113,6 +113,7 @@ $(host_prefix)/share/config.site : config.site.in $(host_prefix)/.stamp_$(final_
 	$(AT)sed -e 's|@HOST@|$(host)|' \
             -e 's|@CC@|$(toolchain_path)$(host_CC)|' \
             -e 's|@CXX@|$(toolchain_path)$(host_CXX)|' \
+            -e 's|@LD@|$(toolchain_path)$(host_LD)|' \
             -e 's|@AR@|$(toolchain_path)$(host_AR)|' \
             -e 's|@RANLIB@|$(toolchain_path)$(host_RANLIB)|' \
             -e 's|@NM@|$(toolchain_path)$(host_NM)|' \

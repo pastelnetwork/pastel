@@ -366,7 +366,7 @@ void CMasternodeGovernance::ProcessMessage(node_t& pfrom, string& strCommand, CD
         pfrom->setAskFor.erase(voteId);
 
         vector<CGovernanceVote> votesToCheck;
-        votesToCheck.emplace_back(move(vote));
+        votesToCheck.emplace_back(std::move(vote));
         if (!ProcessGovernanceVotes(true, votesToCheck, pfrom))
             return;
 

@@ -25,14 +25,14 @@ CNFTRoyaltyTicket CNFTRoyaltyTicket::Create(
     string &&sPastelID,
     SecureString&& strKeyPass)
 {
-    CNFTRoyaltyTicket ticket(move(sPastelID), move(sNewPastelID));
+    CNFTRoyaltyTicket ticket(std::move(sPastelID), std::move(sNewPastelID));
 
-    ticket.m_sNFTTxId = move(sNFTTxId);
+    ticket.m_sNFTTxId = std::move(sNFTTxId);
 
     ticket.GenerateTimestamp();
 
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, move(strKeyPass)), ticket.m_signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, std::move(strKeyPass)), ticket.m_signature);
     ticket.GenerateKeyOne();
 
     return ticket;
@@ -40,7 +40,7 @@ CNFTRoyaltyTicket CNFTRoyaltyTicket::Create(
 
 void CNFTRoyaltyTicket::SetKeyOne(std::string&& sValue) 
 { 
-    m_keyOne = move(sValue);
+    m_keyOne = std::move(sValue);
 }
 
 void CNFTRoyaltyTicket::GenerateKeyOne()
@@ -174,7 +174,7 @@ ticket_validation_t CNFTRoyaltyTicket::IsValid(const TxOrigin txOrigin, const ui
         }
         if (tv1.IsNotValid())
         {
-            tv = move(tv1);
+            tv = std::move(tv1);
             break;
         }
         if (nFoundIndex != numeric_limits<size_t>::max())

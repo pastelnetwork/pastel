@@ -6,8 +6,8 @@
 #include <utils/sync.h>
 #include <utils/utilstrencodings.h>
 #include <utils/random.h>
+#include <utils/hash.h>
 #include <protocol.h>
-#include <hash.h>
 #include <chainparams.h>
 #include <timedata.h>
 #include <netmsg/netconsts.h>

@@ -83,6 +83,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
@@ -201,7 +202,6 @@
     <ClCompile Include="..\..\..\src\txdb\txdb.cpp" />
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
-    <ClCompile Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.cpp" />
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -236,7 +236,6 @@
     <ClInclude Include="..\..\..\src\mining\pow.h" />
     <ClInclude Include="..\..\..\src\mining\pow\tromp\equi.h" />
     <ClInclude Include="..\..\..\src\mining\pow\tromp\equi_miner.h" />
-    <ClInclude Include="..\..\..\src\mining\pow\tromp\osx_barrier.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h" />
     <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\generate-report.h" />
@@ -338,7 +337,6 @@
     <ClInclude Include="..\..\..\src\ui_interface.h" />
     <ClInclude Include="..\..\..\src\undo.h" />
     <ClInclude Include="..\..\..\src\validationinterface.h" />
-    <ClInclude Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.hpp" />
     <ClInclude Include="..\..\vs\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

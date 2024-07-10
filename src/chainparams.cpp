@@ -852,7 +852,7 @@ unique_ptr<const CChainParams> CreateChainParams(const ChainNetwork network)
     }
     if (ChainParams)
         ChainParams->DecodePastelBurnAddress();
-    return move(ChainParams);
+    return std::move(ChainParams);
 }
 
 /**

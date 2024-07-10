@@ -6,7 +6,7 @@
 
 #include <utils/streams.h>
 #include <utils/random.h>
-#include <hash.h>
+#include <utils/hash.h>
 #include <version.h>
 
 #include <zcash/address/zip32.h>

@@ -251,6 +251,7 @@ UTILS_CPP = \
   utils/base58.cpp \
   utils/bech32.cpp \
   utils/datacompressor.cpp \
+  utils/hash.cpp \
   utils/ping_util.cpp \
   utils/random.cpp \
   utils/scheduler.cpp \
@@ -269,6 +270,7 @@ UTILS_H = \
   utils/datacompressor.h \
   utils/enum_util.h \
   utils/fs.h \
+  utils/hash.h \
   utils/map_types.h \
   utils/numeric_range.h \
   utils/ping_util.h \
@@ -340,7 +342,6 @@ PASTEL_CORE_H = \
   deprecation.h \
   ecc_context.h \
   experimental_features.h \
-  hash.h \
   httprpc.h \
   httpserver.h \
   init.h \
@@ -436,7 +437,7 @@ libbitcoin_util_a-clientversion.$(OBJEXT): obj/build.h
 
 # server: pasteld
 libbitcoin_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
-libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libbitcoin_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -DJSON_DIAGNOSTICS
 libbitcoin_server_a_SOURCES = \
   sendalert.cpp \
   accept_to_mempool.cpp \
@@ -578,7 +579,6 @@ libbitcoin_common_a_SOURCES = \
   core_read.cpp \
   core_write.cpp \
   ecc_context.cpp\
-  hash.cpp \
   key.cpp \
   key_io.cpp \
   keystore.cpp \
@@ -755,7 +755,6 @@ libzcashconsensus_la_SOURCES = \
   crypto/sha1.cpp \
   crypto/sha256.cpp \
   crypto/sha512.cpp \
-  hash.cpp \
   primitives/transaction.cpp \
   pubkey.cpp \
   script/zcashconsensus.cpp \
@@ -791,7 +790,12 @@ clean-local:
 	-$(MAKE) -C secp256k1 clean
 	-$(MAKE) -C snark clean
 	-$(MAKE) -C univalue clean
-	rm -f leveldb/*/*.gcno leveldb/helpers/memenv/*.gcno
+	@for dir in $(wildcard ./deps/*/); do \
+		if [ -f $$dir/Makefile ]; then \
+			$(MAKE) -C $$dir clean; \
+		fi; \
+        done
+	-rm -f leveldb/*/*.gcno leveldb/helpers/memenv/*.gcno
 	-rm -f config.h
 
 .rc.o:

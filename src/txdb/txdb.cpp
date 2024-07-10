@@ -6,9 +6,9 @@
 #include <cstdint>
 
 #include <utils/uint256.h>
+#include <utils/hash.h>
 #include <txdb/txdb.h>
 #include <chainparams.h>
-#include <hash.h>
 #include <main.h>
 #include <mining/pow.h>
 #include <script/scripttype.h>
@@ -626,7 +626,7 @@ bool CBlockTreeDB::ReadBurnTxIndex(const uint160& addressHash, const ScriptType 
         CBurnTxIndexValue value;
         if (!pcursor->GetValue(value))
             return error("failed to get burn tx index value");
-        vBurnTxIndex.emplace_back(key.second, move(value));
+        vBurnTxIndex.emplace_back(key.second, std::move(value));
 
         pcursor->Next();
         if (vBurnTxIndex.capacity() - vBurnTxIndex.size() < nReserve)

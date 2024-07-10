@@ -31,13 +31,13 @@ COfferTicket COfferTicket::Create(string &&itemTxId,
     string &&pastelID, 
     SecureString&& strKeyPass)
 {
-    COfferTicket ticket(move(pastelID));
+    COfferTicket ticket(std::move(pastelID));
 
-    ticket.m_itemTxId = move(itemTxId);
+    ticket.m_itemTxId = std::move(itemTxId);
     ticket.m_nAskedPricePSL = nAskedPricePSL;
     ticket.m_nValidAfter = nValidAfter;
     ticket.m_nValidBefore = nValidBefore;
-    ticket.m_sIntendedForPastelID = move(sIntendedForPastelID);
+    ticket.m_sIntendedForPastelID = std::move(sIntendedForPastelID);
 
     ticket.GenerateTimestamp();
 
@@ -47,7 +47,7 @@ COfferTicket COfferTicket::Create(string &&itemTxId,
         static_cast<decltype(ticket.m_nCopyNumber)>(COfferTicket::FindAllTicketByMVKey(ticket.m_itemTxId).size()) + 1;
     // set primary search key to <txid>:<copy_number>
     ticket.key = ticket.m_itemTxId + ":" + to_string(ticket.m_nCopyNumber);
-    ticket.sign(move(strKeyPass));
+    ticket.sign(std::move(strKeyPass));
     return ticket;
 }
 
@@ -79,7 +79,7 @@ string COfferTicket::ToStr() const noexcept
  */
 void COfferTicket::sign(SecureString&& strKeyPass)
 {
-    string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, move(strKeyPass)), m_signature);
+    string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, std::move(strKeyPass)), m_signature);
 }
 
 /**
@@ -282,7 +282,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
                 ticket_validation_t actTV = fnVerifyAvailableCopies(::GetTicketDescription(TicketID::ActionReg), 1);
                 if (actTV.IsNotValid())
                 {
-                    tv = move(actTV);
+                    tv = std::move(actTV);
                     break;
                 }
             }
@@ -332,7 +332,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
                 ticket_validation_t actTV = fnVerifyAvailableCopies(::GetTicketDescription(TicketID::NFT), nTotalCopies);
                 if (actTV.IsNotValid())
                 {
-                    tv = move(actTV);
+                    tv = std::move(actTV);
                     break;
                 }
             }
@@ -382,7 +382,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
                 ticket_validation_t actTV = fnVerifyAvailableCopies(::GetTicketDescription(TicketID::Transfer), nTotalCopies);
                 if (actTV.IsNotValid())
                 {
-                    tv = move(actTV);
+                    tv = std::move(actTV);
                     break;
                 }
             }
@@ -459,7 +459,7 @@ ticket_validation_t COfferTicket::IsValid(const TxOrigin txOrigin, const uint32_
         }
         if (tv1.IsNotValid()) {
             CPastelTicketProcessor::RemoveTicketFromMempool(m_txid);
-            tv = move(tv1);
+            tv = std::move(tv1);
         }
         else
             tv.setValid();

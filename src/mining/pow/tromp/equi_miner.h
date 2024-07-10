@@ -21,10 +21,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#ifdef _MSC_VER
-#include <cyclicbarrier/cyclicbarrier.hpp>
-#else
+#ifdef __MINGW64__
 #include <pthread.h>
+#elif defined(__APPLE__)
+#include <mining/pow/tromp/osx_barrier.h>
+#else
+#include <barrier>
+#endif
+
+#if defined(__MINGW64__) || defined(__APPLE__)
+#define USE_PTHREAD_BARRIER
 #endif
 
 #include <mining/pow/tromp/equi.h>
@@ -230,32 +236,57 @@ struct equi
   u32 xfull;
   u32 hfull;
   u32 bfull;
-#ifdef _MSC_VER
-  cbar::cyclicbarrier *m_pBarrier;
+
+#ifdef USE_PTHREAD_BARRIER
+  pthread_barrier_t m_barrier;
+  pthread_barrier_t *m_pBarrier;
 #else
-  pthread_barrier_t barry;
+  std::barrier<> *m_pBarrier;
 #endif
 
-  equi(const u32 n_threads): blake_ctx(), nsols(0), xfull(0), hfull(0), bfull(0)
+  equi(const u32 n_threads) :
+      blake_ctx(),
+      nsols(0),
+      xfull(0),
+      hfull(0),
+      bfull(0)
   {
     assert(sizeof(hashunit) == 4);
     nthreads = n_threads;
-#ifdef _MSC_VER
-    m_pBarrier = new cbar::cyclicbarrier(nthreads);
-    if (!m_pBarrier)
-        throw "Failed to create cyclicbarrier";
-#else
-    const int err = pthread_barrier_init(&barry, nullptr, nthreads);
+#ifdef USE_PTHREAD_BARRIER
+    const int err = pthread_barrier_init(&m_barrier, nullptr, nthreads);
     assert(!err);
+    m_pBarrier = &m_barrier;
+#else
+    m_pBarrier = new std::barrier<>(nthreads);
 #endif
+    if (!m_pBarrier)
+        throw "Failed to create barrier";
     hta.alloctrees();
     nslots = (bsizes *)hta.alloc(2 * NBUCKETS, sizeof(au32));
     sols   =  (proof *)hta.alloc(MAXSOLS, sizeof(proof));
   }
-  ~equi() {
+  ~equi()
+  {
     hta.dealloctrees();
     free(nslots);
     free(sols);
+#ifdef USE_PTHREAD_BARRIER
+    const int err = pthread_barrier_destroy(&m_barrier);
+	assert(!err);
+#else
+    if (m_pBarrier)
+        delete m_pBarrier;
+#endif
+  }
+  void barrier_wait()
+  {
+#ifdef USE_PTHREAD_BARRIER
+	const int err = pthread_barrier_wait(&m_barrier);
+	assert(!err || err == PTHREAD_BARRIER_SERIAL_THREAD);
+#else
+    m_pBarrier->arrive_and_wait();
+#endif
   }
   void setstate(const crypto_generichash_blake2b_state *ctx) {
     blake_ctx = *ctx;
@@ -623,7 +654,6 @@ nc++,       candidate(tree(bucketid, s0, s1));
   }
 };
 
-#ifdef _MSC_VER
 typedef struct
 {
     u32 id;
@@ -636,83 +666,30 @@ void* worker(void* vp)
     equi* eq = tp->eq;
 
     if (tp->id == 0)
-        eq->m_pBarrier->await();
+        eq->barrier_wait();
     eq->digit0(tp->id);
-    eq->m_pBarrier->await();
+    eq->barrier_wait();
     if (tp->id == 0)
     {
         eq->xfull = eq->bfull = eq->hfull = 0;
         eq->showbsizes(0);
     }
-    eq->m_pBarrier->await();
+    eq->barrier_wait();
     for (u32 r = 1; r < WK; r++)
     {
         if (tp->id == 0)
-            eq->m_pBarrier->await();
+            eq->barrier_wait();
         r & 1 ? eq->digitodd(r, tp->id) : eq->digiteven(r, tp->id);
-        eq->m_pBarrier->await();
+        eq->barrier_wait();
         if (tp->id == 0)
         {
             eq->xfull = eq->bfull = eq->hfull = 0;
             eq->showbsizes(r);
         }
-        eq->m_pBarrier->await();
+        eq->barrier_wait();
     }
     if (tp->id == 0)
         eq->digitK(tp->id);
-    eq->m_pBarrier->await();
+    eq->barrier_wait();
     return 0;
 }
-
-#else
-typedef struct
-{
-  u32 id;
-  pthread_t thread;
-  equi *eq;
-} thread_ctx;
-
-void barrier(pthread_barrier_t *barry) {
-  const int rc = pthread_barrier_wait(barry);
-  if (rc != 0 && rc != PTHREAD_BARRIER_SERIAL_THREAD) {
-//    printf("Could not wait on barrier\n");
-    pthread_exit(nullptr);
-  }
-}
-
-void* worker(void* vp)
-{
-    thread_ctx* tp = (thread_ctx*)vp;
-    equi* eq = tp->eq;
-
-    if (tp->id == 0)
-        //    printf("Digit 0\n");
-        barrier(&eq->barry);
-    eq->digit0(tp->id);
-    barrier(&eq->barry);
-    if (tp->id == 0) {
-        eq->xfull = eq->bfull = eq->hfull = 0;
-        eq->showbsizes(0);
-    }
-    barrier(&eq->barry);
-    for (u32 r = 1; r < WK; r++) {
-        if (tp->id == 0)
-            //      printf("Digit %d", r);
-            barrier(&eq->barry);
-        r & 1 ? eq->digitodd(r, tp->id) : eq->digiteven(r, tp->id);
-        barrier(&eq->barry);
-        if (tp->id == 0) {
-            //      printf(" x%d b%d h%d\n", eq->xfull, eq->bfull, eq->hfull);
-            eq->xfull = eq->bfull = eq->hfull = 0;
-            eq->showbsizes(r);
-        }
-        barrier(&eq->barry);
-    }
-    if (tp->id == 0)
-        //    printf("Digit %d\n", WK);
-        eq->digitK(tp->id);
-    barrier(&eq->barry);
-    pthread_exit(nullptr);
-    return 0;
-}
-#endif // _MSC_VER

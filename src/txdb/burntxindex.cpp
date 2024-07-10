@@ -149,7 +149,7 @@ bool GenerateBurnTxIndex(const CChainParams &chainparams, string &error)
 
     if (bCreateBurnTxIndexFailed)
     {
-        error = move(errorCreateBurnTxIndex);
+        error = std::move(errorCreateBurnTxIndex);
         LogFnPrintf("Failed to generate burn transaction index. %s", error);
         return false;
     }

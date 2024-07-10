@@ -45,7 +45,7 @@ UniValue formatMnsInfo(const masternode_vector_t& topBlockMNs)
 
         const CTxDestination dest = pmn->pubKeyCollateralAddress.GetID();
         string address = keyIO.EncodeDestination(dest);
-        objItem.pushKV("payee", move(address));
+        objItem.pushKV("payee", std::move(address));
         objItem.pushKV("lastseen", pmn->nTimeLastPing);
         objItem.pushKV("activeseconds", pmn->nTimeLastPing - pmn->sigTime);
 
@@ -55,7 +55,7 @@ UniValue formatMnsInfo(const masternode_vector_t& topBlockMNs)
         objItem.pushKV("extCfg", pmn->strExtraLayerCfg);
         objItem.pushKV("eligibleForMining", pmn->IsEligibleForMining());
 
-        mnArray.push_back(move(objItem));
+        mnArray.push_back(std::move(objItem));
     }
     return mnArray;
 }
@@ -178,7 +178,7 @@ Examples:
                     if (!strFilter.empty() && strAddress.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, move(strAddress));
+                    obj.pushKV(strOutpoint, std::move(strAddress));
                 } break;
 
                 case RPC_CMD_MNLIST::full:
@@ -198,7 +198,7 @@ Examples:
                     if (!strFilter.empty() && strFull.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, move(strFull));
+                    obj.pushKV(strOutpoint, std::move(strFull));
                 } break;
 
                 case RPC_CMD_MNLIST::info: 
@@ -216,7 +216,7 @@ Examples:
                     if (!strFilter.empty() && strInfo.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue; //-V1051
-                    obj.pushKV(strOutpoint, move(strInfo));
+                    obj.pushKV(strOutpoint, std::move(strInfo));
                 } break;
                 
                 case RPC_CMD_MNLIST::lastpaidblock:
@@ -245,7 +245,7 @@ Examples:
                     if (!strFilter.empty() && address.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, move(address));
+                    obj.pushKV(strOutpoint, std::move(address));
                 } break;
 
                 case RPC_CMD_MNLIST::protocol: 
@@ -269,7 +269,7 @@ Examples:
                     if (!strFilter.empty() && strStatus.find(strFilter) == string::npos &&
                         strOutpoint.find(strFilter) == string::npos)
                         continue;
-                    obj.pushKV(strOutpoint, move(strStatus));
+                    obj.pushKV(strOutpoint, std::move(strStatus));
                 } break;
 
                 case RPC_CMD_MNLIST::extra: 
@@ -281,7 +281,7 @@ Examples:
                     objItem.pushKV("extCfg", pmn->strExtraLayerCfg);
                     objItem.pushKV("eligibleForMining", pmn->IsEligibleForMining());
 
-                    obj.pushKV(strOutpoint, move(objItem));
+                    obj.pushKV(strOutpoint, std::move(objItem));
                 } break;
 
                 default:
@@ -385,7 +385,7 @@ UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsC
 
     CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
     string address = keyIO.EncodeDestination(dest);
-    obj.pushKV("payee", move(address));
+    obj.pushKV("payee", std::move(address));
 
     obj.pushKV("lastseen", mnInfo.nTimeLastPing);
     obj.pushKV("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime);
@@ -515,7 +515,7 @@ UniValue masternode_activate_all(const UniValue& params, const bool bActivateMis
             ++nSuccessful;
         else
             ++nFailed;
-        resultsObj.pushKV(RPC_KEY_STATUS, move(statusObj));
+        resultsObj.pushKV(RPC_KEY_STATUS, std::move(statusObj));
     }
     if (nSuccessful)
         masterNodeCtrl.LockMnOutpoints(pwalletMain);
@@ -523,7 +523,7 @@ UniValue masternode_activate_all(const UniValue& params, const bool bActivateMis
     UniValue returnObj(UniValue::VOBJ);
     returnObj.pushKV("overall", strprintf("Successfully activated %zu masternodes, failed to activate %zu, total %zu",
         nSuccessful, nFailed, nSuccessful + nFailed));
-    returnObj.pushKV("detail", move(resultsObj));
+    returnObj.pushKV("detail", std::move(resultsObj));
 
     return returnObj;
 }
@@ -681,24 +681,24 @@ As json rpc
 
     // generate new Pastel ID & LegRoast keys
     SecureString sKeyPass(strKeyPass);
-    auto idStore = CPastelID::CreateNewPastelKeys(move(sKeyPass));
+    auto idStore = CPastelID::CreateNewPastelKeys(std::move(sKeyPass));
     if (idStore.empty())
         throw runtime_error("Failed to generate Pastel ID for the masternode");
 
     string sPastelID = idStore.begin()->first;
 
     // create mnid registration ticket
-    auto regTicket = CPastelIDRegTicket::Create(move(sPastelID), move(strKeyPass), move(sFundingAddress), mnidRegData);
+    auto regTicket = CPastelIDRegTicket::Create(std::move(sPastelID), std::move(strKeyPass), std::move(sFundingAddress), mnidRegData);
     // send ticket tx to the blockchain
     auto ticketTx = CPastelTicketProcessor::SendTicket(regTicket);
 
     // generate result
     UniValue retObj(UniValue::VOBJ);
     retObj.pushKV("mnid", idStore.begin()->first);
-    retObj.pushKV(RPC_KEY_TXID, move(strTxId));
+    retObj.pushKV(RPC_KEY_TXID, std::move(strTxId));
     retObj.pushKV("outIndex", nTxIndex);
-    retObj.pushKV(RPC_KEY_LEGROAST, move(idStore.begin()->second));
-    retObj.pushKV(RPC_KEY_PRIVKEY, move(mnPrivKeyStr));
+    retObj.pushKV(RPC_KEY_LEGROAST, std::move(idStore.begin()->second));
+    retObj.pushKV(RPC_KEY_PRIVKEY, std::move(mnPrivKeyStr));
     return retObj;
 }
 #endif // ENABLE_WALLET
@@ -738,7 +738,7 @@ UniValue masternode_list_conf(const UniValue& params)
             mnObj.pushKV("extKey", pmn->getMNPastelID());
         mnObj.pushKV("extCfg", mne.getExtCfg());
         mnObj.pushKV(RPC_KEY_STATUS, strStatus);
-        resultObj.pushKV("masternode", move(mnObj));
+        resultObj.pushKV("masternode", std::move(mnObj));
     }
 
     return resultObj;
@@ -846,7 +846,7 @@ As json rpc
     mnObj.pushKV("outIndex", strIndex);
     mnObj.pushKV("mnPrivKey", mnPrivKey);
     mnObj.pushKV("extKey", pastelID);
-    resultObj.pushKV(strAlias, move(mnObj));
+    resultObj.pushKV(strAlias, std::move(mnObj));
 
     return resultObj;
 }
@@ -881,7 +881,7 @@ UniValue masternode_winners(const UniValue& params)
         string strPayment = masterNodeCtrl.masternodePayments.GetRequiredPaymentsString(i);
         if (!strFilter.empty() && strPayment.find(strFilter) == string::npos)
             continue;
-        obj.pushKV(strprintf("%d", i), move(strPayment));
+        obj.pushKV(strprintf("%d", i), std::move(strPayment));
     }
 
     return obj;
@@ -905,7 +905,7 @@ UniValue masternode_status(const UniValue& params, KeyIO &keyIO)
     {
         CTxDestination dest = pmn->pubKeyCollateralAddress.GetID();
         string address = keyIO.EncodeDestination(dest);
-        mnObj.pushKV("payee", move(address));
+        mnObj.pushKV("payee", std::move(address));
         mnObj.pushKV("extAddress", pmn->strExtraLayerAddress);
         mnObj.pushKV("extP2P", pmn->strExtraLayerP2P);
         mnObj.pushKV("extKey", pmn->getMNPastelID());
@@ -914,7 +914,7 @@ UniValue masternode_status(const UniValue& params, KeyIO &keyIO)
     }
     string sAlias = masterNodeCtrl.masternodeConfig.getAlias(activeMN.outpoint);
     if (!sAlias.empty())
-        mnObj.pushKV(RPC_KEY_ALIAS, move(sAlias));
+        mnObj.pushKV(RPC_KEY_ALIAS, std::move(sAlias));
     mnObj.pushKV(RPC_KEY_STATUS, activeMN.GetStatus());
     return mnObj;
 }
@@ -958,7 +958,7 @@ R"(Correct usage is:
     if (status != GetTopMasterNodeStatus::SUCCEEDED && status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
         LogFnPrintf("%s", error);
     UniValue mnsArray = formatMnsInfo(topBlockMNs);
-    obj.pushKV(strprintf("%d", nHeight), move(mnsArray));
+    obj.pushKV(strprintf("%d", nHeight), std::move(mnsArray));
     return obj;
 }
 
@@ -1108,7 +1108,7 @@ R"(Correct usage is:
             {
                 UniValue obj(UniValue::VOBJ);
                 obj.pushKV(msgHash.ToString(), messageToJson(msg));
-                arr.push_back(move(obj));
+                arr.push_back(std::move(obj));
             }
             return arr;
         } break;
@@ -1133,7 +1133,7 @@ R"(Correct usage is:
                 if (n > 0)
                 {
                     string strPubKey = keyIO.EncodeDestination(masterNodeCtrl.activeMasternode.pubKeyMasternode.GetID());
-                    obj.pushKV("pubkey", move(strPubKey));
+                    obj.pushKV("pubkey", std::move(strPubKey));
                 }
             }
             return obj;

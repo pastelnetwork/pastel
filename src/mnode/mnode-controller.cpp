@@ -490,7 +490,7 @@ void CMasterNodeController::StartMasterNode(CServiceThreadGroup& threadGroup)
 {
     // initialize semaphore
     if (!semMasternodeOutbound)
-        semMasternodeOutbound = make_unique<CSemaphore>(nMasterNodeMaximumOutboundConnections);
+        semMasternodeOutbound = make_shared<CSemaphore>(nMasterNodeMaximumOutboundConnections);
 
     //Enable Broadcast re-requests thread
     string error;
@@ -882,7 +882,7 @@ void CMnbRequestConnectionsThread::execute()
         if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
             continue;
 
-        CSemaphoreGrant grant(*(masterNodeCtrl.semMasternodeOutbound));
+        CSemaphoreGrant grant(masterNodeCtrl.semMasternodeOutbound);
 
         auto p = masterNodeCtrl.masternodeManager.PopScheduledMnbRequestConnection();
         if (p.first == CService() || p.second.empty())

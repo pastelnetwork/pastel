@@ -6,8 +6,8 @@
 #include <gtest/gtest.h>
 
 #include <utils/random.h>
+#include <utils/hash.h>
 #include <addrman.h>
-#include <hash.h>
 
 using namespace std;
 using namespace testing;

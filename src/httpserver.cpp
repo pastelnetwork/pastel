@@ -107,7 +107,7 @@ void accept_connection_cb(struct evconnlistener* listener, evutil_socket_t clien
 
     LogFnPrint("http", "Accepted connection (fd %" PRId64 ")", client_socket);
     auto request = make_unique<HTTPRequest>(client_socket, addr, addrlen);
-    auto [rejectedRequest, nQueueSize] = pWorkQueue->Enqueue(move(request));
+    auto [rejectedRequest, nQueueSize] = pWorkQueue->Enqueue(std::move(request));
     if (rejectedRequest)
 	{
 		LogFnPrintf("Work queue size %zu exceeded, rejecting request", nQueueSize);
@@ -697,7 +697,7 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             nWorkerID, clientSocket);
 
         // adding the request back to the map, request will be removed from the map when connection is closed
-        pWorkerContext->AddHttpRequest(clientSocket, move(pHttpRequest));
+        pWorkerContext->AddHttpRequest(clientSocket, std::move(pHttpRequest));
     } catch (const exception& e)
 	{
 		LogFnPrintf("Exception in HTTP request callback: %s", e.what());
@@ -820,7 +820,7 @@ void WorkerContext<WorkItem>::CreateConnection(unique_ptr<WorkItem> &&pWorkItem)
     int nOne = 1;
     setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&nOne), sizeof(nOne));
 
-    AddHttpRequest(clientSocket, move(pWorkItem));
+    AddHttpRequest(clientSocket, std::move(pWorkItem));
 
     event_base_loopbreak(m_base);
     evhttp_get_request(m_http, clientSocket, &addr, addrlen);
@@ -841,7 +841,7 @@ template <typename WorkItem>
 void WorkerContext<WorkItem>::AddHttpRequest(const evutil_socket_t clientSocket, unique_ptr<WorkItem> &&request)
 {
     SIMPLE_LOCK(m_RequestMapLock);
-    m_RequestMap.emplace(clientSocket, move(request));
+    m_RequestMap.emplace(clientSocket, std::move(request));
 }
 
 template <typename WorkItem>
@@ -851,7 +851,7 @@ unique_ptr<WorkItem> WorkerContext<WorkItem>::ExtractHttpRequest(const evutil_so
 	auto it = m_RequestMap.find(clientSocket);
 	if (it != m_RequestMap.end())
 	{
-		auto request = move(it->second);
+		auto request = std::move(it->second);
 		m_RequestMap.erase(it);
 		return request;
 	}
@@ -879,8 +879,8 @@ tuple<unique_ptr<WorkItem>, size_t> WorkQueue<WorkItem>::Enqueue(unique_ptr<Work
     SIMPLE_LOCK(cs);
     size_t nQueueSize = m_queue.size();
     if (nQueueSize >= m_nMaxQueueSize)
-        return make_tuple(move(item), nQueueSize);
-    m_queue.emplace_back(move(item));
+        return make_tuple(std::move(item), nQueueSize);
+    m_queue.emplace_back(std::move(item));
     cond.notify_one();
     return make_tuple(nullptr, nQueueSize + 1);
 }
@@ -928,7 +928,7 @@ void WorkQueue<WorkItem>::worker(const size_t nWorkerID)
                 cond.wait(lock, [this] { return !m_bRunning || !m_queue.empty(); });
                 if (!m_bRunning && m_queue.empty())
                     break;
-                pHttpRequest = move(m_queue.front());
+                pHttpRequest = std::move(m_queue.front());
                 m_queue.pop_front();
             }
             // Get the HTTPRequest from the work item
@@ -940,7 +940,7 @@ void WorkQueue<WorkItem>::worker(const size_t nWorkerID)
             LogPrint("http", "[httpworker #%zu] Processing HTTP request (fd %" PRId64 ")\n",
                 nWorkerID, pHttpRequest->GetClientSocket());
 
-            pWorkerContext->CreateConnection(move(pHttpRequest));
+            pWorkerContext->CreateConnection(std::move(pHttpRequest));
         }
     } catch (const exception& e)
 	{

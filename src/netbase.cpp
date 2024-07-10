@@ -28,8 +28,8 @@
 #include <utils/sync.h>
 #include <utils/uint256.h>
 #include <utils/random.h>
+#include <utils/hash.h>
 #include <netbase.h>
-#include <hash.h>
 
 using namespace std;
 

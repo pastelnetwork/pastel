@@ -518,7 +518,7 @@ public:
         this_thread::sleep_for(chrono::milliseconds(naptime));
         stop_execution_clock();
         UniValue v(UniValue::VSTR, "done");
-        set_result(move(v));
+        set_result(std::move(v));
         set_state(OperationStatus::SUCCESS);
     }
 };
@@ -909,7 +909,7 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
 
     vector<SendManyRecipient> vtRecipients;
     vector<SendManyRecipient> vzRecipients = { SendManyRecipient(zaddr1, 1 * COIN, "ABCD") };
-    auto operation = make_shared<AsyncRPCOperation_sendmany>(move(builder), mtx, taddr1, vtRecipients, vzRecipients, 0);
+    auto operation = make_shared<AsyncRPCOperation_sendmany>(std::move(builder), mtx, taddr1, vtRecipients, vzRecipients, 0);
 
     // Enable test mode so tx is not sent
     operation->testmode = true;

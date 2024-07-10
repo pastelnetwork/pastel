@@ -72,7 +72,7 @@ TEST_F(TestTicketProcessor, ticket_compression)
     // set some ticket data
     ticket->setUserName(string(12, 'a'));
     auto sPastelID = keys.cbegin()->first;
-    ticket->setPastelID(move(sPastelID));
+    ticket->setPastelID(std::move(sPastelID));
     ticket->setFee(0);
     const auto strTicket = ticket->ToStr();
     ticket->set_signature(CPastelID::Sign(strTicket, ticket->getPastelID(), TEST_PASSPHRASE));

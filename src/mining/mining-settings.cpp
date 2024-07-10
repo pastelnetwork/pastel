@@ -6,16 +6,25 @@
 #include <primitives/block.h>
 #include <pastelid/pastel_key.h>
 #include <main.h>
+#include <init.h>
+#include <key_io.h>
+#ifdef ENABLE_WALLET
+#include <wallet/wallet.h>
+#endif
 
 using namespace std;
 
 CMinerSettings::CMinerSettings() noexcept
 {
+    m_bLocalMiningEnabled = false;
+    m_bMineToLocalWallet = false;
     m_nBlockVersion = CBlockHeader::CURRENT_VERSION;
 	m_nBlockMaxSize = DEFAULT_BLOCK_MAX_SIZE;
 	m_nBlockPrioritySize = DEFAULT_BLOCK_PRIORITY_SIZE;
 	m_nBlockMinSize = DEFAULT_BLOCK_MIN_SIZE;
     m_equihashSolver = EquihashSolver::Default;
+    m_sleepMsecs = std::chrono::milliseconds(DEFAULT_MINER_SLEEP_MSECS);
+    m_nThreadCount = DEFAULT_MINER_THREAD_COUNT;
     m_bInitialized = false;
 }
 
@@ -47,9 +56,7 @@ bool CMinerSettings::refreshMnIdInfo(string &error, const bool bRefreshConfig)
 
 bool CMinerSettings::CheckMNSettingsForLocalMining(string &error)
 {
-    const bool bLocalMiningEnabled = GetBoolArg("-gen", false);
-
-    if (bLocalMiningEnabled)
+    if (m_bLocalMiningEnabled)
     {
         if (!masterNodeCtrl.IsActiveMasterNode())
         {
@@ -88,10 +95,66 @@ bool CMinerSettings::CheckMNSettingsForLocalMining(string &error)
     return true;
 }
 
+void CMinerSettings::setThreadCount(const int nThreadCount) noexcept
+{
+    if (nThreadCount < 0)
+        m_nThreadCount = GetNumCores();
+    else
+	    m_nThreadCount = static_cast<uint32_t>(nThreadCount);
+}
+
 bool CMinerSettings::initialize(const CChainParams& chainparams, string &error)
 {
     if (m_bInitialized)
 		return true;
+
+    m_bLocalMiningEnabled = GetBoolArg("-gen", false);
+    m_bMineToLocalWallet = GetBoolArg("-minetolocalwallet", false);
+    const bool bMineToLocalWalletOptionDefined = IsParamDefined("-minetolocalwallet");
+    m_sMinerAddress = GetArg("-mineraddress", "");
+
+ #ifndef ENABLE_WALLET
+    if (m_bMineToLocalWallet)
+    {
+        error = translate("Pastel was not built with wallet support. Set -minetolocalwallet=0 to use -mineraddress, or rebuild Pastel with wallet support.");
+        return false;
+    }
+    if (m_sMinerAddress.empty() && m_bLocalMiningEnabled)
+    {
+        error = translate("Pastel was not built with wallet support. Set -mineraddress, or rebuild Pastel with wallet support.");
+        return false;
+    }
+ #endif // !ENABLE_WALLET
+    if (!m_sMinerAddress.empty())
+    {
+        KeyIO keyIO(chainparams);
+        const auto miner_addr = keyIO.DecodeDestination(m_sMinerAddress);
+        if (!IsValidDestination(miner_addr))
+    	{
+            error = strprintf(
+                translate("Invalid address for -mineraddress=<addr>: '%s' (must be a transparent address)"),
+                mapArgs["-mineraddress"]);
+            return false;
+        }
+
+ #ifdef ENABLE_WALLET
+        bool bMinerAddressInLocalWallet = false;
+        if (pwalletMain)
+	    {
+            // Address has already been validated
+            CKeyID keyID = get<CKeyID>(miner_addr);
+            bMinerAddressInLocalWallet = pwalletMain->HaveKey(keyID);
+        }
+        if (!bMineToLocalWalletOptionDefined)
+            m_bMineToLocalWallet = true;
+        if (m_bMineToLocalWallet && !bMinerAddressInLocalWallet)
+        {
+            error = translate("-mineraddress is not in the local wallet. Either use a local address, or set -minetolocalwallet=0");
+            return false;
+        }
+ #endif // ENABLE_WALLET
+    }
+
     m_nBlockVersion = GetIntArg("-blockversion", CBlockHeader::CURRENT_VERSION);
 
     m_nBlockMaxSize = static_cast<uint32_t>(GetArg("-blockmaxsize", DEFAULT_BLOCK_MAX_SIZE));
@@ -107,6 +170,13 @@ bool CMinerSettings::initialize(const CChainParams& chainparams, string &error)
     // until there are no more or the block reaches this size:
     m_nBlockMinSize = static_cast<uint32_t>(GetArg("-blockminsize", DEFAULT_BLOCK_MIN_SIZE));
     m_nBlockMinSize = min(m_nBlockMaxSize, m_nBlockMinSize);
+
+    // Sleep time in milliseconds for the miner threads
+    m_sleepMsecs = std::chrono::milliseconds(GetArg("-gensleepmsecs", DEFAULT_MINER_SLEEP_MSECS));
+
+    // Number of threads to use for mining
+    const int nThreadCount = static_cast<int>(GetArg("-genproclimit", static_cast<int64_t>(DEFAULT_MINER_THREAD_COUNT)));
+    setThreadCount(nThreadCount);
 
     string sEquihashSolver = GetArg("-equihashsolver", "default");
     if (str_icmp(sEquihashSolver, "default"))

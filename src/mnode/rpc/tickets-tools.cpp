@@ -43,7 +43,7 @@ UniValue tickets_tools_printtradingchain(const UniValue& params)
                     continue;
                 UniValue obj(UniValue::VOBJ);
                 obj.read(t->ToJSON());
-                resultArray.push_back(move(obj));
+                resultArray.push_back(std::move(obj));
             }
         }
         return resultArray;
@@ -123,11 +123,11 @@ As json rpc
     const CAmount nImageDataSizeInMB = get_long_number(params[8]);
 
     const auto NFTRegTicket = CNFTRegTicket::Create(
-        move(ticket),
+        std::move(ticket),
         signatures,
-        move(pastelID),
-        move(strKeyPass),
-        move(label),
+        std::move(pastelID),
+        std::move(strKeyPass),
+        std::move(label),
         nNftRegTicketStorageFee);
     CDataStream data_stream(SER_NETWORK, DATASTREAM_VERSION);
     data_stream << to_integral_type(NFTRegTicket.ID());
@@ -195,7 +195,7 @@ UniValue tickets_tools_validateusername(const UniValue& params)
             }
         }
         obj.pushKV("isBad", isBad);
-        obj.pushKV("validationError", move(usernameValidationError));
+        obj.pushKV("validationError", std::move(usernameValidationError));
 
         return obj;
     }
@@ -213,7 +213,7 @@ UniValue tickets_tools_validateethereumaddress(const UniValue& params)
         string ethereumAddressValidationError;
         const bool isInvalid = CChangeEthereumAddressTicket::isEthereumAddressInvalid(ethereumAddress, ethereumAddressValidationError);
         obj.pushKV("isInvalid", isInvalid);
-        obj.pushKV("validationError", move(ethereumAddressValidationError));
+        obj.pushKV("validationError", std::move(ethereumAddressValidationError));
 
         return obj;
     }
@@ -272,8 +272,8 @@ As json rpc
         {
             retVal.pushKV("type", GetTicketName(get<0>(result.value())));
             retVal.pushKV("owns", true);
-            retVal.pushKV(RPC_KEY_TXID, move(get<1>(result.value())));
-            retVal.pushKV("transfer", move(get<2>(result.value())));
+            retVal.pushKV(RPC_KEY_TXID, std::move(get<1>(result.value())));
+            retVal.pushKV("transfer", std::move(get<2>(result.value())));
         }
         else 
         {
@@ -295,7 +295,7 @@ void from_json(const json &j, search_thumbids_t& p)
 {
     // mandatory creator PastelId - will throw json::exception if does not exist
     if (!j.contains("creator"))
-        throw nlohmann::detail::other_error::create(500, "'creator' parameter not found", j);
+        throw nlohmann::detail::other_error::create(500, "'creator' parameter not found", &j);
 
     j["creator"].get_to(p.sCreatorPastelId);
     // other fields are optional
@@ -313,16 +313,19 @@ void from_json(const json &j, search_thumbids_t& p)
         if (v.size() != 2)
             throw nlohmann::detail::other_error::create(500,
                 strprintf("Expected json array with [min, max] only for '%s' parameter, found %zu items", szParamName, v.size()),
-                jParam);
+                &jParam);
         if (v[0] > v[1])
             throw nlohmann::detail::other_error::create(500,
-                strprintf("Invalid '%s' parameter: min > max [%u > %u]", szParamName, v[0], v[1]), jParam);
+                strprintf("Invalid '%s' parameter: min > max [%u > %u]", szParamName, v[0], v[1]),
+                &jParam);
         if (min.has_value() && v[0] < min.value())
             throw nlohmann::detail::other_error::create(500,
-                strprintf("Invalid '%s' parameter: min value is out of range [%u < %u]", szParamName, v[0], min.value()), jParam);
+                strprintf("Invalid '%s' parameter: min value is out of range [%u < %u]", szParamName, v[0], min.value()),
+                &jParam);
         if (max.has_value() && v[1] > max.value())
             throw nlohmann::detail::other_error::create(500,
-                strprintf("Invalid '%s' parameter: max value is out of range [%u > %u]", szParamName, v[1], max.value()), jParam);
+                strprintf("Invalid '%s' parameter: max value is out of range [%u > %u]", szParamName, v[1], max.value()),
+                &jParam);
         rng = numeric_range<uint32_t>(v[0], v[1]);
     };
     DeserializeRangeParam("blocks", p.blockRange);
@@ -346,7 +349,7 @@ void from_json(const json &j, search_thumbids_t& p)
         for (auto& [key, value] : map)
         {
             sLowercasedKey = key;
-            p.fuzzySearchMap.emplace(move(lowercase(sLowercasedKey)), move(value));
+            p.fuzzySearchMap.emplace(std::move(lowercase(sLowercasedKey)), std::move(value));
         }
     }
 }
@@ -396,8 +399,8 @@ UniValue thumbids_search(const search_thumbids_t &p)
         string sThumbHash = jNftAppTicket["thumbnail_hash"];
         UniValue matchObj(UniValue::VOBJ);
         matchObj.pushKV(RPC_KEY_TXID, pNftTicket->GetTxId());
-        matchObj.pushKV("thumbnail_hash", move(sThumbHash));
-        resultArray.push_back(move(matchObj));
+        matchObj.pushKV("thumbnail_hash", std::move(sThumbHash));
+        resultArray.push_back(std::move(matchObj));
         return resultArray.size();
     };
     // search for NFT registration tickets satisfies all search criterias defined in search_thumbids_t structure

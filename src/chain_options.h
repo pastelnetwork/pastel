@@ -10,7 +10,7 @@
 /** Default for -txexpirydelta, in number of blocks */
 constexpr uint32_t DEFAULT_TX_EXPIRY_DELTA = 20;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
-constexpr unsigned int DEFAULT_MIN_RELAY_TX_FEE = 30;
+constexpr unsigned int DEFAULT_MIN_RELAY_TX_FEE = 100;
 /** The number of blocks within expiry height when a tx is considered to be expiring soon */
 constexpr uint32_t TX_EXPIRING_SOON_THRESHOLD = 3;
 /**

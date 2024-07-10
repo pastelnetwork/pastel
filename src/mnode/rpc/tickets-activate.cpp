@@ -83,7 +83,7 @@ As json rpc:
     if (params.size() >= 8)
         sFundingAddress = params[7].get_str();
 
-    const auto NFTActTicket = CNFTActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
+    const auto NFTActTicket = CNFTActivateTicket::Create(std::move(regTicketTxID), height, fee, std::move(pastelID), std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTActTicket, sFundingAddress));
 }
 
@@ -142,7 +142,8 @@ As json rpc:
     if (params.size() >= 8)
         sFundingAddress = params[7].get_str();
 
-    const auto ActionActivateTicket = CActionActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
+    const auto ActionActivateTicket = CActionActivateTicket::Create(std::move(regTicketTxID), height, fee, std::move(pastelID),
+        std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(ActionActivateTicket, sFundingAddress));
 }
 
@@ -201,7 +202,8 @@ As json rpc:
     if (params.size() >= 8)
         sFundingAddress = params[7].get_str();
 
-    const auto CollectionActTicket = CollectionActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
+    const auto CollectionActTicket = CollectionActivateTicket::Create(std::move(regTicketTxID), height, fee, std::move(pastelID), 
+        std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(CollectionActTicket, sFundingAddress));
 }
 

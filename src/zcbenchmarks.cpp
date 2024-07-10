@@ -21,6 +21,7 @@
 #include <consensus/validation.h>
 #include <main.h>
 #include <mining/miner.h>
+#include <mining/mining-settings.h>
 #include <mining/pow.h>
 #include <rpc/server.h>
 #include <script/sign.h>
@@ -50,18 +51,14 @@ void pre_wallet_load()
         pwalletMain->Flush(false);
     const auto& chainparams = Params();
 #ifdef ENABLE_MINING
-    GenerateBitcoins(false, nullptr, 0, chainparams);
+    GenerateBitcoins(false, nullptr, chainparams);
 #endif
     UnregisterNodeSignals(GetNodeSignals());
     if (pwalletMain)
         pwalletMain->Flush(true);
 
     UnregisterValidationInterface(pwalletMain);
-    if (pwalletMain)
-    {
-        delete pwalletMain;
-        pwalletMain = nullptr;
-    }
+    safe_delete_obj(pwalletMain);
     bitdb.Reset();
     RegisterNodeSignals(GetNodeSignals());
     LogPrintf("%s: done\n", __func__);
@@ -73,8 +70,9 @@ void post_wallet_load()
 #ifdef ENABLE_MINING
     // Generate coins in the background
     const auto& chainparams = Params();
-    if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, static_cast<int>(GetArg("-genproclimit", 1)), chainparams);
+    string sMinerAddress = gl_MiningSettings.getMinerAddress();
+    if (pwalletMain || !sMinerAddress.empty())
+        GenerateBitcoins(gl_MiningSettings.isLocalMiningEnabled(), pwalletMain, chainparams);
 #endif    
 }
 
@@ -141,7 +139,7 @@ v_doubles benchmark_solve_equihash_threaded(int nThreads)
     for (int i = 0; i < nThreads; i++) {
         packaged_task<double(void)> task(&benchmark_solve_equihash);
         tasks.emplace_back(task.get_future());
-        threads.emplace_back(move(task));
+        threads.emplace_back(std::move(task));
     }
     for (auto it = tasks.begin(); it != tasks.end(); it++) {
         it->wait();

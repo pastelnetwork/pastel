@@ -659,7 +659,7 @@ Examples:)"
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
         UniValue delta(UniValue::VOBJ);
-        delta.pushKV("address", move(address));
+        delta.pushKV("address", std::move(address));
         delta.pushKV(RPC_KEY_TXID, it.first.txhash.GetHex());
         delta.pushKV("index", it.first.index);
         delta.pushKV("patoshis", it.second.amount);
@@ -668,7 +668,7 @@ Examples:)"
             delta.pushKV("prevtxid", it.second.prevhash.GetHex());
             delta.pushKV("prevout", it.second.prevout);
         }
-        result.push_back(move(delta));
+        result.push_back(std::move(delta));
     }
     return result;
 }
@@ -749,7 +749,7 @@ Examples:
         const uint32_t txindex = index_key.txindex;
         string txid = index_key.txhash.GetHex();
         // Duplicate entries (two addresses in same tx) are suppressed
-        txids.emplace(height, txindex, move(txid));
+        txids.emplace(height, txindex, std::move(txid));
     }
     UniValue result(UniValue::VARR);
     result.reserve(txids.size());
@@ -838,11 +838,11 @@ Examples:
         UniValue addr_obj(UniValue::VOBJ);
         addr_obj.pushKV("address", it.first);
         addr_obj.pushKV("balance", it.second);
-        addresses.push_back(move(addr_obj));
+        addresses.push_back(std::move(addr_obj));
     }
 
     UniValue result(UniValue::VOBJ);
-    result.pushKV("addresses", move(addresses));
+    result.pushKV("addresses", std::move(addresses));
     result.pushKV("balance", balance);
     result.pushKV("received", received);
     return result;
@@ -1080,7 +1080,7 @@ Examples:
         output.pushKV("script", HexStr(it.second.script.begin(), it.second.script.end()));
         output.pushKV("patoshis", it.second.patoshis);
         output.pushKV(RPC_KEY_HEIGHT, it.second.blockHeight);
-        utxos.push_back(move(output));
+        utxos.push_back(std::move(output));
     }
 
     if (!includeChainInfo)

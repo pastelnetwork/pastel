@@ -289,7 +289,7 @@ bool LogAcceptCategory(const char* category)
                 else
                     setCategories.insert(sCategory);
             }
-            ptrCategory = make_unique<set<string>>(move(setCategories));
+            ptrCategory = make_unique<set<string>>(std::move(setCategories));
             // thread_specific_ptr automatically deletes the set when the thread ends.
         }
         const auto& setCategories = *ptrCategory.get();

@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
+#include <sys/resource.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -87,12 +88,16 @@ typedef u_int SOCKET;
 #ifndef WIN32
 // PRIO_MAX is not defined on Solaris
 #ifndef PRIO_MAX
-#define PRIO_MAX 20
+#define PRIO_MAX (20)
 #endif
-#define THREAD_PRIORITY_LOWEST          PRIO_MAX
+#ifndef PRIO_MIN
+#define PRIO_MIN (-20)
+#endif
+#define THREAD_PRIORITY_LOWEST          PRIO_MIN
 #define THREAD_PRIORITY_BELOW_NORMAL    2
 #define THREAD_PRIORITY_NORMAL          0
 #define THREAD_PRIORITY_ABOVE_NORMAL    (-2)
+#define THREAD_PRIORITY_HIGHEST         PRIO_MAX
 #endif
 
 #if defined(HAVE_DECL_STRNLEN) && (HAVE_DECL_STRNLEN == 0)

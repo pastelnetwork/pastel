@@ -102,7 +102,7 @@ public:
     }
 
     CBaseDataStream(CBaseDataStream&& p) noexcept :
-        vch(move(p.vch))
+        vch(std::move(p.vch))
     {
         Init(p.m_nType, p.m_nVersion);
         nReadPos = p.nReadPos;
@@ -113,7 +113,7 @@ public:
     {
         if (this != &p)
         {
-            vch = move(p.vch);
+            vch = std::move(p.vch);
             Init(p.m_nType, p.m_nVersion);
             nReadPos = p.nReadPos;
             p.nReadPos = 0;
@@ -154,7 +154,7 @@ public:
 #endif
 
     CBaseDataStream(vector_type&& vchIn, const int nType, const int nVersion) : 
-        vch(move(vchIn))
+        vch(std::move(vchIn))
     {
         Init(nType, nVersion);
     }

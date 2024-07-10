@@ -7,9 +7,9 @@
 
 #include <utils/streams.h>
 #include <utils/random.h>
+#include <utils/hash.h>
 #include <netmsg/bloom.h>
 #include <primitives/transaction.h>
-#include <hash.h>
 #include <script/script.h>
 #include <script/standard.h>
 

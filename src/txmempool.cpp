@@ -181,7 +181,7 @@ void CTxMemPool::addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewC
 		++index;
 	}
 
-    m_mapAddressInserted.emplace(txid, move(vInserted));
+    m_mapAddressInserted.emplace(txid, std::move(vInserted));
 }
 
 void CTxMemPool::getAddressIndex(
