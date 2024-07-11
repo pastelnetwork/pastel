@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2023 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -91,7 +91,7 @@ protected:
     {
         EXPECT_FALSE(IsCompressed());
         EXPECT_TRUE(error.empty());
-        vector_type vData = move(vch);
+        vector_type vData = std::move(vch);
         EXPECT_TRUE(!vData.empty());
         EXPECT_EQ(vData.size(), nOldSize);
         if (!vData.empty())
@@ -127,7 +127,7 @@ TEST_F(TestCompressedDataStream, SetData_NoCompressorVersion)
     // 3 bytes uncompressed
     vector_type vData{1,2,3};
     // should throw ios_base::failure(CBaseDataStream::read(): end of data)
-    EXPECT_THROW(SetData(error, true, 3, move(vData)), ios_base::failure);
+    EXPECT_THROW(SetData(error, true, 3, std::move(vData)), ios_base::failure);
 }
 
 TEST_F(TestCompressedDataStream, SetData_NoCompressorDataSize)
@@ -135,7 +135,7 @@ TEST_F(TestCompressedDataStream, SetData_NoCompressorDataSize)
     // 3 bytes uncompressed
     // 0x01 - compressor version
     vector_type vData {10, 11, 12, 1};
-    EXPECT_THROW(SetData(error, true, 3, move(vData)), ios_base::failure);
+    EXPECT_THROW(SetData(error, true, 3, std::move(vData)), ios_base::failure);
 }
 
 TEST_F(TestCompressedDataStream, SetData_InvalidCompressorDataSize)
@@ -146,7 +146,7 @@ TEST_F(TestCompressedDataStream, SetData_InvalidCompressorDataSize)
     vector_type vData{10, 11, 12, 2, -3, -128, 63 };
     AppendTestCompressedData(vData);
 
-    EXPECT_FALSE(SetData(error, true, 3, move(vData)));
+    EXPECT_FALSE(SetData(error, true, 3, std::move(vData)));
     EXPECT_TRUE(!error.empty());
 }
 
@@ -154,7 +154,7 @@ TEST_F(TestCompressedDataStream, SetData_InvalidStartPos)
 {
     vector_type vData{1, 1, 0 };
     AppendTestCompressedData(vData);
-    EXPECT_FALSE(SetData(error, true, vData.size() + 1, move(vData)));
+    EXPECT_FALSE(SetData(error, true, vData.size() + 1, std::move(vData)));
     EXPECT_TRUE(!error.empty());
 }
 
@@ -165,7 +165,7 @@ TEST_F(TestCompressedDataStream, SetData_EmptyCompressedData)
     // 0x01 - compressor version
     // 0x00 - compact size - extra compressor data
     vector_type vData {10, 11, 12,   1, 0};
-    EXPECT_TRUE(SetData(error, true, 3, move(vData)));
+    EXPECT_TRUE(SetData(error, true, 3, std::move(vData)));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(vch.empty());
 }
@@ -181,7 +181,7 @@ TEST_F(TestCompressedDataStream, SetData)
     EXPECT_CALL(*this, GetDecompressedSize);
     EXPECT_CALL(*this, LibDataDecompress);
 
-    EXPECT_TRUE(SetData(error, true, 2, move(vData)));
+    EXPECT_TRUE(SetData(error, true, 2, std::move(vData)));
     EXPECT_TRUE(error.empty());
     // after decompression vch contains pure data
     EXPECT_STREQ(vector_to_string(vch).c_str(), TEST_DATA);
@@ -200,7 +200,7 @@ TEST_F(TestCompressedDataStream, SetData_NewVersion)
     EXPECT_CALL(*this, GetDecompressedSize);
     EXPECT_CALL(*this, LibDataDecompress);
     
-    EXPECT_TRUE(SetData(error, true, 3, move(vData)));
+    EXPECT_TRUE(SetData(error, true, 3, std::move(vData)));
     EXPECT_TRUE(error.empty());
     // after decompression vch contains pure data
     EXPECT_STREQ(vector_to_string(vch).c_str(), TEST_DATA);
@@ -215,7 +215,7 @@ TEST_F(TestCompressedDataStream, SetData_NotCompressed)
     vData.emplace_back(42);
     vData.insert(vData.cend(), TEST_DATA, TEST_DATA + nTestDataSize);
 
-    EXPECT_TRUE(SetData(error, false, 1, move(vData)));
+    EXPECT_TRUE(SetData(error, false, 1, std::move(vData)));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(!vch.empty());
     if (!vch.empty())
@@ -235,7 +235,7 @@ TEST_F(TestCompressedDataStream, SetData_InvalidCompressedData)
 
     EXPECT_CALL(*this, GetDecompressedSize);
 
-    EXPECT_FALSE(SetData(error, true, 1, move(vData)));
+    EXPECT_FALSE(SetData(error, true, 1, std::move(vData)));
     EXPECT_TRUE(!error.empty());
 }
 
@@ -252,7 +252,7 @@ TEST_F(TestCompressedDataStream, SetData_InvalidDecompressedSize)
         );
     EXPECT_CALL(*this, LibDataDecompress);
 
-    EXPECT_FALSE(SetData(error, true, 0, move(vData)));
+    EXPECT_FALSE(SetData(error, true, 0, std::move(vData)));
     EXPECT_TRUE(!error.empty());
 }
 
@@ -267,7 +267,7 @@ TEST_F(TestCompressedDataStream, SetData_DecompressFail)
             SetArgReferee<0>("decompress error"), 
             Return(false)));
     
-    EXPECT_FALSE(SetData(error, true, 0, move(vData)));
+    EXPECT_FALSE(SetData(error, true, 0, std::move(vData)));
     EXPECT_TRUE(!error.empty());
 }
 
@@ -289,12 +289,12 @@ TEST_F(TestCompressedDataStream, CompressData)
         }));
     EXPECT_TRUE(IsCompressed());
     EXPECT_TRUE(error.empty());
-    vector_type vData = move(vch);
+    vector_type vData = std::move(vch);
     EXPECT_TRUE(!vData.empty());
     if (!vData.empty())
     {
         EXPECT_EQ(vData[0], ch);
-        EXPECT_TRUE(SetData(error, true, 1, move(vData)));
+        EXPECT_TRUE(SetData(error, true, 1, std::move(vData)));
         EXPECT_TRUE(error.empty());
         // after decompression vch contains pure data
         EXPECT_STREQ(vector_to_string(vch).c_str(), TEST_DATA_NODISCARD);

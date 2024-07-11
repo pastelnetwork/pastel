@@ -14,7 +14,6 @@ from test_framework.authproxy import JSONRPCException
 from test_framework.util import (
     assert_equal, 
     assert_greater_than,
-    initialize_chain_clean, 
     start_nodes, 
     connect_nodes_bi, 
     stop_nodes,

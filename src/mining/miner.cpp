@@ -4,12 +4,23 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <tuple>
+#include <atomic>
+#ifdef __MINGW64__
+#include <pthread.h>
+#elif defined(__APPLE__)
+#include <mining/pow/tromp/osx_barrier.h>
+#else
+#include <barrier>
+#endif
 #ifdef ENABLE_MINING
 #include <functional>
 #endif
+#if defined(__MINGW64__) || defined(__APPLE__)
+#define USE_PTHREAD_BARRIER
+#endif
 
 #include <sodium.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 
 #include <mining/miner.h>
 #include <mining/mining-settings.h>
@@ -20,6 +31,8 @@
 
 #include <utils/util.h>
 #include <utils/str_utils.h>
+#include <utils/random.h>
+#include <utils/hash.h>
 #include <amount.h>
 #include <chainparams.h>
 #include <chain_options.h>
@@ -29,14 +42,12 @@
 #ifdef ENABLE_MINING
 #include <crypto/equihash.h>
 #endif
-#include <hash.h>
 #include <key_io.h>
 #include <accept_to_mempool.h>
 #include <metrics.h>
 #include <net.h>
 #include <mining/pow.h>
 #include <primitives/transaction.h>
-#include <random.h>
 #include <timedata.h>
 #include <ui_interface.h>
 #include <utilmoneystr.h>
@@ -399,7 +410,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                         sEligiblePastelID));
                 }
                 string sPrevMerkleRoot(pindexPrev->hashMerkleRoot.cbegin(), pindexPrev->hashMerkleRoot.cend());
-                string sPrevMerkelRootSignature = CPastelID::Sign(sPrevMerkleRoot, sEligiblePastelID, move(sPassPhrase));
+                string sPrevMerkelRootSignature = CPastelID::Sign(sPrevMerkleRoot, sEligiblePastelID, std::move(sPassPhrase));
                 pblock->sPastelID = sEligiblePastelID;
                 pblock->prevMerkleRootSignature = string_to_vector(sPrevMerkelRootSignature);
             }
@@ -429,7 +440,7 @@ optional<CScript> GetMinerScriptPubKey(const CChainParams& chainparams)
 {
     KeyIO keyIO(chainparams);
     CKeyID keyID;
-    CTxDestination addr = keyIO.DecodeDestination(GetArg("-mineraddress", ""));
+    CTxDestination addr = keyIO.DecodeDestination(gl_MiningSettings.getMinerAddress());
     if (IsValidDestination(addr)) {
         keyID = get<CKeyID>(addr);
     } else {
@@ -504,7 +515,8 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
     }
 
 #ifdef ENABLE_WALLET
-    if (GetArg("-mineraddress", "").empty())
+    string sMinerAddress = gl_MiningSettings.getMinerAddress();
+    if (sMinerAddress.empty())
     {
         // Remove key from key pool
         reservekey.KeepKey();
@@ -528,19 +540,19 @@ static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainpar
     return true;
 }
 
-#ifdef ENABLE_WALLET
-void static PastelMiner(const int nThreadNo, CWallet *pwallet)
-#else
-void static PastelMiner(const int nThreadNo)
-#endif
+CPastelMinerThread::CPastelMinerThread(const int nThreadNo, void *pwallet) : 
+    m_nMinerThreadNo(nThreadNo),
+    m_pWallet(pwallet),
+    CStoppableServiceThread(strprintf("miner-%d", nThreadNo).c_str())
 {
-    LogPrintf("PastelMiner thread #%d started\n", nThreadNo);
-    SetThreadPriority(THREAD_PRIORITY_LOWEST);
-    RenameThread(strprintf("psl-miner-%d", nThreadNo).c_str());
+    setPriority(THREAD_PRIORITY_LOWEST);
+}
 
+void CPastelMinerThread::execute()
+{
 #ifdef ENABLE_WALLET
     // Each thread has its own key
-    CReserveKey reservekey(pwallet);
+    CReserveKey reservekey(static_cast<CWallet*>(m_pWallet));
 #endif
 
     // Each thread has its own counter
@@ -558,7 +570,8 @@ void static PastelMiner(const int nThreadNo)
     mutex m_cs;
     bool cancelSolver = false;
     boost::signals2::connection c = uiInterface.NotifyBlockTip.connect(
-        [&m_cs, &cancelSolver](const uint256& hashNewTip) mutable {
+        [&](const uint256& hashNewTip) mutable
+        {
             lock_guard<mutex> lock{m_cs};
             cancelSolver = true;
         }
@@ -571,17 +584,37 @@ void static PastelMiner(const int nThreadNo)
         miningTimer.stop();
     });
 
-    const auto fnWaitFor = [&](const int nSeconds) noexcept
+    const auto fnWaitFor = [&](const chrono::milliseconds milliSecs) noexcept -> bool
     {
-        for (int i = 0; i < nSeconds; ++i)
-		{
-			MilliSleep(1000);
-			func_thread_interrupt_point();
-		}
-		return true;
+        unique_lock lck(m_mutex);
+        if (m_condVar.wait_for(lck, milliSecs) == cv_status::no_timeout)
+            return false;
+        return true;
 	};
+#ifdef USE_PTHREAD_BARRIER
+    static pthread_barrier_t miner_sleep_barrier;
+    const int err = pthread_barrier_init(&miner_sleep_barrier, nullptr, gl_MiningSettings.getThreadCount());
+    assert(!err);
+    const auto barrier_arrive_and_wait = [&]() noexcept
+	{
+		const int err = pthread_barrier_wait(&miner_sleep_barrier);
+		assert(err == 0 || err == PTHREAD_BARRIER_SERIAL_THREAD);
+	};
+    auto guard_barrier = sg::make_scope_guard([&]() noexcept
+    {
+        pthread_barrier_destroy(&miner_sleep_barrier);
+    });
+
+#else
+    static barrier miner_sleep_barrier(gl_MiningSettings.getThreadCount());
+    const auto barrier_arrive_and_wait = [&]() noexcept
+    {
+        miner_sleep_barrier.arrive_and_wait();
+    };
+#endif
+    const auto miningSleepMsecs = gl_MiningSettings.getSleepMsecs();
     try {
-        while (true)
+        while (!shouldStop())
         {
             // check if we can use new mining 
             const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
@@ -606,11 +639,14 @@ void static PastelMiner(const int nThreadNo)
                     const bool fvNodesEmpty = gl_NodeManager.GetNodeCount() == 0;
                     if (!fvNodesEmpty && !fnIsInitialBlockDownload(consensusParams))
                         break;
-                    fnWaitFor(1);
-                } while (true);
+                    if (fnWaitFor(1000ms))
+						break;
+                } while (!shouldStop());
                 LogFnPrint("mining", "Network is online");
                 miningTimer.start();
             }
+            if (shouldStop())
+				break;
               
             //INGEST->!!!
             if (!chainparams.IsRegTest())
@@ -625,7 +661,6 @@ void static PastelMiner(const int nThreadNo)
             }
             //<-INGEST!!!
 
-
             // Check if MasterNode is eligible to mine next block - perform only after the masternodes are synced
             opt_string_t sEligiblePastelID;
             bool bInvalidMiningSettings = false;
@@ -639,11 +674,20 @@ void static PastelMiner(const int nThreadNo)
                         LogFnPrint("mining", "MasterNode is synced");
 						break;
                     }
-                    fnWaitFor(5);
-                } while (true);
+                    if (fnWaitFor(5000ms))
+                        break;
+                } while (!shouldStop());
+                if (shouldStop())
+					break;
+
                 LogFnPrint("mining", "Waiting for active MasterNode ENABLED state...");
-                while (!masterNodeCtrl.IsActiveMasterNode())
-					fnWaitFor(5);
+                while (!masterNodeCtrl.IsActiveMasterNode() && !shouldStop())
+                {   
+                    if (fnWaitFor(5000ms))
+                        break;
+				}
+                if (shouldStop())
+                    break;
                 LogFnPrint("mining", "MasterNode has been STARTED");
                 do {
                     masternode_info_t mnInfo;
@@ -653,8 +697,13 @@ void static PastelMiner(const int nThreadNo)
                         LogFnPrint("mining", "MasterNode is ENABLED");
                         break;
                     }
-                    fnWaitFor(5);
-                } while (true);
+                    if (fnWaitFor(5000ms))
+                        break;
+                } while (!shouldStop());
+
+                if (shouldStop())
+                    break;
+
                 string error;
                 if (!gl_MiningSettings.CheckMNSettingsForLocalMining(error))
                 {
@@ -677,8 +726,12 @@ void static PastelMiner(const int nThreadNo)
 					}   
                     if (sEligiblePastelID.has_value())
                         break;
-                    fnWaitFor(5);
-                } while (true);
+                    if (fnWaitFor(5000ms))
+                        break;
+                } while (!shouldStop());
+
+                if (shouldStop())
+					break;
                 LogFnPrintf("MasterNode with mnid='%s' is eligible for mining new block", sEligiblePastelID.value_or("not defined"));
 
                 gl_bEligibleForMiningNextBlock = true;
@@ -703,7 +756,8 @@ void static PastelMiner(const int nThreadNo)
 #endif
             if (!pblocktemplate.get())
             {
-                if (GetArg("-mineraddress", "").empty()) {
+                string sMinerAddress = gl_MiningSettings.getMinerAddress();
+                if (sMinerAddress.empty()) {
                     LogPrintf("Error in PastelMiner: Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
                 } else {
                     // Should never reach here, because -mineraddress validity is checked in init.cpp
@@ -723,7 +777,7 @@ void static PastelMiner(const int nThreadNo)
             int64_t nStart = GetTime();
             arith_uint256 hashTarget = arith_uint256().SetCompact(pblock->nBits);
 
-            while (true)
+            while (!shouldStop())
             {
                 // Hash state
                 crypto_generichash_blake2b_state state;
@@ -749,13 +803,8 @@ void static PastelMiner(const int nThreadNo)
                 LogPrint("pow", "Running Equihash solver \"%s\" with nNonce = %s\n",
                          gl_MiningSettings.getEquihashSolverName(), pblock->nNonce.ToString());
 
-                function<bool(v_uint8)> validBlock =
-#ifdef ENABLE_WALLET
-                        [&pblock, &hashTarget, &pwallet, &reservekey, &m_cs, &cancelSolver, &chainparams]
-#else
-                        [&pblock, &hashTarget, &m_cs, &cancelSolver, &chainparams]
-#endif
-                    (const v_uint8 &soln) {
+                function<bool(v_uint8)> validBlock = [&, this](const v_uint8 &soln)
+                {
                     // Write the solution to the hash and compute the result.
                     LogPrint("pow", "- Checking solution against target\n");
                     pblock->nSolution = soln;
@@ -766,7 +815,7 @@ void static PastelMiner(const int nThreadNo)
                         return false;
 
                     // Found a solution
-                    SetThreadPriority(THREAD_PRIORITY_NORMAL);
+                    changePriority(THREAD_PRIORITY_NORMAL);
                     LogPrintf("PastelMiner:\n");
                     LogPrintf(R"(proof-of-work found
         block hash: %s
@@ -776,7 +825,7 @@ void static PastelMiner(const int nThreadNo)
                         hashTarget.GetHex(),
                         pblock->sPastelID.empty() ? "" : strprintf("              mnid: %s\n", pblock->sPastelID));
 #ifdef ENABLE_WALLET
-                    if (ProcessBlockFound(pblock, chainparams, *pwallet, reservekey))
+                    if (ProcessBlockFound(pblock, chainparams, *static_cast<CWallet*>(m_pWallet), reservekey))
 #else
                     if (ProcessBlockFound(pblock, chainparams))
 #endif
@@ -785,14 +834,15 @@ void static PastelMiner(const int nThreadNo)
                         lock_guard<mutex> lock{m_cs};
                         cancelSolver = false;
                     }
-                    SetThreadPriority(THREAD_PRIORITY_LOWEST);
+                    changePriority(THREAD_PRIORITY_LOWEST);
 
                     // In regression test mode, stop mining after a block is found.
                     if (chainparams.MineBlocksOnDemand())
                     {
                         // Increment here because throwing skips the call below
                         ehSolverRuns.increment();
-                        throw func_thread_interrupted();
+                        stop(); // request thread stop
+                        return true;
                     }
 
                     return true;
@@ -814,10 +864,20 @@ void static PastelMiner(const int nThreadNo)
                     eq.digit0(0);
                     eq.xfull = eq.bfull = eq.hfull = 0;
                     eq.showbsizes(0);
-                    for (uint32_t r = 1; r < WK; r++) {
+                    for (uint32_t r = 1; r < WK; r++)
+                    {
                         (r&1) ? eq.digitodd(r, 0) : eq.digiteven(r, 0);
                         eq.xfull = eq.bfull = eq.hfull = 0;
                         eq.showbsizes(r);
+
+                        // synchronized sleep
+                        if (miningSleepMsecs.count() > 0)
+                        {
+                            barrier_arrive_and_wait();
+                            if (fnWaitFor(miningSleepMsecs))
+                                break;
+                            barrier_arrive_and_wait();
+                        }
                     }
                     eq.digitK(0);
                     ehSolverRuns.increment();
@@ -838,9 +898,12 @@ void static PastelMiner(const int nThreadNo)
                             // because they become invalid as we created a new block in blockchain.
                             break;
                         }
+                        if (shouldStop())
+                            break;
                     }
                 } else {
-                    try {
+                    try
+                    {
                         // If we find a valid block, we rebuild
                         bool found = EhOptimisedSolve(n, k, curr_state, validBlock, cancelled);
                         ehSolverRuns.increment();
@@ -855,7 +918,9 @@ void static PastelMiner(const int nThreadNo)
                 }
 
                 // Check for stop or if block needs to be rebuilt
-                func_thread_interrupt_point();
+                if (shouldStop())
+                    break;
+
                 // Regtest mode doesn't require peers
                 size_t nNodeCount = gl_NodeManager.GetNodeCount();
                 if ((nNodeCount == 0) && chainparams.MiningRequiresPeers())
@@ -889,34 +954,46 @@ void static PastelMiner(const int nThreadNo)
 }
 
 #ifdef ENABLE_WALLET
-void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads, const CChainParams& chainparams)
+void static PastelMiner(const int nThreadNo, CWallet *pwallet)
 #else
-void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams)
+void static PastelMiner(const int nThreadNo)
 #endif
 {
-    static CServiceThreadGroup minerThreads;
+}
 
-    if (nThreads < 0)
-        nThreads = GetNumCores();
+static mutex g_minerThreadsMutex;
+static CServiceThreadGroup gl_minerThreads;
 
-    if (minerThreads.empty())
-    {
-        minerThreads.stop_all();
-        minerThreads.join_all();
-    }
-
-    if (nThreads == 0 || !fGenerate)
-        return;
-
-    string error;
-    for (int i = 0; i < nThreads; i++)
-    {
 #ifdef ENABLE_WALLET
-        minerThreads.add_func_thread(error, "miner", bind(&PastelMiner, i + 1, pwallet));
+void GenerateBitcoins(bool fGenerate, CWallet* pwallet, const CChainParams& chainparams)
 #else
-        minerThreads.add_func_thread(error, "miner", bind(&PastelMiner, i + 1));
+void GenerateBitcoins(bool fGenerate, const CChainParams& chainparams)
 #endif
+{
+    unique_lock lock(g_minerThreadsMutex);
+    if (!gl_minerThreads.empty())
+    {
+		LogPrintf("Stopping miner threads");
+        gl_minerThreads.stop_all();
+        gl_minerThreads.join_all();
     }
+
+    if (!fGenerate)
+        return;
+    void* pWallet = nullptr;
+#ifdef ENABLE_WALLET
+    pWallet = pwallet;
+#endif // ENABLE_WALLET
+    string error;
+    for (uint32_t i = 0; i < gl_MiningSettings.getThreadCount(); i++)
+    {
+        if (gl_minerThreads.add_thread(error, make_shared<CPastelMinerThread>(i + 1, pWallet)) == INVALID_THREAD_OBJECT_ID)
+        {
+			LogPrintf("Error starting miner thread: %s\n", error);
+			return;
+		}
+    }
+    LogPrintf("Started %u miner threads\n", gl_MiningSettings.getThreadCount());
 }
 
 #endif // ENABLE_MINING

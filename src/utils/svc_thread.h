@@ -7,8 +7,12 @@
 #include <thread>
 #include <condition_variable>
 #include <unordered_map>
+#ifndef WIN32
+#include <sys/resource.h>
+#include <sys/time.h>
+#endif // WIN32
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/str_utils.h>
 #include <utils/util.h>
 
@@ -40,6 +44,7 @@ public:
         m_bStopRequested(false)
     {
         m_sThreadName = strprintf("psl-%s", SAFE_SZ(szThreadName));
+        m_nThreadPriority = THREAD_PRIORITY_NORMAL;
     }
 
     // disable copy
@@ -63,12 +68,12 @@ public:
         }
         catch (const std::exception& exc)
         {
-            error = strprintf("Exception occured on thread [%s] creation: %s", m_sThreadName, exc.what());
+            error = strprintf("Exception occurred on thread [%s] creation: %s", m_sThreadName, exc.what());
 			LogPrintf("%s\n", error);
 			return false;
 		}
         catch(...) {
-            error = strprintf("Exception occured on thread [%s] creation", m_sThreadName);
+            error = strprintf("Exception occurred on thread [%s] creation", m_sThreadName);
 			LogPrintf("%s\n", error);
             return false;
         }
@@ -93,6 +98,8 @@ public:
             RenameThread(m_sThreadName.c_str(), reinterpret_cast<void*>(m_Thread.native_handle()));
             if (m_bTrace)
                 LogPrintf("[%s] thread start\n", m_sThreadName);
+            if (m_nThreadPriority != THREAD_PRIORITY_NORMAL)
+				changePriority(m_nThreadPriority);
             execute();
             if (m_bTrace)
                 LogPrintf("[%s] thread exit\n", m_sThreadName);
@@ -108,7 +115,7 @@ public:
     /**
      * Request thread to stop - does not wait for thread to join.
      */
-    virtual void stop()
+    virtual void stop() noexcept
     {
         if (!m_bRunning)
             return;
@@ -134,6 +141,36 @@ public:
     std::string get_thread_name() const noexcept { return m_sThreadName; }
     // log thread start/stop
     void setTrace(const bool bTrace) noexcept { m_bTrace = bTrace; }
+    bool setPriority(const int nPriority) noexcept
+    {
+        if ((nPriority < THREAD_PRIORITY_LOWEST) || (nPriority > THREAD_PRIORITY_HIGHEST))
+			return false;
+        m_nThreadPriority = nPriority;
+		return true;
+    }
+    bool changePriority(const int nPriority) noexcept
+    {
+        if (m_nThreadPriority == nPriority)
+			return true;
+        if (!setPriority(nPriority))
+            return false;
+        if (!m_bRunning)
+            return true;
+#ifdef WIN32
+        HANDLE hThread = reinterpret_cast<HANDLE>(m_Thread.native_handle());
+        if (SetThreadPriority(hThread, nPriority) == 0)
+            return false;
+#else
+#ifdef PRIO_THREAD
+        if (setpriority(PRIO_THREAD, m_Thread.native_handle(), nPriority) != 0)
+			return false;
+#else 
+        if (setpriority(PRIO_PROCESS, 0, nPriority) != 0)
+			return false;
+#endif
+#endif // WIN32
+		return true;
+	}
 
     // main thread loop - should override this method
     virtual void execute() { throw new std::runtime_error("CServiceThread::execute method should be overriden"); }
@@ -144,6 +181,7 @@ protected:
     std::atomic_bool m_bRunning;       // true when thread is running
     std::atomic_bool m_bStopRequested; // true if stop was requested
     std::thread m_Thread;
+    int m_nThreadPriority;
 };
 
 inline void func_thread_interrupt_point()
@@ -185,13 +223,17 @@ public:
         CServiceThread(szThreadName)
     {}
 
-    void stop() override
+    void stop() noexcept override
     {
         CServiceThread::stop();
-        m_condVar.notify_one();
+        sendSignal();
     }
 
-    void sendSignal() noexcept { m_condVar.notify_one(); }
+    void sendSignal() noexcept
+    {
+        std::unique_lock lock(m_mutex);
+        m_condVar.notify_one();
+    }
 
 protected:
     std::mutex m_mutex;
@@ -223,7 +265,7 @@ public:
     size_t add_thread(std::string &error, std::shared_ptr<CServiceThread> t, const bool bStartThread = true)
     {
         error.clear();
-        std::unique_lock<std::mutex> lck(m_Lock);
+        std::unique_lock lck(m_Lock);
         ++m_nCurrentID;
         auto pr = m_vThreads.emplace(m_nCurrentID, std::move(t));
         if (pr.second && bStartThread)
@@ -266,7 +308,7 @@ public:
      */
     bool start_thread(std::string &error, const size_t nThreadObjectID)
     {
-		std::unique_lock<std::mutex> lck(m_Lock);
+		std::unique_lock lck(m_Lock);
 		auto it = m_vThreads.find(nThreadObjectID);
         if (it == m_vThreads.end())
         {
@@ -297,7 +339,7 @@ public:
      */
     void stop_all()
     {
-        std::unique_lock<std::mutex> lck(m_Lock);
+        std::unique_lock lck(m_Lock);
         for (auto& [nID, threadObj] : m_vThreads)
         {
             if (threadObj)
@@ -310,7 +352,7 @@ public:
      */
     void join_all()
     {
-        std::unique_lock<std::mutex> lck(m_Lock);
+        std::unique_lock lck(m_Lock);
         for (auto& [nID, threadObj] : m_vThreads) {
             if (threadObj)
                 threadObj->waitForStop();
@@ -321,7 +363,7 @@ public:
 
     size_t size() const noexcept
     {
-        std::unique_lock<std::mutex> lck(m_Lock);
+        std::unique_lock lck(m_Lock);
         return m_vThreads.size();
     }
 

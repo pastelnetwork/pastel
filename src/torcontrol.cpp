@@ -769,7 +769,7 @@ CTorControlThread::~CTorControlThread()
     }
 }
 
-void CTorControlThread::stop()
+void CTorControlThread::stop() noexcept
 {
     LogPrintf("[%s] stopping thread\n", m_sThreadName);
 

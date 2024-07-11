@@ -41,11 +41,11 @@ the bad alert.
 */
 
 #include <utils/util.h>
+#include <utils/utiltime.h>
 #include <main.h>
 #include <net.h>
 #include <alert.h>
 #include <init.h>
-#include <utiltime.h>
 #include <key.h>
 #include <clientversion.h>
 #include <chainparams.h>
@@ -170,9 +170,9 @@ void ThreadSendAlert()
     // Confirm
     if (!mapArgs.count("-sendalert"))
         return;
-    while ((gl_NodeManager.GetNodeCount() == 0) && !ShutdownRequested())
+    while ((gl_NodeManager.GetNodeCount() == 0) && !IsShutdownRequested())
         MilliSleep(500);
-    if (ShutdownRequested())
+    if (IsShutdownRequested())
         return;
 
     // Send

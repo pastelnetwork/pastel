@@ -561,35 +561,12 @@ static bool getAddressFromIndex(
     return true;
 }
 
-// This function accepts an address and returns in the output parameters
-// the version and raw bytes for the RIPEMD-160 hash.
-static bool getIndexKey(const CTxDestination& dest, uint160& hashBytes, ScriptType& type)
-{
-    if (!IsValidDestination(dest))
-        return false;
-    if (IsKeyDestination(dest))
-    {
-        auto x = get_if<CKeyID>(&dest);
-        memcpy(&hashBytes, x->begin(), uint160::SIZE);
-        type = ScriptType::P2PKH;
-        return true;
-    }
-    if (IsScriptDestination(dest))
-    {
-        auto x = get_if<CScriptID>(&dest);
-        memcpy(&hashBytes, x->begin(), uint160::SIZE);
-        type = ScriptType::P2SH;
-        return true;
-    }
-    return false;
-}
-
 // insightexplorer
 static bool getAddressesFromParams(
     const UniValue& params,
     vector<pair<uint160, ScriptType>> &vAddresses)
 {
-    std::map<std::string, bool> vParamAddresses;
+    unordered_map<string, bool> vParamAddresses;
     if (params[0].isStr())
         vParamAddresses[params[0].get_str()] = true;
     else if (params[0].isObject())
@@ -611,11 +588,11 @@ static bool getAddressesFromParams(
     for (const auto& it : vParamAddresses)
     {
         auto address = keyIO.DecodeDestination(it.first);
-        uint160 hashBytes;
+        uint160 addressHash;
         ScriptType type = ScriptType::UNKNOWN;
-        if (!getIndexKey(address, hashBytes, type))
+        if (!GetTxDestinationHash(address, addressHash, type))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-        vAddresses.emplace_back(hashBytes, type);
+        vAddresses.emplace_back(addressHash, type);
     }
     return true;
 }
@@ -682,7 +659,7 @@ Examples:)"
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
         UniValue delta(UniValue::VOBJ);
-        delta.pushKV("address", move(address));
+        delta.pushKV("address", std::move(address));
         delta.pushKV(RPC_KEY_TXID, it.first.txhash.GetHex());
         delta.pushKV("index", it.first.index);
         delta.pushKV("patoshis", it.second.amount);
@@ -691,7 +668,7 @@ Examples:)"
             delta.pushKV("prevtxid", it.second.prevhash.GetHex());
             delta.pushKV("prevout", it.second.prevout);
         }
-        result.push_back(move(delta));
+        result.push_back(std::move(delta));
     }
     return result;
 }
@@ -772,7 +749,7 @@ Examples:
         const uint32_t txindex = index_key.txindex;
         string txid = index_key.txhash.GetHex();
         // Duplicate entries (two addresses in same tx) are suppressed
-        txids.emplace(height, txindex, move(txid));
+        txids.emplace(height, txindex, std::move(txid));
     }
     UniValue result(UniValue::VARR);
     result.reserve(txids.size());
@@ -809,7 +786,7 @@ Arguments:
 
 Result:
 {
-  "addressess":
+  "addresses":
     [
       {
         "address"     (string)  The base58check encoded address
@@ -835,7 +812,8 @@ Examples:
 
     CAmount balance = 0;
     CAmount received = 0;
-    auto addressesMap = map<string, CAmount>();
+    unordered_map<string, CAmount> addressesMap;
+    string sAddress;
     for (const auto& it : vAddressIndex)
     {
         if (it.second > 0)
@@ -843,15 +821,16 @@ Examples:
 
         balance += it.second;
 
-        string address;
+        sAddress.clear();
         auto scriptTypeOpt = toScriptType(it.first.type);
         if (!scriptTypeOpt)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
-        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, sAddress))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
-        addressesMap[address] += it.second;
+        addressesMap[sAddress] += it.second;
     }
+
     UniValue addresses(UniValue::VARR);
     addresses.reserve(addressesMap.size());
     for (const auto& it : addressesMap)
@@ -859,11 +838,11 @@ Examples:
         UniValue addr_obj(UniValue::VOBJ);
         addr_obj.pushKV("address", it.first);
         addr_obj.pushKV("balance", it.second);
-        addresses.push_back(addr_obj);
+        addresses.push_back(std::move(addr_obj));
     }
 
     UniValue result(UniValue::VOBJ);
-    result.pushKV("addresses", addresses);
+    result.pushKV("addresses", std::move(addresses));
     result.pushKV("balance", balance);
     result.pushKV("received", received);
     return result;
@@ -1073,7 +1052,7 @@ Examples:
     if (!getAddressesFromParams(params, vAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    vector<CAddressUnspentDbEntry> vUnspentOutputs;
+    address_unspent_vector_t vUnspentOutputs;
     for (const auto& it : vAddresses)
     {
         if (!GetAddressUnspent(it.first, it.second, vUnspentOutputs))
@@ -1091,10 +1070,8 @@ Examples:
     for (const auto& it : vUnspentOutputs)
     {
         UniValue output(UniValue::VOBJ);
-        auto scriptTypeOpt = toScriptType(it.first.type);
-        if (!scriptTypeOpt)
-			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
-        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+        auto scriptType = it.first.type;
+        if (!getAddressFromIndex(scriptType, it.first.hashBytes, address))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
         output.pushKV("address", address);
@@ -1103,7 +1080,7 @@ Examples:
         output.pushKV("script", HexStr(it.second.script.begin(), it.second.script.end()));
         output.pushKV("patoshis", it.second.patoshis);
         output.pushKV(RPC_KEY_HEIGHT, it.second.blockHeight);
-        utxos.push_back(move(output));
+        utxos.push_back(std::move(output));
     }
 
     if (!includeChainInfo)

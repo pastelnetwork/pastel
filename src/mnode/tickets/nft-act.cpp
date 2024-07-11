@@ -21,13 +21,13 @@ using namespace std;
 // CNFTActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CNFTActivateTicket CNFTActivateTicket::Create(string&& regTicketTxId, int _creatorHeight, int _storageFee, string&& sPastelID, SecureString&& strKeyPass)
 {
-    CNFTActivateTicket ticket(move(sPastelID));
+    CNFTActivateTicket ticket(std::move(sPastelID));
 
-    ticket.setRegTxId(move(regTicketTxId));
+    ticket.setRegTxId(std::move(regTicketTxId));
     ticket.m_creatorHeight = _creatorHeight;
     ticket.m_storageFee = _storageFee;
     ticket.GenerateTimestamp();
-    ticket.sign(move(strKeyPass));
+    ticket.sign(std::move(strKeyPass));
     return ticket;
 }
 
@@ -51,7 +51,7 @@ string CNFTActivateTicket::ToStr() const noexcept
  */
 void CNFTActivateTicket::sign(SecureString&& strKeyPass)
 {
-    string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, move(strKeyPass)), m_signature);
+    string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, std::move(strKeyPass)), m_signature);
 }
 
 /**
@@ -171,7 +171,7 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
             const auto collectionActTicket = pNFTRegTicket->RetrieveCollectionActivateTicket(error, bInvalidTxId, pindexPrev);
             if (bInvalidTxId)
             {
-                tv.errorMsg = move(error);
+                tv.errorMsg = std::move(error);
                 break;
             }
             // check that we've got collection ticket
@@ -200,7 +200,7 @@ ticket_validation_t CNFTActivateTicket::IsValid(const TxOrigin txOrigin, const u
                 // collection registration ticket should have been validated by this point, but double check it to make sure
                 if (bInvalidTxId)
                 {
-                    tv.errorMsg = move(error);
+                    tv.errorMsg = std::move(error);
                     break;
                 }
                 tv.errorMsg = strprintf(

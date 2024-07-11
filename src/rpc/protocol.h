@@ -22,6 +22,8 @@ enum class HTTPStatusCode : int
     FORBIDDEN             = 403,
     NOT_FOUND             = 404,
     BAD_METHOD            = 405,
+    REQUEST_TIMEOUT       = 408,
+    URI_TOO_LONG          = 414,
     INTERNAL_SERVER_ERROR = 500,
     SERVICE_UNAVAILABLE   = 503,
 };

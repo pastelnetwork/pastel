@@ -10,9 +10,9 @@
 #include <utils/serialize.h>
 #include <utils/streams.h>
 #include <utils/arith_uint256.h>
+#include <utils/random.h>
 #include <merkleblock.h>
 #include <version.h>
-#include <random.h>
 
 using namespace testing;
 using namespace std;

@@ -10,7 +10,7 @@ constexpr size_t MAX_INV_SZ = 50'000;
 constexpr size_t MAX_INV_SEND_SZ = 1'000;
 /** The maximum number of entries in an 'addr' protocol message */
 /** The maximum number of new addresses to accumulate before announcing. */
-static constexpr size_t MAX_ADDR_SZ = 1'000;
+constexpr size_t MAX_ADDR_SZ = 1'000;
 /** The maximum number of entries in an 'getdata' protocol message */
 constexpr size_t MAX_GETDATA_SZ = 1'000;
 /** The maximum number of entries in mapAskFor */
@@ -18,9 +18,12 @@ constexpr size_t MAPASKFOR_MAX_SZ = MAX_INV_SZ;
 /** The maximum number of entries in setAskFor (larger due to getdata latency)*/
 constexpr size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
 /** The maximum number of peer connections to maintain. */
-constexpr size_t DEFAULT_MAX_PEER_CONNECTIONS = 125;
+constexpr uint32_t DEFAULT_MAX_PEER_CONNECTIONS = 125;
 /** Maximum length of incoming protocol messages (no message over 2 MiB is currently acceptable). */
 constexpr unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 2 * 1024 * 1024;
+/** Number of headers sent in one getheaders result. We rely on the assumption that if a peer sends
+ *  less than this number, we reached its tip. Changing this value is a protocol upgrade. */
+constexpr size_t MAX_HEADERS_RESULTS = 160;
 
 enum class LocalAddressType : uint8_t
 {

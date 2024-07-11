@@ -130,7 +130,7 @@ public:
     double CalculateChainDeflatorFactor(uint32_t nChainHeight = std::numeric_limits<uint32_t>::max()) const;
 
     /***** MasterNode operations *****/
-    std::unique_ptr<CSemaphore> semMasternodeOutbound;
+    std::shared_ptr<CSemaphore> semMasternodeOutbound;
 
 protected:
     bool m_fMasterNode;

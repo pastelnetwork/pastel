@@ -38,8 +38,11 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\src\Makefile.am" />
     <None Include="..\..\..\configure.ac" />
     <None Include="..\..\..\README.md" />
+    <None Include="..\..\..\src\Makefile.am">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="..\..\..\Makefile.am" />
   </ItemGroup>
 </Project>

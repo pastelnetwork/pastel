@@ -22,13 +22,13 @@ using namespace std;
 // CActionActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CActionActivateTicket CActionActivateTicket::Create(string&& regTicketTxId, const unsigned int nCalledAtHeight, const CAmount storageFee, string&& sCallerPastelID, SecureString&& strKeyPass)
 {
-    CActionActivateTicket ticket(move(sCallerPastelID));
+    CActionActivateTicket ticket(std::move(sCallerPastelID));
 
-    ticket.setRegTxId(move(regTicketTxId));
+    ticket.setRegTxId(std::move(regTicketTxId));
     ticket.setCalledAtHeight(nCalledAtHeight);
     ticket.setStorageFee(storageFee);
     ticket.GenerateTimestamp();
-    ticket.sign(move(strKeyPass));
+    ticket.sign(std::move(strKeyPass));
     return ticket;
 }
 
@@ -102,7 +102,7 @@ string CActionActivateTicket::ToStr() const noexcept
  */
 void CActionActivateTicket::sign(SecureString&& strKeyPass)
 {
-    string_to_vector(CPastelID::Sign(ToStr(), m_sCallerPastelID, move(strKeyPass)), m_signature);
+    string_to_vector(CPastelID::Sign(ToStr(), m_sCallerPastelID, std::move(strKeyPass)), m_signature);
 }
 
 /**
@@ -221,7 +221,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
             const auto collectionActTicket = pActionRegTicket->RetrieveCollectionActivateTicket(error, bInvalidTxId, pindexPrev);
             if (bInvalidTxId)
             {
-                tv.errorMsg = move(error);
+                tv.errorMsg = std::move(error);
                 break;
             }
             // check that we've got collection ticket
@@ -250,7 +250,7 @@ ticket_validation_t CActionActivateTicket::IsValid(const TxOrigin txOrigin, cons
                 // collection registration ticket should have been validated by this point, but double check it to make sure
                 if (bInvalidTxId)
                 {
-                    tv.errorMsg = move(error);
+                    tv.errorMsg = std::move(error);
                     break;
                 }
                 tv.errorMsg = strprintf(

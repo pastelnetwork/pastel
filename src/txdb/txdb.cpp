@@ -6,9 +6,9 @@
 #include <cstdint>
 
 #include <utils/uint256.h>
+#include <utils/hash.h>
 #include <txdb/txdb.h>
 #include <chainparams.h>
-#include <hash.h>
 #include <main.h>
 #include <mining/pow.h>
 #include <script/scripttype.h>
@@ -38,6 +38,7 @@ static const char DB_ADDRESSINDEX = 'd';
 static const char DB_ADDRESSUNSPENTINDEX = 'u';
 static constexpr char DB_SPENTINDEX = 'p';
 static const char DB_TIMESTAMPINDEX = 'T';
+static const char DB_BURNTXINDEX = 'x';
 static const char DB_BLOCKHASHINDEX = 'h';
 
 CCoinsViewDB::CCoinsViewDB(string dbName, size_t nCacheSize, bool fMemory, bool fWipe) :
@@ -388,7 +389,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams, string &s
 }
 
 // START insightexplorer
-bool CBlockTreeDB::WriteAddressIndex(const vector<CAddressIndexDbEntry> &vAddressIndex)
+bool CBlockTreeDB::WriteAddressIndex(const address_index_vector_t &vAddressIndex)
 {
     if (vAddressIndex.empty())
         return true;
@@ -400,7 +401,7 @@ bool CBlockTreeDB::WriteAddressIndex(const vector<CAddressIndexDbEntry> &vAddres
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::EraseAddressIndex(const std::vector<CAddressIndexDbEntry> &vAddressIndex)
+bool CBlockTreeDB::EraseAddressIndex(const address_index_vector_t &vAddressIndex)
 {
     if (vAddressIndex.empty())
         return true;
@@ -414,11 +415,14 @@ bool CBlockTreeDB::EraseAddressIndex(const std::vector<CAddressIndexDbEntry> &vA
 
 bool CBlockTreeDB::ReadAddressIndex(
     const uint160 &addressHash, const uint8_t type,
-    vector<CAddressIndexDbEntry> &vAddressIndex,
+    address_index_vector_t &vAddressIndex,
     const uint32_t nStartHeight, const uint32_t nEndHeight) const
 {
-    LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu, height range [%u..%u]",
-		addressHash.GetHex(), type, nStartHeight, nEndHeight);
+    if (nStartHeight && nEndHeight)
+        LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu, height range [%u..%u]",
+		    addressHash.GetHex(), type, nStartHeight, nEndHeight);
+    else
+		LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu", addressHash.GetHex(), type);
 
     unique_ptr<CDBIterator> pcursor(NewIterator());
 
@@ -433,8 +437,10 @@ bool CBlockTreeDB::ReadAddressIndex(
         pair<char,CAddressIndexKey> key;
         if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSINDEX) && (key.second.hashBytes == addressHash)))
             break;
+
         if (nEndHeight > 0 && key.second.blockHeight > nEndHeight)
             break;
+
         CAmount nValue;
         if (!pcursor->GetValue(nValue))
             return error("failed to get address index value");
@@ -444,7 +450,7 @@ bool CBlockTreeDB::ReadAddressIndex(
     return true;
 }
 
-bool CBlockTreeDB::UpdateAddressUnspentIndex(const vector<CAddressUnspentDbEntry> &v)
+bool CBlockTreeDB::UpdateAddressUnspentIndex(const address_unspent_vector_t &v)
 {
     if (v.empty())
 		return true;
@@ -460,7 +466,7 @@ bool CBlockTreeDB::UpdateAddressUnspentIndex(const vector<CAddressUnspentDbEntry
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const uint8_t type, vector<CAddressUnspentDbEntry> &vUnspentOutputs) const
+bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const uint8_t type, address_unspent_vector_t &vUnspentOutputs) const
 {
     LogFnPrint("txdb", "AddressUnspentIndex - reading address %s, type %d", addressHash.GetHex(), type);
 
@@ -488,7 +494,7 @@ bool CBlockTreeDB::ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) 
     return Read(make_pair(DB_SPENTINDEX, key), value);
 }
 
-bool CBlockTreeDB::UpdateSpentIndex(const std::vector<CSpentIndexDbEntry> &v)
+bool CBlockTreeDB::UpdateSpentIndex(const spent_index_vector_t &v)
 {
     if (v.empty())
         return true;
@@ -549,10 +555,100 @@ bool CBlockTreeDB::WriteTimestampBlockIndex(const CTimestampBlockIndexKey &block
 bool CBlockTreeDB::ReadTimestampBlockIndex(const uint256 &hash, unsigned int &ltimestamp) const
 {
     CTimestampBlockIndexValue(lts);
-    if (!Read(std::make_pair(DB_BLOCKHASHINDEX, hash), lts))
+    if (!Read(make_pair(DB_BLOCKHASHINDEX, hash), lts))
         return false;
 
     ltimestamp = lts.ltimestamp;
     return true;
 }
+
+bool CBlockTreeDB::UpdateBurnTxIndex(const burn_txindex_vector_t& v)
+{
+    if (v.empty())
+        return true;
+    LogFnPrint("txdb", "BurnTxIndex - updating %zu entries", v.size());
+    CDBBatch batch(*this);
+    for (const auto& [key, value] : v)
+    {
+        if (value.IsNull())
+            batch.Erase(make_pair(DB_BURNTXINDEX, key));
+        else
+            batch.Write(make_pair(DB_BURNTXINDEX, key), value);
+    }
+    return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::ReadBurnTxIndex(const uint160& addressHash, const ScriptType addressType,
+    burn_txindex_vector_t& vBurnTxIndex, const uint32_t nStartHeight, const uint32_t nEndHeight,
+    const bool bScanAll) const
+{
+    if (bScanAll)
+        LogFnPrint("txdb", "BurnTxIndex - scanning all entries");
+	else if (nStartHeight && nEndHeight)
+        LogFnPrint("txdb", "BurnTxIndex - reading address %s, type %hhu, height range [%u..%u]",
+            addressHash.GetHex(), to_integral_type(addressType), nStartHeight, nEndHeight);
+    else
+        LogFnPrint("txdb", "BurnTxIndex - reading address %s, type %hhu", addressHash.GetHex(), to_integral_type(addressType));
+
+    size_t nReserve = 50;
+    vBurnTxIndex.reserve(nReserve * 2);
+
+    unique_ptr<CDBIterator> pcursor(NewIterator());
+
+    if (bScanAll)
+		pcursor->Seek(DB_BURNTXINDEX);
+	else if (nStartHeight > 0 && nEndHeight > 0)
+        pcursor->Seek(make_pair(DB_BURNTXINDEX, CBurnIndexIteratorHeightKey(addressType, addressHash, nStartHeight)));
+    else
+        pcursor->Seek(make_pair(DB_BURNTXINDEX, CBurnIndexIteratorKey(addressType, addressHash)));
+    while (pcursor->Valid())
+    {
+        func_thread_interrupt_point();
+        pair<char, CBurnTxIndexKey> key;
+        if (!pcursor->GetKey(key))
+            break;
+
+        if (key.first != DB_BURNTXINDEX)
+            break;
+
+        if (!bScanAll)
+        {
+            if (key.second.addressType != addressType)
+                break;
+
+            if (key.second.addressHash != addressHash)
+                break;
+        }
+
+        if (nEndHeight > 0 && key.second.nBlockHeight > nEndHeight)
+            break;
+
+        CBurnTxIndexValue value;
+        if (!pcursor->GetValue(value))
+            return error("failed to get burn tx index value");
+        vBurnTxIndex.emplace_back(key.second, std::move(value));
+
+        pcursor->Next();
+        if (vBurnTxIndex.capacity() - vBurnTxIndex.size() < nReserve)
+        {
+            nReserve += 50;
+            vBurnTxIndex.reserve(vBurnTxIndex.capacity() + nReserve * 2);
+        }
+    }
+    return true;
+}
+
+bool CBlockTreeDB::EraseBurnTxIndex(const burn_txindex_vector_t& vBurnTxIndex)
+{
+    if (vBurnTxIndex.empty())
+		return true;
+	LogFnPrint("txdb", "BurnTxIndex - erasing %zu entries", vBurnTxIndex.size());
+
+	CDBBatch batch(*this);
+	for (const auto& [key, value] : vBurnTxIndex)
+		batch.Erase(make_pair(DB_BURNTXINDEX, key));
+	return WriteBatch(batch);
+}
 // END insightexplorer
+
+unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;

@@ -65,7 +65,7 @@ struct CSpentIndexValue
         READWRITE(nAddressType);
         if (bRead)
         {
-            if (!is_enum_valid<ScriptType>(nAddressType, ScriptType::UNKNOWN, ScriptType::P2SH))
+            if (!is_enum_valid<ScriptType>(nAddressType, ScriptType::P2PKH, ScriptType::P2SH))
                 throw std::runtime_error(strprintf("Not supported ScriptType [%d]", nAddressType));
             addressType = static_cast<ScriptType>(nAddressType);
         }

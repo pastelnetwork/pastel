@@ -5,25 +5,23 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
+#include <config/pastel-config.h>
 #endif
 
 #include <cinttypes>
 #include <algorithm>
 #include <functional>
 #include <random>
+
+#include <compat.h>
+
 #ifdef WIN32
 #include <string.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <wininet.h>
-#else
-#include <fcntl.h>
-#include <ifaddrs.h>
 #endif
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/vector_types.h>
 #include <utils/svc_thread.h>
 #include <utils/util.h>
@@ -72,7 +70,7 @@ constexpr int64_t ONE_WEEK = 7 * ONE_DAY;
 // Global state variables
 //
 static vector<CNodeManager::ListenSocket> vhListenSocket;
-size_t nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
+uint32_t gl_nMaxConnections = DEFAULT_MAX_PEER_CONNECTIONS;
 bool fAddressesInitialized = false;
 static node_t pnodeLocalHost;
 
@@ -91,7 +89,7 @@ static CCriticalSection cs_setservAddNodeAddresses;
 v_strings vAddedNodes;
 CCriticalSection cs_vAddedNodes;
 
-static CSemaphore* semOutbound = nullptr;
+static shared_ptr<CSemaphore> gl_SemOutbound;
 
 //Adress used for seeder 
 static const char *strMainNetDNSSeed[][2] = {
@@ -308,11 +306,13 @@ void CSocketHandlerThread::execute()
             }
             FD_ZERO(&fdsetSend);
             FD_ZERO(&fdsetError);
-            unique_lock lck(m_mutex);
-            if (m_condVar.wait_for(lck, chrono::milliseconds(timeout.tv_usec / 1000)) == cv_status::no_timeout)
             {
-                if (shouldStop())
-                    break;
+                unique_lock lck(m_mutex);
+                if (m_condVar.wait_for(lck, chrono::milliseconds(timeout.tv_usec / 1000)) == cv_status::no_timeout)
+                {
+                    if (shouldStop())
+                        break;
+                }
             }
         }
 
@@ -524,8 +524,9 @@ void static ProcessOneShot()
         vOneShots.pop_front();
     }
     CAddress addr;
-    CSemaphoreGrant grant(*semOutbound, true);
-    if (grant) {
+    CSemaphoreGrant grant(gl_SemOutbound, true);
+    if (grant)
+    {
         if (!OpenNetworkConnection(addr, &grant, strDest.c_str(), true))
             AddOneShot(strDest);
     }
@@ -543,7 +544,7 @@ public:
         // Connect to specific addresses
         if (mapArgs.count("-connect") && mapMultiArgs["-connect"].size() > 0)
         {
-            unique_lock lck(m_mutex);
+            unique_lock lck(m_WorkMutex);
             for (int64_t nLoop = 0;; nLoop++)
             {
                 ProcessOneShot();
@@ -551,21 +552,20 @@ public:
                 {
                     CAddress addr;
                     OpenNetworkConnection(addr, nullptr, strAddr.c_str());
-                    for (int i = 0; i < 10 && i < nLoop; i++)
-                    {
-                        if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
-                        {
-                            if (shouldStop())
-                                break;
-                        }
-                    }
+
+                    auto waitTime = chrono::milliseconds(500 * min<int64_t>(10, nLoop));
+                    unique_lock lck(m_mutex);
+                    m_condVar.wait_for(lck, waitTime);
                     if (shouldStop())
                         break;
                 }
-                if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
                 {
-                    if (shouldStop())
-                        break;
+                    unique_lock lck(m_mutex);
+                    if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
+                    {
+                        if (shouldStop())
+                            break;
+                    }
                 }
             }
             if (shouldStop())
@@ -576,13 +576,16 @@ public:
         int64_t nStart = GetTime();
         while (!shouldStop())
         {
-            unique_lock lck(m_mutex);
+            unique_lock lck(m_WorkMutex);
             ProcessOneShot();
 
-            if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
-                continue;
+            {
+                unique_lock lck(m_mutex);
+                if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
+                    continue;
+            }
 
-            CSemaphoreGrant grant(*semOutbound);
+            CSemaphoreGrant grant(gl_SemOutbound);
             if (shouldStop())
                 break;
 
@@ -590,7 +593,8 @@ public:
             if (addrman.size() == 0 && (GetTime() - nStart > 60))
             {
                 static bool done = false;
-                if (!done) {
+                if (!done)
+                {
                     LogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
                     addrman.Add(convertSeed6(Params().FixedSeeds()), CNetAddr("127.0.0.1"));
                     done = true;
@@ -641,6 +645,9 @@ public:
                 OpenNetworkConnection(addrConnect, &grant);
         }
     }
+
+private:
+    std::mutex m_WorkMutex;
 };
 
 class COpenAddedConnectionsThread : public CStoppableServiceThread
@@ -662,7 +669,8 @@ public:
             // Retry every 2 minutes
             while(!shouldStop())
             {
-                unique_lock lck(m_mutex);
+                unique_lock lck(m_WorkMutex);
+
                 list<string> lAddresses(0);
                 {
                     LOCK(cs_vAddedNodes);
@@ -672,18 +680,26 @@ public:
                 for (const auto& strAddNode : lAddresses)
                 {
                     CAddress addr;
-                    CSemaphoreGrant grant(*semOutbound);
+                    CSemaphoreGrant grant(gl_SemOutbound);
+                    if (shouldStop())
+                        break;
                     OpenNetworkConnection(addr, &grant, strAddNode.c_str());
-                    if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
                     {
-                        if (shouldStop())
-                            break;
+                        unique_lock lck(m_mutex);
+                        if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
+                        {
+                            if (shouldStop())
+                                break;
+                        }
                     }
                 }
                 if (shouldStop())
                     break;
-                if (m_condVar.wait_for(lck, 2min) == cv_status::no_timeout)
-                    continue;
+                {
+					unique_lock lck(m_mutex);
+					if (m_condVar.wait_for(lck, 2min) == cv_status::no_timeout)
+						continue;
+				}
             }
         }
 
@@ -742,24 +758,35 @@ public:
             if (shouldStop())
                 return;
 
-            unique_lock lck(m_mutex);
+            unique_lock lck(m_WorkMutex);
             for (const auto &vserv : lservAddressesToAdd)
             {
-                CSemaphoreGrant grant(*semOutbound);
+                CSemaphoreGrant grant(gl_SemOutbound);
+                if (shouldStop())
+					break;
                 OpenNetworkConnection(CAddress(vserv[i % vserv.size()]), &grant);
-                if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
                 {
-                    if (shouldStop())
-                        break;
-                }
+					unique_lock lck(m_mutex);
+					if (m_condVar.wait_for(lck, 500ms) == cv_status::no_timeout)
+					{
+						if (shouldStop())
+							break;
+					}
+				}
             }
             if (shouldStop())
                 return;
             // Retry every 2 minutes
-            if (m_condVar.wait_for(lck, 2min) == cv_status::no_timeout)
-                continue;
+            {
+                unique_lock lck(m_mutex);
+                if (m_condVar.wait_for(lck, 2min) == cv_status::no_timeout)
+                    continue;
+            }
         }
     }
+
+private:
+    std::mutex m_WorkMutex;
 };
 
 // if successful, this moves the passed grant to the constructed node
@@ -972,7 +999,7 @@ bool hasWinActiveNetworkInterface()
         adapterAddresses = static_cast<PIP_ADAPTER_ADDRESSES>(malloc(bufferSize));
         if (!adapterAddresses)
         {
-            LogFnPrintf("ERROR: Memory allocation failed for IP_ADAPTER_ADDRESSES struct.");
+            LogFnPrintf("ERROR: Memory allocation failed for IP_ADAPTER_ADDRESSES structure");
             return false;
         }
         // AF_UNSPEC: unspecified address family (both)
@@ -1148,11 +1175,11 @@ bool StartNode(string &error, CServiceThreadGroup& threadGroup, CScheduler &sche
 		return false;
 	}
 
-    if (!semOutbound)
+    if (!gl_SemOutbound)
     {
         // initialize semaphore
-        const size_t nMaxOutbound = min(gl_NodeManager.GetMaxOutboundConnections(), nMaxConnections);
-        semOutbound = new CSemaphore(nMaxOutbound);
+        const uint32_t nMaxOutbound = min(static_cast<uint32_t>(gl_NodeManager.GetMaxOutboundConnections()), gl_nMaxConnections);
+        gl_SemOutbound = make_shared<CSemaphore>(nMaxOutbound);
     }
 
     if (!pnodeLocalHost)
@@ -1222,9 +1249,11 @@ bool StartNode(string &error, CServiceThreadGroup& threadGroup, CScheduler &sche
 bool StopNode()
 {
     LogFnPrintf("Stopping node");
-    if (semOutbound)
+    if (gl_SemOutbound)
+    {
         for (size_t i = 0; i < gl_NodeManager.GetMaxOutboundConnections(); ++i)
-            semOutbound->post();
+            gl_SemOutbound->post();
+    }
 
     //MasterNode
     masterNodeCtrl.StopMasterNode();
@@ -1266,8 +1295,7 @@ public:
         }
         gl_NodeManager.ClearNodes();
         vhListenSocket.clear();
-        delete semOutbound;
-        semOutbound = nullptr;
+        gl_SemOutbound.reset();
         pnodeLocalHost.reset();
 
 #ifdef WIN32

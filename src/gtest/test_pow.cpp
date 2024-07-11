@@ -5,10 +5,10 @@
 
 #include <gtest/gtest.h>
 
+#include <utils/random.h>
 #include <chain.h>
 #include <chainparams.h>
 #include <mining/pow.h>
-#include <random.h>
 
 using namespace std;
 

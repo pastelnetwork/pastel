@@ -104,19 +104,20 @@ const char* GetActionTypeName(const ACTION_TICKET_TYPE actionTicketType) noexcep
 CActionRegTicket CActionRegTicket::Create(string&& action_ticket, const string& signatures, 
     string&& sPastelID, SecureString&& strKeyPass, string &&label, const CAmount storageFee)
 {
-    CActionRegTicket ticket(move(action_ticket));
+    CActionRegTicket ticket(std::move(action_ticket));
     ticket.parse_action_ticket();
 
     // parse and set principal's and MN2/3's signatures
     ticket.set_signatures(signatures);
-    ticket.m_label = move(label);
+    ticket.m_label = std::move(label);
     ticket.m_storageFee = storageFee;
     ticket.GenerateKeyOne();
     ticket.GenerateTimestamp();
 
-    ticket.m_vPastelID[SIGN_MAIN] = move(sPastelID);
+    ticket.m_vPastelID[SIGN_MAIN] = std::move(sPastelID);
     // sign the ticket hash using principal PastelID, ed448 algorithm
-    string_to_vector(CPastelID::Sign(ticket.m_sActionTicket, ticket.m_vPastelID[SIGN_MAIN], move(strKeyPass)), ticket.m_vTicketSignature[SIGN_MAIN]);
+    string_to_vector(CPastelID::Sign(ticket.m_sActionTicket, ticket.m_vPastelID[SIGN_MAIN], 
+        std::move(strKeyPass)), ticket.m_vTicketSignature[SIGN_MAIN]);
     return ticket;
 }
 
@@ -301,13 +302,13 @@ json CActionRegTicket::getJSON(const bool bDecodeProperties) const noexcept
                 bool bInvalidEncoding = false;
                 string sDecodedAppTicket = DecodeAscii85(action_ticket_json[ACTION_TICKET_APP_OBJ], &bInvalidEncoding);
                 if (!bInvalidEncoding)
-                    action_ticket_json[ACTION_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+                    action_ticket_json[ACTION_TICKET_APP_OBJ] = std::move(json::parse(sDecodedAppTicket));
                 else
                 {
                     // this can be base64-encoded app_ticket as well
                     sDecodedAppTicket = DecodeBase64(action_ticket_json[ACTION_TICKET_APP_OBJ], &bInvalidEncoding);
                     if (!bInvalidEncoding)
-						action_ticket_json[ACTION_TICKET_APP_OBJ] = move(json::parse(sDecodedAppTicket));
+						action_ticket_json[ACTION_TICKET_APP_OBJ] = std::move(json::parse(sDecodedAppTicket));
                 }
             }
         } catch(...) {}
@@ -422,7 +423,7 @@ ticket_validation_t CActionRegTicket::IsValid(const TxOrigin txOrigin, const uin
         ticket_validation_t collTv = IsValidCollection(bPreReg);
         if (collTv.IsNotValid())
         {
-            tv = move(collTv);
+            tv = std::move(collTv);
             break;
         }
 

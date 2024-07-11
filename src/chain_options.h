@@ -10,7 +10,7 @@
 /** Default for -txexpirydelta, in number of blocks */
 constexpr uint32_t DEFAULT_TX_EXPIRY_DELTA = 20;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
-constexpr unsigned int DEFAULT_MIN_RELAY_TX_FEE = 30;
+constexpr unsigned int DEFAULT_MIN_RELAY_TX_FEE = 100;
 /** The number of blocks within expiry height when a tx is considered to be expiring soon */
 constexpr uint32_t TX_EXPIRING_SOON_THRESHOLD = 3;
 /**
@@ -43,6 +43,10 @@ extern std::atomic_bool fSpentIndex;
 
 // Maintain a full timestamp index, used to query for blocks within a time range
 extern std::atomic_bool fTimestampIndex;
+
+// Maintain a full burn tx index, used to query for burn txs
+extern std::atomic_bool fBurnTxIndex;
+
 // END insightexplorer
 
 class CChainOptions

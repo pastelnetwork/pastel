@@ -11,9 +11,6 @@
     <Filter Include="Source Files\rpc">
       <UniqueIdentifier>{01f2b7b7-7fda-4b71-a414-df897fb38f98}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\cyclicbarrier">
-      <UniqueIdentifier>{2b02cfae-4307-40dd-99b6-d06e6d2cb7c0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\mnode">
       <UniqueIdentifier>{c070f378-ba31-4af2-a349-882efd2f5eb5}</UniqueIdentifier>
     </Filter>
@@ -132,9 +129,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\validationinterface.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.cpp">
-      <Filter>Source Files\cyclicbarrier</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\mnode\ticket-processor.cpp">
       <Filter>Source Files\mnode</Filter>
@@ -373,6 +367,12 @@
     <ClCompile Include="..\..\..\src\txdb\txdb.cpp">
       <Filter>Source Files\txdb</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\txdb\burntxindex.cpp">
+      <Filter>Source Files\txdb</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\blockscanner.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -476,9 +476,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\rpc\rpc_consts.h">
       <Filter>Source Files\rpc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.hpp">
-      <Filter>Source Files\cyclicbarrier</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\mnode\mnode-active.h">
       <Filter>Source Files\mnode</Filter>
@@ -747,9 +744,6 @@
     <ClInclude Include="..\..\..\src\mining\pow\tromp\equi_miner.h">
       <Filter>Source Files\mining\pow\tromp</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\mining\pow\tromp\osx_barrier.h">
-      <Filter>Source Files\mining\pow\tromp</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\mining\pow.h">
       <Filter>Source Files\mining</Filter>
     </ClInclude>
@@ -770,6 +764,15 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\txdb\timestampindex.h">
       <Filter>Source Files\txdb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\txdb\burntxindex.h">
+      <Filter>Source Files\txdb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\txdb\index_defs.h">
+      <Filter>Source Files\txdb</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\blockscanner.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

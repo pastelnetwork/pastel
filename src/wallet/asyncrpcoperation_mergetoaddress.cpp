@@ -13,11 +13,13 @@
 #include <wallet/asyncrpcoperation_mergetoaddress.h>
 
 #include <utils/util.h>
+#include <utils/utiltime.h>
 #include <asyncrpcqueue.h>
 #include <core_io.h>
 #include <init.h>
 #include <key_io.h>
 #include <main.h>
+#include <mining/mining-settings.h>
 #include <mining/miner.h>
 #include <net.h>
 #include <netbase.h>
@@ -28,7 +30,6 @@
 #include <sodium.h>
 #include <timedata.h>
 #include <utilmoneystr.h>
-#include <utiltime.h>
 #include <zcash/IncrementalMerkleTree.hpp>
 
 using namespace libzcash;
@@ -65,7 +66,7 @@ AsyncRPCOperation_mergetoaddress::AsyncRPCOperation_mergetoaddress
     if (builder)
     {
         isUsingBuilder_ = true;
-        m_builder = move(builder);
+        m_builder = std::move(builder);
     }
     else
         m_builder = make_unique<TransactionBuilder>(chainparams.GetConsensus(), 0);
@@ -112,12 +113,12 @@ void AsyncRPCOperation_mergetoaddress::main()
 
     bool success = false;
 
-    const auto& chainparams = Params();
 #ifdef ENABLE_MINING
+    const auto& chainparams = Params();
 #ifdef ENABLE_WALLET
-    GenerateBitcoins(false, nullptr, 0, chainparams);
+    GenerateBitcoins(false, nullptr, chainparams);
 #else
-    GenerateBitcoins(false, 0, chainparams);
+    GenerateBitcoins(false, chainparams);
 #endif
 #endif
 
@@ -143,12 +144,11 @@ void AsyncRPCOperation_mergetoaddress::main()
     }
 
 #ifdef ENABLE_MINING
-    const int nThreadCount = static_cast<int>(GetArg("-genproclimit", 1));
-    const bool bGenerate = GetBoolArg("-gen", false);
+    const bool bGenerate = gl_MiningSettings.isLocalMiningEnabled();
 #ifdef ENABLE_WALLET
-    GenerateBitcoins(bGenerate, pwalletMain, nThreadCount, chainparams);
+    GenerateBitcoins(bGenerate, pwalletMain, chainparams);
 #else
-    GenerateBitcoins(bGenerate, nThreadCount, chainparams);
+    GenerateBitcoins(bGenerate, chainparams);
 #endif
 #endif
 
@@ -327,20 +327,20 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
         if (!testmode)
         {
             UniValue params(UniValue::VARR);
-            params.push_back(move(signedtxn));
+            params.push_back(std::move(signedtxn));
             UniValue sendResultValue = sendrawtransaction(params, false);
             if (sendResultValue.isNull())
                 throw JSONRPCError(RPC_WALLET_ERROR, "sendrawtransaction did not return an error or a txid.");
 
             auto txid = sendResultValue.get_str();
-            o.pushKV(RPC_KEY_TXID, move(txid));
+            o.pushKV(RPC_KEY_TXID, std::move(txid));
         } else {
             // Test mode does not send the transaction to the network.
             o.pushKV("test", 1);
             o.pushKV(RPC_KEY_TXID, tx_.GetHash().ToString());
-            o.pushKV("hex", move(signedtxn));
+            o.pushKV("hex", std::move(signedtxn));
         }
-        set_result(move(o));
+        set_result(std::move(o));
 
         return true;
     }
@@ -414,7 +414,7 @@ void AsyncRPCOperation_mergetoaddress::sign_send_raw_transaction(UniValue obj)
             throw JSONRPCError(RPC_WALLET_ERROR, "Send raw transaction did not return an error or a txid.");
 
         auto txid = sendResultValue.get_str();
-        o.pushKV(RPC_KEY_TXID, move(txid));
+        o.pushKV(RPC_KEY_TXID, std::move(txid));
     } else {
         // Test mode does not send the transaction to the network.
 
@@ -426,7 +426,7 @@ void AsyncRPCOperation_mergetoaddress::sign_send_raw_transaction(UniValue obj)
         o.pushKV(RPC_KEY_TXID, tx.GetHash().ToString());
         o.pushKV("hex", signedtxn);
     }
-    set_result(move(o));
+    set_result(std::move(o));
 
     // Keep the signed transaction so we can hash to the same txid
     CDataStream stream(ParseHex(signedtxn), SER_NETWORK, PROTOCOL_VERSION);

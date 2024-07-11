@@ -134,6 +134,7 @@ void CMasternodeSync::SwitchToNextAsset()
             });
             LogFnPrintf("*** MasterNode SYNC has finished ***");
             nTimeLastSynced = GetTime();
+            masterNodeCtrl.activeMasternode.SyncFinished();
             break;
 
         default:

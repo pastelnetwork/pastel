@@ -83,6 +83,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
   </ItemDefinitionGroup>
@@ -92,6 +93,7 @@
     <ClCompile Include="..\..\..\src\alert.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcoperation.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcqueue.cpp" />
+    <ClCompile Include="..\..\..\src\blockscanner.cpp" />
     <ClCompile Include="..\..\..\src\chain.cpp" />
     <ClCompile Include="..\..\..\src\checkpoints.cpp" />
     <ClCompile Include="..\..\..\src\dbwrapper.cpp" />
@@ -196,10 +198,10 @@
     <ClCompile Include="..\..\..\src\sendalert.cpp" />
     <ClCompile Include="..\..\..\src\timedata.cpp" />
     <ClCompile Include="..\..\..\src\torcontrol.cpp" />
+    <ClCompile Include="..\..\..\src\txdb\burntxindex.cpp" />
     <ClCompile Include="..\..\..\src\txdb\txdb.cpp" />
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
-    <ClCompile Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.cpp" />
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -208,6 +210,7 @@
     <ClInclude Include="..\..\..\src\alert.h" />
     <ClInclude Include="..\..\..\src\asyncrpcoperation.h" />
     <ClInclude Include="..\..\..\src\asyncrpcqueue.h" />
+    <ClInclude Include="..\..\..\src\blockscanner.h" />
     <ClInclude Include="..\..\..\src\chain.h" />
     <ClInclude Include="..\..\..\src\checkpoints.h" />
     <ClInclude Include="..\..\..\src\checkqueue.h" />
@@ -233,7 +236,6 @@
     <ClInclude Include="..\..\..\src\mining\pow.h" />
     <ClInclude Include="..\..\..\src\mining\pow\tromp\equi.h" />
     <ClInclude Include="..\..\..\src\mining\pow\tromp\equi_miner.h" />
-    <ClInclude Include="..\..\..\src\mining\pow\tromp\osx_barrier.h" />
     <ClInclude Include="..\..\..\src\mnode\mnode-perfcheck.h" />
     <ClInclude Include="..\..\..\src\mnode\p2fms-txbuilder.h" />
     <ClInclude Include="..\..\..\src\mnode\rpc\generate-report.h" />
@@ -325,6 +327,8 @@
     <ClInclude Include="..\..\..\src\timedata.h" />
     <ClInclude Include="..\..\..\src\torcontrol.h" />
     <ClInclude Include="..\..\..\src\txdb\addressindex.h" />
+    <ClInclude Include="..\..\..\src\txdb\burntxindex.h" />
+    <ClInclude Include="..\..\..\src\txdb\index_defs.h" />
     <ClInclude Include="..\..\..\src\txdb\spentindex.h" />
     <ClInclude Include="..\..\..\src\txdb\timestampindex.h" />
     <ClInclude Include="..\..\..\src\txdb\txdb.h" />
@@ -333,7 +337,6 @@
     <ClInclude Include="..\..\..\src\ui_interface.h" />
     <ClInclude Include="..\..\..\src\undo.h" />
     <ClInclude Include="..\..\..\src\validationinterface.h" />
-    <ClInclude Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.hpp" />
     <ClInclude Include="..\..\vs\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

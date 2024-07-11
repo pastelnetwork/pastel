@@ -1,11 +1,12 @@
 // Copyright (c) 2016-2020 The Zcash developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 
 #include <zcash/address/sapling.hpp>
 
 #include <utils/streams.h>
-#include <hash.h>
+#include <utils/hash.h>
 #include <zcash/NoteEncryption.hpp>
 #include <zcash/prf.h>
 
