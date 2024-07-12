@@ -26,7 +26,7 @@ DEALINGS IN THE SOFTWARE.
 */
 #include <stdexcept>
 
-#include <detect_cpp_standard.h>
+#include <utils/detect_cpp_standard.h>
 #include <extlibs/utfcpp/core.h>
 
 namespace utf8
