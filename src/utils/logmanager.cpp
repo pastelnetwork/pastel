@@ -10,6 +10,7 @@
 #include <sstream>
 #include <ctime>
 
+#include <utils/detect_cpp_standard.h>
 #include <utils/logmanager.h>
 #include <utils/util.h>
 #include <utils/str_utils.h>
@@ -295,7 +296,7 @@ bool CLogManager::RotateDebugLogFile()
     stringstream ss;
     
     struct tm tm;
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__MINGW64__)
     const errno_t err = localtime_s(&tm, &now_time_t);
     if (err)
 		return false;
@@ -341,7 +342,11 @@ void CLogManager::CloseDebugLogFile()
 
 void CLogManager::CleanupOldLogFiles()
 {
+#ifdef _HAS_CPP20_FEATURES
     auto maxLogAge = chrono::days(DEFAULT_OLD_LOGS_CLEANUP_DAYS);
+#else
+    auto maxLogAge = chrono::hours(DEFAULT_OLD_LOGS_CLEANUP_DAYS * 24);
+#endif
     auto now = chrono::system_clock::now();
     for (const auto& entry : fs::directory_iterator(m_OldDebugLogDirPath))
 	{

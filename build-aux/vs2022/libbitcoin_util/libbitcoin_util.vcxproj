@@ -143,6 +143,7 @@
     <ClInclude Include="..\..\..\src\utils\base58.h" />
     <ClInclude Include="..\..\..\src\utils\bech32.h" />
     <ClInclude Include="..\..\..\src\utils\datacompressor.h" />
+    <ClInclude Include="..\..\..\src\utils\detect_cpp_standard.h" />
     <ClInclude Include="..\..\..\src\utils\enum_util.h" />
     <ClInclude Include="..\..\..\src\utils\fs.h" />
     <ClInclude Include="..\..\..\src\utils\hash.h" />

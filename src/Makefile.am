@@ -269,6 +269,7 @@ UTILS_H = \
   utils/base58.h \
   utils/bech32.h \
   utils/datacompressor.h \
+  utils/detect_cpp_standard.h \
   utils/enum_util.h \
   utils/fs.h \
   utils/hash.h \
