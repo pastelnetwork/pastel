@@ -46,6 +46,9 @@ static bool fDaemon;
 //
 bool AppInit(int argc, char* argv[])
 {
+    if (!gl_LogMgr)
+        gl_LogMgr = make_unique<CLogManager>();
+
     CServiceThreadGroup threadGroup;
     CScheduler scheduler("scheduler");
 
@@ -168,6 +171,12 @@ bool AppInit(int argc, char* argv[])
         WaitForShutdown(threadGroup, scheduler);
     Shutdown(threadGroup, scheduler);
 
+    if (gl_LogMgr)
+    {
+        LogPrintf("Shutdown: log file closed\n");
+		gl_LogMgr->CloseDebugLogFile();
+		gl_LogMgr.reset();
+	}
     return fRet;
 }
 

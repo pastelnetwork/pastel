@@ -98,7 +98,10 @@ void ProcessBurnTxIndexTask(BlockScannerTask* pTask,
 bool GenerateBurnTxIndex(const CChainParams &chainparams, string &error)
 {
     if (fBurnTxIndex)
+    {
+        LogFnPrintf("Burn transaction index is enabled");
         return true;
+    }
 
     static mutex burnTxIndexMutex;
 	unique_lock lock(burnTxIndexMutex);

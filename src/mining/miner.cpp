@@ -587,7 +587,7 @@ void CPastelMinerThread::execute()
     const auto fnWaitFor = [&](const chrono::milliseconds milliSecs) noexcept -> bool
     {
         unique_lock lck(m_mutex);
-        if (m_condVar.wait_for(lck, milliSecs) == cv_status::no_timeout)
+        if (m_condVar.wait_for(lck, milliSecs) == cv_status::timeout)
             return false;
         return true;
 	};
@@ -973,7 +973,7 @@ void GenerateBitcoins(bool fGenerate, const CChainParams& chainparams)
     unique_lock lock(g_minerThreadsMutex);
     if (!gl_minerThreads.empty())
     {
-		LogPrintf("Stopping miner threads");
+		LogPrintf("Stopping miner threads\n");
         gl_minerThreads.stop_all();
         gl_minerThreads.join_all();
     }
