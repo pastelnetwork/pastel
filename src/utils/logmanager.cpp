@@ -279,7 +279,7 @@ void CLogManager::OpenDebugLogFile()
     m_pvStartupLogs = nullptr;
 }
 
-bool CLogManager::RotateDebugLogFile()
+bool CLogManager::RotateDebugLogFile(const bool bReopenLog)
 {
     if (m_OldDebugLogDirPath.empty())
         m_OldDebugLogDirPath = m_DebugLogFilePath.parent_path() / OLD_LOGS_SUBFOLDER;
@@ -317,9 +317,12 @@ bool CLogManager::RotateDebugLogFile()
 			m_DebugLogFilePath.string(), newLogFilePath.string(), ec.message());
 		return false;
 	}
-	OpenDebugLogFile();
-    LogPrintf("Log file rotated at %s to [%s]\n\n",
-        DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()), newLogFilePath.string());
+    if (bReopenLog)
+    {
+        OpenDebugLogFile();
+        LogPrintf("Log file rotated at %s to [%s]\n\n",
+            DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()), newLogFilePath.string());
+    }
     return true;
 }
 
@@ -374,7 +377,7 @@ void CLogManager::ShrinkDebugLogFile(const bool bForce)
     {
         if (bForce || fs::file_size(m_DebugLogFilePath) > DEFAULT_MAX_LOG_SIZE)
         {
-            if (RotateDebugLogFile())
+            if (RotateDebugLogFile(!bForce))
                 CleanupOldLogFiles();
         }
     }

@@ -47,7 +47,7 @@ private:
 	std::atomic_bool m_fReopenDebugLog = false;
 	FILE* m_LogFileHandle = nullptr;
 
-	bool RotateDebugLogFile();
+	bool RotateDebugLogFile(const bool bReopenLog = true);
 	void CleanupOldLogFiles();
 };
 
