@@ -25,7 +25,7 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 */
 
-#include "detect_cpp_standard.h"
+#include <utils/detect_cpp_standard.h>
 #include <iterator>
 
 #ifdef _HAS_CPP11_FEATURES // C++ 11 or later
