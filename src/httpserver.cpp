@@ -201,6 +201,7 @@ void HTTPEvent::trigger(struct timeval* tv)
 CHTTPServer::CHTTPServer() noexcept :
     CServiceThread("httplsnr"),
     m_bInitialized(false),
+    m_bShuttingDown(false),
     m_pMainEventBase(nullptr),
     m_nRpcWorkerThreads(DEFAULT_HTTP_WORKER_THREADS),
     m_nRpcServerTimeout(DEFAULT_HTTP_SERVER_TIMEOUT_SECS),
@@ -367,12 +368,18 @@ bool CHTTPServer::Start() noexcept
 void CHTTPServer::Interrupt()
 {
     LogFnPrintf("Stopping HTTP server");
+    m_bShuttingDown = true;
     stop();
     if (m_pMainEventBase)
     {
-        // disable listeners
+        // disable all listeners
         for (auto listener : m_vListeners)
             evconnlistener_disable(listener);
+
+        // add small delay to allow pending requests to finish without error
+        // also to make sure stop() command sends back a response
+        this_thread::sleep_for(chrono::milliseconds(200));
+
         // Break the main event loop
         event_base_loopexit(m_pMainEventBase, nullptr);
 	}

@@ -283,6 +283,7 @@ public:
     void UnregisterHTTPHandlers(const std::string& sHandlerGroup);
     bool FindHTTPHandler(const std::string& sURI, std::string &sPath, HTTPRequestHandler& handler) const noexcept;
 
+    bool IsShuttingDown() const noexcept { return m_bShuttingDown; }
     std::string GetInitError() const noexcept { return m_sInitError; }
     /** Return evhttp event base. This can be used by submodules to
     * queue timers or custom events. */
@@ -295,6 +296,7 @@ public:
 
 private:
     bool m_bInitialized;
+    bool m_bShuttingDown;
     std::string m_sInitError;
     std::thread m_MainThread;
     struct event_base* m_pMainEventBase;

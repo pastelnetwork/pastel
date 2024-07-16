@@ -18,7 +18,7 @@ class MasterNodeMessagingTest(MasterNodeCommon):
         self.number_of_master_nodes = 4
         self.number_of_simple_nodes = 3
         self.number_of_cold_nodes = self.number_of_master_nodes
-        self.num_nodes = self.number_of_master_nodes + self.number_of_simple_nodes + self.number_of_cold_nodes
+        self.num_nodes = self.number_of_master_nodes + self.number_of_simple_nodes
 
         self.non_active_mn = self.number_of_master_nodes - 1
 
