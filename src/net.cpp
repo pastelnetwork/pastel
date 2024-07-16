@@ -364,7 +364,7 @@ void CSocketHandlerThread::execute()
                         {
                             // socket closed gracefully
                             if (!pnode->fDisconnect)
-                                LogPrint("net", "socket closed\n");
+                                LogPrint("net", "peer=%d socket closed gracefully\n", pnode->GetId());
                             pnode->CloseSocketDisconnect();
                         }
                         else if (nBytes < 0)

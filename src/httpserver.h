@@ -27,7 +27,7 @@ constexpr int MIN_HTTP_WORKQUEUE_MAX_SIZE = 16;
 // maximum size of the HTTP headers
 constexpr int DEFAULT_HTTP_MAX_HEADERS_SIZE = 8192;
 // default timeout for the HTTP server
-constexpr int DEFAULT_HTTP_SERVER_TIMEOUT_SECS = 600;
+constexpr int DEFAULT_HTTP_SERVER_TIMEOUT_SECS = 900;
 // default backlog for the HTTP server (use system default)
 constexpr int DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG = -1;
 // maximum size of the HTTP URI
