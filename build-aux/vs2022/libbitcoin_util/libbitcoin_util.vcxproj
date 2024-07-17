@@ -109,6 +109,7 @@
     <ClCompile Include="..\..\..\src\utils\bech32.cpp" />
     <ClCompile Include="..\..\..\src\utils\datacompressor.cpp" />
     <ClCompile Include="..\..\..\src\utils\hash.cpp" />
+    <ClCompile Include="..\..\..\src\utils\logmanager.cpp" />
     <ClCompile Include="..\..\..\src\utils\ping_util.cpp" />
     <ClCompile Include="..\..\..\src\utils\random.cpp" />
     <ClCompile Include="..\..\..\src\utils\scheduler.cpp" />
@@ -142,9 +143,11 @@
     <ClInclude Include="..\..\..\src\utils\base58.h" />
     <ClInclude Include="..\..\..\src\utils\bech32.h" />
     <ClInclude Include="..\..\..\src\utils\datacompressor.h" />
+    <ClInclude Include="..\..\..\src\utils\detect_cpp_standard.h" />
     <ClInclude Include="..\..\..\src\utils\enum_util.h" />
     <ClInclude Include="..\..\..\src\utils\fs.h" />
     <ClInclude Include="..\..\..\src\utils\hash.h" />
+    <ClInclude Include="..\..\..\src\utils\logmanager.h" />
     <ClInclude Include="..\..\..\src\utils\map_types.h" />
     <ClInclude Include="..\..\..\src\utils\numeric_range.h" />
     <ClInclude Include="..\..\..\src\utils\ping_util.h" />

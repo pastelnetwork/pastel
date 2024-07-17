@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #endif // WIN32
 
+#include <compat.h>
 #include <extlibs/scope_guard.hpp>
 #include <utils/str_utils.h>
 #include <utils/util.h>

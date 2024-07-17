@@ -23,7 +23,7 @@
 #      endif
 #      if _MSC_VER >= 1930 // Visual Studio 2022
 #        ifndef _HAS_CPP23_FEATURES
-#          define _HAS_CPP22_FEATURES
+#          define _HAS_CPP23_FEATURES
 #        endif
 #      endif
 #    endif // __cplusplus

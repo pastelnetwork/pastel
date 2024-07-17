@@ -1,5 +1,5 @@
 #pragma once
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 
 #include <boost/filesystem.hpp>
@@ -7,3 +7,4 @@
 
 /** Filesystem operations and types */
 namespace fs = boost::filesystem;
+namespace fss = boost::system;

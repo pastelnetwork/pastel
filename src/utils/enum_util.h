@@ -1,6 +1,9 @@
 #pragma once
+// Copyright (c) 2018-2024 The Pastel Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
-#include "detect_cpp_standard.h"
+#include <utils/detect_cpp_standard.h>
 #ifdef _HAS_CPP11_FEATURES
 #include <type_traits>
 #endif

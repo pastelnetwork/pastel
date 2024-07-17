@@ -27,7 +27,7 @@ constexpr int MIN_HTTP_WORKQUEUE_MAX_SIZE = 16;
 // maximum size of the HTTP headers
 constexpr int DEFAULT_HTTP_MAX_HEADERS_SIZE = 8192;
 // default timeout for the HTTP server
-constexpr int DEFAULT_HTTP_SERVER_TIMEOUT_SECS = 600;
+constexpr int DEFAULT_HTTP_SERVER_TIMEOUT_SECS = 900;
 // default backlog for the HTTP server (use system default)
 constexpr int DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG = -1;
 // maximum size of the HTTP URI
@@ -283,6 +283,7 @@ public:
     void UnregisterHTTPHandlers(const std::string& sHandlerGroup);
     bool FindHTTPHandler(const std::string& sURI, std::string &sPath, HTTPRequestHandler& handler) const noexcept;
 
+    bool IsShuttingDown() const noexcept { return m_bShuttingDown; }
     std::string GetInitError() const noexcept { return m_sInitError; }
     /** Return evhttp event base. This can be used by submodules to
     * queue timers or custom events. */
@@ -295,6 +296,7 @@ public:
 
 private:
     bool m_bInitialized;
+    bool m_bShuttingDown;
     std::string m_sInitError;
     std::thread m_MainThread;
     struct event_base* m_pMainEventBase;

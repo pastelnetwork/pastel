@@ -100,6 +100,9 @@
     <ClCompile Include="..\..\..\src\utils\hash.cpp">
       <Filter>Source Files\utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\logmanager.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\compat\byteswap.h">
@@ -244,6 +247,12 @@
       <Filter>Source Files\utils</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\utils\hash.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\logmanager.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\detect_cpp_standard.h">
       <Filter>Source Files\utils</Filter>
     </ClInclude>
   </ItemGroup>
