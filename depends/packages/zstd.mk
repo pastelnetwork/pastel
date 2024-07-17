@@ -9,9 +9,9 @@ define $(package)_preprocess_cmds
 endef
 
 define $(package)_set_vars
-$(package)_cxxflags+=-std=c++20
+$(package)_cxxflags+=-std=c++17
 $(package)_cxxflags_linux=-fPIC
-$(package)_cmake_opts+= -DCMAKE_CXX_STANDARD=20
+$(package)_cmake_opts+= -DCMAKE_CXX_STANDARD=17
 $(package)_cmake_opts+= -DCMAKE_CXX_STANDARD_REQUIRED=ON
 $(package)_cmake_opts+= -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 $(package)_cmake_opts+= -DZSTD_BUILD_SHARED=OFF

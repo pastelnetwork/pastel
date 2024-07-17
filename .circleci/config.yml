@@ -7,7 +7,7 @@ version: 2.1
 executors:
   pastel-builder:
     docker:
-      - image: akobrin/pastel:0.0.6
+      - image: akobrin/pastel:0.0.7
 commands:
   upload-s3:
     parameters:
