@@ -275,28 +275,28 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, const s
     if (!CheckPastelKeysDirectory(pathPastelKeys))
         return resultMap;
 
-        string sPastelID, sLegRoastKey;
-        v_uint8 vData;
-        for (const auto& p : fs::directory_iterator(pathPastelKeys))
+    string sPastelID, sLegRoastKey;
+    v_uint8 vData;
+    for (const auto& p : fs::directory_iterator(pathPastelKeys))
+    {
+        sPastelID = p.path().filename().string();
+        if (!sFilterPastelID.empty() && !str_icmp(sFilterPastelID, sPastelID))
+            continue;
+        // check if this file name is in fact encoded Pastel ID
+        // if not - just skip this file
+        if (!DecodePastelID(sPastelID, vData))
+            continue;
+        sLegRoastKey.clear();
+        if (!bPastelIdOnly)
         {
-            sPastelID = p.path().filename().string();
-            if (!sFilterPastelID.empty() && !str_icmp(sFilterPastelID, sPastelID))
-                continue;
-            // check if this file name is in fact encoded Pastel ID
-            // if not - just skip this file
-            if (!DecodePastelID(sPastelID, vData))
-                continue;
-            sLegRoastKey.clear();
-            if (!bPastelIdOnly)
-            {
-                // read public items from secure container
-                // ignore error here -> will return empty LegRoast public key
-                CSecureContainer cont;
-                if (cont.read_public_from_file(error, p.path().string()))
-                    cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastKey);
-            }
-            resultMap.emplace(std::move(sPastelID), std::move(sLegRoastKey));
+            // read public items from secure container
+            // ignore error here -> will return empty LegRoast public key
+            CSecureContainer cont;
+            if (cont.read_public_from_file(error, p.path().string()))
+                cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastKey);
         }
+        resultMap.emplace(std::move(sPastelID), std::move(sLegRoastKey));
+    }
     return resultMap;
 }
 

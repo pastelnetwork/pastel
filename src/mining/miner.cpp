@@ -5,7 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <tuple>
 #include <atomic>
-#ifdef __MINGW64__
+#if defined(__MINGW64__) || defined(__linux__)
 #include <pthread.h>
 #elif defined(__APPLE__)
 #include <mining/pow/tromp/osx_barrier.h>
@@ -15,7 +15,7 @@
 #ifdef ENABLE_MINING
 #include <functional>
 #endif
-#if defined(__MINGW64__) || defined(__APPLE__)
+#if defined(__MINGW64__) || defined(__APPLE__) || defined(__linux__)
 #define USE_PTHREAD_BARRIER
 #endif
 

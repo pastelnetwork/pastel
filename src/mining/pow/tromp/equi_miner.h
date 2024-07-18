@@ -21,7 +21,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
-#ifdef __MINGW64__
+#if defined(__MINGW64__) || defined(__linux__)
 #include <pthread.h>
 #elif defined(__APPLE__)
 #include <mining/pow/tromp/osx_barrier.h>
@@ -29,7 +29,7 @@
 #include <barrier>
 #endif
 
-#if defined(__MINGW64__) || defined(__APPLE__)
+#if defined(__MINGW64__) || defined(__APPLE__) || defined(__linux__)
 #define USE_PTHREAD_BARRIER
 #endif
 
