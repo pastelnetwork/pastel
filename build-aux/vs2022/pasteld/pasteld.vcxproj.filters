@@ -31,6 +31,9 @@
     <ClInclude Include="..\..\..\src\version.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\clientversion.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\..\src\pasteld-res.rc">

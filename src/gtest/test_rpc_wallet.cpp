@@ -1153,7 +1153,7 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     CheckRPCThrows("z_mergetoaddress", "1 2",
-        "Error: z_mergetoaddress is disabled. Run './pascal-cli help z_mergetoaddress' for instructions on how to enable this feature.");
+        "Error: z_mergetoaddress is disabled. Run './pastel-cli help z_mergetoaddress' for instructions on how to enable this feature.");
 
     // Set global state required for z_mergetoaddress
     fExperimentalMode = true;

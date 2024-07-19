@@ -95,9 +95,21 @@ bool HTTPPathHandler::IsGroup(const string &sGroup) const noexcept
 	return str_icmp(m_sGroup, sGroup);
 }
 
+void accept_error_cb(struct evconnlistener* listener, void* arg)
+{
+	auto pWorkQueue = static_cast<WorkQueue*>(arg);
+	if (!pWorkQueue)
+	{
+		LogFnPrint("http", "No work queue available");
+		return;
+	}
+	int nError = EVUTIL_SOCKET_ERROR();
+	LogFnPrintf("Got an error %d (%s) on the listener", nError, evutil_socket_error_to_string(nError));
+}
+
 void accept_connection_cb(struct evconnlistener* listener, evutil_socket_t client_socket, struct sockaddr* addr, int addrlen, void* arg)
 {
-    auto pWorkQueue = static_cast<WorkQueue<HTTPRequest>*>(arg);
+    auto pWorkQueue = static_cast<WorkQueue*>(arg);
     if (!pWorkQueue)
     {
 		LogFnPrint("http", "No work queue available");
@@ -106,13 +118,12 @@ void accept_connection_cb(struct evconnlistener* listener, evutil_socket_t clien
 	}
 
     LogFnPrint("http", "Accepted connection (fd %" PRId64 ")", client_socket);
-    auto request = make_unique<HTTPRequest>(client_socket, addr, addrlen);
-    auto [rejectedRequest, nQueueSize] = pWorkQueue->Enqueue(std::move(request));
-    if (rejectedRequest)
+    auto pHttpConnection = make_unique<CHttpConnection>(client_socket, addr, addrlen);
+    auto [rejectedConnection, nQueueSize] = pWorkQueue->EnqueueConnection(std::move(pHttpConnection));
+    if (rejectedConnection)
 	{
 		LogFnPrintf("Work queue size %zu exceeded, rejecting request", nQueueSize);
-    	rejectedRequest->WriteReply(HTTPStatusCode::INTERNAL_SERVER_ERROR, 
-				strprintf("Work queue size exceeded (%zu)", nQueueSize));
+        evutil_closesocket(client_socket);
 	}
     else if (nQueueSize > 10)
     {
@@ -130,8 +141,8 @@ void accept_connection_cb(struct evconnlistener* listener, evutil_socket_t clien
 /** Callback to close HTTP connection after request is processed. */
 static void http_connection_close_cb(struct evhttp_connection* evcon, void* arg)
 {
-	auto pWorkerContext = static_cast<WorkerContext<HTTPRequest>*>(arg);
-    if (!pWorkerContext)
+	auto pHttpWorkerContext = static_cast<CHttpWorkerContext*>(arg);
+    if (!pHttpWorkerContext)
     {
         LogFnPrintf("ERROR ! No worker context available in the closing http connection");
         return;
@@ -143,12 +154,7 @@ static void http_connection_close_cb(struct evhttp_connection* evcon, void* arg)
         return;
     }
     auto clientSocket = bufferevent_getfd(bev);
-    auto pHttpRequest = pWorkerContext->ExtractHttpRequest(clientSocket);
-    if (pHttpRequest)
-	    LogPrint("http", "Closing connection for %s (fd %" PRId64 ")\n", 
-		    pHttpRequest->GetPeer().ToString(), clientSocket);
-    else
-        LogPrint("http", "Closing connection (fd %" PRId64 ")\n", clientSocket);
+    pHttpWorkerContext->CloseHttpConnection(clientSocket, false);
 }
 
 /** libevent event log callback */
@@ -288,7 +294,7 @@ bool CHTTPServer::Initialize()
     LogFnPrintf("HTTP: creating work queue with max size %zu", m_nWorkQueueMaxSize);
     if (!m_pWorkQueue)
     {
-        m_pWorkQueue = make_shared<WorkQueue<HTTPRequest>>(*this, m_nWorkQueueMaxSize);
+        m_pWorkQueue = make_shared<WorkQueue>(*this, m_nWorkQueueMaxSize);
         if (!m_pWorkQueue)
 		{
 			m_sInitError = "Failed to create work queue";
@@ -537,6 +543,7 @@ bool CHTTPServer::BindAddresses()
                 address, port, SAFE_SZ(evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()))).c_str(), ". ");
 			continue;
 		}
+        evconnlistener_set_error_cb(listener, accept_error_cb);
         m_vListeners.push_back(listener);
         LogFnPrintf("HTTP RPC Server is listening on address %s port %hu", address, port);
     }
@@ -615,8 +622,8 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             LogFnPrint("http", "Invalid HTTP request");
             return;
         }
-        auto pWorkerContext = static_cast<WorkerContext<HTTPRequest>*>(arg);
-        if (!pWorkerContext)
+        auto pHttpWorkerContext = static_cast<CHttpWorkerContext*>(arg);
+        if (!pHttpWorkerContext)
         {
             ReplyInternalServerError(req, "No worker context available");
             return;
@@ -640,44 +647,33 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             ReplyInternalServerError(req, "Invalid client socket");
             return;
         }
-        auto pHttpRequest = pWorkerContext->ExtractHttpRequest(clientSocket);
-        if (!pHttpRequest)
+        auto pHttpConnection = pHttpWorkerContext->GetHttpConnection(clientSocket);
+        if (!pHttpConnection)
         {
-            ReplyInternalServerError(req, strprintf("No HTTP request object available for fd %" PRId64, clientSocket).c_str());
+            ReplyInternalServerError(req, strprintf("No HTTP connection object available for fd %" PRId64, clientSocket).c_str());
             return;
         }
-        const size_t nWorkerID = pWorkerContext->GetWorkerID();
-        pHttpRequest->SetEvRequest(req);
-        const CService& peer = pHttpRequest->GetPeer();
+        const size_t nWorkerID = pHttpWorkerContext->GetWorkerID();
+
+        // create local HTTPRequest object
+        auto pHttpRequest = make_unique<HTTPRequest>(req, pHttpConnection);
+        if (!pHttpConnection->ValidateClientConnection(pHttpWorkerContext, pHttpRequest, evcon))
+        {
+            pHttpWorkerContext->CloseHttpConnection(clientSocket, true);
+            return;
+        }
+
+        const CService& peer = pHttpConnection->GetPeer();
         const RequestMethod method = pHttpRequest->GetRequestMethod();
         const string sURI = pHttpRequest->GetURI();
-        LogFnPrint("http", "Received a %s request for %s from %s (fd %" PRId64 ")",
-            RequestMethodString(method), sURI, peer.ToString(), clientSocket);
+        LogPrint("http", "[httpworker #%zu] Received a %s request for %s from %s (fd %" PRId64 ")\n",
+            nWorkerID, RequestMethodString(method), sURI, peer.ToString(), clientSocket);
 
-        bool bUsesKeepAliveConnection = pHttpRequest->UsesKeepAliveConnection();
-        // Early address-based allow check
-        if (!bUsesKeepAliveConnection && !gl_HttpServer->IsClientAllowed(peer))
-        {
-            pHttpRequest->WriteReply(HTTPStatusCode::FORBIDDEN);
-            return;
-        }
         if (sURI.size() > MAX_URI_LENGTH)
         {
             pHttpRequest->WriteReply(HTTPStatusCode::URI_TOO_LONG);
 			return;
         }
-        if (!bUsesKeepAliveConnection)
-        {
-            const auto& [bHeaderPresent, sHeaderValue] = pHttpRequest->GetHeader("Connection");
-            if (bHeaderPresent && str_icmp(sHeaderValue, "keep-alive"))
-            {
-                pHttpRequest->SetUsesKeepAliveConnection();
-                bUsesKeepAliveConnection = true;
-                LogPrint("http", "[httpworker #%zu] Connection from %s (fd %" PRId64 ") is alive\n",
-                    nWorkerID, peer.ToString(), clientSocket);
-            }
-        }
-        evhttp_connection_set_closecb(evcon, http_connection_close_cb, pWorkerContext);
 
         // Early reject unknown HTTP methods
         if (method == RequestMethod::UNKNOWN)
@@ -693,18 +689,14 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             LogFnPrint("http", "No handler found for '%s'", sURI);
             pHttpRequest->WriteReply(HTTPStatusCode::NOT_FOUND);
         }
-
         pHttpRequest->SetRequestHandler(sPath, fnRequestHandler);
 
         // Process the request
-        (*pHttpRequest)();
+        pHttpRequest->execute();
         pHttpRequest->Cleanup();
 
         LogPrint("http", "[httpworker #%zu] Finished processing HTTP request (fd %" PRId64 ")\n",
             nWorkerID, clientSocket);
-
-        // adding the request back to the map, request will be removed from the map when connection is closed
-        pWorkerContext->AddHttpRequest(clientSocket, std::move(pHttpRequest));
     } catch (const exception& e)
 	{
 		LogFnPrintf("Exception in HTTP request callback: %s", e.what());
@@ -723,8 +715,7 @@ static void http_reject_request_cb(struct evhttp_request* req, void*)
     evhttp_send_error(req, to_integral_type(HTTPStatusCode::SERVICE_UNAVAILABLE), "pasteld is shutting down");
 }
 
-template <typename WorkItem>
-WorkerContext<WorkItem>::WorkerContext(const size_t nWorkerID) noexcept :
+CHttpWorkerContext::CHttpWorkerContext(const size_t nWorkerID) noexcept :
     m_base(nullptr),
     m_http(nullptr),
     m_bEvent(false),
@@ -732,17 +723,15 @@ WorkerContext<WorkItem>::WorkerContext(const size_t nWorkerID) noexcept :
     CServiceThread(strprintf("httpevloop%zu", nWorkerID).c_str())
 {}
 
-template <typename WorkItem>
-WorkerContext<WorkItem>::~WorkerContext()
+CHttpWorkerContext::~CHttpWorkerContext()
 {
     waitForStop();
 	DestroyEventLoop();
 }
 
-template <typename WorkItem>
-bool WorkerContext<WorkItem>::Initialize(string &error)
+bool CHttpWorkerContext::Initialize(string &error)
 {
-    m_sLoopName = strprintf("HttpWorkerLoop #%zu", m_nWorkerID);
+    m_sLoopName = strprintf("http-evloop #%zu", m_nWorkerID);
     m_base = event_base_new();
     if (!m_base)
     {
@@ -772,8 +761,10 @@ bool WorkerContext<WorkItem>::Initialize(string &error)
 	return true;
 }
 
-template <typename WorkItem>
-void WorkerContext<WorkItem>::execute()
+/**
+ * Main event loop for the worker thread.
+ */
+void CHttpWorkerContext::execute()
 {
     while (event_base_got_exit(m_base) == 0)
     {
@@ -781,10 +772,13 @@ void WorkerContext<WorkItem>::execute()
         if (event_base_got_break(m_base))
             WaitForEvent();
     }
+    LogPrint("http", "[%s] event loop exiting\n", m_sLoopName);
 }
 
-template <typename WorkItem>
-void WorkerContext<WorkItem>::DestroyEventLoop()
+/**
+ * Destroy the event loop and free resources.
+ */
+void CHttpWorkerContext::DestroyEventLoop()
 {
     if (m_http)
     {
@@ -800,8 +794,7 @@ void WorkerContext<WorkItem>::DestroyEventLoop()
     }
 }
 
-template <typename WorkItem>
-void WorkerContext<WorkItem>::stop() noexcept
+void CHttpWorkerContext::stop() noexcept
 {
     CServiceThread::stop();
     // Exit the event loop as soon as there are no active events.
@@ -810,144 +803,166 @@ void WorkerContext<WorkItem>::stop() noexcept
     TriggerEvent();
 }
 
-template <typename WorkItem>
-void WorkerContext<WorkItem>::TriggerEvent() noexcept
+void CHttpWorkerContext::TriggerEvent() noexcept
 {
     m_bEvent = true;
     SIMPLE_LOCK(m_mutex);
     m_cond.notify_one();
 }
 
-template <typename WorkItem>
-void WorkerContext<WorkItem>::CreateConnection(unique_ptr<WorkItem> &&pWorkItem)
+/**
+ * Add new HTTP connection to the worker context.
+ * 
+ * \param pHttpConnection - new HTTP connection object
+ */
+void CHttpWorkerContext::AddHttpConnection(http_connection_t &&pHttpConnection)
 {
-    const evutil_socket_t clientSocket = pWorkItem->GetClientSocket();
+    const evutil_socket_t clientSocket = pHttpConnection->GetClientSocket();
     struct sockaddr addr;
-    const socklen_t addrlen = pWorkItem->GetSockAddrParams(&addr);
+    const socklen_t addrlen = pHttpConnection->GetSockAddrParams(&addr);
     int nOne = 1;
     setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&nOne), sizeof(nOne));
 
-    AddHttpRequest(clientSocket, std::move(pWorkItem));
+    // add new http connection to the map - can be accessed in a request callback
+    {
+        SIMPLE_LOCK(m_ConnectionMapLock);
+        m_ConnectionMap.emplace(clientSocket, std::move(pHttpConnection));
+        LogPrint("http", "[%s] Added HTTP connection for %s (fd %" PRId64 "), total %zy\n",
+			m_sLoopName, m_ConnectionMap[clientSocket]->GetPeer().ToString(), 
+            clientSocket, m_ConnectionMap.size());
+    }
 
+    // break worker event loop to process new http connection
     event_base_loopbreak(m_base);
+    this_thread::yield();
     evhttp_get_request(m_http, clientSocket, &addr, addrlen);
 
+    // notify the worker event loop that it can enter the event loop again
     TriggerEvent();
 }
 
-template <typename WorkItem>
-void WorkerContext<WorkItem>::WaitForEvent()
+/**
+ * Close HTTP connection and remove it from the worker context.
+ * 
+ * \param clientSocket
+ * \param bCloseSocket
+ */
+void CHttpWorkerContext::CloseHttpConnection(const evutil_socket_t clientSocket, const bool bCloseSocket)
+{
+    SIMPLE_LOCK(m_ConnectionMapLock);
+	auto it = m_ConnectionMap.find(clientSocket);
+    if (it != m_ConnectionMap.end())
+    {
+        LogPrint("http", "[%s] Closing HTTP connection for %s (fd %" PRId64 "), left %zu\n",
+			m_sLoopName, it->second->GetPeer().ToString(), clientSocket,
+            m_ConnectionMap.size() - 1);
+
+        m_ConnectionMap.erase(it);
+
+        // close connection socket
+        if (bCloseSocket)
+        {
+            evutil_closesocket(clientSocket);
+            LogPrint("http", "[%s] Socket closed (fd %" PRId64 ")\n", 
+                m_sLoopName, clientSocket);
+        }
+    }
+}
+
+http_connection_t CHttpWorkerContext::GetHttpConnection(const evutil_socket_t clientSocket)
+{
+    SIMPLE_LOCK(m_ConnectionMapLock);
+	auto it = m_ConnectionMap.find(clientSocket);
+	if (it != m_ConnectionMap.end())
+		return it->second;
+	return nullptr;
+}
+
+void CHttpWorkerContext::WaitForEvent()
 {
     unique_lock<mutex> lock(m_mutex);
     m_cond.wait(lock, [this] { return m_bEvent.load(); });
     m_bEvent = false;
 }
 
-
-template <typename WorkItem>
-void WorkerContext<WorkItem>::AddHttpRequest(const evutil_socket_t clientSocket, unique_ptr<WorkItem> &&request)
-{
-    SIMPLE_LOCK(m_RequestMapLock);
-    m_RequestMap.emplace(clientSocket, std::move(request));
-}
-
-template <typename WorkItem>
-unique_ptr<WorkItem> WorkerContext<WorkItem>::ExtractHttpRequest(const evutil_socket_t clientSocket)
-{
-	SIMPLE_LOCK(m_RequestMapLock);
-	auto it = m_RequestMap.find(clientSocket);
-	if (it != m_RequestMap.end())
-	{
-		auto request = std::move(it->second);
-		m_RequestMap.erase(it);
-		return request;
-	}
-	return nullptr;
-}
-
-template <typename WorkItem>
-size_t WorkQueue<WorkItem>::size() const
+size_t WorkQueue::size() const
 {
     SIMPLE_LOCK(cs);
     return m_queue.size();
 }
 
 /**
-* Enqueue a work item.
+* Enqueue a new http connection.
 * 
-* \param item Work item to enqueue
+* \param connection new http connection to enqueue
 * \return tuple:
-*      - unique_ptr<WorkItem> if the queue is full, the item is returned
+*      - unique_ptr<CHttpConnection> if the queue is full, the original connection object is returned, otherwise nullptr
 *      - size_t current size of the queue
 */
-template <typename WorkItem>
-tuple<unique_ptr<WorkItem>, size_t> WorkQueue<WorkItem>::Enqueue(unique_ptr<WorkItem> &&item)
+tuple<unique_ptr<CHttpConnection>, size_t> WorkQueue::EnqueueConnection(unique_ptr<CHttpConnection> &&connection)
 {
     SIMPLE_LOCK(cs);
     size_t nQueueSize = m_queue.size();
     if (nQueueSize >= m_nMaxQueueSize)
-        return make_tuple(std::move(item), nQueueSize);
-    m_queue.emplace_back(std::move(item));
+        return make_tuple(std::move(connection), nQueueSize);
+    m_queue.emplace_back(std::move(connection));
     cond.notify_one();
     return make_tuple(nullptr, nQueueSize + 1);
 }
 
-template <typename WorkItem>
-void WorkQueue<WorkItem>::worker(const size_t nWorkerID)
+void WorkQueue::worker(const size_t nWorkerID)
 {
     LogFnPrintf("HTTP worker thread #%zu started", nWorkerID);
-    shared_ptr<WorkerContext<WorkItem>> pWorkerContext;
+    http_worker_context_t pHttpWorkerContext;
     {
         SIMPLE_LOCK(cs);
-        pWorkerContext = make_shared<WorkerContext<WorkItem>>(nWorkerID);
-        m_WorkerContextMap.emplace(nWorkerID, pWorkerContext);
+        pHttpWorkerContext = make_shared<CHttpWorkerContext>(nWorkerID);
+        m_WorkerContextMap.emplace(nWorkerID, pHttpWorkerContext);
     }
 	m_bRunning = true;
 
     string error;
-    if (!pWorkerContext->Initialize(error))
+    if (!pHttpWorkerContext->Initialize(error))
     {
         LogFnPrintf("Failed to initialize http worker #%zu context. %s", 
             nWorkerID, error);
         return;
     }
-    if (!pWorkerContext->start(error))
+    if (!pHttpWorkerContext->start(error))
 	{
 		error = strprintf("Failed to start http worker #%zu event loop. %s", 
             nWorkerID, error);
 		return;
 	}
 
-
-    auto http = pWorkerContext->GetHttp();
+    auto http = pHttpWorkerContext->GetHttp();
     evhttp_set_timeout(http, m_httpServer.GetRpcServerTimeout());
     evhttp_set_max_headers_size(http, DEFAULT_HTTP_MAX_HEADERS_SIZE);
     evhttp_set_max_body_size(http, MAX_DATA_SIZE);
-    evhttp_set_gencb(http, http_request_cb, pWorkerContext.get());
+    evhttp_set_gencb(http, http_request_cb, pHttpWorkerContext.get());
 
     try
     {
         while (true)
         {
-            unique_ptr<HTTPRequest> pHttpRequest;
+            unique_ptr<CHttpConnection> pHttpConnection;
             {
                 unique_lock<mutex> lock(cs);
                 cond.wait(lock, [this] { return !m_bRunning || !m_queue.empty(); });
                 if (!m_bRunning && m_queue.empty())
                     break;
-                pHttpRequest = std::move(m_queue.front());
+                pHttpConnection = std::move(m_queue.front());
                 m_queue.pop_front();
             }
-            // Get the HTTPRequest from the work item
-            if (!pHttpRequest)
+            if (!pHttpConnection)
             {
-                LogPrintf("[httpworker #%zu] Invalid HTTP request\n", nWorkerID);
+                LogPrintf("[httpworker #%zu] Invalid HTTP connection\n", nWorkerID);
                 continue;
             }
-            LogPrint("http", "[httpworker #%zu] Processing HTTP request (fd %" PRId64 ")\n",
-                nWorkerID, pHttpRequest->GetClientSocket());
+            LogPrint("http", "[httpworker #%zu] Processing new HTTP connection (fd %" PRId64 ")\n",
+                nWorkerID, pHttpConnection->GetClientSocket());
 
-            pWorkerContext->CreateConnection(std::move(pHttpRequest));
+            pHttpWorkerContext->AddHttpConnection(std::move(pHttpConnection));
         }
     } catch (const exception& e)
 	{
@@ -956,15 +971,12 @@ void WorkQueue<WorkItem>::worker(const size_t nWorkerID)
     {
         LogPrintf("Unknown exception in http worker thread #%zu\n", nWorkerID);
     }
-    pWorkerContext->waitForStop();
+    pHttpWorkerContext->waitForStop();
 }
 
-HTTPRequest::HTTPRequest(evutil_socket_t clientSocket, struct sockaddr* addr, const socklen_t addrlen) noexcept: 
-	m_clientSocket(clientSocket),
-    req(nullptr),
-    m_bReplySent(false),
-    m_addrlen(0),
-    m_bUsesKeepAliveConnection(false)
+CHttpConnection::CHttpConnection(evutil_socket_t clientSocket, const struct sockaddr* addr, socklen_t addrlen) noexcept :
+    m_clientSocket(clientSocket),
+    m_addrlen(addrlen)
 {
     memset(&m_addr, 0, sizeof(m_addr));
     if (addr)
@@ -978,9 +990,61 @@ HTTPRequest::HTTPRequest(evutil_socket_t clientSocket, struct sockaddr* addr, co
     }
 }
 
+CHttpConnection::~CHttpConnection()
+{
+    LogFnPrint("http", "HTTP connection closed for %s (fd %" PRId64 ")", 
+        m_peer.ToString(), m_clientSocket);
+}
+
+bool CHttpConnection::ValidateClientConnection(CHttpWorkerContext* pHttpWorkerContext, 
+    const unique_ptr<HTTPRequest> &pHttpRequest, struct evhttp_connection *evcon)
+{
+    if (m_bClientValidated)
+        return m_bClientIsAllowed;
+    m_bClientIsAllowed = gl_HttpServer->IsClientAllowed(m_peer);
+    m_bClientValidated = true;
+    const size_t nWorkerID = pHttpWorkerContext->GetWorkerID();
+    if (!m_bClientIsAllowed)
+    {
+        LogPrint("http", "[httpworker #%zu] Rejecting connection from %s (fd %" PRId64 ")\n",
+            nWorkerID, m_peer.ToString(), m_clientSocket);
+        pHttpRequest->WriteReply(HTTPStatusCode::FORBIDDEN);
+        return false;
+    }
+    const auto& [bHeaderPresent, sHeaderValue] = pHttpRequest->GetHeader("Connection");
+    m_bUsesKeepAliveConnection = bHeaderPresent && str_icmp(sHeaderValue, "keep-alive");
+
+    LogPrint("http", "[httpworker #%zu] HTTP connection from %s (fd %" PRId64 ") is allowed%s\n",
+        nWorkerID, m_peer.ToString(), m_clientSocket, m_bUsesKeepAliveConnection ? ", keep-alive" : "");
+
+    evhttp_connection_set_closecb(evcon, http_connection_close_cb, pHttpWorkerContext);
+    return true;
+}
+
+const CService &CHttpConnection::GetPeer() const noexcept
+{
+    return m_peer;
+}
+
+socklen_t CHttpConnection::GetSockAddrParams(struct sockaddr* addr) const noexcept
+{
+	if (addr && m_addrlen > 0)
+	{
+		memcpy(addr, &m_addr, m_addrlen);
+		return m_addrlen;
+	}
+	return 0;
+}
+
+HTTPRequest::HTTPRequest(evhttp_request* req, http_connection_t pHttpConnection) noexcept :
+    m_req(req),
+    m_pHttpConnection(pHttpConnection),
+    m_bReplySent(false)
+{}
+
 HTTPRequest::~HTTPRequest()
 {
-    if (req && !m_bReplySent)
+    if (m_req && !m_bReplySent)
     {
         // Keep track of whether reply was sent to avoid request leaks
         LogFnPrintf("Unhandled request");
@@ -990,7 +1054,7 @@ HTTPRequest::~HTTPRequest()
 
 pair<bool, string> HTTPRequest::GetHeader(const string& hdr) const noexcept
 {
-    const struct evkeyvalq* headers = evhttp_request_get_input_headers(req);
+    const struct evkeyvalq* headers = evhttp_request_get_input_headers(m_req);
     assert(headers);
     const char* val = evhttp_find_header(headers, hdr.c_str());
     if (val)
@@ -1001,7 +1065,7 @@ pair<bool, string> HTTPRequest::GetHeader(const string& hdr) const noexcept
 
 string HTTPRequest::ReadBody()
 {
-    struct evbuffer* buf = evhttp_request_get_input_buffer(req);
+    struct evbuffer* buf = evhttp_request_get_input_buffer(m_req);
     if (!buf)
         return "";
     size_t size = evbuffer_get_length(buf);
@@ -1021,59 +1085,50 @@ string HTTPRequest::ReadBody()
 
 void HTTPRequest::WriteHeader(const string& hdr, const string& value)
 {
-    struct evkeyvalq* headers = evhttp_request_get_output_headers(req);
+    struct evkeyvalq* headers = evhttp_request_get_output_headers(m_req);
     assert(headers);
     evhttp_add_header(headers, hdr.c_str(), value.c_str());
 }
 
 void HTTPRequest::WriteReply(HTTPStatusCode httpStatusCode, const string& strReply)
 {
-    assert(!m_bReplySent && req);
+    assert(!m_bReplySent && m_req);
 
     // Send event to the worker thread to send reply message
-    struct evbuffer* evbOutput = evhttp_request_get_output_buffer(req);
+    struct evbuffer* evbOutput = evhttp_request_get_output_buffer(m_req);
     assert(evbOutput);
     evbuffer_add(evbOutput, strReply.data(), strReply.size());
 
     const int nStatusCode = to_integral_type(httpStatusCode);
-	evhttp_send_reply(req, nStatusCode, nullptr, evbOutput);
-	LogPrint("http", "Sent reply to %s (fd %" PRId64 "): status %d, output size %zu\n", 
-		GetPeer().ToString(), m_clientSocket, nStatusCode, strReply.size());
+	evhttp_send_reply(m_req, nStatusCode, nullptr, evbOutput);
+    if (m_pHttpConnection)
+	    LogPrint("http", "Sent reply to %s (fd %" PRId64 "): status %d, output size %zu\n", 
+		    GetPeerStr(), m_pHttpConnection->GetClientSocket(), nStatusCode, strReply.size());
 	m_bReplySent = true;
 }
 
-const CService &HTTPRequest::GetPeer() const noexcept
+const string HTTPRequest::GetPeerStr() const noexcept
 {
-    return m_peer;
-}
-
-socklen_t HTTPRequest::GetSockAddrParams(struct sockaddr* addr) const noexcept
-{
-	if (addr && m_addrlen > 0)
-	{
-		memcpy(addr, &m_addr, m_addrlen);
-		return m_addrlen;
-	}
-	return 0;
+   	return m_pHttpConnection ? m_pHttpConnection->GetPeer().ToString() : string();
 }
 
 string HTTPRequest::GetURI()
 {
-    return evhttp_request_get_uri(req);
+    return evhttp_request_get_uri(m_req);
 }
 
 void HTTPRequest::Cleanup()
 {
     m_sPath.clear();
     m_RequestHandler = nullptr;
-    req = nullptr;
+    m_req = nullptr;
     m_bReplySent = false;
 }
 
 RequestMethod HTTPRequest::GetRequestMethod() const noexcept
 {
     RequestMethod method = RequestMethod::UNKNOWN;
-    switch (evhttp_request_get_command(req))
+    switch (evhttp_request_get_command(m_req))
     {
         case EVHTTP_REQ_GET:
             method = RequestMethod::GET;
@@ -1097,14 +1152,15 @@ RequestMethod HTTPRequest::GetRequestMethod() const noexcept
     return method;
 }
 
-void HTTPRequest::operator()()
+void HTTPRequest::execute()
 {
     if (!m_RequestHandler)
     {
-        if (m_clientSocket < 0)
+        evutil_socket_t clientSocket = m_pHttpConnection ? m_pHttpConnection->GetClientSocket() : -1;
+        if (clientSocket < 0)
 			LogPrint("http", "No request handler available\n");
 		else
-            LogPrint("http", "No request handler available (fd %" PRId64 ")\n", m_clientSocket);
+            LogPrint("http", "No request handler available (fd %" PRId64 ")\n", clientSocket);
         return;
     }
     try
@@ -1129,11 +1185,13 @@ void HTTPRequest::SetRequestHandler(const string &sPath, const HTTPRequestHandle
 
 void RegisterHTTPHandler(const string &sHandlerGroup, const string &sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler)
 {
-    gl_HttpServer->RegisterHTTPHandler(sHandlerGroup, sPrefix, bExactMatch, handler);
+    if (gl_HttpServer)
+        gl_HttpServer->RegisterHTTPHandler(sHandlerGroup, sPrefix, bExactMatch, handler);
 }
 
 void UnregisterHTTPHandlers(const string &sHandlerGroup)
 {
-    gl_HttpServer->UnregisterHTTPHandlers(sHandlerGroup);
+    if (gl_HttpServer)
+        gl_HttpServer->UnregisterHTTPHandlers(sHandlerGroup);
 }
 

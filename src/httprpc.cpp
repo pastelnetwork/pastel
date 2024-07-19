@@ -113,7 +113,7 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
 
     if (!RPCAuthorized(authHeader.second))
     {
-        LogPrintf("ThreadRPCServer incorrect password attempt from %s\n", req->GetPeer().ToString());
+        LogPrintf("ThreadRPCServer incorrect password attempt from %s\n", req->GetPeerStr());
 
         /* Deter brute-forcing
            If this results in a DoS the user really

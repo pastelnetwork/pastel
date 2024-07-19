@@ -19,7 +19,7 @@ $(package)_config_opts_i686=architecture=x86 address-model=32
 $(package)_config_opts_aarch64=address-model=64
 $(package)_config_opts_armv7a=address-model=32
 $(package)_config_libraries=filesystem,program_options,system
-$(package)_cxxflags+=-std=c++17 -fvisibility=hidden
+$(package)_cxxflags+=-std=c++20 -fvisibility=hidden
 $(package)_cxxflags_linux=-fPIC
 $(package)_toolset_linux=gcc
 $(package)_toolset_mingw32=gcc
