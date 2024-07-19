@@ -98,6 +98,7 @@
     <ClCompile Include="..\..\vs\port\unistd.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\src\clientversion.h" />
     <ClInclude Include="..\..\..\src\version.h" />
     <ClInclude Include="..\..\vs\port\unistd.h" />
   </ItemGroup>

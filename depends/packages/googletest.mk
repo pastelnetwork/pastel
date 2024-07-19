@@ -6,9 +6,9 @@ $(package)_download_file=v$($(package)_version).tar.gz
 $(package)_sha256_hash=8ad598c73ad796e0d8280b082cebd82a630d73e73cd3c70057938a6501bba5d7
 
 define $(package)_set_vars
-$(package)_cxxflags+= -std=c++17
+$(package)_cxxflags+= -std=c++20
 $(package)_cxxflags_linux= -fPIC
-$(package)_cmake_opts+= -DCMAKE_CXX_STANDARD=17
+$(package)_cmake_opts+= -DCMAKE_CXX_STANDARD=20
 $(package)_cmake_opts+= -DCMAKE_CXX_STANDARD_REQUIRED=ON
 $(package)_cmake_opts+= -DCMAKE_CXX_EXTENSIONS=OFF
 $(package)_cmake_opts+= -DCMAKE_POSITION_INDEPENDENT_CODE=ON

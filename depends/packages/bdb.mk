@@ -11,7 +11,7 @@ $(package)_config_opts=--disable-shared --enable-cxx --disable-replication --ena
 $(package)_config_opts_mingw32=--enable-mingw --with-mutex=POSIX/pthreads/library/x86_64/gcc-assembly
 $(package)_config_opts_linux=--with-pic
 $(package)_config_opts_debug=--enable-debug
-$(package)_cxxflags+=-std=c++17
+$(package)_cxxflags+=-std=c++20
 endef
 
 define $(package)_preprocess_cmds

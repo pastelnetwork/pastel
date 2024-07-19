@@ -43,6 +43,11 @@ enum class RequestMethod
 };
 
 class HTTPRequest;
+class CHttpWorkerContext;
+class CHttpConnection;
+
+using http_connection_t = std::shared_ptr<CHttpConnection>;
+using http_worker_context_t = std::shared_ptr<CHttpWorkerContext>;
 
 /** Handler for requests to a certain HTTP path */
 typedef std::function<void(HTTPRequest* req, const std::string &)> HTTPRequestHandler;
@@ -55,72 +60,19 @@ void RegisterHTTPHandler(const std::string &sHandlerGroup, const std::string &pr
 /** Unregister handler by handler group name */
 void UnregisterHTTPHandlers(const std::string &sHandlerGroup);
 
-template <typename WorkItem>
-class WorkerContext : public CServiceThread 
-{
-public:
-    WorkerContext(const size_t nWorkerID) noexcept;
-    ~WorkerContext();
-
-    bool Initialize(std::string& error);
-    void execute() override;
-    void stop() noexcept override;
-
-    struct event_base* GetEventBase() { return m_base; }
-    evhttp* GetHttp() { return m_http; }
-    size_t GetWorkerID() const noexcept { return m_nWorkerID; }
-
-    void CreateConnection(std::unique_ptr<WorkItem> &&pWorkItem);
-    void TriggerEvent() noexcept;
-    void WaitForEvent();
-
-    void AddHttpRequest(const evutil_socket_t clientSocket, std::unique_ptr<WorkItem>&& request);
-    std::unique_ptr<WorkItem> ExtractHttpRequest(const evutil_socket_t clientSocket);
-
-private:
-    size_t m_nWorkerID;
-
-    // map to keep HTTP request objects
-    std::unordered_map<evutil_socket_t, std::unique_ptr<WorkItem>> m_RequestMap;
-    CWaitableCriticalSection m_RequestMapLock;
-
-    struct event_base* m_base; // libevent event loop
-    evhttp* m_http;      // HTTP server
-    std::string m_sLoopName; // name of the event loop
-    std::atomic_bool m_bEvent;
-
-    CWaitableCriticalSection m_mutex;
-    CConditionVariable m_cond;
-
-    void DestroyEventLoop();
-};
-
-using worker_context_t = std::shared_ptr<WorkerContext<HTTPRequest>>;
-
-/** HTTP request work item */
 class HTTPRequest
 {
 public:
-    HTTPRequest(evutil_socket_t clientSocket, struct sockaddr* addr, const socklen_t addrlen) noexcept;
+    HTTPRequest(evhttp_request* req, http_connection_t pHttpConnection) noexcept;
     ~HTTPRequest();
 
-    void operator()();
+    void execute();
     void Cleanup();
 
     void SetRequestHandler(const std::string& sPath, const HTTPRequestHandler& handler);
-    void SetEvRequest(evhttp_request* req) { this->req = req; }
-    void SetUsesKeepAliveConnection() noexcept { m_bUsesKeepAliveConnection = true; }
 
-    evutil_socket_t GetClientSocket() const noexcept { return m_clientSocket; }
-    evhttp_request* GetEvRequest() { return req; }
-    struct sockaddr* GetAddr() { return &m_addr; }
-    socklen_t GetAddrlen() { return m_addrlen; }
-    socklen_t GetSockAddrParams(struct sockaddr* addr) const noexcept;
     std::string GetURI(); // Get requested URI.
-    bool UsesKeepAliveConnection() const noexcept { return m_bUsesKeepAliveConnection; }
 
-    // Get CService (address:ip) for the origin of the http request.
-    virtual const CService &GetPeer() const noexcept;
     // Get request method.
     virtual RequestMethod GetRequestMethod() const noexcept;
 
@@ -154,21 +106,87 @@ public:
      * main thread, do not call any other HTTPRequest methods after calling this.
      */
     virtual void WriteReply(HTTPStatusCode httpStatusCode, const std::string& strReply = "");
+    virtual const std::string GetPeerStr() const noexcept;
 
 protected:
-    bool m_bReplySent;
+    bool m_bReplySent; // true if reply has been sent
+
+private:
+    std::string m_sPath; // HTTP URI path
+    std::optional<HTTPRequestHandler> m_RequestHandler; // handler for the request
+
+    struct evhttp_request* m_req; // libevent request
+    http_connection_t m_pHttpConnection; // HTTP connection
+};
+
+class CHttpConnection
+{
+public:
+    CHttpConnection(evutil_socket_t clientSocket, const struct sockaddr* addr, const socklen_t addrlen) noexcept;
+    ~CHttpConnection();
+
+    evutil_socket_t GetClientSocket() const noexcept { return m_clientSocket; }
+    struct sockaddr* GetAddr() { return &m_addr; }
+    socklen_t GetAddrlen() { return m_addrlen; }
+    socklen_t GetSockAddrParams(struct sockaddr* addr) const noexcept;
+    bool ValidateClientConnection(CHttpWorkerContext* pHttpWorkerContext,
+        const std::unique_ptr<HTTPRequest> &pHttpRequest, struct evhttp_connection *evcon);
+
+    bool UsesKeepAliveConnection() const noexcept { return m_bUsesKeepAliveConnection; }
+    // Get CService (address:ip) for the origin of the http connection.
+    const CService &GetPeer() const noexcept;
 
 private:
     evutil_socket_t m_clientSocket;
     struct sockaddr m_addr;
     socklen_t m_addrlen;
     CService m_peer;
-    std::string m_sPath;
-    std::optional<HTTPRequestHandler> m_RequestHandler;
     bool m_bUsesKeepAliveConnection;
+    std::atomic_bool m_bClientIsAllowed;
+    std::atomic_bool m_bClientValidated;
+};
 
-    worker_context_t m_pWorkerContext;
-    struct evhttp_request* req;
+/**
+ * HTTP worker context.
+ * It runs its own event loop and processes HTTP requests.
+ */
+class CHttpWorkerContext : public CServiceThread 
+{
+public:
+    CHttpWorkerContext(const size_t nWorkerID) noexcept;
+    ~CHttpWorkerContext();
+
+    bool Initialize(std::string& error);
+    void execute() override;
+    void stop() noexcept override;
+
+    struct event_base* GetEventBase() { return m_base; }
+    evhttp* GetHttp() { return m_http; }
+    size_t GetWorkerID() const noexcept { return m_nWorkerID; }
+
+    void AddHttpConnection(http_connection_t &&pConnection);
+    void CloseHttpConnection(const evutil_socket_t clientSocket, const bool bCloseSocket);
+    http_connection_t GetHttpConnection(const evutil_socket_t clientSocket);
+
+    void TriggerEvent() noexcept;
+    void WaitForEvent();
+
+private:
+    size_t m_nWorkerID;
+
+    // map to keep HTTP connection objects
+    std::unordered_map<evutil_socket_t, http_connection_t> m_ConnectionMap;
+    CWaitableCriticalSection m_ConnectionMapLock;
+
+    struct event_base* m_base; // libevent event loop
+    evhttp* m_http;      // HTTP server
+    std::string m_sLoopName; // name of the event loop
+    std::atomic_bool m_bEvent;
+
+    CWaitableCriticalSection m_mutex;
+    CConditionVariable m_cond;
+
+    void DestroyEventLoop();
 };
 
 /** Event class. This can be used either as a cross-thread trigger or as a timer.
@@ -203,7 +221,6 @@ class CHTTPServer;
 /** Simple work queue for distributing work over multiple threads.
  * Work items are simply callable objects.
  */
-template <typename WorkItem>
 class WorkQueue
 {
 public:
@@ -216,8 +233,8 @@ public:
             throw std::invalid_argument("Max queue size must be greater than 0");
     }
 
-    // Enqueue a work item
-    std::tuple<std::unique_ptr<WorkItem>, size_t> Enqueue(std::unique_ptr<WorkItem>&& item);
+    // Enqueue a new connection
+    std::tuple<std::unique_ptr<CHttpConnection>, size_t> EnqueueConnection(std::unique_ptr<CHttpConnection>&& connection);
 
     /** http worker job */
     void worker(const size_t nWorkerID);
@@ -238,8 +255,8 @@ private:
     mutable CWaitableCriticalSection cs;
     CConditionVariable cond;
     std::atomic_bool m_bRunning;
-    std::deque<std::unique_ptr<WorkItem>> m_queue;
-    std::unordered_map<size_t, std::shared_ptr<WorkerContext<WorkItem>>> m_WorkerContextMap;
+    std::deque<std::unique_ptr<CHttpConnection>> m_queue;
+    std::unordered_map<size_t, http_worker_context_t> m_WorkerContextMap;
     size_t m_nMaxQueueSize;
     CHTTPServer &m_httpServer;
 };
@@ -302,7 +319,7 @@ private:
     struct event_base* m_pMainEventBase;
     std::vector<evconnlistener*> m_vListeners;
     // Work queue for handling longer requests off the event loop thread
-    std::shared_ptr<WorkQueue<HTTPRequest>> m_pWorkQueue;
+    std::shared_ptr<WorkQueue> m_pWorkQueue;
     CServiceThreadGroup m_WorkerThreadPool;
 
     // list of subnets to allow RPC connections from

@@ -10,6 +10,7 @@
 #include <txdb/txdb.h>
 #include <chainparams.h>
 #include <main.h>
+#include <init.h>
 #include <mining/pow.h>
 #include <script/scripttype.h>
 
@@ -341,6 +342,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams, string &s
     auto pcursor = NewIterator();
     pcursor->Seek(make_pair(DB_BLOCK_INDEX, uint256()));
 
+    size_t nCount = 0;
     // Load mapBlockIndex
     while (pcursor->Valid())
     {
@@ -361,6 +363,14 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams, string &s
         pindexNew->pprev       = InsertBlockIndex(diskBlockIndex.hashPrev);
         pindexNew->assign(diskBlockIndex);
 
+        if (nCount++ % 10'000 == 0)
+        {
+            if (IsShutdownRequested())
+			{
+				strLoadError = "Shutdown requested";
+				return false;
+			}
+        }
         // Consistency checks
         auto header = pindexNew->GetBlockHeader();
         const auto& hashBlock = header.GetHash();

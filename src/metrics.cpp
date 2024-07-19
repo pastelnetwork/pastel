@@ -543,7 +543,7 @@ void ThreadShowMetricsScreen()
             // Explain how to exit
             cout << "[";
 #ifdef WIN32
-            cout << translate("'pascal-cli.exe stop' to exit");
+            cout << translate("'pastel-cli.exe stop' to exit");
 #else
             cout << translate("Press Ctrl+C to exit");
 #endif

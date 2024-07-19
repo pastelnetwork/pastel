@@ -337,7 +337,7 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
  */
 void HandleSIGTERM(int)
 {
-    fRequestShutdown = true;
+    StartShutdown();
 }
 
 void HandleSIGHUP(int)
@@ -865,6 +865,14 @@ bool AppInitServers(string &error)
     return bInitialized;
 }
 
+#ifdef WIN32
+BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
+{
+    StartShutdown();
+    return TRUE;
+}
+#endif // WIN32
+
 /** Initialize pasteld.
  *  @pre Parameters should be parsed and config file should be read.
  */
@@ -886,6 +894,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
 #ifdef WIN32
+    if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE))
+        return InitError("Error: SetConsoleCtrlHandler failed");
     // Enable Data Execution Prevention (DEP)
     // Minimum supported OS versions: WinXP SP3, WinVista >= SP1, Win Server 2008
     // A failure is non-critical and needs no further attention!
@@ -902,6 +912,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     if (!SetupNetworking())
         return InitError("Error: Initializing networking failed");
+
+    if (IsShutdownRequested())
+		return false;
 
 #ifndef WIN32
     if (GetBoolArg("-sysperms", false)) {
@@ -1080,6 +1093,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     fCheckBlockIndex = GetBoolArg("-checkblockindex", chainparams.DefaultConsistencyChecks());
     fCheckpointsEnabled = GetBoolArg("-checkpoints", true);
 
+    if (IsShutdownRequested())
+		return false;
+
     // -par=0 means autodetect, but nScriptCheckThreads==0 means no concurrency
     gl_ScriptCheckManager.SetThreadCount(GetArg("-par", DEFAULT_SCRIPTCHECK_THREADS));
 
@@ -1221,6 +1237,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         }
     }
 
+    if (IsShutdownRequested())
+		return false;
+
     // ********************************************************* Step 4: application initialization: dir lock, daemonize, pidfile, debug log
 
     // Initialize libsodium
@@ -1289,6 +1308,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         LogPrintf("Using debug log categories: %s\n", str_join(categories, ", "));
     ostringstream strErrors;
 
+    if (IsShutdownRequested())
+		return false;
+
     gl_ScriptCheckManager.create_workers(threadGroup);
 
     // Start the lightweight task scheduler thread
@@ -1312,8 +1334,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     libsnark::inhibit_profiling_info = true;
     libsnark::inhibit_profiling_counters = true;
 
+    if (IsShutdownRequested())
+		return false;
+
     // Initialize Zcash circuit parameters
+    uiInterface.InitMessage(translate("Initializing chain parameters..."));
     ZC_LoadParams(chainparams);
+
+    if (IsShutdownRequested())
+		return false;
 
     /* Start the RPC server already.  It will be started in "warmup" mode
      * and not really process calls already (but it will signify connections
@@ -1600,6 +1629,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     // connect Pastel Ticket txmempool tracker
     mempool.AddTxMemPoolTracker(CPastelTicketProcessor::GetTxMemPoolTracker());
 
+    if (IsShutdownRequested())
+		return false;
+
     bool bClearWitnessCaches = false;
     bool fLoaded = false;
     while (!fLoaded)
@@ -1636,6 +1668,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
                 if (!LoadBlockIndex(strLoadError))
                 {
+                    if (IsShutdownRequested())
+                        break;
+
                     strLoadError = translate("Error loading block database. ") + strLoadError;
                     break;
                 }
