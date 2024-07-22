@@ -719,6 +719,7 @@ CHttpWorkerContext::CHttpWorkerContext(const size_t nWorkerID) noexcept :
     m_base(nullptr),
     m_http(nullptr),
     m_bEvent(false),
+    m_bInEventLoop(false),
     m_nWorkerID(nWorkerID),
     CServiceThread(strprintf("httpevloop%zu", nWorkerID).c_str())
 {}
@@ -768,10 +769,21 @@ void CHttpWorkerContext::execute()
 {
     while (event_base_got_exit(m_base) == 0)
     {
+        m_bInEventLoop = true;
+        m_LoopCond.notify_one();
+
         event_base_loop(m_base, EVLOOP_NO_EXIT_ON_EMPTY);
+
         if (event_base_got_break(m_base))
+        {
+            m_bInEventLoop = false;
+            m_LoopCond.notify_one();
+
             WaitForEvent();
+        }
     }
+    m_bInEventLoop = false;
+    m_LoopCond.notify_one();
     LogPrint("http", "[%s] event loop exiting\n", m_sLoopName);
 }
 
@@ -834,7 +846,10 @@ void CHttpWorkerContext::AddHttpConnection(http_connection_t &&pHttpConnection)
 
     // break worker event loop to process new http connection
     event_base_loopbreak(m_base);
-    this_thread::yield();
+    {
+        unique_lock<mutex> lock(m_LoopMutex);
+        m_LoopCond.wait(lock, [this] { return m_bInEventLoop.load(); });
+    }
     evhttp_get_request(m_http, clientSocket, &addr, addrlen);
 
     // notify the worker event loop that it can enter the event loop again
