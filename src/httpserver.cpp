@@ -12,6 +12,7 @@
 #include <thread>
 #include <functional>
 #include <atomic>
+#include <chrono>
 
 #include <compat.h>
 
@@ -44,6 +45,7 @@
 #endif
 
 using namespace std;
+using namespace std::chrono_literals;
 
 unique_ptr<CHTTPServer> gl_HttpServer;
 
@@ -769,21 +771,30 @@ void CHttpWorkerContext::execute()
 {
     while (event_base_got_exit(m_base) == 0)
     {
-        m_bInEventLoop = true;
-        m_LoopCond.notify_one();
+        {
+            unique_lock<mutex> lock(m_LoopMutex);
+            m_bInEventLoop = true;
+            m_LoopCond.notify_all();
+        }
 
         event_base_loop(m_base, EVLOOP_NO_EXIT_ON_EMPTY);
 
         if (event_base_got_break(m_base))
         {
-            m_bInEventLoop = false;
-            m_LoopCond.notify_one();
+            {
+                unique_lock<mutex> lock(m_LoopMutex);
+                m_bInEventLoop = false;
+                m_LoopCond.notify_all();
+            }
 
             WaitForEvent();
         }
     }
-    m_bInEventLoop = false;
-    m_LoopCond.notify_one();
+    {
+        unique_lock<mutex> lock(m_LoopMutex);
+        m_bInEventLoop = false;
+        m_LoopCond.notify_all();
+    }
     LogPrint("http", "[%s] event loop exiting\n", m_sLoopName);
 }
 
@@ -845,10 +856,18 @@ void CHttpWorkerContext::AddHttpConnection(http_connection_t &&pHttpConnection)
     }
 
     // break worker event loop to process new http connection
-    event_base_loopbreak(m_base);
+    while (m_bInEventLoop && !shouldStop())
     {
+        event_base_loopbreak(m_base);
         unique_lock<mutex> lock(m_LoopMutex);
-        m_LoopCond.wait(lock, [this] { return m_bInEventLoop.load(); });
+        bool bRes = m_LoopCond.wait_for(lock, 100ms, [this] { return !m_bInEventLoop.load() || shouldStop(); });
+        if (bRes)
+			break;
+    }
+    if (shouldStop())
+    {
+        LogPrint("http", "[%s] Cannot process new HTTP connection - shutting down\n", m_sLoopName);
+        return;
     }
     evhttp_get_request(m_http, clientSocket, &addr, addrlen);
 
