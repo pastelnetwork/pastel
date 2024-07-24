@@ -12,6 +12,7 @@
 #include <thread>
 #include <functional>
 #include <atomic>
+#include <chrono>
 
 #include <compat.h>
 
@@ -44,6 +45,7 @@
 #endif
 
 using namespace std;
+using namespace std::chrono_literals;
 
 unique_ptr<CHTTPServer> gl_HttpServer;
 
@@ -719,6 +721,7 @@ CHttpWorkerContext::CHttpWorkerContext(const size_t nWorkerID) noexcept :
     m_base(nullptr),
     m_http(nullptr),
     m_bEvent(false),
+    m_bInEventLoop(false),
     m_nWorkerID(nWorkerID),
     CServiceThread(strprintf("httpevloop%zu", nWorkerID).c_str())
 {}
@@ -768,9 +771,29 @@ void CHttpWorkerContext::execute()
 {
     while (event_base_got_exit(m_base) == 0)
     {
+        {
+            unique_lock<mutex> lock(m_LoopMutex);
+            m_bInEventLoop = true;
+            m_LoopCond.notify_all();
+        }
+
         event_base_loop(m_base, EVLOOP_NO_EXIT_ON_EMPTY);
+
         if (event_base_got_break(m_base))
+        {
+            {
+                unique_lock<mutex> lock(m_LoopMutex);
+                m_bInEventLoop = false;
+                m_LoopCond.notify_all();
+            }
+
             WaitForEvent();
+        }
+    }
+    {
+        unique_lock<mutex> lock(m_LoopMutex);
+        m_bInEventLoop = false;
+        m_LoopCond.notify_all();
     }
     LogPrint("http", "[%s] event loop exiting\n", m_sLoopName);
 }
@@ -833,8 +856,19 @@ void CHttpWorkerContext::AddHttpConnection(http_connection_t &&pHttpConnection)
     }
 
     // break worker event loop to process new http connection
-    event_base_loopbreak(m_base);
-    this_thread::yield();
+    while (m_bInEventLoop && !shouldStop())
+    {
+        event_base_loopbreak(m_base);
+        unique_lock<mutex> lock(m_LoopMutex);
+        bool bRes = m_LoopCond.wait_for(lock, 100ms, [this] { return !m_bInEventLoop.load() || shouldStop(); });
+        if (bRes)
+			break;
+    }
+    if (shouldStop())
+    {
+        LogPrint("http", "[%s] Cannot process new HTTP connection - shutting down\n", m_sLoopName);
+        return;
+    }
     evhttp_get_request(m_http, clientSocket, &addr, addrlen);
 
     // notify the worker event loop that it can enter the event loop again

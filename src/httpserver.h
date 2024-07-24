@@ -182,6 +182,10 @@ private:
     evhttp* m_http;      // HTTP server
     std::string m_sLoopName; // name of the event loop
     std::atomic_bool m_bEvent;
+    std::atomic_bool m_bInEventLoop;
+
+    CWaitableCriticalSection m_LoopMutex;
+    CConditionVariable m_LoopCond;
 
     CWaitableCriticalSection m_mutex;
     CConditionVariable m_cond;
