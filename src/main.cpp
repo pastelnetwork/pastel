@@ -3238,7 +3238,7 @@ bool CheckBlock(
     if (!block.sPastelID.empty())
     {
         string sPastelID = block.sPastelID;
-        mnidTicket.SetKeyOne(move(sPastelID));
+        mnidTicket.SetKeyOne(std::move(sPastelID));
 
         // check that this Pastel ID is registered by MasterNode (mnid)
         if (!masterNodeCtrl.masternodeTickets.FindTicket(mnidTicket))
@@ -5246,7 +5246,7 @@ void static ProcessGetData(node_t &pfrom, const Consensus::Params& consensusPara
                         if (!ReadBlockFromDisk(block, pBlockIndex, consensusParams))
                             assert(!"cannot load block from disk");
                         // add to vBlockMsgs to send later
-                        vBlockMsgs.emplace_back(inv.type, make_unique<CBlock>(move(block)));
+                        vBlockMsgs.emplace_back(inv.type, make_unique<CBlock>(std::move(block)));
 
                         // Trigger the peer node to send a getblocks request for the next batch of inventory
                         if (inv.hash == pfrom->hashContinue)
@@ -5996,7 +5996,7 @@ static bool ProcessMessage(const CChainParams& chainparams, node_t pfrom, string
         // will set rejection code REJECT_MISSING_INPUTS.
         if (state.IsRejectCode(REJECT_MISSING_INPUTS))
             // add block to cache to revalidate later on periodically
-            gl_BlockCache.add_block(inv.hash, pfrom->id, state.getTxOrigin(), move(block));
+            gl_BlockCache.add_block(inv.hash, pfrom->id, state.getTxOrigin(), std::move(block));
         else
         {
             int nDoS = 0; // denial-of-service code

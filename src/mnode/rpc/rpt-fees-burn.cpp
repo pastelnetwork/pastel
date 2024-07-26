@@ -58,7 +58,7 @@ void collect_all_pastel_ticket_data(
 
 				if (FEE_PAYING_TICKETS.count(ticketInfo.id))
 					vFeePayingTicketDataMap.emplace(txid, nHeight);
-				vAllTicketData.emplace_back(move(txid), nHeight);
+				vAllTicketData.emplace_back(std::move(txid), nHeight);
 				return true;
 			});
 	}
@@ -189,7 +189,7 @@ UniValue generate_report_fees_and_burn(const UniValue& vParams)
 								nNumberOfFeePayingTransactions += 1;
 							}
 							else
-								snFeeReceivedMap.emplace(move(sReceivingSnCollateralAddress), make_tuple(txOut.nValue, 1));
+								snFeeReceivedMap.emplace(std::move(sReceivingSnCollateralAddress), make_tuple(txOut.nValue, 1));
 						}
 					}
 				}
@@ -228,7 +228,7 @@ UniValue generate_report_fees_and_burn(const UniValue& vParams)
 		snStatObj.pushKV("totalFeesReceivedPat", nTotalFeesReceived);
 		snStatObj.pushKV("totalFeesReceived", GetTruncatedPSLAmount(nTotalFeesReceived));
 		snStatObj.pushKV("feePayingTransactionCount", static_cast<uint64_t>(nNumberOfFeePayingTransactions));
-		snStat.push_back(move(snStatObj));
+		snStat.push_back(std::move(snStatObj));
 	}
 
     vector<pair<string, CAmount>> sortedAddressTotalCoinsBurned(
@@ -247,8 +247,8 @@ UniValue generate_report_fees_and_burn(const UniValue& vParams)
 
 	// generate report
 	UniValue rptObj(UniValue::VOBJ);
-	rptObj.pushKV("summary", move(summaryObj));
-	rptObj.pushKV("snStatistics", move(snStat));
-	rptObj.pushKV("addressCoinBurn", move(addrStatObj));
+	rptObj.pushKV("summary", std::move(summaryObj));
+	rptObj.pushKV("snStatistics", std::move(snStat));
+	rptObj.pushKV("addressCoinBurn", std::move(addrStatObj));
 	return rptObj;
 }

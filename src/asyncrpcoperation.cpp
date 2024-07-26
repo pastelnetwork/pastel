@@ -105,7 +105,7 @@ void AsyncRPCOperation::main() {
 
     // Otherwise, if the operation was a success:
     UniValue v(UniValue::VSTR, "We have a result!");
-    set_result(move(v));
+    set_result(std::move(v));
     set_state(OperationStatus::SUCCESS);
 }
 

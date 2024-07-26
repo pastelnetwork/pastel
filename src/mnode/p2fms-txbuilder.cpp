@@ -20,7 +20,7 @@ CP2FMS_TX_Builder::CP2FMS_TX_Builder(const CDataStream& input_stream, const CAmo
         opt_string_t sFundingAddress) :
     m_input_stream(input_stream),
     m_nPriceInPSL(nPriceInPSL),
-    m_sFundingAddress(move(sFundingAddress)),
+    m_sFundingAddress(std::move(sFundingAddress)),
     m_bUseFundingAddress(false),
     m_chainParams(Params()),
     m_nExtraAmountInPat(0)
@@ -30,7 +30,7 @@ CP2FMS_TX_Builder::CP2FMS_TX_Builder(const CDataStream& input_stream, const CAmo
 
 void CP2FMS_TX_Builder::setExtraOutputs(v_txouts&& vExtraOutputs, const CAmount nExtraAmountInPat) noexcept
 {
-    m_vExtraOutputs = move(vExtraOutputs);
+    m_vExtraOutputs = std::move(vExtraOutputs);
     m_nExtraAmountInPat = nExtraAmountInPat;
 }
 
@@ -88,7 +88,7 @@ size_t CP2FMS_TX_Builder::CreateP2FMSScripts()
         }
         // add chunks count (up to 3)
         script << CScript::EncodeOP_N(m) << OP_CHECKMULTISIG;
-        m_vOutScripts.emplace_back(move(script));
+        m_vOutScripts.emplace_back(std::move(script));
     }
     return nInputDataSize;
 }
@@ -238,7 +238,7 @@ bool CP2FMS_TX_Builder::BuildTransaction(CMutableTransaction& tx_out)
             CTxIn input;
             input.prevout.n = out.i;
             input.prevout.hash = out.tx->GetHash();
-            tx_out.vin.emplace_back(move(input));
+            tx_out.vin.emplace_back(std::move(input));
             m_vSelectedOutputs.push_back(out);
 
             nTotalValueInPat += txOut.nValue;
@@ -343,7 +343,7 @@ bool CP2FMS_TX_Builder::build(string& error, CMutableTransaction& tx_out)
 		bRet = true;
     } while (false);
     if (!bRet)
-        error = move(m_error);
+        error = std::move(m_error);
     return bRet;
 }
 

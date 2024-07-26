@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 #pragma once
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <cstdint>

@@ -31,16 +31,10 @@
     <ClCompile Include="..\..\..\src\compat\glibc_sanity.cpp">
       <Filter>Source Files\compat</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\random.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\rpc\client.cpp">
       <Filter>Source Files\rpc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\utilmoneystr.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\src\utiltime.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\support\cleanse.cpp">
@@ -97,6 +91,15 @@
     <ClCompile Include="..\..\..\src\utils\arith_uint256.cpp">
       <Filter>Source Files\utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\utiltime.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\random.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\src\utils\hash.cpp">
+      <Filter>Source Files\utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\compat\byteswap.h">
@@ -108,16 +111,10 @@
     <ClInclude Include="..\..\..\src\compat\sanity.h">
       <Filter>Source Files\compat</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\random.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\rpc\client.h">
       <Filter>Source Files\rpc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\utilmoneystr.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\utiltime.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\support\cleanse.h">
@@ -238,6 +235,18 @@
       <Filter>Source Files\utils</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\utils\arith_uint256.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\utiltime.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\random.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\detect_cpp_standard.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\hash.h">
       <Filter>Source Files\utils</Filter>
     </ClInclude>
   </ItemGroup>

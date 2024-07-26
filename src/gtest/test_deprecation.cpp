@@ -5,6 +5,7 @@
 
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
+#include <utils/vector_types.h>
 #include <chainparams.h>
 #include <clientversion.h>
 #include <deprecation.h>

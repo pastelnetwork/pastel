@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2024 The Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #include <key_io.h>
 #include <pastelid/pastel_key.h>
@@ -32,7 +32,7 @@ using namespace std;
 CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&& strKeyPass, 
     const string& sFundingAddress, const optional<CMNID_RegData> &mnRegData)
 {
-    CPastelIDRegTicket ticket(move(sPastelID));
+    CPastelIDRegTicket ticket(std::move(sPastelID));
 
     // PastelID must be created via "pastelid newkey" and stored in the local secure container
     // retrieve all pastelids created locally
@@ -79,7 +79,7 @@ CPastelIDRegTicket CPastelIDRegTicket::Create(string&& sPastelID, SecureString&&
     }
     const auto sFullTicket = ss.str();
     // sign full ticket using ed448 private key and store it in pslid_signature vector
-    string_to_vector(CPastelID::Sign(sFullTicket, ticket.getPastelID(), move(strKeyPass), CPastelID::SIGN_ALGORITHM::ed448, false), ticket.m_pslid_signature);
+    string_to_vector(CPastelID::Sign(sFullTicket, ticket.getPastelID(), std::move(strKeyPass), CPastelID::SIGN_ALGORITHM::ed448, false), ticket.m_pslid_signature);
 
     return ticket;
 }

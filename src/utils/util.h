@@ -10,7 +10,7 @@
  * logging, thread wrappers
  */
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <atomic>
@@ -27,7 +27,7 @@
 #include <utils/str_types.h>
 #include <utils/vector_types.h>
 #include <utils/tinyformat.h>
-#include <utiltime.h>
+#include <utils/utiltime.h>
 
 
 static const bool DEFAULT_LOGTIMEMICROS = false;

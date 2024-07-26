@@ -14,7 +14,7 @@
 #include <key_io.h>
 #include <main.h>
 #include <primitives/block.h>
-#include <random.h>
+#include <utils/random.h>
 #include <transaction_builder.h>
 #include <utiltest.h>
 #include <wallet/wallet.h>

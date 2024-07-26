@@ -8,7 +8,8 @@
 #include <condition_variable>
 #include <unordered_map>
 
-#include <utils/scope_guard.hpp>
+#include <compat.h>
+#include <extlibs/scope_guard.hpp>
 #include <utils/str_utils.h>
 #include <utils/util.h>
 
@@ -63,12 +64,12 @@ public:
         }
         catch (const std::exception& exc)
         {
-            error = strprintf("Exception occured on thread [%s] creation: %s", m_sThreadName, exc.what());
+            error = strprintf("Exception occurred on thread [%s] creation: %s", m_sThreadName, exc.what());
 			LogPrintf("%s\n", error);
 			return false;
 		}
         catch(...) {
-            error = strprintf("Exception occured on thread [%s] creation", m_sThreadName);
+            error = strprintf("Exception occurred on thread [%s] creation", m_sThreadName);
 			LogPrintf("%s\n", error);
             return false;
         }
@@ -108,7 +109,7 @@ public:
     /**
      * Request thread to stop - does not wait for thread to join.
      */
-    virtual void stop()
+    virtual void stop() noexcept
     {
         if (!m_bRunning)
             return;
@@ -185,7 +186,7 @@ public:
         CServiceThread(szThreadName)
     {}
 
-    void stop() override
+    void stop() noexcept override
     {
         CServiceThread::stop();
         m_condVar.notify_one();
@@ -223,7 +224,7 @@ public:
     size_t add_thread(std::string &error, std::shared_ptr<CServiceThread> t, const bool bStartThread = true)
     {
         error.clear();
-        std::unique_lock<std::mutex> lck(m_Lock);
+        std::unique_lock lck(m_Lock);
         ++m_nCurrentID;
         auto pr = m_vThreads.emplace(m_nCurrentID, std::move(t));
         if (pr.second && bStartThread)
@@ -266,7 +267,7 @@ public:
      */
     bool start_thread(std::string &error, const size_t nThreadObjectID)
     {
-		std::unique_lock<std::mutex> lck(m_Lock);
+		std::unique_lock lck(m_Lock);
 		auto it = m_vThreads.find(nThreadObjectID);
         if (it == m_vThreads.end())
         {
@@ -297,7 +298,7 @@ public:
      */
     void stop_all()
     {
-        std::unique_lock<std::mutex> lck(m_Lock);
+        std::unique_lock lck(m_Lock);
         for (auto& [nID, threadObj] : m_vThreads)
         {
             if (threadObj)
@@ -310,7 +311,7 @@ public:
      */
     void join_all()
     {
-        std::unique_lock<std::mutex> lck(m_Lock);
+        std::unique_lock lck(m_Lock);
         for (auto& [nID, threadObj] : m_vThreads) {
             if (threadObj)
                 threadObj->waitForStop();
@@ -321,7 +322,7 @@ public:
 
     size_t size() const noexcept
     {
-        std::unique_lock<std::mutex> lck(m_Lock);
+        std::unique_lock lck(m_Lock);
         return m_vThreads.size();
     }
 

@@ -1,5 +1,6 @@
 #pragma once
 // Copyright (c) 2012 Pieter Wuille
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cstdint>
@@ -9,9 +10,9 @@
 
 #include <utils/sync.h>
 #include <utils/util.h>
+#include <utils/random.h>
 #include <netbase.h>
 #include <protocol.h>
-#include <random.h>
 #include <timedata.h>
 
 /**
@@ -19,8 +20,6 @@
  */
 class CAddrInfo : public CAddress
 {
-
-
 public:
     //! last try whatsoever by us (memory only)
     int64_t nLastTry;

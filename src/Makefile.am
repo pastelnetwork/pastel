@@ -251,13 +251,16 @@ UTILS_CPP = \
   utils/base58.cpp \
   utils/bech32.cpp \
   utils/datacompressor.cpp \
+  utils/hash.cpp \
   utils/ping_util.cpp \
+  utils/random.cpp \
   utils/scheduler.cpp \
   utils/sync.cpp \
   utils/trimmean.cpp \
   utils/uint256.cpp \
   utils/util.cpp \
-  utils/utilstrencodings.cpp
+  utils/utilstrencodings.cpp \
+  utils/utiltime.cpp
 
 UTILS_H = \
   utils/arith_uint256.h \
@@ -265,12 +268,15 @@ UTILS_H = \
   utils/base58.h \
   utils/bech32.h \
   utils/datacompressor.h \
+  utils/detect_cpp_standard.h \
   utils/enum_util.h \
   utils/fs.h \
+  utils/hash.h \
   utils/map_types.h \
   utils/numeric_range.h \
   utils/ping_util.h \
   utils/prevector.h \
+  utils/random.h \
   utils/reverselock.h \
   utils/scheduler.h \
   utils/serialize.h \
@@ -287,6 +293,7 @@ UTILS_H = \
   utils/uint252.h \
   utils/util.h \
   utils/utilstrencodings.h \
+  utils/utiltime.h \
   utils/vector_types.h
 
 
@@ -319,6 +326,7 @@ PASTEL_CORE_H = \
   compat/endian.h \
   compat/sanity.h \
   compressor.h \
+  config/port_config.h \
   consensus/consensus.h \
   consensus/params.h \
   consensus/upgrades.h \
@@ -332,7 +340,6 @@ PASTEL_CORE_H = \
   deprecation.h \
   ecc_context.h \
   experimental_features.h \
-  hash.h \
   httprpc.h \
   httpserver.h \
   init.h \
@@ -371,7 +378,6 @@ PASTEL_CORE_H = \
   primitives/transaction.h \
   protocol.h \
   pubkey.h \
-  random.h \
   rpc/client.h \
   rpc/chain-rpc-utils.h \
   rpc/coin-supply.h \
@@ -403,7 +409,6 @@ PASTEL_CORE_H = \
   undo.h \
   utilmoneystr.h \
   utiltest.h \
-  utiltime.h \
   validationinterface.h \
   version.h \
   wallet/asyncrpcoperation_mergetoaddress.h \
@@ -555,10 +560,8 @@ EQUIHASH_TROMP_SOURCES = \
   mining/pow/tromp/equi.h \
   mining/pow/tromp/osx_barrier.h
 
-crypto_libbitcoin_crypto_a_CPPFLAGS += \
-  -DEQUIHASH_TROMP_ATOMIC
-crypto_libbitcoin_crypto_a_SOURCES += \
-  ${EQUIHASH_TROMP_SOURCES}
+crypto_libbitcoin_crypto_a_CPPFLAGS += -DEQUIHASH_TROMP_ATOMIC
+crypto_libbitcoin_crypto_a_SOURCES += ${EQUIHASH_TROMP_SOURCES}
 endif
 
 # common: shared between pasteld and non-server tools
@@ -573,7 +576,6 @@ libbitcoin_common_a_SOURCES = \
   core_read.cpp \
   core_write.cpp \
   ecc_context.cpp\
-  hash.cpp \
   key.cpp \
   key_io.cpp \
   keystore.cpp \
@@ -606,11 +608,9 @@ libbitcoin_util_a_SOURCES =\
   support/cleanse.cpp \
   chainparamsbase.cpp \
   clientversion.cpp \
-  random.cpp \
   rpc/protocol.cpp \
   rpc/rpc-utils.cpp \
   utilmoneystr.cpp \
-  utiltime.cpp \
   $(UTILS_CPP) \
   $(UTILS_H) \
   $(PASTEL_CORE_H) \
@@ -719,8 +719,6 @@ pastel_tx_LDADD += \
   $(CRYPTO_LIBS)\
   $(ZSTD_LIBS)
 
-#
-
 # zcash protocol primitives #
 libzcash_a_SOURCES = \
   zcash/IncrementalMerkleTree.cpp \
@@ -742,6 +740,7 @@ libzcash_a_SOURCES = \
 libzcash_a_CPPFLAGS = $(AM_CPPFLAGS) $(PIC_FLAGS) -DMONTGOMERY_OUTPUT -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DBOOST_SPIRIT_THREADSAFE -fvisibility=hidden -DSTATIC $(PASTEL_INCLUDES)
 libzcash_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libzcash_a_LDFLAGS = $(AM_LDFLAGS)
+noinst_LIBRARIES = libzcash.a
 
 # zcashconsensus library #
 if BUILD_PASTEL_LIBS
@@ -753,7 +752,6 @@ libzcashconsensus_la_SOURCES = \
   crypto/sha1.cpp \
   crypto/sha256.cpp \
   crypto/sha512.cpp \
-  hash.cpp \
   primitives/transaction.cpp \
   pubkey.cpp \
   script/zcashconsensus.cpp \
@@ -789,7 +787,12 @@ clean-local:
 	-$(MAKE) -C secp256k1 clean
 	-$(MAKE) -C snark clean
 	-$(MAKE) -C univalue clean
-	rm -f leveldb/*/*.gcno leveldb/helpers/memenv/*.gcno
+	@for dir in $(wildcard ./deps/*/); do \
+		if [ -f $$dir/Makefile ]; then \
+			$(MAKE) -C $$dir clean; \
+		fi; \
+        done
+	-rm -f leveldb/*/*.gcno leveldb/helpers/memenv/*.gcno
 	-rm -f config.h
 
 .rc.o:

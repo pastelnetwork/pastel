@@ -5,7 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
+#include <config/pastel-config.h>
 #endif
 
 #include <cinttypes>
@@ -23,7 +23,7 @@
 #include <ifaddrs.h>
 #endif
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/vector_types.h>
 #include <utils/svc_thread.h>
 #include <utils/util.h>
@@ -590,7 +590,8 @@ public:
             if (addrman.size() == 0 && (GetTime() - nStart > 60))
             {
                 static bool done = false;
-                if (!done) {
+                if (!done)
+                {
                     LogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
                     addrman.Add(convertSeed6(Params().FixedSeeds()), CNetAddr("127.0.0.1"));
                     done = true;

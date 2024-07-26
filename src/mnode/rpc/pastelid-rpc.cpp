@@ -35,11 +35,11 @@ R"(pastelid newkey "passphrase"
 passphrase for new key cannot be empty!)");
 
     UniValue resultObj(UniValue::VOBJ);
-    auto keyMap = CPastelID::CreateNewPastelKeys(move(strKeyPass));
+    auto keyMap = CPastelID::CreateNewPastelKeys(std::move(strKeyPass));
     if (keyMap.empty())
         throw runtime_error("Failed to generate new Pastel ID and associated keys");
     resultObj.pushKV(RPC_KEY_PASTELID, keyMap.begin()->first);
-    resultObj.pushKV(RPC_KEY_LEGROAST, move(keyMap.begin()->second));
+    resultObj.pushKV(RPC_KEY_LEGROAST, std::move(keyMap.begin()->second));
     return resultObj;
 }
 
@@ -76,8 +76,8 @@ UniValue pastelid_list(const UniValue& params)
     {
         UniValue obj(UniValue::VOBJ);
         obj.pushKV("PastelID", sPastelID);
-        obj.pushKV(RPC_KEY_LEGROAST, move(sLegRoastPubKey));
-        resultArray.push_back(move(obj));
+        obj.pushKV(RPC_KEY_LEGROAST, std::move(sLegRoastPubKey));
+        resultArray.push_back(std::move(obj));
     }
 
     return resultArray;
@@ -131,11 +131,11 @@ passphrase for the private key cannot be empty!)";
 		string sDecodedText = DecodeBase64(params[1].get_str(), &bInvalidBase64Encoding);
 		if (bInvalidBase64Encoding)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot decode \"base64-encoded-text\" parameter");
-		sSignature = CPastelID::Sign(sDecodedText, params[2].get_str(), move(strKeyPass), alg, true);
+		sSignature = CPastelID::Sign(sDecodedText, params[2].get_str(), std::move(strKeyPass), alg, true);
 	}
     else
-        sSignature = CPastelID::Sign(params[1].get_str(), params[2].get_str(), move(strKeyPass), alg, true);
-    resultObj.pushKV("signature", move(sSignature));
+        sSignature = CPastelID::Sign(params[1].get_str(), params[2].get_str(), std::move(strKeyPass), alg, true);
+    resultObj.pushKV("signature", std::move(sSignature));
 
     return resultObj;
 }
@@ -183,8 +183,8 @@ passphrase for the private key cannot be empty!)");
     
     UniValue resultObj(UniValue::VOBJ);
     
-    string sSignature = CPastelID::Sign(data, params[2].get_str(), move(strKeyPass), alg, true);
-    resultObj.pushKV("signature", move(sSignature));
+    string sSignature = CPastelID::Sign(data, params[2].get_str(), std::move(strKeyPass), alg, true);
+    resultObj.pushKV("signature", std::move(sSignature));
 
     return resultObj;
 }
@@ -296,7 +296,7 @@ strprintf(R"(pastelid passwd "PastelID" "old_passphrase" "new_passphrase"
 '%s' parameter cannot be empty!)",
                                      szEmptyParam));
     string error;
-    if (!CPastelID::ChangePassphrase(error, sPastelID, move(strOldPass), move(strNewPass)))
+    if (!CPastelID::ChangePassphrase(error, sPastelID, std::move(strOldPass), std::move(strNewPass)))
         throw runtime_error(error);
     UniValue resultObj(UniValue::VOBJ);
     resultObj.pushKV(RPC_KEY_RESULT, RPC_RESULT_SUCCESS);

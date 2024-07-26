@@ -9,8 +9,8 @@
 
 #include <utils/uint256.h>
 #include <utils/utilstrencodings.h>
+#include <utils/random.h>
 #include <coins.h>
-#include <random.h>
 #include <script/standard.h>
 #include <consensus/validation.h>
 #include <main.h>

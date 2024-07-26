@@ -11,6 +11,7 @@
 #include <sodium.h>
 
 #include <utils/util.h>
+#include <utils/utiltime.h>
 #include <amount.h>
 #include <consensus/upgrades.h>
 #include <consensus/consensus.h>
@@ -33,8 +34,7 @@
 #include <zcbenchmarks.h>
 #include <script/interpreter.h>
 #include <zcash/Address.hpp>
-#include <utfcpp/utf8.h>
-#include <utiltime.h>
+#include <extlibs/utfcpp/utf8.h>
 #include <asyncrpcoperation.h>
 #include <asyncrpcqueue.h>
 #include <wallet/wallet.h>
@@ -674,9 +674,9 @@ Examples:
                 if (pwalletMain->mapAddressBook.find(address) != pwalletMain->mapAddressBook.cend())
                     addressInfo.push_back(pwalletMain->mapAddressBook.find(address)->second.name);
             }
-            jsonGrouping.push_back(move(addressInfo));
+            jsonGrouping.push_back(std::move(addressInfo));
         }
-        jsonGroupings.push_back(move(jsonGrouping));
+        jsonGroupings.push_back(std::move(jsonGrouping));
     }
     return jsonGroupings;
 }
@@ -1632,7 +1632,7 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
                 entry.pushKV("size", GetSerializeSize(static_cast<CTransaction>(wtx), SER_NETWORK, PROTOCOL_VERSION));
-                ret.push_back(move(entry));
+                ret.push_back(std::move(entry));
             }
         }
     }
@@ -1787,7 +1787,7 @@ As a json rpc call:
 
     ret.clear();
     ret.setArray();
-    ret.push_backV(move(arrTmp));
+    ret.push_backV(std::move(arrTmp));
 
     return ret;
 }
@@ -2046,7 +2046,7 @@ Examples:
 
     UniValue details(UniValue::VARR);
     ListTransactions(wtx, "*", 0, false, details, filter);
-    entry.pushKV("details", move(details));
+    entry.pushKV("details", std::move(details));
 
     string strHex = EncodeHexTx(static_cast<CTransaction>(wtx));
     entry.pushKV("hex", strHex);
@@ -2516,7 +2516,7 @@ As a json rpc call
         UniValue o(UniValue::VOBJ);
         o.pushKV(RPC_KEY_TXID, outpt.hash.GetHex());
         o.pushKV("vout", outpt.n);
-        ret.push_back(move(o));
+        ret.push_back(std::move(o));
     }
 
     return ret;
@@ -2754,7 +2754,7 @@ Examples
         entry.pushKV("amount", ValueFromAmount(txOut.nValue));
         entry.pushKV("confirmations", out.nDepth);
         entry.pushKV("spendable", out.fSpendable);
-        results.push_back(move(entry));
+        results.push_back(std::move(entry));
     }
 
     return results;
@@ -2893,7 +2893,7 @@ Examples:
             obj.pushKV("memo", HexStr(entry.memo));
             if (hasSaplingSpendingKey)
                 obj.pushKV("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op));
-            results.push_back(move(obj));
+            results.push_back(std::move(obj));
         }
     }
 
@@ -3302,7 +3302,7 @@ Examples:
 
             if (hasSpendingKey)
                 obj.pushKV("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op));
-            result.push_back(move(obj));
+            result.push_back(std::move(obj));
         }
     }
     return result;
@@ -3946,7 +3946,7 @@ Examples:
 
     // Create operation and add to global queue
     auto q = getAsyncRPCQueue();
-    auto operation = make_shared<AsyncRPCOperation_sendmany>(move(builder), contextualTx, 
+    auto operation = make_shared<AsyncRPCOperation_sendmany>(std::move(builder), contextualTx, 
         fromaddress, taddrRecipients, zaddrRecipients, nMinDepth, nFee,
         contextInfo, bReturnChangeToSenderAddr);
     q->addOperation(operation);
@@ -4173,7 +4173,7 @@ Examples:
 
     // Create operation and add to global queue
     shared_ptr<AsyncRPCQueue> q = getAsyncRPCQueue();
-    auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(move(builder), contextualTx, inputs, destaddress, nFee, contextInfo);
+    auto operation = make_shared<AsyncRPCOperation_shieldcoinbase>(std::move(builder), contextualTx, inputs, destaddress, nFee, contextInfo);
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
 
@@ -4261,7 +4261,7 @@ Examples:
         );
 
     if (!fEnableMergeToAddress) {
-        throw JSONRPCError(RPC_WALLET_ERROR, "Error: z_mergetoaddress is disabled. Run './pascal-cli help z_mergetoaddress' for instructions on how to enable this feature.");
+        throw JSONRPCError(RPC_WALLET_ERROR, "Error: z_mergetoaddress is disabled. Run './pastel-cli help z_mergetoaddress' for instructions on how to enable this feature.");
     }
 
     LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -4530,7 +4530,7 @@ Examples:
     // Create operation and add to global queue
     shared_ptr<AsyncRPCQueue> q = getAsyncRPCQueue();
     shared_ptr<AsyncRPCOperation> operation(
-        new AsyncRPCOperation_mergetoaddress(move(builder), contextualTx, utxoInputs, saplingNoteInputs, recipient, nFee, contextInfo) );
+        new AsyncRPCOperation_mergetoaddress(std::move(builder), contextualTx, utxoInputs, saplingNoteInputs, recipient, nFee, contextInfo) );
     q->addOperation(operation);
     AsyncRPCOperationId operationId = operation->getId();
 
@@ -4717,7 +4717,7 @@ As json rpc:
                     "No information available about input transaction [%s]",
                     prevTxHash.ToString()));
             nDebit += txOut.vout[txin.prevout.n].nValue;
-            txMap.emplace(prevTxHash, move(txOut));
+            txMap.emplace(prevTxHash, std::move(txOut));
         }
     }
     const CAmount nCredit = tx.GetValueOut();
@@ -4989,7 +4989,7 @@ Examples:
     UniValue resultObjSorted(UniValue::VARR);
     resultObjSorted.reserve(vHeights.size());
     for (const auto &heightIndex : vHeights)
-		resultObjSorted.push_back(move(resultObj[heightIndex.second]));
+		resultObjSorted.push_back(std::move(resultObj[heightIndex.second]));
     resultObj.clear();
     // scan mempool transactions
     {
@@ -5018,11 +5018,14 @@ Examples:
 					uint256 hashInputBlock;
 					if (!GetTransaction(txin.prevout.hash, prevTx, chainparams.GetConsensus(), hashInputBlock, true))
 						continue;
+
 					if (prevTx.vout.size() <= txin.prevout.n)
 						continue;
+
 					const auto &prevTxOut = prevTx.vout[txin.prevout.n];
 					if (!ExtractDestination(prevTxOut.scriptPubKey, address))
 						continue;
+
 					if (!bScanAllAddresses && (address != destTrackingAddress))
 						continue;
 
@@ -5035,7 +5038,7 @@ Examples:
 					txObj.pushKV("from_address", keyIO.EncodeDestination(address));
 					txObj.pushKV("amount", ValueFromAmount(txout.nValue));
 					txObj.pushKV("amountPat", txout.nValue);
-					resultObjSorted.push_back(move(txObj));
+					resultObjSorted.push_back(std::move(txObj));
 				}
 			}
 		}

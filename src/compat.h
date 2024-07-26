@@ -1,13 +1,11 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_COMPAT_H
-#define BITCOIN_COMPAT_H
-
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #ifdef WIN32
@@ -31,11 +29,12 @@
 #include <mswsock.h>
 #include <windows.h>
 #include <ws2tcpip.h>
+#include <sys/types.h>
 #else
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <sys/types.h>
+#include <sys/resource.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -64,7 +63,9 @@ typedef u_int SOCKET;
 #define SOCKET_ERROR        -1
 #endif
 
+
 #ifdef WIN32
+
 #ifndef S_IRUSR
 #define S_IRUSR             0400
 #define S_IWUSR             0200
@@ -100,5 +101,3 @@ bool static inline IsSelectableSocket(SOCKET s) {
     return (s < FD_SETSIZE);
 #endif
 }
-
-#endif // BITCOIN_COMPAT_H

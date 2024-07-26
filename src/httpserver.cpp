@@ -2,11 +2,11 @@
 // Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <signal.h>
 #include <cstdio>
 #include <cstdlib>
-#include <sys/stat.h>
-#include <sys/types.h>
 #include <cinttypes>
 #include <deque>
 #include <thread>

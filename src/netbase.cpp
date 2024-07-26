@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #ifdef HAVE_CONFIG_H
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #ifdef HAVE_GETADDRINFO_A
@@ -27,9 +27,9 @@
 #include <utils/svc_thread.h>
 #include <utils/sync.h>
 #include <utils/uint256.h>
+#include <utils/random.h>
+#include <utils/hash.h>
 #include <netbase.h>
-#include <hash.h>
-#include <random.h>
 
 using namespace std;
 

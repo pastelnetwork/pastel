@@ -16,14 +16,14 @@ using namespace std;
 // CAcceptTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CAcceptTicket CAcceptTicket::Create(string &&offerTxId, const unsigned int nPricePSL, string &&sPastelID, SecureString&& strKeyPass)
 {
-    CAcceptTicket ticket(move(sPastelID));
+    CAcceptTicket ticket(std::move(sPastelID));
 
-    ticket.m_offerTxId = move(offerTxId);
+    ticket.m_offerTxId = std::move(offerTxId);
     ticket.m_nPricePSL = nPricePSL;
     ticket.GenerateTimestamp();
 
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, move(strKeyPass)), ticket.m_signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, std::move(strKeyPass)), ticket.m_signature);
 
     return ticket;
 }

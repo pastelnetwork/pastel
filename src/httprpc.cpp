@@ -1,5 +1,5 @@
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <utils/str_utils.h>
@@ -7,13 +7,14 @@
 #include <utils/enum_util.h>
 #include <utils/utilstrencodings.h>
 #include <utils/sync.h>
+#include <utils/utiltime.h>
+#include <utils/random.h>
 #include <httprpc.h>
 #include <chainparams.h>
 #include <httpserver.h>
 #include <key_io.h>
 #include <rpc/protocol.h>
 #include <rpc/server.h>
-#include <random.h>
 #include <ui_interface.h>
 
 using namespace std;
@@ -32,7 +33,7 @@ public:
     {
         struct timeval tv;
         tv.tv_sec = static_cast<decltype(tv.tv_sec)>(millis / 1000);
-        tv.tv_usec = (millis%1000)*1000;
+        tv.tv_usec = (millis % 1000) * 1000;
         ev.trigger(&tv);
     }
 private:
@@ -42,14 +43,15 @@ private:
 class HTTPRPCTimerInterface : public RPCTimerInterface
 {
 public:
-    HTTPRPCTimerInterface(struct event_base* base) : base(base)
-    {
-    }
-    const char* Name()
+    HTTPRPCTimerInterface(struct event_base* base) : 
+        base(base)
+    {}
+
+    const char* Name() const noexcept override
     {
         return "HTTP";
     }
-    RPCTimerBase* NewTimer(function<void(void)>& func, int64_t millis)
+    RPCTimerBase* NewTimer(function<void(void)>& func, int64_t millis) override
     {
         return new HTTPRPCTimer(base, func, millis);
     }
@@ -102,13 +104,15 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
     }
     // Check authorization
     pair<bool, string> authHeader = req->GetHeader("authorization");
-    if (!authHeader.first) {
+    if (!authHeader.first)
+    {
         req->WriteHeader("WWW-Authenticate", WWW_AUTH_HEADER_DATA);
         req->WriteReply(to_integral_type(HTTPStatusCode::UNAUTHORIZED));
         return false;
     }
 
-    if (!RPCAuthorized(authHeader.second)) {
+    if (!RPCAuthorized(authHeader.second))
+    {
         LogPrintf("ThreadRPCServer incorrect password attempt from %s\n", req->GetPeer().ToString());
 
         /* Deter brute-forcing
@@ -130,13 +134,15 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
 
         string strReply;
         // singleton request
-        if (valRequest.isObject()) {
+        if (valRequest.isObject())
+        {
             jreq.parse(valRequest);
 
-            UniValue result = tableRPC.execute(jreq.strMethod, jreq.params);
+            string sMethod = jreq.method();
+            UniValue result = tableRPC.execute(sMethod, jreq.params());
 
             // Send reply
-            strReply = JSONRPCReply(result, NullUniValue, jreq.id);
+            strReply = JSONRPCReply(result, NullUniValue, jreq.id());
 
         // array of requests
         } else if (valRequest.isArray())
@@ -146,11 +152,12 @@ static bool HTTPReq_JSONRPC(HTTPRequest* req, const string &)
 
         req->WriteHeader("Content-Type", "application/json");
         req->WriteReply(to_integral_type(HTTPStatusCode::OK), strReply);
-    } catch (const UniValue& objError) {
-        JSONErrorReply(req, objError, jreq.id);
+    } catch (const UniValue& objError)
+    {
+        JSONErrorReply(req, objError, jreq.id());
         return false;
     } catch (const exception& e) {
-        JSONErrorReply(req, JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id);
+        JSONErrorReply(req, JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id());
         return false;
     }
     return true;

@@ -5,7 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <cstdint>
@@ -29,6 +29,7 @@
 #endif
 #include <librustzcash.h>
 
+#include <config/port_config.h>
 #include <utils/str_utils.h>
 #include <utils/scheduler.h>
 #include <utils/util.h>
@@ -66,16 +67,15 @@
 #include <wallet/walletdb.h>
 #endif
 #include <mnode/mnode-controller.h>
-#include <port_config.h>
 #include <script_check.h>
 #include <orphan-tx.h>
 #include <netmsg/netconsts.h>
 #include <netmsg/nodemanager.h>
 
+using namespace std;
+
 //MasterNode
 CMasterNodeController masterNodeCtrl;
-
-using namespace std;
 
 extern void ThreadSendAlert();
 
@@ -1287,7 +1287,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         auto sComment = SanitizeString(cmt, SAFE_CHARS_UA_COMMENT);
         if (cmt != sComment)
             return InitError(strprintf("User Agent comment (%s) contains unsafe characters.", cmt));
-        uacomments.emplace_back(move(sComment));
+        uacomments.emplace_back(std::move(sComment));
     }
     strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
     if (strSubVersion.size() > MAX_SUBVERSION_LENGTH)
@@ -1337,7 +1337,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 					trim(line);
 					if (line.empty() || line[0] == '#' || line[0] == ';')
 						continue;
-                    vSubnets.emplace(move(line));
+                    vSubnets.emplace(std::move(line));
 				}
             }
             else
@@ -1978,5 +1978,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (threadGroup.add_func_thread(strError, "sendalert", ThreadSendAlert) == INVALID_THREAD_OBJECT_ID)
 		return InitError(translate("Failed to create sendalert thread. ") + strError);
 
+    LogFnPrintf("Pastel initialization successful");
     return !fRequestShutdown;
 }

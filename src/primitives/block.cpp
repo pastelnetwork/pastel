@@ -6,10 +6,9 @@
 #include <utils/tinyformat.h>
 #include <utils/uint256.h>
 #include <utils/utilstrencodings.h>
-#include <utiltime.h>
-
+#include <utils/utiltime.h>
+#include <utils/hash.h>
 #include <primitives/block.h>
-#include <hash.h>
 #include <crypto/common.h>
 #include <pastelid/pastel_key.h>
 

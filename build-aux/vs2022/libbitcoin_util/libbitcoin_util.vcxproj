@@ -92,7 +92,6 @@
     <ClCompile Include="..\..\..\src\compat\glibcxx_sanity.cpp" />
     <ClCompile Include="..\..\..\src\compat\glibc_compat.cpp" />
     <ClCompile Include="..\..\..\src\compat\glibc_sanity.cpp" />
-    <ClCompile Include="..\..\..\src\random.cpp" />
     <ClCompile Include="..\..\..\src\rpc\client.cpp" />
     <ClCompile Include="..\..\..\src\rpc\protocol.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)rpc_protocol.obj</ObjectFileName>
@@ -109,14 +108,16 @@
     <ClCompile Include="..\..\..\src\utils\base58.cpp" />
     <ClCompile Include="..\..\..\src\utils\bech32.cpp" />
     <ClCompile Include="..\..\..\src\utils\datacompressor.cpp" />
+    <ClCompile Include="..\..\..\src\utils\hash.cpp" />
     <ClCompile Include="..\..\..\src\utils\ping_util.cpp" />
+    <ClCompile Include="..\..\..\src\utils\random.cpp" />
     <ClCompile Include="..\..\..\src\utils\scheduler.cpp" />
     <ClCompile Include="..\..\..\src\utils\sync.cpp" />
     <ClCompile Include="..\..\..\src\utils\trimmean.cpp" />
     <ClCompile Include="..\..\..\src\utils\uint256.cpp" />
     <ClCompile Include="..\..\..\src\utils\util.cpp" />
     <ClCompile Include="..\..\..\src\utils\utilstrencodings.cpp" />
-    <ClCompile Include="..\..\..\src\utiltime.cpp" />
+    <ClCompile Include="..\..\..\src\utils\utiltime.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\chainparamsbase.h" />
@@ -125,7 +126,6 @@
     <ClInclude Include="..\..\..\src\compat\byteswap.h" />
     <ClInclude Include="..\..\..\src\compat\endian.h" />
     <ClInclude Include="..\..\..\src\compat\sanity.h" />
-    <ClInclude Include="..\..\..\src\random.h" />
     <ClInclude Include="..\..\..\src\rpc\client.h" />
     <ClInclude Include="..\..\..\src\rpc\protocol.h" />
     <ClInclude Include="..\..\..\src\rpc\register.h" />
@@ -142,12 +142,15 @@
     <ClInclude Include="..\..\..\src\utils\base58.h" />
     <ClInclude Include="..\..\..\src\utils\bech32.h" />
     <ClInclude Include="..\..\..\src\utils\datacompressor.h" />
+    <ClInclude Include="..\..\..\src\utils\detect_cpp_standard.h" />
     <ClInclude Include="..\..\..\src\utils\enum_util.h" />
     <ClInclude Include="..\..\..\src\utils\fs.h" />
+    <ClInclude Include="..\..\..\src\utils\hash.h" />
     <ClInclude Include="..\..\..\src\utils\map_types.h" />
     <ClInclude Include="..\..\..\src\utils\numeric_range.h" />
     <ClInclude Include="..\..\..\src\utils\ping_util.h" />
     <ClInclude Include="..\..\..\src\utils\prevector.h" />
+    <ClInclude Include="..\..\..\src\utils\random.h" />
     <ClInclude Include="..\..\..\src\utils\reverselock.h" />
     <ClInclude Include="..\..\..\src\utils\scheduler.h" />
     <ClInclude Include="..\..\..\src\utils\scope_guard.hpp" />
@@ -164,8 +167,8 @@
     <ClInclude Include="..\..\..\src\utils\uint256.h" />
     <ClInclude Include="..\..\..\src\utils\util.h" />
     <ClInclude Include="..\..\..\src\utils\utilstrencodings.h" />
+    <ClInclude Include="..\..\..\src\utils\utiltime.h" />
     <ClInclude Include="..\..\..\src\utils\vector_types.h" />
-    <ClInclude Include="..\..\..\src\utiltime.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

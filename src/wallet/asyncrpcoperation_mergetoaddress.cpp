@@ -13,6 +13,7 @@
 #include <wallet/asyncrpcoperation_mergetoaddress.h>
 
 #include <utils/util.h>
+#include <utils/utiltime.h>
 #include <asyncrpcqueue.h>
 #include <core_io.h>
 #include <init.h>
@@ -28,7 +29,6 @@
 #include <sodium.h>
 #include <timedata.h>
 #include <utilmoneystr.h>
-#include <utiltime.h>
 #include <zcash/IncrementalMerkleTree.hpp>
 
 using namespace libzcash;
@@ -65,7 +65,7 @@ AsyncRPCOperation_mergetoaddress::AsyncRPCOperation_mergetoaddress
     if (builder)
     {
         isUsingBuilder_ = true;
-        m_builder = move(builder);
+        m_builder = std::move(builder);
     }
     else
         m_builder = make_unique<TransactionBuilder>(chainparams.GetConsensus(), 0);
@@ -327,20 +327,20 @@ bool AsyncRPCOperation_mergetoaddress::main_impl()
         if (!testmode)
         {
             UniValue params(UniValue::VARR);
-            params.push_back(move(signedtxn));
+            params.push_back(std::move(signedtxn));
             UniValue sendResultValue = sendrawtransaction(params, false);
             if (sendResultValue.isNull())
                 throw JSONRPCError(RPC_WALLET_ERROR, "sendrawtransaction did not return an error or a txid.");
 
             auto txid = sendResultValue.get_str();
-            o.pushKV(RPC_KEY_TXID, move(txid));
+            o.pushKV(RPC_KEY_TXID, std::move(txid));
         } else {
             // Test mode does not send the transaction to the network.
             o.pushKV("test", 1);
             o.pushKV(RPC_KEY_TXID, tx_.GetHash().ToString());
-            o.pushKV("hex", move(signedtxn));
+            o.pushKV("hex", std::move(signedtxn));
         }
-        set_result(move(o));
+        set_result(std::move(o));
 
         return true;
     }
@@ -414,7 +414,7 @@ void AsyncRPCOperation_mergetoaddress::sign_send_raw_transaction(UniValue obj)
             throw JSONRPCError(RPC_WALLET_ERROR, "Send raw transaction did not return an error or a txid.");
 
         auto txid = sendResultValue.get_str();
-        o.pushKV(RPC_KEY_TXID, move(txid));
+        o.pushKV(RPC_KEY_TXID, std::move(txid));
     } else {
         // Test mode does not send the transaction to the network.
 
@@ -426,7 +426,7 @@ void AsyncRPCOperation_mergetoaddress::sign_send_raw_transaction(UniValue obj)
         o.pushKV(RPC_KEY_TXID, tx.GetHash().ToString());
         o.pushKV("hex", signedtxn);
     }
-    set_result(move(o));
+    set_result(std::move(o));
 
     // Keep the signed transaction so we can hash to the same txid
     CDataStream stream(ParseHex(signedtxn), SER_NETWORK, PROTOCOL_VERSION);

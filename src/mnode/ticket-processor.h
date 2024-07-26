@@ -7,7 +7,7 @@
 #include <optional>
 #include <atomic>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #include <utils/str_types.h>
 #include <utils/map_types.h>

@@ -1,13 +1,16 @@
+// Copyright (c) 2018-2024 The Pastel developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#include <array>
+
 #include <gtest/gtest.h>
 
-#include "zcash/Address.hpp"
-#include "zcash/Note.hpp"
+#include <zcash/Address.hpp>
+#include <zcash/Note.hpp>
 
-#include "amount.h"
-#include "random.h"
-#include "librustzcash.h"
-
-#include <array>
+#include <utils/random.h>
+#include <amount.h>
+#include <librustzcash.h>
 
 using namespace libzcash;
 
