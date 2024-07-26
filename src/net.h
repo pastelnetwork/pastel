@@ -48,7 +48,7 @@ bool hasActiveNetworkInterface();
 bool hasInternetConnectivity(std::function<bool()> shouldStop);
 
 /** Maximum number of connections to simultaneously allow (aka connection slots) */
-extern size_t nMaxConnections;
+extern uint32_t gl_nMaxConnections;
 
 extern std::map<CInv, CDataStream> mapRelay;
 extern std::deque<std::pair<int64_t, CInv> > vRelayExpiration;

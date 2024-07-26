@@ -127,7 +127,7 @@ As json rpc
                 {
                     CNFTActivateTicket actTicket;
                     string sRegTxId = regTicket.GetTxId();
-                    actTicket.SetKeyOne(move(sRegTxId));
+                    actTicket.SetKeyOne(std::move(sRegTxId));
                     if (masterNodeCtrl.masternodeTickets.FindTicket(actTicket))
                         vTickets.push_back(actTicket);
                     return true;
@@ -198,7 +198,7 @@ As json rpc
                 {
                     CActionActivateTicket actTicket;
                     string sRegTxId = regTicket.GetTxId();
-                    actTicket.SetKeyOne(move(sRegTxId));
+                    actTicket.SetKeyOne(std::move(sRegTxId));
                     if (masterNodeCtrl.masternodeTickets.FindTicket(actTicket))
                         vTickets.push_back(actTicket);
                     return true;

@@ -37,9 +37,6 @@
     <ClCompile Include="..\..\..\src\core_write.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\hash.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\src\key.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -119,9 +116,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\consensus\validation.h">
       <Filter>Source Files\consensus</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\src\hash.h">
-      <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\src\key.h">
       <Filter>Source Files</Filter>

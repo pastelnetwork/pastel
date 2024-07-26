@@ -374,7 +374,7 @@ class WalletTest (BitcoinTestFramework):
             errorString = e.error['message']
         assert("absurdly high fees" in errorString)
         print(errorString)
-        assert("624900000 > 60000" in errorString)
+        assert("624900000 > 210000" in errorString)
 
         # create both transactions
         txns_to_send = []

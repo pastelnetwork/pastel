@@ -14,6 +14,7 @@
 #include <key.h>
 #include <main.h>
 #include <mining/miner.h>
+#include <mining/mining-settings.h>
 #include <pubkey.h>
 //#include "pow/tromp/equi_miner.h"
 #ifdef ENABLE_WALLET
@@ -21,6 +22,7 @@
 #endif
 
 using namespace testing;
+using namespace std;
 
 #ifdef ENABLE_WALLET
 class MockReserveKey : public CReserveKey {
@@ -31,18 +33,35 @@ public:
 };
 #endif
 
-TEST(Miner, GetMinerScriptPubKey) {
-    SelectParams(ChainNetwork::MAIN);
+class PTestMiner : public TestWithParam<tuple<string, bool>>
+{
+public:
+    static void SetUpTestSuite()
+    {
+        SelectParams(ChainNetwork::MAIN);
+	}
+    static void TearDownTestSuite()
+    {
+	}
 
+    void SetMinerAddress(const string& sMinerAddress)
+	{
+		mapArgs["-mineraddress"] = sMinerAddress;
+        gl_MiningSettings.setMinerAddress(sMinerAddress);
+	}
+};
+
+TEST_P(PTestMiner, GetMinerScriptPubKey)
+{
     const auto& chainparams = Params();
-    
+
 #ifdef ENABLE_WALLET
     MockReserveKey reservekey;
     EXPECT_CALL(reservekey, GetReservedKey(_))
         .WillRepeatedly(Return(false));
 #endif
 
-    const auto TestGetMinerScriptPubKey = [&]() -> std::optional<CScript>
+    const auto TestGetMinerScriptPubKey = [&]() -> optional<CScript>
     {
 #ifdef ENABLE_WALLET
         return GetMinerScriptPubKey(reservekey, chainparams);
@@ -51,47 +70,35 @@ TEST(Miner, GetMinerScriptPubKey) {
 #endif
     };
 
-    // No miner address set
+    const string& sMinerAddress = get<0>(GetParam());
+    const bool bExpectedResult = get<1>(GetParam());
+
+    SetMinerAddress(sMinerAddress);
     auto scriptPubKey = TestGetMinerScriptPubKey();
-    EXPECT_FALSE((bool) scriptPubKey);
 
-    mapArgs["-mineraddress"] = "notAnAddress";
-    scriptPubKey = TestGetMinerScriptPubKey();
-    EXPECT_FALSE((bool) scriptPubKey);
+    if (bExpectedResult)
+    {
+        CKeyID keyID;
+        keyID.SetHex("9E7848625B3B465D273EC83851907A143B483BF2");
+        CScript expectedScriptPubKey = CScript() << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
 
-    // Partial address
-    mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1";
-    scriptPubKey = TestGetMinerScriptPubKey();
-    EXPECT_FALSE((bool) scriptPubKey);
-
-    // Typo in address
-    mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEbBugxeG"; //bB instead of b8
-    scriptPubKey = TestGetMinerScriptPubKey();
-    EXPECT_FALSE((bool) scriptPubKey);
-
-    // Set up expected scriptPubKey for Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG
-    CKeyID keyID;
-    keyID.SetHex("9E7848625B3B465D273EC83851907A143B483BF2");
-    CScript expectedScriptPubKey = CScript() << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
-
-    // Valid address
-    mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG";
-    scriptPubKey = TestGetMinerScriptPubKey();
-    EXPECT_TRUE((bool) scriptPubKey);
-    EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
-
-    // Valid address with leading whitespace
-    mapArgs["-mineraddress"] = "  Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG";
-    scriptPubKey = TestGetMinerScriptPubKey();
-    EXPECT_TRUE((bool) scriptPubKey);
-    EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
-
-    // Valid address with trailing whitespace
-    mapArgs["-mineraddress"] = "Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG  ";
-    scriptPubKey = TestGetMinerScriptPubKey();
-    EXPECT_TRUE((bool)scriptPubKey);
-    EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
+		EXPECT_TRUE((bool)scriptPubKey);
+        EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
+	}
+	else
+	{
+		EXPECT_FALSE((bool)scriptPubKey);
+	}
 }
+
+INSTANTIATE_TEST_SUITE_P(test_miner, PTestMiner, Values(
+	make_tuple("notAnAddress", false),                           // Not an address
+	make_tuple("Ptq6hqeeAXta25PGaKHs1", false),                  // Partial address
+	make_tuple("Ptq6hqeeAXta25PGaKHs1ymktHbEbBugxeG", false),    // Typo in address: bB instead of b8
+    make_tuple("Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG", true),      // Valid address
+    make_tuple("  Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG", true),    // Valid address with leading whitespace
+    make_tuple("Ptq6hqeeAXta25PGaKHs1ymktHbEb8ugxeG  ", true)     // Valid address with trailing whitespace
+));
 
 static struct {
     const char* nonce_hex;

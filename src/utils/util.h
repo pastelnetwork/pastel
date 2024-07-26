@@ -10,7 +10,7 @@
  * logging, thread wrappers
  */
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <atomic>
@@ -27,12 +27,11 @@
 #include <utils/str_types.h>
 #include <utils/vector_types.h>
 #include <utils/tinyformat.h>
-#include <utiltime.h>
+#include <utils/utiltime.h>
+#include <utils/logmanager.h>
 
-
-static const bool DEFAULT_LOGTIMEMICROS = false;
-static const bool DEFAULT_LOGIPS        = false;
-static const bool DEFAULT_LOGTIMESTAMPS = true;
+/** Default file descriptor soft limit. */
+constexpr uint32_t DEFAULT_FD_SOFT_LIMIT = 2048;
 
 /** Signals for translation. */
 class CTranslationInterface
@@ -45,12 +44,8 @@ public:
 extern std::map<std::string, std::string> mapArgs;
 extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
 extern bool fDebug;
-extern bool fPrintToDebugLog;
 extern bool fServer;
 extern std::string strMiscWarning;
-extern bool fLogTimestamps;
-extern bool fLogIPs;
-extern std::atomic<bool> fReopenDebugLog;
 extern CTranslationInterface translationInterface;
 
 [[noreturn]] extern void new_handler_terminate();
@@ -67,19 +62,6 @@ inline std::string translate(const char* psz)
 
 void SetupEnvironment();
 bool SetupNetworking();
-
-/** Return true if log accepts specified category */
-bool LogAcceptCategory(const char* category);
-/** Send a string to the log output */
-size_t LogPrintStr(const std::string &str);
-
-#ifdef __linux__
-extern thread_local pid_t gl_LinuxTID;
-#endif // __linux__
-// get thread id in decimal format
-std::string get_tid() noexcept;
-// get thread id in hex format
-std::string get_tid_hex() noexcept;
 
 /**
 * Extract method name from __PRETTY_FUNCTION__.
@@ -121,7 +103,8 @@ static inline void LogPrintf(const char* fmt, const Args&... args)
         /* Original format string will have newline so don't add one here */
         log_msg = "Error \"" + std::string(e.what()) + "\" while formatting log message: " + fmt;
     }
-    LogPrintStr(log_msg);
+    if (gl_LogMgr)
+        gl_LogMgr->LogPrintStr(log_msg);
 }
 
 #define VA_ARGS(...) , ##__VA_ARGS__
@@ -144,7 +127,8 @@ static inline void LogPrintf(const char* fmt, const Args&... args)
 template<typename... Args>
 bool error(const char* fmt, const Args&... args)
 {
-    LogPrintStr("ERROR: " + tfm::format(fmt, args...) + "\n");
+    if (gl_LogMgr)
+        gl_LogMgr->LogPrintStr("ERROR: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
 
@@ -153,14 +137,16 @@ bool errorFn(const char *szMethodName, const char* fmt, const Args&... args)
 {
     if (!szMethodName || !*szMethodName)
         szMethodName = __METHOD_NAME__;
-    LogPrintStr(tfm::format("[%s] ", szMethodName) + "ERROR: " + tfm::format(fmt, args...) + "\n");
+    if (gl_LogMgr)
+        gl_LogMgr->LogPrintStr(tfm::format("[%s] ", szMethodName) + "ERROR: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
 
 template <typename... Args>
 bool warning_msg(const char* fmt, const Args&... args)
 {
-    LogPrintStr("WARNING: " + tfm::format(fmt, args...) + "\n");
+    if (gl_LogMgr)
+        gl_LogMgr->LogPrintStr("WARNING: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
 
@@ -169,7 +155,8 @@ bool warning_msgFn(const char *szMethodName, const char* fmt, const Args&... arg
 {
     if (!szMethodName || !*szMethodName)
         szMethodName = __METHOD_NAME__;
-    LogPrintStr(tfm::format("[%s] ", szMethodName) + "WARNING: " + tfm::format(fmt, args...) + "\n");
+    if (gl_LogMgr)
+        gl_LogMgr->LogPrintStr(tfm::format("[%s] ", szMethodName) + "WARNING: " + tfm::format(fmt, args...) + "\n");
     return false;
 }
 
@@ -182,9 +169,8 @@ std::string GetErrorString(const int err);
 void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void ParseParameters(int argc, const char*const argv[]);
 void FileCommit(FILE *fileout);
-void LogFlush();
 bool TruncateFile(FILE *file, unsigned int length);
-size_t RaiseFileDescriptorLimit(const size_t nMinFD);
+uint32_t RaiseFileDescriptorLimit(const uint32_t nMinFD);
 void AllocateFileRange(FILE *file, unsigned int offset, unsigned int length);
 bool RenameOver(fs::path src, fs::path dest);
 bool TryCreateDirectory(const fs::path& p);
@@ -206,8 +192,6 @@ void ReadConfigFile(m_strings& mapSettingsRet, std::map<std::string, v_strings>&
 fs::path GetSpecialFolderPath(int nFolder, bool fCreate = true);
 #endif
 fs::path GetTempPath();
-void OpenDebugLog();
-void ShrinkDebugFile();
 void runCommand(const std::string& strCommand);
 const fs::path GetExportDir();
 
@@ -341,9 +325,6 @@ public:
         return ((static_cast<int64_t>(nRw) << 16) + nRz) % nMax;
     }
 };
-
-bool SetPrintToConsoleMode(std::string &error);
-bool IsPrintToConsole() noexcept;
 
 template <typename _T>
 inline void safe_delete_obj(_T*& obj)

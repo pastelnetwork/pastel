@@ -11,7 +11,7 @@
 #include <random>
 #include <fstream>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #include <utils/util.h>
 #include <utils/str_utils.h>
@@ -264,7 +264,7 @@ void CMasternodeMan::CheckAndRemove()
                     --nAskForMnbRecovery;
                 }
                 // wait for mnb recovery replies for MNB_RECOVERY_WAIT_SECONDS seconds (1 min)
-                m_mapMnRecoveryRequests[hash] = make_pair(GetTime() + MNB_RECOVERY_WAIT_SECONDS, move(setRecoveryRequested));
+                m_mapMnRecoveryRequests[hash] = make_pair(GetTime() + MNB_RECOVERY_WAIT_SECONDS, std::move(setRecoveryRequested));
             }
             ++itMN;
         }
@@ -1040,7 +1040,7 @@ pair<CService, set<uint256> > CMasternodeMan::PopScheduledMnbRequestConnection()
         setResult.insert(it->second);
         it = listScheduledMnbRequestConnections.erase(it);
     }
-    return make_pair(pairFront.first, move(setResult));
+    return make_pair(pairFront.first, std::move(setResult));
 }
 
 void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStream& vRecv)
@@ -1735,7 +1735,7 @@ void CMasternodeMan::RelayScheduledMnb()
     map<uint256, COutPoint> mapScheduledMnbForRelay;
     {
         LOCK(cs_mnMgr);
-        mapScheduledMnbForRelay = move(m_mapScheduledMnbForRelay);
+        mapScheduledMnbForRelay = std::move(m_mapScheduledMnbForRelay);
     }
 
     for (const auto& [hashMNB, outpoint] : mapScheduledMnbForRelay)
@@ -1764,7 +1764,7 @@ void CMasternodeMan::RelayScheduledMnp()
     map<uint256, COutPoint> mapScheduledMnpForRelay;
     {
         LOCK(cs_mnMgr);
-        mapScheduledMnpForRelay = move(m_mapScheduledMnpForRelay);
+        mapScheduledMnpForRelay = std::move(m_mapScheduledMnpForRelay);
     }
 
     for (const auto& [hashPing, outpoint] : mapScheduledMnpForRelay)
@@ -1822,7 +1822,7 @@ string CMasternodeMan::ToJSON() const
               }
             },
         };
-        jsonObj["masternodes"].push_back(move(mnJson));
+        jsonObj["masternodes"].push_back(std::move(mnJson));
     }
     for (const auto& [hashMNB, pairMNB] : mapSeenMasternodeBroadcast)
     {
@@ -1839,7 +1839,7 @@ string CMasternodeMan::ToJSON() const
                 { "sigTime", mnb.sigTime },
                 { "version", mnb.GetVersion() },
         };
-        jsonObj["seenMasternodeBroadcast"].push_back(move(mnJson));
+        jsonObj["seenMasternodeBroadcast"].push_back(std::move(mnJson));
     }
     for (const auto& [hashMNP, mnp] : mapSeenMasternodePing)
     {
@@ -1850,7 +1850,7 @@ string CMasternodeMan::ToJSON() const
                 { "blockHash", mnp.getBlockHashString() },
                 { "sigTime", mnp.getSigTime() }
         };
-        jsonObj["seenMasternodePing"].push_back(move(mnJson));
+        jsonObj["seenMasternodePing"].push_back(std::move(mnJson));
     }
     for (const auto& asked : mAskedUsForMasternodeList)
     {
@@ -1858,7 +1858,7 @@ string CMasternodeMan::ToJSON() const
                 { "ip", asked.first.ToString() },
                 { "time", asked.second },
         };
-        jsonObj["askedUsForMasternodeList"].push_back(move(mnJson));
+        jsonObj["askedUsForMasternodeList"].push_back(std::move(mnJson));
     }
     for ( const auto& asked : mWeAskedForMasternodeList)
     {
@@ -1866,7 +1866,7 @@ string CMasternodeMan::ToJSON() const
                 { "ip", asked.first.ToString() },
                 { "time", asked.second },
         };
-        jsonObj["weAskedForMasternodeList"].push_back(move(mnJson));
+        jsonObj["weAskedForMasternodeList"].push_back(std::move(mnJson));
     }
 
     return jsonObj.dump(4);
@@ -2318,7 +2318,7 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
     masternode_vector_t topMNs;
     const GetTopMasterNodeStatus status = CalculateTopMNsForBlock(error, topMNs, nCachedBlockHeight);
     if (status == GetTopMasterNodeStatus::SUCCEEDED)
-        mapHistoricalTopMNs.emplace(nCachedBlockHeight, move(topMNs));
+        mapHistoricalTopMNs.emplace(nCachedBlockHeight, std::move(topMNs));
     else if (status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
         LogFnPrintf("ERROR: Failed to find enough Top MasterNodes. %s", error);
 }

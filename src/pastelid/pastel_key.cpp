@@ -41,10 +41,10 @@ pastelid_store_t CPastelID::CreateNewPastelKeys(SecureString&& passPhrase)
         cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, sEncodedLegRoastPubKey);
         cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_ed448, key.private_key_raw().data());
         cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, LegRoastKey.get_private_key());
-        cont.write_to_file(GetSecureContFilePath(sPastelID, true), move(passPhrase));
+        cont.write_to_file(GetSecureContFilePath(sPastelID, true), std::move(passPhrase));
 
         // populate storage object with encoded PastelID and LegRoast public keys
-        resultMap.emplace(move(sPastelID), move(sEncodedLegRoastPubKey));
+        resultMap.emplace(std::move(sPastelID), std::move(sEncodedLegRoastPubKey));
     } catch (const crypto_exception& ex) {
         throw runtime_error(ex.what());
     }
@@ -90,11 +90,11 @@ bool CPastelID::ProcessEd448_PastelKeyFile(string& error, const string& sFilePat
         // we don't have LegRoast key in the old PKCS8-file, generate it and replace file with the new secure container
         // generate LegRoast private/public key pair
         LegRoastKey.keygen();
-        cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, move(EncodeLegRoastPubKey(LegRoastKey.get_public_key())));
+        cont.add_public_item(PUBLIC_ITEM_TYPE::pubkey_legroast, std::move(EncodeLegRoastPubKey(LegRoastKey.get_public_key())));
         cont.add_secure_item_string(SECURE_ITEM_TYPE::pkey_ed448, sED448pkey);
-        cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, move(LegRoastKey.get_private_key()));
+        cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, std::move(LegRoastKey.get_private_key()));
         // write new secure container
-        bRet = cont.write_to_file(sFilePath, move(sNewPassPhrase));
+        bRet = cont.write_to_file(sFilePath, std::move(sNewPassPhrase));
         if (!bRet)
             error = strprintf("Failed to write secure container file [%s]", sFilePath);
     } catch (const ed_crypto::crypto_exception& ex)
@@ -132,7 +132,7 @@ string CPastelID::Sign(const string& sText, const string& sPastelID, SecureStrin
         {
             // for backward compatibility try to read ed448 private key from PKCS8 encrypted file
             SecureString sPassPhraseNew(sPassPhrase);
-            if (!ProcessEd448_PastelKeyFile(error, sFilePath, sPassPhrase, move(sPassPhraseNew)))
+            if (!ProcessEd448_PastelKeyFile(error, sFilePath, sPassPhrase, std::move(sPassPhraseNew)))
                 throw runtime_error(error);
             bRead = cont.read_from_file(sFilePath, sPassPhrase);
         }
@@ -275,28 +275,28 @@ pastelid_store_t CPastelID::GetStoredPastelIDs(const bool bPastelIdOnly, const s
     if (!CheckPastelKeysDirectory(pathPastelKeys))
         return resultMap;
 
-        string sPastelID, sLegRoastKey;
-        v_uint8 vData;
-        for (const auto& p : fs::directory_iterator(pathPastelKeys))
+    string sPastelID, sLegRoastKey;
+    v_uint8 vData;
+    for (const auto& p : fs::directory_iterator(pathPastelKeys))
+    {
+        sPastelID = p.path().filename().string();
+        if (!sFilterPastelID.empty() && !str_icmp(sFilterPastelID, sPastelID))
+            continue;
+        // check if this file name is in fact encoded Pastel ID
+        // if not - just skip this file
+        if (!DecodePastelID(sPastelID, vData))
+            continue;
+        sLegRoastKey.clear();
+        if (!bPastelIdOnly)
         {
-            sPastelID = p.path().filename().string();
-            if (!sFilterPastelID.empty() && !str_icmp(sFilterPastelID, sPastelID))
-                continue;
-            // check if this file name is in fact encoded Pastel ID
-            // if not - just skip this file
-            if (!DecodePastelID(sPastelID, vData))
-                continue;
-            sLegRoastKey.clear();
-            if (!bPastelIdOnly)
-            {
-                // read public items from secure container
-                // ignore error here -> will return empty LegRoast public key
-                CSecureContainer cont;
-                if (cont.read_public_from_file(error, p.path().string()))
-                    cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastKey);
-            }
-            resultMap.emplace(move(sPastelID), move(sLegRoastKey));
+            // read public items from secure container
+            // ignore error here -> will return empty LegRoast public key
+            CSecureContainer cont;
+            if (cont.read_public_from_file(error, p.path().string()))
+                cont.get_public_data(PUBLIC_ITEM_TYPE::pubkey_legroast, sLegRoastKey);
         }
+        resultMap.emplace(std::move(sPastelID), std::move(sLegRoastKey));
+    }
     return resultMap;
 }
 
@@ -347,7 +347,7 @@ bool CPastelID::ChangePassphrase(std::string &error, const std::string& sPastelI
         error.clear();
         const string sFilePath = GetSecureContFilePath(sPastelId);
         CSecureContainer cont;
-        bRet = cont.change_passphrase(sFilePath, move(sOldPassphrase), move(sNewPassphrase));
+        bRet = cont.change_passphrase(sFilePath, std::move(sOldPassphrase), std::move(sNewPassphrase));
     } catch (const exception& ex) {
         sError = ex.what();
     }

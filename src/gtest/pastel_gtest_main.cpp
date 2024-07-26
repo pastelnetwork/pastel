@@ -17,6 +17,7 @@
 #include <metrics.h>
 #include <orphan-tx.h>
 #include <accept_to_mempool.h>
+#include <txdb/txdb.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #endif // ENABLE_WALLET
@@ -189,9 +190,10 @@ void CPastelTest_Environment::InitializeChainTest(const ChainNetwork network)
 #ifdef ENABLE_WALLET
     bitdb.MakeMock();
 
+    bool bFirstRun = true;
     ASSERT_EQ(pwalletMain, nullptr);
     pwalletMain = new CWallet("test_wallet.dat");
-    bool bFirstRun = true;
+    RegisterValidationInterface(pwalletMain);
     pwalletMain->LoadWallet(bFirstRun);
     static bool bWalletRPCInitialized = false;
     if (!bWalletRPCInitialized)
@@ -199,7 +201,6 @@ void CPastelTest_Environment::InitializeChainTest(const ChainNetwork network)
         RegisterWalletRPCCommands(tableRPC);
         bWalletRPCInitialized = true;
     }
-    RegisterValidationInterface(pwalletMain);
 #endif // ENABLE_WALLET
     gl_ScriptCheckManager.SetThreadCount(3);
     gl_ScriptCheckManager.create_workers(threadGroup);

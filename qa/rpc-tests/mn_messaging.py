@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2018-2023 The Pastel Core developers
+# Copyright (c) 2018-2024 The Pastel Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php.
 import time
@@ -14,10 +14,11 @@ class MasterNodeMessagingTest(MasterNodeCommon):
 
     def __init__(self):
         super().__init__()
-        
+
         self.number_of_master_nodes = 4
         self.number_of_simple_nodes = 3
         self.number_of_cold_nodes = self.number_of_master_nodes
+        self.num_nodes = self.number_of_master_nodes + self.number_of_simple_nodes
 
         self.non_active_mn = self.number_of_master_nodes - 1
 
@@ -27,17 +28,13 @@ class MasterNodeMessagingTest(MasterNodeCommon):
 
         self.mining_node_num = self.number_of_master_nodes  # same as non_mn1
         self.hot_node_num = self.number_of_master_nodes+1   # same as non_mn2
+        self.setup_clean_chain = True
+        self.is_network_split = False
 
-
-    def setup_chain(self):
-        print("Initializing test directory "+self.options.tmpdir)
-        initialize_chain_clean(self.options.tmpdir, self.total_number_of_nodes)
 
     def setup_network(self, split=False):
-        self.nodes = []
-        self.is_network_split = False
         self.setup_masternodes_network()
-        
+
 
     def run_test(self):
         mns = self.nodes[0].masternodelist("pubkey")

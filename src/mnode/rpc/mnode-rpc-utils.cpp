@@ -17,8 +17,8 @@ UniValue GenerateSendTicketResult(tuple<string, string> &&resultIDs)
 {
     UniValue result(UniValue::VOBJ);
 
-    result.pushKV(RPC_KEY_TXID, move(get<0>(resultIDs)));
-    result.pushKV(RPC_KEY_KEY, move(get<1>(resultIDs)));
+    result.pushKV(RPC_KEY_TXID, std::move(get<0>(resultIDs)));
+    result.pushKV(RPC_KEY_KEY, std::move(get<1>(resultIDs)));
 
     return result;
 }

@@ -65,19 +65,19 @@ struct CSpentIndexValue
         READWRITE(nAddressType);
         if (bRead)
         {
-            if (!is_enum_valid<ScriptType>(nAddressType, ScriptType::UNKNOWN, ScriptType::P2SH))
+            if (!is_enum_valid<ScriptType>(nAddressType, ScriptType::P2PKH, ScriptType::P2SH))
                 throw std::runtime_error(strprintf("Not supported ScriptType [%d]", nAddressType));
             addressType = static_cast<ScriptType>(nAddressType);
         }
         READWRITE(addressHash);
     }
 
-    CSpentIndexValue(const uint256 &_txid, const uint32_t _inputIndex, const int height, 
+    CSpentIndexValue(const uint256 &_txid, const uint32_t _inputIndex, const uint32_t nHeight, 
         const CAmount s, const ScriptType type, const uint160 &a) noexcept
     {
         txid = _txid;
         inputIndex = _inputIndex;
-        blockHeight = height;
+        blockHeight = nHeight;
         patoshis = s;
         addressType = type;
         addressHash = a;

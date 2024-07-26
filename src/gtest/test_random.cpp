@@ -1,10 +1,10 @@
-// Copyright (c) 2021-2023 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
 #include <utils/vector_types.h>
-#include <random.h>
+#include <utils/random.h>
 #include <pastel_gtest_utils.h>
 
 using namespace std;

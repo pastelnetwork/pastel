@@ -1,17 +1,17 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2017 The Zcash developers
-// Copyright (c) 2018-2023 Pastel Core developers
+// Copyright (c) 2018-2024 Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <secp256k1_recovery.h>
 
 #include <utils/arith_uint256.h>
+#include <utils/random.h>
 #include <key.h>
 #include <crypto/common.h>
 #include <crypto/hmac_sha512.h>
 #include <pubkey.h>
-#include <random.h>
 #include <ecc_context.h>
 
 using namespace std;

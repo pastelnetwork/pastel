@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <unistd.h>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 #include <gtest/gtest.h>
 
 #include <utils/fs.h>
@@ -70,7 +70,7 @@ protected:
 
         // secure items
         auto pkey1 = ParseHex(TEST_PKEY1);
-        m_cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_ed448, move(pkey1)); // move pkey1
+        m_cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_ed448, std::move(pkey1)); // move pkey1
 
         const auto pkey2 = ParseHex(TEST_PKEY2);
         m_cont.add_secure_item_vector(SECURE_ITEM_TYPE::pkey_legroast, pkey2); // copy pkey2

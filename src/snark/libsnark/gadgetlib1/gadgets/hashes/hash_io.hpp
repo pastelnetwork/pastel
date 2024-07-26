@@ -18,11 +18,11 @@ public:
     size_t digest_size;
     pb_variable_array<FieldT> bits;
 
-    digest_variable<FieldT>(protoboard<FieldT> &pb,
+    digest_variable(protoboard<FieldT> &pb,
                             const size_t digest_size,
                             const std::string &annotation_prefix);
 
-    digest_variable<FieldT>(protoboard<FieldT> &pb,
+    digest_variable(protoboard<FieldT> &pb,
                             const size_t digest_size,
                             const pb_variable_array<FieldT> &partial_bits,
                             const pb_variable<FieldT> &padding,

@@ -5,10 +5,10 @@
 
 #include <utils/tinyformat.h>
 #include <utils/vector_types.h>
+#include <utils/hash.h>
+#include <compat/endian.h>
 #include <pastelid/pastel_key.h>
 #include <pastelid/secure_container.h>
-#include <compat/endian.h>
-#include <hash.h>
 
 using namespace std;
 using namespace secure_container;
@@ -21,7 +21,7 @@ using namespace secure_container;
  */
 void CSecureContainer::add_secure_item_string(const SECURE_ITEM_TYPE type, const std::string& sData) noexcept
 {
-    m_vSecureItems.emplace_back(type, nlohmann::json::binary_t(move(string_to_vector(sData))), nullptr);
+    m_vSecureItems.emplace_back(type, nlohmann::json::binary_t(std::move(string_to_vector(sData))), nullptr);
 }
 
 /**
@@ -37,7 +37,7 @@ void CSecureContainer::add_secure_item_vector(const SECURE_ITEM_TYPE type, const
 
 void CSecureContainer::add_secure_item_vector(const SECURE_ITEM_TYPE type, v_uint8&& vData) noexcept
 {
-    m_vSecureItems.emplace_back(type, nlohmann::json::binary_t(move(vData)), nullptr);
+    m_vSecureItems.emplace_back(type, nlohmann::json::binary_t(std::move(vData)), nullptr);
 }
 
 /**
@@ -60,7 +60,7 @@ void CSecureContainer::add_secure_item_handler(const SECURE_ITEM_TYPE type, ISec
  */
 void CSecureContainer::add_public_item(const PUBLIC_ITEM_TYPE type, const std::string& sData) noexcept
 {
-     m_vPublicItems.emplace_back(type, move(string_to_vector(sData)));
+     m_vPublicItems.emplace_back(type, std::move(string_to_vector(sData)));
 }
 
 /**
@@ -97,7 +97,7 @@ bool CSecureContainer::write_to_file(const string& sFilePath, SecureString&& sPa
             });
         nJsonPublicSize += 25 + strlen(szTypeName) + item.data.size();
     }
-    jPublic.emplace("public_items", move(jItems));
+    jPublic.emplace("public_items", std::move(jItems));
     jItems.clear();
 
     // generate a json header for the secure items
@@ -146,12 +146,12 @@ bool CSecureContainer::write_to_file(const string& sFilePath, SecureString&& sPa
         const size_t nItemNonceSize = item.nonce.size();
         jItems.push_back({
             {"type", szTypeName},
-            {"nonce", move(item.nonce)},
-            {"data", move(encrypted_data)}
+            {"nonce", std::move(item.nonce)},
+            {"data", std::move(encrypted_data)}
         });
         nJsonSecureSize += 50 + strlen(szTypeName) + nItemNonceSize + nEncryptedDataSize;
     }
-    jSecure.emplace("secure_items", move(jItems));
+    jSecure.emplace("secure_items", std::move(jItems));
 
     // serialize as a msgpack to file
     fs.write(SECURE_CONTAINER_PREFIX, std::char_traits<char>::length(SECURE_CONTAINER_PREFIX));
@@ -195,12 +195,12 @@ bool CSecureContainer::change_passphrase(const std::string& sFilePath, SecureStr
     {
         string error;
         // for backward compatibility try to read ed448 private key from PKCS8 encrypted file
-        if (!CPastelID::ProcessEd448_PastelKeyFile(error, sFilePath, sOldPassphrase, move(sNewPassphrase)))
+        if (!CPastelID::ProcessEd448_PastelKeyFile(error, sFilePath, sOldPassphrase, std::move(sNewPassphrase)))
             throw runtime_error(error);
         // container is already written with the new passphrase
         return true;
     }
-    return write_to_file(sFilePath, move(sNewPassphrase));
+    return write_to_file(sFilePath, std::move(sNewPassphrase));
 }
 
 /**
@@ -287,8 +287,8 @@ bool CSecureContainer::read_public_items_ex(ifstream& fs, uint64_t& nDataSize)
             item.type = GetPublicItemTypeByName(sType);
             if (item.type == PUBLIC_ITEM_TYPE::not_defined)
                 throw runtime_error(strprintf("Public item type '%s' is not supported in the secure container", sType));
-            item.data = move(jItem["data"].get_binary());
-            m_vPublicItems.push_back(move(item));
+            item.data = std::move(jItem["data"].get_binary());
+            m_vPublicItems.push_back(std::move(item));
         }
 
         bRet = true;
@@ -406,7 +406,7 @@ bool CSecureContainer::read_from_file(const string& sFilePath, const SecureStrin
                         sType));
                 }
                 item.data.resize(nDecryptedLength);
-                m_vSecureItems.push_back(move(item));
+                m_vSecureItems.push_back(std::move(item));
             }
             bRet = true;
         } while (false);
@@ -604,7 +604,7 @@ v_uint8 CSecureContainer::extract_secure_data(const SECURE_ITEM_TYPE type)
 {
     auto it = find_secure_item(type);
     if (it != m_vSecureItems.end())
-        return move(it->data);
+        return std::move(it->data);
     return v_uint8();
 }
 

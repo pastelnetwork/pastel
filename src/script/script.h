@@ -530,7 +530,7 @@ public:
     bool IsPayToPublicKeyHash() const noexcept;
     bool IsPayToScriptHash() const noexcept;
     ScriptType GetType() const noexcept;
-    uint160 AddressHash() const;
+    uint160 AddressHash() const noexcept;
 
     /** Called by IsStandardTx and P2SH/BIP62 VerifyScript (which makes it consensus-critical). */
     bool IsPushOnly() const;

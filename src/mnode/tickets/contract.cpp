@@ -14,9 +14,9 @@ CContractTicket CContractTicket::Create(string&& sContractTicket, string&& sSubT
 	string&& sSecondaryKey)
 {
 	CContractTicket ticket;
-	ticket.setContractTicket(move(sContractTicket));
-	ticket.setSubType(move(sSubType));
-	ticket.setSecondaryKey(move(sSecondaryKey));
+	ticket.setContractTicket(std::move(sContractTicket));
+	ticket.setSubType(std::move(sSubType));
+	ticket.setSecondaryKey(std::move(sSecondaryKey));
     ticket.GenerateKeyOne();
     ticket.GenerateTimestamp();
 	return ticket;
@@ -232,7 +232,7 @@ string CContractTicket::ToJSON(const bool bDecodeProperties) const noexcept
 
 void CContractTicket::setContractTicket(string&& sContractTicket)
 {
-	m_sContractTicket = move(sContractTicket);
+	m_sContractTicket = std::move(sContractTicket);
 	try
 	{
 		bool bInvalidEncoding = false;

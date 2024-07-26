@@ -379,7 +379,7 @@ class MasterNodeCommon (PastelTestFramework):
                 mn.mnid = params["mnid"]
                 mn.lrKey = params["legRoastKey"]
                 mn.privKey = params["privKey"]
-                print(f"mn{index} id: {mn.mnid}")
+                print(f"mn{mn.index} id: {mn.mnid}")
                 mn.create_masternode_conf(self.options.tmpdir, self.hot_node_num)
             else:
                 mn.privKey = self.nodes[self.hot_node_num].masternode("genkey")
@@ -390,7 +390,12 @@ class MasterNodeCommon (PastelTestFramework):
         # starting all master nodes
         for mn in self.mn_nodes:
             print(f"starting masternode {mn.alias}")
-            self.nodes[mn.index] = start_node(mn.index, self.options.tmpdir, [f"-debug={debug_flags}", "-masternode", "-txindex=1", "-reindex", f"-masternodeprivkey={mn.privKey}"])
+            self.nodes[mn.index] = start_node(mn.index, self.options.tmpdir, 
+                                              [f"-debug={debug_flags}",
+                                                "-masternode", 
+                                                "-txindex=1",
+                                                "-reindex",
+                                               f"-masternodeprivkey={mn.privKey}"])
 
         # connect nodes (non-mn nodes already interconnected)
         for pair in itertools.combinations(range(self.total_number_of_nodes), 2):

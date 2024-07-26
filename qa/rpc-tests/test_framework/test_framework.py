@@ -55,11 +55,12 @@ class BitcoinTestFramework(object):
     _1000patoshi     = Decimal('0.01')
     _10000patoshi    = Decimal('0.1')
     _1ani           = Decimal('1.0')
-    
+
+
     def __init__(self):
         self.num_nodes = 4
         self.setup_clean_chain = False
-        self.nodes = None
+        self.nodes = []
         self.is_network_split = False
 
     def run_test(self):

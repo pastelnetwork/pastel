@@ -24,13 +24,13 @@ using namespace std;
 // CollectionActivateTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CollectionActivateTicket CollectionActivateTicket::Create(string&& regTicketTxId, int _creatorHeight, int _storageFee, string&& sPastelID, SecureString&& strKeyPass)
 {
-    CollectionActivateTicket ticket(move(sPastelID));
+    CollectionActivateTicket ticket(std::move(sPastelID));
 
-    ticket.setRegTxId(move(regTicketTxId));
+    ticket.setRegTxId(std::move(regTicketTxId));
     ticket.m_creatorHeight = _creatorHeight;
     ticket.m_storageFee = _storageFee;
     ticket.GenerateTimestamp();
-    ticket.sign(move(strKeyPass));
+    ticket.sign(std::move(strKeyPass));
     return ticket;
 }
 
@@ -54,7 +54,7 @@ string CollectionActivateTicket::ToStr() const noexcept
 */
 void CollectionActivateTicket::sign(SecureString&& strKeyPass)
 {
-    string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, move(strKeyPass)), m_signature);
+    string_to_vector(CPastelID::Sign(ToStr(), m_sPastelID, std::move(strKeyPass)), m_signature);
 }
 
 /**
@@ -335,7 +335,7 @@ uint32_t CollectionActivateTicket::CountItemsInCollection(const std::string& sCo
                 {
                     CActionActivateTicket actTicket;
                     string sRegTxId = regTicket.GetTxId();
-                    actTicket.SetKeyOne(move(sRegTxId));
+                    actTicket.SetKeyOne(std::move(sRegTxId));
                     if (masterNodeCtrl.masternodeTickets.CheckTicketExist(actTicket))
                         ++nCollectionItemCount;
                 } else
@@ -352,7 +352,7 @@ uint32_t CollectionActivateTicket::CountItemsInCollection(const std::string& sCo
                 {
                     CNFTActivateTicket actTicket;
                     string sRegTxId = regTicket.GetTxId();
-                    actTicket.SetKeyOne(move(sRegTxId));
+                    actTicket.SetKeyOne(std::move(sRegTxId));
                     if (masterNodeCtrl.masternodeTickets.CheckTicketExist(actTicket))
                         ++nCollectionItemCount;
                 } else

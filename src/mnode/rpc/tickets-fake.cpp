@@ -22,7 +22,7 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         SecureString strKeyPass(params[3].get_str());
         string address;
         auto mnRegData = make_optional<CMNID_RegData>(true);
-        auto regTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), address, mnRegData);
+        auto regTicket = CPastelIDRegTicket::Create(std::move(pastelID), std::move(strKeyPass), address, mnRegData);
         const CAmount ticketPricePSL = get_long_number(params[4].get_str());
         string strVerb = params[5].get_str();
         resultObj = CPastelTicketProcessor::CreateFakeTransaction(regTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);
@@ -32,7 +32,7 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         string pastelID = params[2].get_str();
         SecureString strKeyPass(params[3].get_str());
         string address = params[4].get_str();
-        auto pastelIDRegTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), move(address));
+        auto pastelIDRegTicket = CPastelIDRegTicket::Create(std::move(pastelID), std::move(strKeyPass), std::move(address));
         const CAmount ticketPricePSL = get_long_number(params[5].get_str());
         string strVerb = params[6].get_str();
         resultObj = CPastelTicketProcessor::CreateFakeTransaction(pastelIDRegTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);
@@ -48,8 +48,9 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         SecureString strKeyPass(params[5].get_str());
         string label = params[6].get_str();
         CAmount nStorageFee = get_long_number(params[7]);
-        auto NFTRegTicket = CNFTRegTicket::Create(move(nft_ticket), signatures,
-                                                  move(sPastelID), move(strKeyPass),move(label), nStorageFee);
+        auto NFTRegTicket = CNFTRegTicket::Create(std::move(nft_ticket), signatures,
+                                                  std::move(sPastelID), std::move(strKeyPass),
+                                                  std::move(label), nStorageFee);
         const CAmount ticketPricePSL = get_long_number(params[9].get_str());
         string strVerb = params[10].get_str();
         resultObj = CPastelTicketProcessor::CreateFakeTransaction(NFTRegTicket, ticketPricePSL, vector<pair<string, CAmount>>{}, strVerb, bSend);
@@ -61,7 +62,7 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         int fee = get_number(params[4]);
         string pastelID = params[5].get_str();
         SecureString strKeyPass(params[6].get_str());
-        auto NFTActTicket = CNFTActivateTicket::Create(move(regTicketTxID), height, fee, move(pastelID), move(strKeyPass));
+        auto NFTActTicket = CNFTActivateTicket::Create(std::move(regTicketTxID), height, fee, std::move(pastelID), std::move(strKeyPass));
         const CAmount ticketPricePSL = get_long_number(params[7].get_str());
         string strVerb = params[8].get_str();
         auto addresses = vector<pair<string, CAmount>>{};
@@ -88,8 +89,8 @@ UniValue tickets_fake(const UniValue& params, const bool bSend)
         
         string intendedFor;
 
-        auto offerTicket = COfferTicket::Create(move(offerTxID), price, after, before, 0, 
-            move(intendedFor), move(pastelID), move(strKeyPass));
+        auto offerTicket = COfferTicket::Create(std::move(offerTxID), price, after, before, 0, 
+            std::move(intendedFor), std::move(pastelID), std::move(strKeyPass));
 
         const CAmount ticketPricePSL = get_long_number(params[8].get_str());
         string strVerb = params[9].get_str();

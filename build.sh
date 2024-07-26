@@ -10,6 +10,8 @@
 #
 set -euo pipefail
 
+JOBCOUNT=2
+
 function cmd_pref()
 {
     if type -p "$2" > /dev/null; then

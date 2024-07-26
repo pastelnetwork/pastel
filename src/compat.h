@@ -1,20 +1,18 @@
+#pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#ifndef BITCOIN_COMPAT_H
-#define BITCOIN_COMPAT_H
-
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #ifdef WIN32
 #ifdef _WIN32_WINNT
 #undef _WIN32_WINNT
 #endif
-#define _WIN32_WINNT 0x0501
+#define _WIN32_WINNT 0x0601
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1
 #endif
@@ -31,11 +29,12 @@
 #include <mswsock.h>
 #include <windows.h>
 #include <ws2tcpip.h>
+#include <sys/types.h>
 #else
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
-#include <sys/types.h>
+#include <sys/resource.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -64,11 +63,19 @@ typedef u_int SOCKET;
 #define SOCKET_ERROR        -1
 #endif
 
+
 #ifdef WIN32
+
 #ifndef S_IRUSR
 #define S_IRUSR             0400
 #define S_IWUSR             0200
 #endif
+#ifndef SHUT_RD
+#define SHUT_RD             SD_RECEIVE
+#define SHUT_WR             SD_SEND
+#define SHUT_RDWR           SD_BOTH
+#endif
+
 #else
 #define MAX_PATH            1024
 #endif
@@ -81,12 +88,16 @@ typedef u_int SOCKET;
 #ifndef WIN32
 // PRIO_MAX is not defined on Solaris
 #ifndef PRIO_MAX
-#define PRIO_MAX 20
+#define PRIO_MAX (20)
 #endif
-#define THREAD_PRIORITY_LOWEST          PRIO_MAX
+#ifndef PRIO_MIN
+#define PRIO_MIN (-20)
+#endif
+#define THREAD_PRIORITY_LOWEST          PRIO_MIN
 #define THREAD_PRIORITY_BELOW_NORMAL    2
 #define THREAD_PRIORITY_NORMAL          0
 #define THREAD_PRIORITY_ABOVE_NORMAL    (-2)
+#define THREAD_PRIORITY_HIGHEST         PRIO_MAX
 #endif
 
 #if defined(HAVE_DECL_STRNLEN) && (HAVE_DECL_STRNLEN == 0)
@@ -100,5 +111,3 @@ bool static inline IsSelectableSocket(SOCKET s) {
     return (s < FD_SETSIZE);
 #endif
 }
-
-#endif // BITCOIN_COMPAT_H

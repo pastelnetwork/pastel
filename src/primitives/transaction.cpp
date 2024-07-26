@@ -1,12 +1,12 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <utils/tinyformat.h>
 #include <utils/utilstrencodings.h>
+#include <utils/hash.h>
 #include <primitives/transaction.h>
-#include <hash.h>
 
 #include <librustzcash.h>
 
@@ -108,16 +108,16 @@ CTxOut::CTxOut(const CTxOut& other)
 }
 
 CTxOut::CTxOut(CTxOut&& other) noexcept :
-    nValue(move(other.nValue)),
-    scriptPubKey(move(other.scriptPubKey))
+    nValue(std::move(other.nValue)),
+    scriptPubKey(std::move(other.scriptPubKey))
 {}
 
 CTxOut& CTxOut::operator=(CTxOut&& other) noexcept
 {
     if (this != &other)
     {
-		nValue = move(other.nValue);
-		scriptPubKey = move(other.scriptPubKey);
+		nValue = std::move(other.nValue);
+		scriptPubKey = std::move(other.scriptPubKey);
 	}
 	return *this;
 }
@@ -243,13 +243,13 @@ CTransaction::CTransaction(CMutableTransaction &&tx) :
     nVersion(tx.nVersion), 
     fOverwintered(tx.fOverwintered), 
     nVersionGroupId(tx.nVersionGroupId),
-    vin(move(tx.vin)), 
-    vout(move(tx.vout)), 
+    vin(std::move(tx.vin)), 
+    vout(std::move(tx.vout)), 
     nLockTime(tx.nLockTime), 
     nExpiryHeight(tx.nExpiryHeight),
     valueBalance(tx.valueBalance),
-    vShieldedSpend(move(tx.vShieldedSpend)), 
-    vShieldedOutput(move(tx.vShieldedOutput))
+    vShieldedSpend(std::move(tx.vShieldedSpend)), 
+    vShieldedOutput(std::move(tx.vShieldedOutput))
 {
     UpdateHash();
 }

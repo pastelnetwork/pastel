@@ -149,8 +149,8 @@ public:
  */
 class uint160 : public base_blob<160> {
 public:
-    uint160() {}
-    uint160(const base_blob<160>& b) : base_blob<160>(b) {}
+    uint160() noexcept {}
+    uint160(const base_blob<160>& b) noexcept : base_blob<160>(b) {}
     explicit uint160(const v_uint8& vch) : base_blob<160>(vch) {}
 };
 

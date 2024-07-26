@@ -221,8 +221,8 @@ class WalletProtectCoinbaseTest (BitcoinTestFramework):
         amount = 3 * self._reward - self._fee - self._patoshi    # this leaves change at 1 patoshi less than dust threshold
         recipients.append({"address":self.nodes[0].getnewaddress(), "amount":amount })
         myopid = self.nodes[0].z_sendmany(mytaddr, recipients)
-        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " + 
-                                           str(3 * self._reward00) + ", need 0.00014 more to avoid creating invalid change output 0.00001 (dust threshold is 0.00015)")
+        wait_and_assert_operationid_status(self.nodes[0], myopid, "failed", "Insufficient transparent funds, have " +
+                                           str(3 * self._reward00) + ", need 0.00053 more to avoid creating invalid change output 0.00001 (dust threshold is 0.00054)")
 
         # Send will fail because send amount is too big, even when including coinbase utxos
         errorString = ""

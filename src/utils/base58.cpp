@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cassert>
@@ -8,7 +8,7 @@
 
 #include <utils/base58.h>
 #include <utils/uint256.h>
-#include <hash.h>
+#include <utils/hash.h>
 
 /** All alphanumeric characters except for "0", "I", "O", and "l" */
 static constexpr auto BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";

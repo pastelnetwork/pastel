@@ -35,7 +35,6 @@ class BIP65Test(ComparisonTestFramework):
                                      '-whitelist=127.0.0.1'
                                  ]],
                                  binary=[self.options.testbinary])
-        self.is_network_split = False
 
     def run_test(self):
         test = TestManager(self, self.options.tmpdir)

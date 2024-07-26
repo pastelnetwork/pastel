@@ -6,7 +6,7 @@
 #include <cstdio>
 
 #include <clientversion.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/scheduler.h>
 #include <utils/util.h>
 #include <rpc/server.h>
@@ -40,24 +40,15 @@ using namespace std;
 
 static bool fDaemon;
 
-void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
-{
-    bool fShutdown = ShutdownRequested();
-    // Tell the main threads to shutdown.
-    while (!fShutdown)
-    {
-        MilliSleep(200);
-        fShutdown = ShutdownRequested();
-    }
-    Interrupt(threadGroup, scheduler);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 //
 // Start
 //
 bool AppInit(int argc, char* argv[])
 {
+    if (!gl_LogMgr)
+        gl_LogMgr = make_unique<CLogManager>();
+
     CServiceThreadGroup threadGroup;
     CScheduler scheduler("scheduler");
 
@@ -180,6 +171,12 @@ bool AppInit(int argc, char* argv[])
         WaitForShutdown(threadGroup, scheduler);
     Shutdown(threadGroup, scheduler);
 
+    if (gl_LogMgr)
+    {
+        LogPrintf("Shutdown: log file closed\n");
+		gl_LogMgr->CloseDebugLogFile();
+		gl_LogMgr.reset();
+	}
     return fRet;
 }
 

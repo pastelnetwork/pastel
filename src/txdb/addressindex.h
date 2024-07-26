@@ -11,17 +11,46 @@
 constexpr size_t ADDRESS_UNSPENT_KEY_SIZE = sizeof(uint8_t) + sizeof(uint160) + sizeof(uint256) + sizeof(uint32_t);
 struct CAddressUnspentKey
 {
-    uint8_t type;
+    ScriptType type;
     uint160 hashBytes;
     uint256 txhash;
     uint32_t index;
+
+    CAddressUnspentKey(const ScriptType addressType, const uint160 &addressHash, const uint256 &txid, 
+        const uint32_t indexValue) noexcept :
+        type(addressType),
+        hashBytes(addressHash),
+        txhash(txid),
+        index(indexValue)
+    {}
+
+    CAddressUnspentKey() noexcept
+    {
+        SetNull();
+    }
+
+    void SetNull() noexcept
+    {
+        type = ScriptType::UNKNOWN;
+        hashBytes.SetNull();
+        txhash.SetNull();
+        index = 0;
+    }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream>
     inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
     {
-		READWRITE(type);
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+        uint8_t nAddressType = to_integral_type(type);
+        READWRITE(nAddressType);
+        if (bRead)
+        {
+            if (!is_enum_valid<ScriptType>(nAddressType, ScriptType::P2PKH, ScriptType::P2SH))
+                throw std::runtime_error(strprintf("Not supported ScriptType [%d]", nAddressType));
+            type = static_cast<ScriptType>(nAddressType);
+        }
 		READWRITE(hashBytes);
 		READWRITE(txhash);
 		READWRITE(index);
@@ -31,33 +60,31 @@ struct CAddressUnspentKey
     {
         return ADDRESS_UNSPENT_KEY_SIZE;
     }
+};
 
-    CAddressUnspentKey(const ScriptType addressType, const uint160 &addressHash, const uint256 &txid, const uint32_t indexValue) noexcept
-    {
-        type = to_integral_type(addressType);
-        hashBytes = addressHash;
-        txhash = txid;
-        index = indexValue;
-    }
+struct CAddressUnspentValue
+{
+    CAmount patoshis;
+    CScript script;
+    uint32_t blockHeight;
 
-    CAddressUnspentKey() noexcept
+    CAddressUnspentValue(const CAmount pats, const CScript &scriptPubKey, const uint32_t height) noexcept :
+        patoshis(pats),
+		script(scriptPubKey),
+		blockHeight(height)
+	{}
+
+    CAddressUnspentValue() noexcept
     {
         SetNull();
     }
 
     void SetNull() noexcept
     {
-        type = 0;
-        hashBytes.SetNull();
-        txhash.SetNull();
-        index = 0;
+        patoshis = -1;
+        script.clear();
+        blockHeight = 0;
     }
-};
-
-struct CAddressUnspentValue {
-    CAmount patoshis;
-    CScript script;
-    uint32_t blockHeight;
 
     ADD_SERIALIZE_METHODS;
 
@@ -74,25 +101,6 @@ struct CAddressUnspentValue {
 		return sizeof(CAmount) + GetSizeOfCompactSize(script.size()) + script.size() + sizeof(uint32_t);
 	}
 
-    CAddressUnspentValue(const CAmount pats, const CScript &scriptPubKey, const uint32_t height) noexcept
-    {
-        patoshis = pats;
-        script = scriptPubKey;
-        blockHeight = height;
-    }
-
-    CAddressUnspentValue() noexcept
-    {
-        SetNull();
-    }
-
-    void SetNull() noexcept
-    {
-        patoshis = -1;
-        script.clear();
-        blockHeight = 0;
-    }
-
     bool IsNull() const noexcept
     {
         return (patoshis == -1);
@@ -100,7 +108,8 @@ struct CAddressUnspentValue {
 };
 
 constexpr size_t ADDRESS_INDEX_KEY_SIZE = sizeof(uint8_t) + sizeof(uint160) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint256) + sizeof(uint32_t) + sizeof(bool);
-struct CAddressIndexKey {
+struct CAddressIndexKey
+{
     uint8_t type;
     uint160 hashBytes;
     uint32_t blockHeight;
@@ -109,9 +118,31 @@ struct CAddressIndexKey {
     uint32_t index;
     bool bSpending;
 
-    size_t GetSerializeSize(int nType, int nVersion) const
+    CAddressIndexKey(const ScriptType addressType, const uint160 &addressHash, uint32_t height, uint32_t blockindex,
+                     const uint256 &txid, uint32_t indexValue, bool isSpending) noexcept :
+        type(to_integral_type(addressType)),
+        hashBytes(addressHash),
+        blockHeight(height),
+        txindex(blockindex),
+        txhash(txid),
+        index(indexValue),
+        bSpending(isSpending)
+    {}
+
+    CAddressIndexKey() noexcept
     {
-        return ADDRESS_INDEX_KEY_SIZE;
+        SetNull();
+    }
+
+    void SetNull() noexcept
+    {
+        type = 0;
+        hashBytes.SetNull();
+        blockHeight = 0;
+        txindex = 0;
+        txhash.SetNull();
+        index = 0;
+        bSpending = false;
     }
 
     ADD_SERIALIZE_METHODS;
@@ -137,59 +168,22 @@ struct CAddressIndexKey {
 		READWRITE(bSpending);
 	}
 
-    CAddressIndexKey(const ScriptType addressType, const uint160 &addressHash, uint32_t height, uint32_t blockindex,
-                     const uint256 &txid, uint32_t indexValue, bool isSpending) noexcept
+    size_t GetSerializeSize(int nType, int nVersion) const noexcept
     {
-        type = to_integral_type(addressType);
-        hashBytes = addressHash;
-        blockHeight = height;
-        txindex = blockindex;
-        txhash = txid;
-        index = indexValue;
-        bSpending = isSpending;
-    }
-
-    CAddressIndexKey() noexcept
-    {
-        SetNull();
-    }
-
-    void SetNull() noexcept
-    {
-        type = 0;
-        hashBytes.SetNull();
-        blockHeight = 0;
-        txindex = 0;
-        txhash.SetNull();
-        index = 0;
-        bSpending = false;
+        return ADDRESS_INDEX_KEY_SIZE;
     }
 };
 
 constexpr size_t ADDRESS_INDEX_ITERATOR_KEY_SIZE = sizeof(uint8_t) + sizeof(uint160);
-struct CAddressIndexIteratorKey {
+struct CAddressIndexIteratorKey
+{
     uint8_t type;
     uint160 hashBytes;
 
-    size_t GetSerializeSize(int nType, int nVersion) const
-    {
-        return ADDRESS_INDEX_ITERATOR_KEY_SIZE;
-    }
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-	    READWRITE(type);
-		READWRITE(hashBytes);
-	}
-
-    CAddressIndexIteratorKey(const uint8_t addressType, const uint160 &addressHash) noexcept
-    {
-        type = addressType;
-        hashBytes = addressHash;
-    }
+    CAddressIndexIteratorKey(const uint8_t addressType, const uint160 &addressHash) noexcept :
+        type(addressType),
+        hashBytes(addressHash)
+    {}
 
     CAddressIndexIteratorKey() noexcept
     {
@@ -201,32 +195,28 @@ struct CAddressIndexIteratorKey {
         type = 0;
         hashBytes.SetNull();
     }
-};
-
-constexpr size_t ADDRESS_INDEX_ITERATOR_HEIGHT_KEY_SIZE = sizeof(uint8_t) + sizeof(uint160) + sizeof(uint32_t);
-struct CAddressIndexIteratorHeightKey {
-    uint8_t type;
-    uint160 hashBytes;
-    uint32_t blockHeight;
-
-    size_t GetSerializeSize(int nType, int nVersion) const
-    {
-        return ADDRESS_INDEX_ITERATOR_HEIGHT_KEY_SIZE;
-    }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
-		const bool bRead = ser_action == SERIALIZE_ACTION::Read;
-		READWRITE(type);
+	    READWRITE(type);
 		READWRITE(hashBytes);
-		if (bRead)
-			blockHeight = ser_readdata32be(s);
-		else
-			ser_writedata32be(s, blockHeight);
 	}
+
+    size_t GetSerializeSize(int nType, int nVersion) const noexcept
+    {
+        return ADDRESS_INDEX_ITERATOR_KEY_SIZE;
+    }
+};
+
+constexpr size_t ADDRESS_INDEX_ITERATOR_HEIGHT_KEY_SIZE = sizeof(uint8_t) + sizeof(uint160) + sizeof(uint32_t);
+struct CAddressIndexIteratorHeightKey
+{
+    uint8_t type;
+    uint160 hashBytes;
+    uint32_t blockHeight;
 
     CAddressIndexIteratorHeightKey(const uint8_t addressType, const uint160 &addressHash, uint32_t height) noexcept
     {
@@ -245,6 +235,25 @@ struct CAddressIndexIteratorHeightKey {
         type = 0;
         hashBytes.SetNull();
         blockHeight = 0;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+		const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+		READWRITE(type);
+		READWRITE(hashBytes);
+		if (bRead)
+			blockHeight = ser_readdata32be(s);
+		else
+			ser_writedata32be(s, blockHeight);
+	}
+
+    size_t GetSerializeSize(int nType, int nVersion) const noexcept
+    {
+        return ADDRESS_INDEX_ITERATOR_HEIGHT_KEY_SIZE;
     }
 };
 

@@ -155,7 +155,7 @@ pastel_gtest_SOURCES += \
 endif
 
 pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(PASTEL_INCLUDES) -I$(srcdir)/gtest 
-pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest
+pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest -DJSON_DIAGNOSTICS
 
 pastel_gtest_LDADD =\
  -lgtest\

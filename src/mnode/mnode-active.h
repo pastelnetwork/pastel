@@ -76,6 +76,7 @@ public:
     bool NeedMnId() const noexcept { return nState == ActiveMasternodeState::NeedMnId; }
     std::string getMNPastelID() const noexcept { return m_sMNPastelID; }
     bool isEligibleForMining() const noexcept { return m_bEligibleForMining; }
+    void SyncFinished();
 
 protected:
     static constexpr std::array<ActiveMNStateInfo, to_integral_type<ActiveMasternodeState>(ActiveMasternodeState::COUNT)> ACTIVE_MN_STATE =

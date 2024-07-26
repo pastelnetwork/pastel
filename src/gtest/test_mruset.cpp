@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2013 The Bitcoin Core developers
-// Copyright (c) 2021-2023 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <set>
@@ -8,8 +8,8 @@
 #include <gtest/gtest.h>
 
 #include <utils/util.h>
+#include <utils/random.h>
 #include <netmsg/mruset.h>
-#include <random.h>
 
 #define NUM_TESTS 16
 #define MAX_SIZE 100

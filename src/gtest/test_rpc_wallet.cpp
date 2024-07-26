@@ -518,7 +518,7 @@ public:
         this_thread::sleep_for(chrono::milliseconds(naptime));
         stop_execution_clock();
         UniValue v(UniValue::VSTR, "done");
-        set_result(move(v));
+        set_result(std::move(v));
         set_state(OperationStatus::SUCCESS);
     }
 };
@@ -909,7 +909,7 @@ TEST_F(TestRpcWallet, rpc_z_sendmany_taddr_to_sapling)
 
     vector<SendManyRecipient> vtRecipients;
     vector<SendManyRecipient> vzRecipients = { SendManyRecipient(zaddr1, 1 * COIN, "ABCD") };
-    auto operation = make_shared<AsyncRPCOperation_sendmany>(move(builder), mtx, taddr1, vtRecipients, vzRecipients, 0);
+    auto operation = make_shared<AsyncRPCOperation_sendmany>(std::move(builder), mtx, taddr1, vtRecipients, vzRecipients, 0);
 
     // Enable test mode so tx is not sent
     operation->testmode = true;
@@ -1153,7 +1153,7 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
     LOCK2(cs_main, pwalletMain->cs_wallet);
 
     CheckRPCThrows("z_mergetoaddress", "1 2",
-        "Error: z_mergetoaddress is disabled. Run './pascal-cli help z_mergetoaddress' for instructions on how to enable this feature.");
+        "Error: z_mergetoaddress is disabled. Run './pastel-cli help z_mergetoaddress' for instructions on how to enable this feature.");
 
     // Set global state required for z_mergetoaddress
     fExperimentalMode = true;

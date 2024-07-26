@@ -535,15 +535,15 @@ private:
     size_t nValue;
 
 public:
-    CSemaphore(size_t nInitValue) : 
-        nValue(nInitValue) {}
+    CSemaphore(size_t nInitValue) noexcept : 
+        nValue(nInitValue)
+    {}
 
     void wait()
     {
         std::unique_lock<std::mutex> lock(mtx);
-        while (nValue < 1) {
+        while (nValue < 1)
             condition.wait(lock);
-        }
         nValue--;
     }
 
@@ -570,45 +570,18 @@ public:
 class CSemaphoreGrant
 {
 private:
-    CSemaphore* sem;
+    std::shared_ptr<CSemaphore> m_semaphore;
     bool fHaveGrant;
 
 public:
-    void Acquire()
-    {
-        if (fHaveGrant)
-            return;
-        sem->wait();
-        fHaveGrant = true;
-    }
+    CSemaphoreGrant() noexcept : 
+        m_semaphore(nullptr), 
+        fHaveGrant(false)
+    {}
 
-    void Release()
-    {
-        if (!fHaveGrant)
-            return;
-        sem->post();
-        fHaveGrant = false;
-    }
-
-    bool TryAcquire()
-    {
-        if (!fHaveGrant && sem->try_wait())
-            fHaveGrant = true;
-        return fHaveGrant;
-    }
-
-    void MoveTo(CSemaphoreGrant& grant)
-    {
-        grant.Release();
-        grant.sem = sem;
-        grant.fHaveGrant = fHaveGrant;
-        sem = nullptr;
-        fHaveGrant = false;
-    }
-
-    CSemaphoreGrant() : sem(nullptr), fHaveGrant(false) {}
-
-    explicit CSemaphoreGrant(CSemaphore& sema, bool fTry = false) : sem(&sema), fHaveGrant(false)
+    explicit CSemaphoreGrant(std::shared_ptr<CSemaphore> semaphore, bool fTry = false) : 
+        m_semaphore(semaphore),
+        fHaveGrant(false)
     {
         if (fTry)
             TryAcquire();
@@ -619,6 +592,39 @@ public:
     ~CSemaphoreGrant()
     {
         Release();
+    }
+
+    void Acquire()
+    {
+        if (fHaveGrant || !m_semaphore)
+            return;
+        m_semaphore->wait();
+        fHaveGrant = true;
+    }
+
+    void Release()
+    {
+        if (!fHaveGrant || !m_semaphore)
+            return;
+        m_semaphore->post();
+        fHaveGrant = false;
+    }
+
+    bool TryAcquire()
+    {
+        if (!m_semaphore)
+			return false;
+        if (!fHaveGrant && m_semaphore->try_wait())
+            fHaveGrant = true;
+        return fHaveGrant;
+    }
+
+    void MoveTo(CSemaphoreGrant& grant)
+    {
+        grant.Release();
+        grant.m_semaphore = move(m_semaphore);
+        grant.fHaveGrant = fHaveGrant;
+        fHaveGrant = false;
     }
 
     operator bool() const noexcept

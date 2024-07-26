@@ -1,22 +1,22 @@
 // Copyright (c) 2018 The Zcash developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include <zcash/address/zip32.h>
-
-#include <utils/streams.h>
-#include <hash.h>
-#include <random.h>
-#include <version.h>
-#include <zcash/prf.h>
-
-#include <librustzcash.h>
 #include <sodium.h>
 
-const unsigned char ZCASH_HD_SEED_FP_PERSONAL[crypto_generichash_blake2b_PERSONALBYTES] =
+#include <utils/streams.h>
+#include <utils/random.h>
+#include <utils/hash.h>
+#include <version.h>
+
+#include <zcash/address/zip32.h>
+#include <zcash/prf.h>
+#include <librustzcash.h>
+
+constexpr unsigned char ZCASH_HD_SEED_FP_PERSONAL[crypto_generichash_blake2b_PERSONALBYTES] =
     {'Z', 'c', 'a', 's', 'h', '_', 'H', 'D', '_', 'S', 'e', 'e', 'd', '_', 'F', 'P'};
 
-const unsigned char ZCASH_TADDR_OVK_PERSONAL[crypto_generichash_blake2b_PERSONALBYTES] =
+constexpr unsigned char ZCASH_TADDR_OVK_PERSONAL[crypto_generichash_blake2b_PERSONALBYTES] =
     {'Z', 'c', 'T', 'a', 'd', 'd', 'r', 'T', 'o', 'S', 'a', 'p', 'l', 'i', 'n', 'g'};
 
 HDSeed HDSeed::Random(size_t len)

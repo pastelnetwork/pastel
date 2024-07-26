@@ -8,7 +8,7 @@
 
 #include <utils/fs.h>
 #include <utils/util.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <pastelid/pastel_key.h>
 #include <chainparams.h>
 #include <pastel_gtest_utils.h>

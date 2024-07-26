@@ -22,7 +22,7 @@ public:
 
     ~CTorControlThread() override;
 
-    void stop() override;
+    void stop() noexcept override;
     void execute() override;
 
 private:

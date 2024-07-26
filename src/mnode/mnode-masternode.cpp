@@ -4,6 +4,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
 
+#include <config/port_config.h>
 #include <utils/enum_util.h>
 #include <utils/base58.h>
 #include <utils/util.h>
@@ -12,7 +13,6 @@
 #include <key_io.h>
 #include <script/standard.h>
 #include <main.h>
-#include <port_config.h>
 
 #include <mining/mining-settings.h>
 #include <mnode/mnode-active.h>
@@ -163,8 +163,9 @@ CMasterNodePing::MNP_CHECK_RESULT CMasterNodePing::SimpleCheck(int& nDos) const 
         // Check ping expiration by block height (should be within last 24 (MN_PING_HEIGHT_EXPIRATION) blocks).
         if (nBlockHeight < gl_nChainHeight - MN_PING_HEIGHT_EXPIRATION)
         {
-            LogFnPrintf("Masternode '%s' ping is outdated, block hash (%s, height=%u) is older than %u blocks (%u)",
-                GetDesc(), m_blockHash.ToString(), nBlockHeight, MN_PING_HEIGHT_EXPIRATION, gl_nChainHeight.load());
+            if (m_nExpiredErrorCount % 20 == 0)
+				LogFnPrintf("Masternode '%s' ping is outdated, block hash (%s, height=%u) is older than %u blocks (%u)",
+					GetDesc(), m_blockHash.ToString(), nBlockHeight, MN_PING_HEIGHT_EXPIRATION, gl_nChainHeight.load());
             return MNP_CHECK_RESULT::EXPIRED_BY_HEIGHT;
         }
     }
@@ -199,6 +200,13 @@ void CMasterNodePing::Relay() const
     gl_NodeManager.RelayInv(inv);
 }
 
+void CMasterNodePing::HandleCheckResult(const MNP_CHECK_RESULT result)
+{
+    if (result == MNP_CHECK_RESULT::EXPIRED_BY_HEIGHT)
+        ++m_nExpiredErrorCount;
+    else
+        m_nExpiredErrorCount = 0;
+}
 
 //
 //  ----------------- masternode_info_t  ------------------------------------------------------------------------------
@@ -477,7 +485,7 @@ void CMasternode::Check(const bool fForce, const bool bLockMain)
 {
     LOCK(cs_mn);
 
-    if (ShutdownRequested())
+    if (IsShutdownRequested())
         return;
 
     // check masternodes every 5 secs (MasternodeCheckSeconds) or in forced mode
@@ -694,6 +702,7 @@ bool CMasternode::setLastPingAndCheck(const CMasterNodePing& lastPing, const boo
 			return false;
     }
     const auto mnpCheckResult = lastPing.SimpleCheck(nDos);
+    m_lastPing.HandleCheckResult(mnpCheckResult);
     if (mnpCheckResult != CMasterNodePing::MNP_CHECK_RESULT::OK)
         return false;
 

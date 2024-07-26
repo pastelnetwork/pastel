@@ -12,7 +12,7 @@
 #include <utils/utilstrencodings.h>
 #include <utils/serialize.h>
 #include <utils/streams.h>
-#include <hash.h>
+#include <utils/hash.h>
 #include <primitives/transaction.h>
 
 using namespace std;
@@ -48,7 +48,7 @@ public:
     CSerializeMethodsTestSingle() = default;
     CSerializeMethodsTestSingle(int intvalin, bool boolvalin, string stringvalin, 
         const char* charstrvalin, CTransaction txvalin) : 
-        intval(intvalin), boolval(boolvalin), stringval(move(stringvalin)), 
+        intval(intvalin), boolval(boolvalin), stringval(std::move(stringvalin)), 
         charstrval(charstrvalin), txval(txvalin){}
     ADD_SERIALIZE_METHODS;
 

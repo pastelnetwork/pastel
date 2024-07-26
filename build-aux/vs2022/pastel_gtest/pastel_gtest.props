@@ -8,7 +8,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(SRC)gtest;$(SRC)univalue\include;$(SRC)leveldb\include;$(SRC)snark;$(SRC)snark\libsnark;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>__GMP_LIBGMP_DLL;ENABLE_MINING;ENABLE_TICKET_COMPRESS;ENABLE_WALLET;BINARY_OUTPUT;BOOST_SPIRIT_THREADSAFE;MONTGOMERY_OUTPUT;CURVE_ALT_BN128;_CRT_SECURE_NO_WARNINGS;DEBUG_LOCKORDER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__GMP_LIBGMP_DLL;ENABLE_MINING;ENABLE_TICKET_COMPRESS;ENABLE_WALLET;BINARY_OUTPUT;BOOST_SPIRIT_THREADSAFE;MONTGOMERY_OUTPUT;CURVE_ALT_BN128;_CRT_SECURE_NO_WARNINGS;DEBUG_LOCKORDER;JSON_DIAGNOSTICS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>

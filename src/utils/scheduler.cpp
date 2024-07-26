@@ -6,7 +6,7 @@
 #include <utility>
 #include <unordered_map>
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/scheduler.h>
 #include <utils/reverselock.h>
 
@@ -105,7 +105,7 @@ void CScheduler::serviceQueue()
                 {
                     // Unlock before calling f, so it can reschedule itself or another task
                     // without deadlocking:
-                    reverse_lock<unique_lock<mutex>> rlock(lock);
+                    reverse_lock rlock(lock);
                     f();
                 }
             }

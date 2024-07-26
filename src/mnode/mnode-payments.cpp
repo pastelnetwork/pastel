@@ -889,7 +889,7 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(const node_t& pnode)
                 // We have no idea about this block height, let's ask
                 vToFetch.push_back(CInv(MSG_MASTERNODE_PAYMENT_BLOCK, pindex->GetBlockHash()));
                 if (vToFetch.size() == MAX_INV_SZ)
-                    vFetchBatches.emplace_back(move(vToFetch));
+                    vFetchBatches.emplace_back(std::move(vToFetch));
             }
             if (!pindex->pprev)
                 break;
@@ -946,7 +946,7 @@ void CMasternodePayments::RequestLowDataPaymentBlocks(const node_t& pnode)
 
             // We should not violate GETDATA rules
             if (vToFetch.size() == MAX_INV_SZ)
-                vFetchBatches.emplace_back(move(vToFetch));
+                vFetchBatches.emplace_back(std::move(vToFetch));
             ++it;
         }
     }

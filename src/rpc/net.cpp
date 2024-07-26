@@ -73,7 +73,7 @@ static void CopyNodeStats(std::vector<CNodeStats>& vstats)
     {
         CNodeStats stats;
 		pnode->copyStats(stats);
-		vstats.emplace_back(move(stats));
+		vstats.emplace_back(std::move(stats));
 	});
 }
 
@@ -164,11 +164,11 @@ Examples:
             heights.reserve(statestats.vHeightInFlight.size());
             for (const auto height : statestats.vHeightInFlight)
                 heights.push_back(height);
-            obj.pushKV("inflight", move(heights));
+            obj.pushKV("inflight", std::move(heights));
         }
         obj.pushKV("whitelisted", stats.fWhitelisted);
 
-        ret.push_back(move(obj));
+        ret.push_back(std::move(obj));
     }
 
     return ret;
@@ -370,11 +370,11 @@ Examples:
             }
             if (!fFound)
                 node.pushKV("connected", "false");
-            addresses.push_back(move(node));
+            addresses.push_back(std::move(node));
         }
         obj.pushKV("connected", fConnected);
         obj.pushKV("addresses", addresses);
-        ret.push_back(move(obj));
+        ret.push_back(std::move(obj));
     }
 
     return ret;
@@ -525,7 +525,7 @@ Examples:
 			rec.pushKV("address", sAddress);
 			rec.pushKV("port", nPort);
 			rec.pushKV("score", nScore);
-			localAddresses.push_back(move(rec));
+			localAddresses.push_back(std::move(rec));
 		}
     }
     obj.pushKV("localaddresses", localAddresses);
@@ -625,7 +625,7 @@ Examples:
         UniValue rec(UniValue::VOBJ);
         rec.pushKV("address", address.ToString());
         rec.pushKV("banned_until", banTime);
-        bannedAddresses.push_back(move(rec));
+        bannedAddresses.push_back(std::move(rec));
     }
 
     return bannedAddresses;

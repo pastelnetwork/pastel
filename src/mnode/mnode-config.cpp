@@ -4,13 +4,13 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <iomanip>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
+#include <config/port_config.h>
 #include <utils/str_utils.h>
 #include <utils/util.h>
 #include <netbase.h>
 #include <chainparams.h>
-#include <port_config.h>
 
 #include <mnode/mnode-config.h>
 #include <mnode/mnode-controller.h>
@@ -260,8 +260,8 @@ bool CMasternodeConfig::read(string& strErr, const bool bNewOnly)
         if (extCfg.length() > 1024)
             extCfg.erase(1024, string::npos);
 
-        CMasternodeEntry cme(alias, move(mnAddress), move(mnPrivKey), move(txid), move(outIndex), 
-            move(extAddress), move(extP2P), move(extCfg), bEligibleForMining);
+        CMasternodeEntry cme(alias, std::move(mnAddress), std::move(mnPrivKey), std::move(txid), std::move(outIndex), 
+            std::move(extAddress), std::move(extP2P), std::move(extCfg), bEligibleForMining);
         m_CfgEntries.emplace(alias_lowercased, cme);
     }
 

@@ -5,7 +5,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <cstdint>
@@ -29,6 +29,7 @@
 #endif
 #include <librustzcash.h>
 
+#include <config/port_config.h>
 #include <utils/str_utils.h>
 #include <utils/scheduler.h>
 #include <utils/util.h>
@@ -66,16 +67,15 @@
 #include <wallet/walletdb.h>
 #endif
 #include <mnode/mnode-controller.h>
-#include <port_config.h>
 #include <script_check.h>
 #include <orphan-tx.h>
 #include <netmsg/netconsts.h>
 #include <netmsg/nodemanager.h>
 
+using namespace std;
+
 //MasterNode
 CMasterNodeController masterNodeCtrl;
-
-using namespace std;
 
 extern void ThreadSendAlert();
 
@@ -96,9 +96,9 @@ static AMQPNotificationInterface* pAMQPNotificationInterface = nullptr;
 // Win32 LevelDB doesn't use file descriptors, and the ones used for
 // accessing block files don't count towards the fd_set size limit
 // anyway.
-constexpr size_t MIN_CORE_FILEDESCRIPTORS = 0;
+constexpr uint32_t MIN_CORE_FILEDESCRIPTORS = 0;
 #else
-constexpr size_t MIN_CORE_FILEDESCRIPTORS = 150;
+constexpr uint32_t MIN_CORE_FILEDESCRIPTORS = 150;
 #endif
 
 /** Used to pass flags to the Bind() function */
@@ -139,14 +139,47 @@ CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 //
 
 atomic_bool fRequestShutdown(false);
+static condition_variable gl_cvShutdown;
+static mutex gl_csShutdown;
 
 void StartShutdown()
 {
+    unique_lock lock(gl_csShutdown);
     fRequestShutdown = true;
+    LogFnPrintf("Shutdown requested");
+	gl_cvShutdown.notify_all();
 }
-bool ShutdownRequested()
+
+bool IsShutdownRequested()
 {
     return fRequestShutdown;
+}
+
+void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
+{
+    unique_lock lock(gl_csShutdown);
+    gl_cvShutdown.wait(lock, [] { return IsShutdownRequested(); });
+
+    LogFnPrintf("Shutdown signal received, exiting...");
+    Interrupt(threadGroup, scheduler);
+}
+
+/** Abort with a message */
+bool AbortNode(const string& strMessage, const string& userMessage)
+{
+    strMiscWarning = strMessage;
+    LogPrintf("*** %s\n", strMessage);
+    uiInterface.ThreadSafeMessageBox(
+        userMessage.empty() ? translate("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
+        "", CClientUIInterface::MSG_ERROR);
+    StartShutdown();
+    return false;
+}
+
+bool AbortNode(CValidationState& state, const string& strMessage, const string& userMessage)
+{
+    AbortNode(strMessage, userMessage);
+    return state.Error(strMessage);
 }
 
 class CCoinsViewErrorCatcher : public CCoinsViewBacked
@@ -169,17 +202,46 @@ public:
     // Writes do not need similar protection, as failure to write is handled by the caller.
 };
 
+class CLogRotationManager : public CStoppableServiceThread
+{
+public:
+    CLogRotationManager() :
+        CStoppableServiceThread("logrt")
+    {}
+    static constexpr auto LOG_ROTATION_INTERVAL = chrono::minutes(10);
+
+    void execute() override
+    {
+        // check if debug log needs to be rotated every 10 minutes
+        while (!shouldStop())
+        {
+            unique_lock lock(m_mutex);
+            if (m_condVar.wait_for(lock, LOG_ROTATION_INTERVAL) == cv_status::timeout)
+            {
+                if (gl_LogMgr)
+                    gl_LogMgr->ShrinkDebugLogFile();
+            }
+        }
+    }
+};
+
 static unique_ptr<CCoinsViewDB> gl_pCoinsDbView;
 static unique_ptr<CCoinsViewErrorCatcher> pCoinsCatcher;
+static shared_ptr<CLogRotationManager> gl_LogRotationManager;
 
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
-    InterruptHTTPServer();
+    if (gl_HttpServer)
+        gl_HttpServer->Interrupt();
     InterruptHTTPRPC();
     InterruptRPC();
     InterruptREST();
+    LogFnPrintf("Stopping Pastel threads...");
     threadGroup.stop_all();
+    LogFnPrintf("Stopping scheduler threads...");
     scheduler.stop(false);
+    if (gl_LogRotationManager)
+        gl_LogRotationManager->stop();
 }
 
 void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
@@ -197,24 +259,32 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     RenameThread("psl-shutoff");
     mempool.AddTransactionsUpdated(1);
 
+    if (gl_LogRotationManager)
+        gl_LogRotationManager->waitForStop();
+
     StopHTTPRPC();
     StopREST();
     StopRPC();
-    StopHTTPServer();
+    if (gl_HttpServer)
+        gl_HttpServer->Stop();
 #ifdef ENABLE_WALLET
     if (pwalletMain)
         pwalletMain->Flush(false);
 #endif
 #ifdef ENABLE_MINING
  #ifdef ENABLE_WALLET
-    GenerateBitcoins(false, nullptr, 0, Params());
+    GenerateBitcoins(false, nullptr, Params());
  #else
-    GenerateBitcoins(false, 0, Params());
+    GenerateBitcoins(false, Params());
  #endif
 #endif
     StopNode();
+    LogFnPrintf("Waiting for Pastel threads to exit...");
     threadGroup.join_all();
+    LogFnPrintf("...done");
+    LogFnPrintf("Waiting for scheduler threads to exit...");
     scheduler.join_all();
+    LogFnPrintf("...done");
     UnregisterNodeSignals(GetNodeSignals());
 
     if (fFeeEstimatesInitialized)
@@ -285,12 +355,13 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
  */
 void HandleSIGTERM(int)
 {
-    fRequestShutdown = true;
+    StartShutdown();
 }
 
 void HandleSIGHUP(int)
 {
-    fReopenDebugLog = true;
+    if (gl_LogMgr)
+        gl_LogMgr->ScheduleReopenDebugLog();
 }
 
 bool static InitError(const string &str)
@@ -388,6 +459,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-listen", translate("Accept connections from outside (default: 1 if no -proxy or -connect)"));
     strUsage += HelpMessageOpt("-listenonion", strprintf(translate("Automatically create Tor hidden service (default: %d)"), DEFAULT_LISTEN_ONION));
     strUsage += HelpMessageOpt("-maxconnections=<n>", strprintf(translate("Maintain at most <n> connections to peers (default: %u)"), DEFAULT_MAX_PEER_CONNECTIONS));
+    strUsage += HelpMessageOpt("-fdsoftlimit=<n>", strprintf(translate("Set the file descriptor soft limit to <n> (default: %u)"), DEFAULT_FD_SOFT_LIMIT));
     strUsage += HelpMessageOpt("-maxreceivebuffer=<n>", strprintf(translate("Maximum per-connection receive buffer, <n>*1000 bytes (default: %u)"), 5000));
     strUsage += HelpMessageOpt("-maxsendbuffer=<n>", strprintf(translate("Maximum per-connection send buffer, <n>*1000 bytes (default: %u)"), 1000));
     strUsage += HelpMessageOpt("-onion=<ip:port>", strprintf(translate("Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)"), "-proxy"));
@@ -505,6 +577,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageGroup(translate("Mining options:"));
     strUsage += HelpMessageOpt("-gen", strprintf(translate("Generate coins (default: %u)"), 0));
     strUsage += HelpMessageOpt("-genproclimit=<n>", strprintf(translate("Set the number of threads for coin generation if enabled (-1 = all cores, default: %d)"), 1));
+    strUsage += HelpMessageOpt("-gensleepmsecs=<n>", strprintf(translate("Set the number of milliseconds to sleep for miner threads (default: %u)"), DEFAULT_MINER_SLEEP_MSECS));
     strUsage += HelpMessageOpt("-equihashsolver=<name>", translate("Specify the Equihash solver to be used if enabled (default: \"default\")"));
     strUsage += HelpMessageOpt("-mineraddress=<addr>", translate("Send mined coins to a specific single address"));
     strUsage += HelpMessageOpt("-minetolocalwallet", strprintf(
@@ -525,10 +598,11 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-rpcpassword=<pw>", translate("Password for JSON-RPC connections"));
     strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(translate("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u)"), 9932, 19932));
     strUsage += HelpMessageOpt("-rpcallowip=<ip>", translate("Allow JSON-RPC connections from specified source. Valid for <ip> are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24). This option can be specified multiple times"));
-    strUsage += HelpMessageOpt("-rpcthreads=<n>", strprintf(translate("Set the number of threads to service RPC calls (default: %d)"), DEFAULT_HTTP_THREADS));
+    strUsage += HelpMessageOpt("-rpcthreads=<n>", strprintf(translate("Set the number of threads to service RPC calls (default: %d)"), DEFAULT_HTTP_WORKER_THREADS));
+    strUsage += HelpMessageOpt("-rpcacceptbacklog=<n>", strprintf(translate("Set the maximum number of pending connections that can be queued before the system starts rejecting new incoming connections (default: %d, use system default)"), DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG));
     if (showDebug) {
-        strUsage += HelpMessageOpt("-rpcworkqueue=<n>", strprintf("Set the depth of the work queue to service RPC calls (default: %d)", DEFAULT_HTTP_WORKQUEUE));
-        strUsage += HelpMessageOpt("-rpcservertimeout=<n>", strprintf("Timeout during HTTP requests (default: %d)", DEFAULT_HTTP_SERVER_TIMEOUT));
+        strUsage += HelpMessageOpt("-rpcworkqueue=<n>", strprintf("Set the depth of the work queue to service RPC calls (default: %d)", DEFAULT_HTTP_WORKQUEUE_MAX_SIZE));
+        strUsage += HelpMessageOpt("-rpcservertimeout=<n>", strprintf("Timeout in secs for HTTP requests (default: %d)", DEFAULT_HTTP_SERVER_TIMEOUT_SECS));
     }
 
     // Disabled until we can lock notes and also tune performance of libsnark which by default uses multiple threads
@@ -772,22 +846,50 @@ static void ZC_LoadParams(
         gl_pOrphanTxManager = make_unique<COrphanTxManager>();
 }
 
-bool AppInitServers()
+bool AppInitServers(string &error)
 {
     RPCServer::OnStopped(&OnRPCStopped);
     RPCServer::OnPreCommand(&OnRPCPreCommand);
-    if (!InitHTTPServer())
-        return false;
-    if (!StartRPC())
-        return false;
-    if (!StartHTTPRPC())
-        return false;
-    if (GetBoolArg("-rest", false) && !StartREST())
-        return false;
-    if (!StartHTTPServer())
-        return false;
-    return true;
+
+    bool bInitialized = false;
+    do
+    {
+        if (!gl_HttpServer)
+            gl_HttpServer = make_unique<CHTTPServer>();
+
+        if (!gl_HttpServer)
+        {
+            error = "Failed to create RPC HTTP Server";
+            break;
+        }
+        if (!gl_HttpServer->Initialize())
+        {
+            error = gl_HttpServer->GetInitError();
+            break;
+        }
+        if (!StartRPC())
+            return false;
+        if (!StartHTTPRPC())
+            return false;
+        if (GetBoolArg("-rest", false) && !StartREST())
+            return false;
+        if (!gl_HttpServer->Start())
+        {
+            error = gl_HttpServer->GetInitError();
+            break;
+        }
+        bInitialized = true;
+    } while (false);
+    return bInitialized;
 }
+
+#ifdef WIN32
+BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
+{
+    StartShutdown();
+    return TRUE;
+}
+#endif // WIN32
 
 /** Initialize pasteld.
  *  @pre Parameters should be parsed and config file should be read.
@@ -795,6 +897,9 @@ bool AppInitServers()
 bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 {
     string strError;
+
+    if (!gl_LogMgr)
+        return InitError("Error: Log Manager is not initialized");
 
     // ********************************************************* Step 1: setup
 #ifdef _MSC_VER
@@ -807,6 +912,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
 #ifdef WIN32
+    if (!SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE))
+        return InitError("Error: SetConsoleCtrlHandler failed");
     // Enable Data Execution Prevention (DEP)
     // Minimum supported OS versions: WinXP SP3, WinVista >= SP1, Win Server 2008
     // A failure is non-critical and needs no further attention!
@@ -823,6 +930,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     if (!SetupNetworking())
         return InitError("Error: Initializing networking failed");
+
+    if (IsShutdownRequested())
+		return false;
 
 #ifndef WIN32
     if (GetBoolArg("-sysperms", false)) {
@@ -866,7 +976,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // Set this early so that parameter interactions go to console
     string error;
-    if (!SetPrintToConsoleMode(error))
+    if (!gl_LogMgr->SetPrintToConsoleMode(error))
         return InitError(error);
     fLogTimestamps = GetBoolArg("-logtimestamps", true);
     fLogIPs = GetBoolArg("-logips", false);
@@ -935,13 +1045,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // Make sure enough file descriptors are available
     int nBind = max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
-    nMaxConnections = static_cast<size_t>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
-    nMaxConnections = min(nMaxConnections, static_cast<size_t>(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS));
-    const size_t nFD = RaiseFileDescriptorLimit(nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
-    if (nFD < MIN_CORE_FILEDESCRIPTORS)
+    uint32_t nFdSoftLimit = static_cast<uint32_t>(GetArg("-fdsoftlimit", DEFAULT_FD_SOFT_LIMIT));
+    gl_nMaxConnections = static_cast<uint32_t>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
+    gl_nMaxConnections = min(gl_nMaxConnections, static_cast<uint32_t>(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS));
+    const uint32_t nFdLimit = RaiseFileDescriptorLimit(max(nFdSoftLimit, gl_nMaxConnections + MIN_CORE_FILEDESCRIPTORS));
+    LogPrintf("File descriptor limit: %u\n", nFdLimit);
+    if (nFdLimit < MIN_CORE_FILEDESCRIPTORS)
         return InitError(translate("Not enough file descriptors available."));
-    if (nFD - MIN_CORE_FILEDESCRIPTORS < nMaxConnections)
-        nMaxConnections = nFD - MIN_CORE_FILEDESCRIPTORS;
+    if (nFdLimit - MIN_CORE_FILEDESCRIPTORS < gl_nMaxConnections)
+        gl_nMaxConnections = nFdLimit - MIN_CORE_FILEDESCRIPTORS;
 
     // if using block pruning, then disable txindex
     // also disable the wallet (for now, until SPV support is implemented in wallet)
@@ -998,6 +1110,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     }
     fCheckBlockIndex = GetBoolArg("-checkblockindex", chainparams.DefaultConsistencyChecks());
     fCheckpointsEnabled = GetBoolArg("-checkpoints", true);
+
+    if (IsShutdownRequested())
+		return false;
 
     // -par=0 means autodetect, but nScriptCheckThreads==0 means no concurrency
     gl_ScriptCheckManager.SetThreadCount(GetArg("-par", DEFAULT_SCRIPTCHECK_THREADS));
@@ -1106,19 +1221,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (nMaxTipAge != DEFAULT_MAX_TIP_AGE)
         LogPrintf("Setting maximum tip age to %d seconds\n", nMaxTipAge);
 
-#ifdef ENABLE_MINING
-    if (mapArgs.count("-mineraddress"))
-    {
-        const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
-        if (!IsValidDestination(addr))
-	{
-            return InitError(strprintf(
-                translate("Invalid address for -mineraddress=<addr>: '%s' (must be a transparent address)"),
-                mapArgs["-mineraddress"]));
-        }
-    }
-#endif
-
     if (!mapMultiArgs["-nuparams"].empty()) {
         // Allow overriding network upgrade parameters for testing
         if (!chainparams.IsRegTest())
@@ -1152,6 +1254,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             }
         }
     }
+
+    if (IsShutdownRequested())
+		return false;
 
     // ********************************************************* Step 4: application initialization: dir lock, daemonize, pidfile, debug log
 
@@ -1194,10 +1299,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     CreatePidFile(GetPidFile(), getpid());
 #endif
     if (GetBoolArg("-shrinkdebugfile", !fDebug))
-        ShrinkDebugFile();
+        gl_LogMgr->ShrinkDebugLogFile(true);
 
-    if (fPrintToDebugLog)
-        OpenDebugLog();
+    gl_LogMgr->OpenDebugLogFile();
+    if (!gl_LogRotationManager)
+    {
+		gl_LogRotationManager = make_unique<CLogRotationManager>();
+		if (threadGroup.add_thread(error, gl_LogRotationManager, true) == INVALID_THREAD_OBJECT_ID)
+			return InitError(translate("Failed to create log rotation thread. ") + error);
+    }
 
     LogPrintf("Using OpenSSL version %s\n", OpenSSL_version(OPENSSL_VERSION_STRING));
 #ifdef ENABLE_WALLET
@@ -1208,13 +1318,16 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     LogPrintf("Default data directory %s\n", GetDefaultDataDir().string());
     LogPrintf("Using data directory %s\n", strDataDir);
     LogPrintf("Using config file %s\n", GetConfigFile().string());
-    LogPrintf("Using at most %i connections (%i file descriptors available)\n", nMaxConnections, nFD);
+    LogPrintf("Using at most %u connections (%i file descriptors available)\n", gl_nMaxConnections, nFdLimit);
 #ifdef ENABLE_TICKET_COMPRESS
     LogPrintf("Ticket compression is enabled\n");
 #endif
     if (!categories.empty())
         LogPrintf("Using debug log categories: %s\n", str_join(categories, ", "));
     ostringstream strErrors;
+
+    if (IsShutdownRequested())
+		return false;
 
     gl_ScriptCheckManager.create_workers(threadGroup);
 
@@ -1226,7 +1339,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     if (!chainparams.IsRegTest() &&
             GetBoolArg("-showmetrics", isatty(STDOUT_FILENO)) &&
-            !IsPrintToConsole() && !GetBoolArg("-daemon", false))
+            !gl_LogMgr->IsPrintToConsole() && !GetBoolArg("-daemon", false))
     {
         // Start the persistent metrics interface
         ConnectMetricsScreen();
@@ -1239,8 +1352,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     libsnark::inhibit_profiling_info = true;
     libsnark::inhibit_profiling_counters = true;
 
+    if (IsShutdownRequested())
+		return false;
+
     // Initialize Zcash circuit parameters
+    uiInterface.InitMessage(translate("Initializing chain parameters..."));
     ZC_LoadParams(chainparams);
+
+    if (IsShutdownRequested())
+		return false;
 
     /* Start the RPC server already.  It will be started in "warmup" mode
      * and not really process calls already (but it will signify connections
@@ -1250,8 +1370,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (fServer)
     {
         uiInterface.InitMessage.connect(SetRPCWarmupStatus);
-        if (!AppInitServers())
-            return InitError(translate("Unable to start HTTP server. See debug log for details."));
+        if (!AppInitServers(error))
+            return InitError(
+                strprintf(translate("Unable to start HTTP server. %s"), error));
     }
 
     int64_t nStart;
@@ -1287,7 +1408,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         auto sComment = SanitizeString(cmt, SAFE_CHARS_UA_COMMENT);
         if (cmt != sComment)
             return InitError(strprintf("User Agent comment (%s) contains unsafe characters.", cmt));
-        uacomments.emplace_back(move(sComment));
+        uacomments.emplace_back(std::move(sComment));
     }
     strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
     if (strSubVersion.size() > MAX_SUBVERSION_LENGTH)
@@ -1337,7 +1458,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 					trim(line);
 					if (line.empty() || line[0] == '#' || line[0] == ';')
 						continue;
-                    vSubnets.emplace(move(line));
+                    vSubnets.emplace(std::move(line));
 				}
             }
             else
@@ -1526,6 +1647,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     // connect Pastel Ticket txmempool tracker
     mempool.AddTxMemPoolTracker(CPastelTicketProcessor::GetTxMemPoolTracker());
 
+    if (IsShutdownRequested())
+		return false;
+
     bool bClearWitnessCaches = false;
     bool fLoaded = false;
     while (!fLoaded)
@@ -1557,8 +1681,14 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         CleanupBlockRevFiles();
                 }
 
+                // Initialize the ticket database
+                masterNodeCtrl.InitTicketDB();
+
                 if (!LoadBlockIndex(strLoadError))
                 {
+                    if (IsShutdownRequested())
+                        break;
+
                     strLoadError = translate("Error loading block database. ") + strLoadError;
                     break;
                 }
@@ -1592,9 +1722,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         break;
                     }
                 }
-
-                // Initialize the ticket database
-                masterNodeCtrl.InitTicketDB();
 
                 const uint32_t nBlockDBCheckBlocks = static_cast<uint32_t>(GetArg("-checkblocks", DEFAULT_BLOCKDB_CHECKBLOCKS));
                 const uint32_t nBlockDBCheckLevel = static_cast<uint32_t>(GetArg("-checklevel", DEFAULT_BLOCKDB_CHECKLEVEL));
@@ -1816,34 +1943,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 #endif // !ENABLE_WALLET
 
 #ifdef ENABLE_MINING
-    const bool bMiningEnabled = GetBoolArg("-gen", false);
- #ifndef ENABLE_WALLET
-    if (GetBoolArg("-minetolocalwallet", false)) {
-        return InitError(translate("Pastel was not built with wallet support. Set -minetolocalwallet=0 to use -mineraddress, or rebuild Pastel with wallet support."));
-    }
-    if (GetArg("-mineraddress", "").empty() && bMiningEnabled) {
-        return InitError(translate("Pastel was not built with wallet support. Set -mineraddress, or rebuild Pastel with wallet support."));
-    }
- #endif // !ENABLE_WALLET
-
     if (!gl_MiningSettings.initialize(chainparams, strError))
         return InitError(strprintf(translate("Could not initialize PastelMiner settings. %s"), strError));
-
-    if (mapArgs.count("-mineraddress"))
-    {
- #ifdef ENABLE_WALLET
-        bool minerAddressInLocalWallet = false;
-        if (pwalletMain)
-	    {
-            // Address has alreday been validated
-            const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
-            CKeyID keyID = get<CKeyID>(addr);
-            minerAddressInLocalWallet = pwalletMain->HaveKey(keyID);
-        }
-        if (GetBoolArg("-minetolocalwallet", true) && !minerAddressInLocalWallet)
-            return InitError(translate("-mineraddress is not in the local wallet. Either use a local address, or set -minetolocalwallet=0"));
- #endif // ENABLE_WALLET
-    }
 #endif // ENABLE_MINING
 
     // ********************************************************* Step 9: data directory maintenance
@@ -1936,12 +2037,11 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
 #ifdef ENABLE_MINING
     // Generate coins in the background
-    const int nProcLimit = static_cast<int>(GetArg("-genproclimit", 1));
  #ifdef ENABLE_WALLET
-    if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(bMiningEnabled, pwalletMain, nProcLimit, chainparams);
+    if (pwalletMain || !gl_MiningSettings.getMinerAddress().empty())
+        GenerateBitcoins(gl_MiningSettings.isLocalMiningEnabled(), pwalletMain, chainparams);
  #else
-    GenerateBitcoins(bMiningEnabled, nProcLimit, chainparams);
+    GenerateBitcoins(gl_MiningSettings.isLocalMiningEnabled(), chainparams);
  #endif
 #endif
     string sRewindChainBlockHash = GetArg("-rewindchain", "");
@@ -1978,5 +2078,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (threadGroup.add_func_thread(strError, "sendalert", ThreadSendAlert) == INVALID_THREAD_OBJECT_ID)
 		return InitError(translate("Failed to create sendalert thread. ") + strError);
 
+    LogFnPrintf("Pastel initialization successful");
     return !fRequestShutdown;
 }

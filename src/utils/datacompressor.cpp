@@ -96,7 +96,7 @@ bool CCompressedDataStream::SetData(string& error, const bool bCompressed, const
     const bool bUncompressData)
 {
     m_bCompressed = bCompressed;
-    vch = move(vData);
+    vch = std::move(vData);
     bool bRet = false;
     do
     {
@@ -212,7 +212,7 @@ bool CCompressedDataStream::CompressData(std::string& error, const size_t nKeepU
         //   2) real compressed data size
         vOut.resize(nCurPos + nCompressedSize);
         // now replace original stream vector with the generated one
-        vch = move(vOut);
+        vch = std::move(vOut);
         // reset stream read position
         nReadPos = 0;
         bRet = true;
@@ -288,7 +288,7 @@ bool CCompressedDataStream::Decompress(string &error)
         m_nSavedCompressedSize = nSavedCompressedSize;
         m_nSavedDecompressedSize = nDecompressedSize;
         // now replace original vector with decompressed
-        vch = move(vOut);
+        vch = std::move(vOut);
         nReadPos = 0; // reset stream read position
         bRet = true;
     } while (false);

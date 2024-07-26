@@ -10,6 +10,7 @@ define int_vars
 #Set defaults for vars which may be overridden per-package
 $(1)_cc=$($($(1)_type)_CC)
 $(1)_cxx=$($($(1)_type)_CXX)
+$(1)_ld=$($($(1)_type)_LD)
 $(1)_objc=$($($(1)_type)_OBJC)
 $(1)_objcxx=$($($(1)_type)_OBJCXX)
 $(1)_ar=$($($(1)_type)_AR)
@@ -175,6 +176,9 @@ endif
 ifneq ($($(1)_ar),)
 $(1)_autoconf += AR="$$($(1)_ar)"
 endif
+ifneq ($($(1)_ld),)
+$(1)_autoconf += LD="$$($(1)_ld)"
+endif
 ifneq ($($(1)_cflags),)
 $(1)_autoconf += CFLAGS="$$($(1)_cflags)"
 endif
@@ -194,6 +198,7 @@ $(1)_cmake=env CC="$$($(1)_cc)" \
                CXXFLAGS="$$($(1)_cppflags) $$($(1)_cxxflags)" \
                cmake \
 		  -DCMAKE_AR="$$($(1)_ar)" \
+                  -DCMAKE_LINKER="$$($(1)_ld)" \
 		  -DCMAKE_RANLIB="$$($(1)_ranlib)" \
 		  -DCMAKE_RC_COMPILER="$$($(1)_rc_compiler)" \
 		  -DCMAKE_INSTALL_PREFIX:PATH="$$($($(1)_type)_prefix)" \
@@ -225,7 +230,7 @@ $($(1)_fetched):
 	$(AT)cd $($(1)_source_dir); $(foreach source,$($(1)_all_sources),$(build_SHA256SUM) $(source) >> $$(@);)
 	$(AT)touch $$@
 $($(1)_extracted): | $($(1)_fetched)
-	$(AT)echo "Extracting $(1)..."
+	$(AT)@echo "Extracting $(1)..."
 	$(AT)mkdir -p $$(@D)
 	$(AT)cd $$(@D); $(call $(1)_extract_cmds,$(1))
 	$(AT)touch $$@
@@ -237,11 +242,13 @@ $($(1)_preprocessed): | $($(1)_dependencies) $($(1)_extracted)
 	$(AT)touch $$@
 $($(1)_configured): | $($(1)_preprocessed)
 	$(AT)@echo "Configuring $(1)..."
-	$(AT)echo "Extracting dependent packages [$($(1)_all_dependencies)]..."
+	$(AT)@echo "Extracting dependent packages [$($(1)_all_dependencies)]..."
 	$(AT)rm -rf $(host_prefix); mkdir -p $(host_prefix)/lib; cd $(host_prefix); $(foreach package,$($(1)_all_dependencies), tar --no-same-owner -xf $($(package)_cached); )
 	$(AT)mkdir -p $$(@D)
 	$(AT)$(info ----- PACKAGE [$(1)] ----- $(1)_type=$($(1)_type))
-	$(AT)$(foreach tool,cc cxx ar ranlib rc_compiler libtool nm cflags cxxflags ldflags cppflags, $(info $(1)_$(tool)=$($(1)_$(tool))))
+	$(AT)$(foreach tool,cc cxx ld ar ranlib rc_compiler libtool nm cflags cxxflags ldflags cppflags, $(info $(1)_$(tool)=$($(1)_$(tool))))
+	$(AT)@echo "Configure options for $(1): $($(1)_config_opts)"
+	$(AT)@echo "cmake options for $(1): $($(1)_cmake_opts)"
 	$(AT)+cd $$(@D); $($(1)_config_env) $(call $(1)_config_cmds, $(1))
 	$(AT)touch $$@
 $($(1)_built): | $($(1)_configured)

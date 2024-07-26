@@ -383,6 +383,13 @@ public:
     }
 };
 
+typedef enum class _BlockDisconnectResult
+{
+    OK,      // All good.
+    UNCLEAN, // Rolled back, but UTXO set was inconsistent with block.
+    FAILED   // Something else went wrong.
+} BlockDisconnectResult;
+
 using block_index_cvector_t = std::vector<const CBlockIndex*>;
 using block_index_vector_t = std::vector<CBlockIndex*>;
 

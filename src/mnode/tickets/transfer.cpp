@@ -164,10 +164,10 @@ ticket_validation_t transfer_copy_validation(const string& itemTxId, const v_uin
 // CTransferTicket ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CTransferTicket CTransferTicket::Create(string &&offerTxId, string &&acceptTxId, string &&sPastelID, SecureString&& strKeyPass)
 {
-    CTransferTicket ticket(move(sPastelID));
+    CTransferTicket ticket(std::move(sPastelID));
 
-    ticket.m_offerTxId = move(offerTxId);
-    ticket.m_acceptTxId = move(acceptTxId);
+    ticket.m_offerTxId = std::move(offerTxId);
+    ticket.m_acceptTxId = std::move(acceptTxId);
 
     auto pOfferTicket = CPastelTicketProcessor::GetTicket(ticket.m_offerTxId, TicketID::Offer);
     auto offerTicket = dynamic_cast<COfferTicket*>(pOfferTicket.get());
@@ -202,7 +202,7 @@ CTransferTicket CTransferTicket::Create(string &&offerTxId, string &&acceptTxId,
         ticket.SetCopySerialNr(get<1>(multipleTransfers.value()));
     }
     const auto strTicket = ticket.ToStr();
-    string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, move(strKeyPass)), ticket.m_signature);
+    string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, std::move(strKeyPass)), ticket.m_signature);
 
     return ticket;
 }
@@ -722,6 +722,6 @@ PastelTicketPtr CTransferTicket::FindItemRegTicket(const CBlockIndex *pindexPrev
                     CNFTRegTicket::GetTicketDescription(), CActionRegTicket::GetTicketDescription(),
                     ::GetTicketDescription(pPastelTicket->ID()), pPastelTicket->GetTxId()));
     }
-    return move(chain.front());
+    return std::move(chain.front());
 }
 

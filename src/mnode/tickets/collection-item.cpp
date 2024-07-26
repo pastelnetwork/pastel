@@ -76,7 +76,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg, const 
         const auto collectionActTicket = RetrieveCollectionActivateTicket(error, bInvalidTxId, pindexPrev);
         if (bInvalidTxId)
         {
-            tv.errorMsg = move(error);
+            tv.errorMsg = std::move(error);
             break;
         }
         // check that we've got collection ticket
@@ -104,7 +104,7 @@ ticket_validation_t CollectionItem::IsValidCollection(const bool bPreReg, const 
         const auto collectionRegTicket = CollectionActivateTicket::RetrieveCollectionRegTicket(error, pCollActTicket->getRegTxId(), bInvalidTxId, pindexPrev);
         if (bInvalidTxId)
         {
-            tv.errorMsg = move(error);
+            tv.errorMsg = std::move(error);
             break;
         }
         if (!collectionRegTicket)

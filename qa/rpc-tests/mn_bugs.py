@@ -273,7 +273,7 @@ class MasterNodeGovernanceTest (MasterNodeCommon):
         assert_equal(res1['result'], 'successful')
         ticket2_id = res1['ticketId']
 
-        print ("Minig after 2nd ticket...")
+        print ("Mining after 2nd ticket...")
         time.sleep(3)
         self.slow_mine(2, 10, 2, 0.5)
 

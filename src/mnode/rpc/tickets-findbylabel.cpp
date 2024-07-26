@@ -15,7 +15,7 @@ void ListTicketsByLabel(const string& label, UniValue &vOut)
         {
             UniValue obj(UniValue::VOBJ);
             obj.read(tkt.ToJSON());
-            vOut.push_back(move(obj));
+            vOut.push_back(std::move(obj));
             return true;
         });
 }
@@ -69,7 +69,7 @@ As json rpc
             {
                 UniValue obj(UniValue::VOBJ);
                 obj.read(contractTicket.ToJSON());
-                tktArray.push_back(move(obj));
+                tktArray.push_back(std::move(obj));
             }
         }   
 		break;

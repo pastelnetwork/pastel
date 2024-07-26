@@ -80,7 +80,7 @@ void CPastelTicketMemPoolProcessor::Initialize(const CTxMemPool& pool, tx_mempoo
         ticket->SetMultiSigTxTotalFee(nMultiSigTxTotalFee);
         if (data_stream.IsCompressed())
             ticket->SetCompressedSize(data_stream.GetSavedCompressedSize());
-        m_vTicket.emplace_back(move(ticket));
+        m_vTicket.emplace_back(std::move(ticket));
         ++i;
     }
 }

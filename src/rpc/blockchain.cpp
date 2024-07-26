@@ -161,7 +161,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
         else
             txs.push_back(tx.GetHash().GetHex());
     }
-    result.pushKV("tx", move(txs));
+    result.pushKV("tx", std::move(txs));
     result.pushKV("time", block.GetBlockTime());
     result.pushKV("nonce", block.nNonce.GetHex());
     result.pushKV("solution", HexStr(block.nSolution));
@@ -178,7 +178,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     UniValue valuePools(UniValue::VARR);
     valuePools.push_back(ValuePoolDesc("sprout", blockindex->nChainSproutValue, blockindex->nSproutValue));
     valuePools.push_back(ValuePoolDesc("sapling", blockindex->nChainSaplingValue, blockindex->nSaplingValue));
-    result.pushKV("valuePools", move(valuePools));
+    result.pushKV("valuePools", std::move(valuePools));
 
     if (blockindex->pprev)
         result.pushKV("previousblockhash", blockindex->pprev->GetBlockHash().GetHex());
@@ -283,8 +283,8 @@ UniValue mempoolToJSON(bool fVerbose = false)
             for (const auto& dep : setDepends)
                 depends.push_back(dep);
 
-            info.pushKV("depends", move(depends));
-            o.pushKV(hash.ToString(), move(info));
+            info.pushKV("depends", std::move(depends));
+            o.pushKV(hash.ToString(), std::move(info));
         }
         return o;
     }
@@ -407,7 +407,7 @@ Examples:
 		UniValue entry(UniValue::VOBJ);
 		entry.pushKV(RPC_KEY_HEIGHT, pblockindex->GetHeight());
 		entry.pushKV("hash", pblockindex->GetBlockHash().GetHex());
-		result.push_back(move(entry));
+		result.push_back(std::move(entry));
 	}
     return result;
 }
@@ -1201,11 +1201,11 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
                 delta.pushKV("prevtxid", input.prevout.hash.GetHex());
                 delta.pushKV("prevout", input.prevout.n);
 
-                inputs.push_back(move(delta));
+                inputs.push_back(std::move(delta));
                 ++index;
             }
         }
-        entry.pushKV("inputs", move(inputs));
+        entry.pushKV("inputs", std::move(inputs));
 
         UniValue outputs(UniValue::VARR);
         outputs.reserve(tx.vout.size());
@@ -1227,14 +1227,14 @@ UniValue blockToDeltasJSON(const CBlock& block, const CBlockIndex* blockindex)
             delta.pushKV("patoshis", out.nValue);
             delta.pushKV("index", index);
 
-            outputs.push_back(move(delta));
+            outputs.push_back(std::move(delta));
             ++index;
         }
-        entry.pushKV("outputs", move(outputs));
-        deltas.push_back(move(entry));
+        entry.pushKV("outputs", std::move(outputs));
+        deltas.push_back(std::move(entry));
         ++i;
     }
-    result.pushKV("deltas", move(deltas));
+    result.pushKV("deltas", std::move(deltas));
     result.pushKV("time", block.GetBlockTime());
     result.pushKV("mediantime", blockindex->GetMedianTimePast());
     result.pushKV("nonce", block.nNonce.GetHex());
@@ -1406,7 +1406,7 @@ Examples:
         UniValue item(UniValue::VOBJ);
         item.pushKV("blockhash", hash.GetHex());
         item.pushKV("logicalts", ts);
-        result.push_back(move(item));
+        result.push_back(std::move(item));
     }
     return result;
 }

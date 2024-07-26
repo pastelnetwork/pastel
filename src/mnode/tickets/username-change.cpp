@@ -30,7 +30,7 @@ using namespace std;
  */
 CChangeUsernameTicket CChangeUsernameTicket::Create(string &&sPastelID, string &&sUserName, SecureString&& strKeyPass)
 {
-    CChangeUsernameTicket ticket(move(sPastelID), move(sUserName));
+    CChangeUsernameTicket ticket(std::move(sPastelID), std::move(sUserName));
 
     // Check if Pastel ID already have a username on the blockchain.
     if (!masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket)) {
@@ -44,7 +44,7 @@ CChangeUsernameTicket CChangeUsernameTicket::Create(string &&sPastelID, string &
     ticket.GenerateTimestamp();
 
     const auto strTicket = ticket.ToStr();
-    ticket.m_signature = string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, move(strKeyPass)));
+    ticket.m_signature = string_to_vector(CPastelID::Sign(strTicket, ticket.m_sPastelID, std::move(strKeyPass)));
 
     return ticket;
 }
@@ -208,7 +208,7 @@ ticket_validation_t CChangeUsernameTicket::IsValid(const TxOrigin txOrigin, cons
         string badUsernameError;
         if (isUsernameBad(m_sUserName, badUsernameError))
         {
-            tv.errorMsg = move(badUsernameError);
+            tv.errorMsg = std::move(badUsernameError);
             break;
         }
 

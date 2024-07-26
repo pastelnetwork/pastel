@@ -11,8 +11,8 @@
 #include <utils/uint256.h>
 #include <utils/serialize.h>
 #include <utils/streams.h>
+#include <utils/random.h>
 #include <amount.h>
-#include <random.h>
 #include <script/script.h>
 #include <consensus/consensus.h>
 

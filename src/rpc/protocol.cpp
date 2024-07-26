@@ -12,8 +12,8 @@
 #include <utils/tinyformat.h>
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
-#include <random.h>
-#include <utiltime.h>
+#include <utils/utiltime.h>
+#include <utils/random.h>
 #include <version.h>
 
 using namespace std;

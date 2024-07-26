@@ -11,6 +11,7 @@
 #include <variant>
 
 #include <utils/util.h>
+#include <utils/utiltime.h>
 #include <asyncrpcqueue.h>
 #include <consensus/upgrades.h>
 #include <core_io.h>
@@ -25,10 +26,10 @@
 #include <timedata.h>
 #include <utilmoneystr.h>
 #include <script/interpreter.h>
-#include <utiltime.h>
 #include <zcash/IncrementalMerkleTree.hpp>
 #include <sodium.h>
 #include <mining/miner.h>
+#include <mining/mining-settings.h>
 
 #include <wallet/asyncrpcoperation_shieldcoinbase.h>
 
@@ -57,7 +58,7 @@ AsyncRPCOperation_shieldcoinbase::AsyncRPCOperation_shieldcoinbase(
     const auto &chainparams = Params();
 
     if (builder)
-        m_builder = move(builder);
+        m_builder = std::move(builder);
     else
         m_builder = make_unique<TransactionBuilder>(chainparams.GetConsensus(), 0);
 
@@ -99,9 +100,9 @@ void AsyncRPCOperation_shieldcoinbase::main() {
     const auto& chainparams = Params();
 #ifdef ENABLE_MINING
   #ifdef ENABLE_WALLET
-    GenerateBitcoins(false, nullptr, 0, chainparams);
+    GenerateBitcoins(false, nullptr, chainparams);
   #else
-    GenerateBitcoins(false, 0, chainparams);
+    GenerateBitcoins(false, chainparams);
   #endif
 #endif
 
@@ -127,12 +128,11 @@ void AsyncRPCOperation_shieldcoinbase::main() {
     }
 
 #ifdef ENABLE_MINING
-    const int nThreadCount = static_cast<int>(GetArg("-genproclimit", 1));
-    const bool bGenerate = GetBoolArg("-gen", false);
+    const bool bGenerate = gl_MiningSettings.isLocalMiningEnabled();
 #ifdef ENABLE_WALLET
-    GenerateBitcoins(bGenerate, pwalletMain, nThreadCount, chainparams);
+    GenerateBitcoins(bGenerate, pwalletMain, chainparams);
 #else
-    GenerateBitcoins(bGenerate, nThreadCount, chainparams);
+    GenerateBitcoins(bGenerate, chainparams);
 #endif
 #endif
 
@@ -217,20 +217,20 @@ bool ShieldToAddress::operator()(const libzcash::SaplingPaymentAddress &zaddr) c
     if (!m_op->testmode)
     {
         UniValue params(UniValue::VARR);
-        params.push_back(move(signedtxn));
+        params.push_back(std::move(signedtxn));
         UniValue sendResultValue = sendrawtransaction(params, false);
         if (sendResultValue.isNull())
             throw JSONRPCError(RPC_WALLET_ERROR, "sendrawtransaction did not return an error or a txid.");
 
         auto txid = sendResultValue.get_str();
-        o.pushKV(RPC_KEY_TXID, move(txid));
+        o.pushKV(RPC_KEY_TXID, std::move(txid));
     } else {
         // Test mode does not send the transaction to the network.
         o.pushKV("test", 1);
         o.pushKV(RPC_KEY_TXID, m_op->tx_.GetHash().ToString());
-        o.pushKV("hex", move(signedtxn));
+        o.pushKV("hex", std::move(signedtxn));
     }
-    m_op->set_result(move(o));
+    m_op->set_result(std::move(o));
 
     return true;
 }
@@ -282,7 +282,7 @@ void AsyncRPCOperation_shieldcoinbase::sign_send_raw_transaction(UniValue obj)
             throw JSONRPCError(RPC_WALLET_ERROR, "Send raw transaction did not return an error or a txid.");
 
         auto txid = sendResultValue.get_str();
-        o.pushKV("txid", move(txid));
+        o.pushKV("txid", std::move(txid));
     } else {
         // Test mode does not send the transaction to the network.
 
@@ -294,7 +294,7 @@ void AsyncRPCOperation_shieldcoinbase::sign_send_raw_transaction(UniValue obj)
         o.pushKV(RPC_KEY_TXID, tx.GetHash().ToString());
         o.pushKV("hex", signedtxn);
     }
-    set_result(move(o));
+    set_result(std::move(o));
 
     // Keep the signed transaction so we can hash to the same txid
     CDataStream stream(ParseHex(signedtxn), SER_NETWORK, PROTOCOL_VERSION);
