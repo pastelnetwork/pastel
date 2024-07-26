@@ -373,6 +373,9 @@
     <ClCompile Include="..\..\..\src\blockscanner.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\txdb\txidxprocessor.cpp">
+      <Filter>Source Files\txdb</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\addrman.h">
@@ -773,6 +776,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\blockscanner.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\txdb\txidxprocessor.h">
+      <Filter>Source Files\txdb</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

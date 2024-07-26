@@ -13,6 +13,7 @@
 #include <functional>
 #include <atomic>
 #include <chrono>
+#include <errno.h>
 
 #include <compat.h>
 
@@ -36,6 +37,7 @@
 #include <netbase.h>
 #include <rpc/protocol.h> // For HTTP status code
 #include <ui_interface.h>
+#include <init.h>
 
 #ifdef EVENT__HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -97,16 +99,37 @@ bool HTTPPathHandler::IsGroup(const string &sGroup) const noexcept
 	return str_icmp(m_sGroup, sGroup);
 }
 
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
 void accept_error_cb(struct evconnlistener* listener, void* arg)
 {
 	auto pWorkQueue = static_cast<WorkQueue*>(arg);
 	if (!pWorkQueue)
 	{
-		LogFnPrint("http", "No work queue available");
+		LogFnPrintf("No work queue available");
 		return;
 	}
 	int nError = EVUTIL_SOCKET_ERROR();
-	LogFnPrintf("Got an error %d (%s) on the listener", nError, evutil_socket_error_to_string(nError));
+    static atomic_uint32_t nAcceptFDErrorCount = 0;
+    static atomic_int64_t nAcceptFDErrorTime = 0;
+    if (nError == EMFILE)
+    {
+        nAcceptFDErrorTime = time(nullptr);
+        if (nAcceptFDErrorCount.fetch_add(1) < 100)
+            LogFnPrintf("Too many open files, accepting new connections failed");
+        else
+            AbortNode("Too many open files, accepting new connections failed, shutting down");
+        return;
+    }
+    else
+    {
+        time_t nNow = time(nullptr);
+        if (nAcceptFDErrorTime && (nNow - nAcceptFDErrorTime > 30))
+        {
+            nAcceptFDErrorCount = 0;
+            nAcceptFDErrorTime = 0;
+        }
+    }
+	LogFnPrintf("Listener error %d (%s)", nError, evutil_socket_error_to_string(nError));
 }
 
 void accept_connection_cb(struct evconnlistener* listener, evutil_socket_t client_socket, struct sockaddr* addr, int addrlen, void* arg)
@@ -158,6 +181,7 @@ static void http_connection_close_cb(struct evhttp_connection* evcon, void* arg)
     auto clientSocket = bufferevent_getfd(bev);
     pHttpWorkerContext->CloseHttpConnection(clientSocket, false);
 }
+#endif // EVHTTP_MULTIPLE_EVENT_LOOPS
 
 /** libevent event log callback */
 static void libevent_log_cb(int severity, const char *msg)
@@ -206,393 +230,6 @@ void HTTPEvent::trigger(struct timeval* tv)
         evtimer_add(ev, tv); // trigger after timeval passed
 }
 
-CHTTPServer::CHTTPServer() noexcept :
-    CServiceThread("httplsnr"),
-    m_bInitialized(false),
-    m_bShuttingDown(false),
-    m_pMainEventBase(nullptr),
-    m_nRpcWorkerThreads(DEFAULT_HTTP_WORKER_THREADS),
-    m_nRpcServerTimeout(DEFAULT_HTTP_SERVER_TIMEOUT_SECS),
-    m_nAcceptBackLog(DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG)
-{}
-
-bool CHTTPServer::Initialize()
-{
-	if (m_bInitialized)
-		return true;
-
-    // read and validate HTTP server options
-    const int64_t nRpcThreads = max<int64_t>(GetArg("-rpcthreads", DEFAULT_HTTP_WORKER_THREADS), 1);
-    if ((nRpcThreads < 1) || (nRpcThreads > MAX_HTTP_THREADS))
-    {
-        m_sInitError = strprintf("Invalid number of RPC threads specified (must be between 1 and %d)", 
-            MAX_HTTP_THREADS);
-		return false;
-    }
-    m_nRpcWorkerThreads = static_cast<size_t>(nRpcThreads);
-
-    const int64_t nRpcServerTimeout = GetArg("-rpcservertimeout", DEFAULT_HTTP_SERVER_TIMEOUT_SECS);
-    if (nRpcServerTimeout > numeric_limits<int>::max())
-    {
-        m_sInitError = strprintf("'rpcservertimeout' parameter value [%" PRId64 "] is out of range (0..%d)", 
-            nRpcServerTimeout, numeric_limits<int>::max());
-        return false;
-    }
-    m_nRpcServerTimeout = static_cast<int>(nRpcServerTimeout);
-
-    const int64_t nWorkQueueMaxSize = max<int64_t>(GetArg("-rpcworkqueue", DEFAULT_HTTP_WORKQUEUE_MAX_SIZE), MIN_HTTP_WORKQUEUE_MAX_SIZE);
-    if (nWorkQueueMaxSize > numeric_limits<int>::max())
-    {
-        m_sInitError = strprintf("'-rpcworkqueue' parameter value [%" PRId64 "] is out of range (%d..%d)",
-            MIN_HTTP_WORKQUEUE_MAX_SIZE, numeric_limits<int>::max());
-        return false;
-    }
-    m_nWorkQueueMaxSize = static_cast<size_t>(nWorkQueueMaxSize);
-
-    const int64_t nAcceptBackLog = GetArg("-rpcacceptbacklog", DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG);
-    if (nAcceptBackLog > numeric_limits<int>::max())
-	{
-		m_sInitError = strprintf("'-rpcacceptbacklog' parameter value [%" PRId64 "] is out of range (0..%d)",
-			nAcceptBackLog, numeric_limits<int>::max());
-		return false;
-	}
-    m_nAcceptBackLog = static_cast<int>(nAcceptBackLog);
-
-    if (!InitHTTPAllowList())
-        return false;
-
-    if (GetBoolArg("-rpcssl", false))
-    {
-        uiInterface.ThreadSafeMessageBox(
-            "SSL mode for RPC (-rpcssl) is no longer supported.",
-            "", CClientUIInterface::MSG_ERROR);
-        return false;
-    }
-
-    // Redirect libevent's logging to our own log
-    event_set_log_callback(&libevent_log_cb);
-#if LIBEVENT_VERSION_NUMBER >= 0x02010100
-    // If -debug=libevent, set full libevent debugging.
-    // Otherwise, disable all libevent debugging.
-    if (LogAcceptCategory("libevent"))
-        event_enable_debug_logging(EVENT_DBG_ALL);
-    else
-        event_enable_debug_logging(EVENT_DBG_NONE);
-#endif
-    event_set_fatal_callback([](int err) { LogPrintf("libevent: FATAL ERROR %d\n", err); });
-#ifdef WIN32
-    evthread_use_windows_threads();
-#else
-    evthread_use_pthreads();
-#endif
-    LogFnPrintf("Using libevent version %s", event_get_version());
-    m_pMainEventBase = event_base_new();
-    if (!m_pMainEventBase)
-    {
-        m_sInitError = "Couldn't create an event_base";
-        return false;
-    }
-
-    LogFnPrintf("HTTP: creating work queue with max size %zu", m_nWorkQueueMaxSize);
-    if (!m_pWorkQueue)
-    {
-        m_pWorkQueue = make_shared<WorkQueue>(*this, m_nWorkQueueMaxSize);
-        if (!m_pWorkQueue)
-		{
-			m_sInitError = "Failed to create work queue";
-			return false;
-		}
-    }
-
-    if (!BindAddresses())
-    {
-        m_sInitError = strprintf("Unable to bind any endpoint for RPC server. %s", m_sInitError);
-        return false;
-    }
-
-    LogFnPrint("http", "Initialized HTTP server");
-	m_bInitialized = true;
-	return m_bInitialized;
-}
-
-void CHTTPServer::execute()
-{
-    try
-    {
-        event_base_dispatch(m_pMainEventBase);
-    } catch (const exception& e)
-	{
-		LogFnPrintf("exception in http listener event loop: %s", e.what());
-	} catch (...)
-	{
-		LogFnPrintf("unknown exception in http listener event loop");
-	}
-    // Event loop will be interrupted by Interrupt() call
-}
-
-bool CHTTPServer::Start() noexcept
-{
-    try
-    {
-        if (!m_bInitialized)
-        {
-            m_sInitError = "HTTP server not initialized";
-            return false;
-        }
-        LogFnPrintf("HTTP Server: starting %zu worker threads", m_nRpcWorkerThreads);
-
-        string error;
-        if (!start(error))
-        {
-            m_sInitError = strprintf("Failed to start HTTP Server listener thread. %s", error);
-            return false;
-        }
-
-        for (size_t i = 0; i < m_nRpcWorkerThreads; i++)
-        {
-            const size_t nID = m_WorkerThreadPool.add_func_thread(error, strprintf("httpworker%zu", i + 1).c_str(),
-                [this, i]()
-            {
-                if (m_pWorkQueue)
-                    m_pWorkQueue->worker(i + 1);
-            }, true);
-            if (nID == INVALID_THREAD_OBJECT_ID)
-            {
-                m_sInitError = strprintf("Failed to create HTTP worker thread. %s", error);
-                return false;
-            }
-        }
-    } catch (const exception& e)
-    {
-        m_sInitError = strprintf("Exception starting HTTP server: %s", e.what());
-		return false;
-    } catch (...) {
-		m_sInitError = "Unknown exception starting HTTP server";
-		return false;
-	}
-    return true;
-}
-
-void CHTTPServer::Interrupt()
-{
-    LogFnPrintf("Stopping HTTP server");
-    m_bShuttingDown = true;
-    stop();
-    if (m_pMainEventBase)
-    {
-        // disable all listeners
-        for (auto listener : m_vListeners)
-            evconnlistener_disable(listener);
-
-        // add small delay to allow pending requests to finish without error
-        // also to make sure stop() command sends back a response
-        this_thread::sleep_for(chrono::milliseconds(200));
-
-        // Break the main event loop
-        event_base_loopexit(m_pMainEventBase, nullptr);
-	}
-    m_WorkerThreadPool.stop_all();
-    if (m_pWorkQueue)
-        m_pWorkQueue->Interrupt();
-}
-
-void CHTTPServer::Stop()
-{
-    LogFnPrintf("Stopping HTTP server");
-    LogFnPrint("http", "Waiting for HTTP worker threads to exit");
-    m_WorkerThreadPool.join_all();
-    m_pWorkQueue.reset();
-    
-    LogFnPrint("http", "Waiting for HTTP event thread to exit");
-    waitForStop();
-    if (m_pMainEventBase)
-    {
-        for (auto listener : m_vListeners)
-			evconnlistener_free(listener);
-		m_vListeners.clear();
-		event_base_free(m_pMainEventBase);
-		m_pMainEventBase = nullptr;
-    }
-    LogFnPrintf("Stopped HTTP server");
-}
-
-/** Check if a network address is allowed to access the HTTP server */
-bool CHTTPServer::IsClientAllowed(const CNetAddr& netaddr) const
-{
-    if (!netaddr.IsValid())
-        return false;
-    for (const auto& subnet : m_rpc_allow_subnets)
-    {
-        if (subnet.Match(netaddr))
-            return true;
-    }
-    return false;
-}
-
-/** Initialize ACL list for HTTP server */
-bool CHTTPServer::InitHTTPAllowList()
-{
-    m_rpc_allow_subnets.clear();
-    m_rpc_allow_subnets.push_back(CSubNet("127.0.0.0/8")); // always allow IPv4 local subnet
-    m_rpc_allow_subnets.push_back(CSubNet("::1"));         // always allow IPv6 localhost
-    if (mapMultiArgs.count("-rpcallowip"))
-    {
-        const auto& vAllow = mapMultiArgs["-rpcallowip"];
-        for (const auto &strAllow : vAllow)
-        {
-            CSubNet subnet(strAllow);
-            if (!subnet.IsValid())
-            {
-                uiInterface.ThreadSafeMessageBox(
-                    strprintf("Invalid -rpcallowip subnet specification: %s. Valid are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24).", strAllow),
-                    "", CClientUIInterface::MSG_ERROR);
-                return false;
-            }
-            m_rpc_allow_subnets.push_back(subnet);
-        }
-    }
-    string strAllowed;
-    for (const auto& subnet : m_rpc_allow_subnets)
-        strAllowed += subnet.ToString() + " ";
-    LogFnPrint("http", "Allowing HTTP connections from: %s", strAllowed);
-    return true;
-}
-
-/** Bind HTTP server to specified addresses */
-bool CHTTPServer::BindAddresses()
-{
-    const int64_t nPortParam = GetArg("-rpcport", BaseParams().RPCPort());
-    vector<pair<string, uint16_t> > endpoints;
-
-    if ((nPortParam > numeric_limits<uint16_t>::max()) || (nPortParam < 0))
-    {
-        m_sInitError = strprintf("'rpcport' parameter value [%" PRId64 "] is out of range (0..%hu)", 
-            nPortParam, numeric_limits<uint16_t>::max());
-        return false;
-    }
-    const uint16_t defaultPort = static_cast<uint16_t>(nPortParam);
-    // Determine what addresses to bind to
-    if (!mapArgs.count("-rpcallowip")) // Default to loopback if not allowing external IPs
-    { 
-        endpoints.push_back(make_pair("::1", defaultPort));
-        endpoints.push_back(make_pair("127.0.0.1", defaultPort));
-        if (mapArgs.count("-rpcbind"))
-        {
-            LogFnPrintf("WARNING: option -rpcbind was ignored because -rpcallowip was not specified, refusing to allow everyone to connect");
-        }
-    } else if (mapArgs.count("-rpcbind")) { // Specific bind address
-        const v_strings& vbind = mapMultiArgs["-rpcbind"];
-        for (const auto &sHostPort : vbind)
-        {
-            uint16_t port = defaultPort;
-            string host, error;
-            if (!SplitHostPort(error, sHostPort, port, host))
-            {
-                m_sInitError = strprintf("Invalid format for 'rpcbind' parameter. %s", error);
-                return false;
-            }
-            endpoints.emplace_back(host, port);
-        }
-    }
-    else // No specific bind address specified, bind to any
-    { 
-        endpoints.emplace_back("::", defaultPort);
-        endpoints.emplace_back("0.0.0.0", defaultPort);
-    }
-
-    // Create listeners
-    m_vListeners.clear();
-    m_vListeners.reserve(endpoints.size());
-    string sListenerInitError;
-    for (const auto &[address, port] : endpoints)
-    {
-        LogFnPrint("http", "Binding RPC on address %s port %hu", address, port);
-        evconnlistener* listener = nullptr;
-
-        struct sockaddr_in sin;
-        memset(&sin, 0, sizeof(sin));
-        sin.sin_family = AF_INET;
-        sin.sin_port = htons(port);
-        // check for IPv4 address
-        int nRet = inet_pton(sin.sin_family, address.c_str(), &sin.sin_addr);
-        if (nRet == 1)
-        {
-            listener = evconnlistener_new_bind(m_pMainEventBase, accept_connection_cb, m_pWorkQueue.get(),
-			    LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, m_nAcceptBackLog, (struct sockaddr*)&sin, sizeof(sin));
-        }
-        else if (nRet == 0)
-        {
-            struct sockaddr_in6 sin6;
-            memset(&sin6, 0, sizeof(sin6));
-            sin6.sin6_family = AF_INET6;
-            sin6.sin6_port = htons(port);
-            nRet = inet_pton(sin6.sin6_family, address.c_str(), &sin6.sin6_addr);
-            if (nRet == 1)
-			{
-				listener = evconnlistener_new_bind(m_pMainEventBase, accept_connection_cb, m_pWorkQueue.get(),
-					LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, m_nAcceptBackLog, (struct sockaddr*)&sin6, sizeof(sin6));
-			}
-        }
-        if (nRet != 1)
-		{
-            str_append_field(sListenerInitError, strprintf("Invalid address %s", address).c_str(), ". ");
-			continue;
-		}
-
-        if (!listener)
-        {
-			str_append_field(sListenerInitError, strprintf("Binding RPC on address %s port %hu failed. %s",
-                address, port, SAFE_SZ(evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()))).c_str(), ". ");
-			continue;
-		}
-        evconnlistener_set_error_cb(listener, accept_error_cb);
-        m_vListeners.push_back(listener);
-        LogFnPrintf("HTTP RPC Server is listening on address %s port %hu", address, port);
-    }
-    if (m_vListeners.empty())
-    {
-		m_sInitError = strprintf("Failed to bind any endpoint for RPC server. %s", sListenerInitError);
-		return false;
-	}
-    return !m_vListeners.empty();
-}
-
-void CHTTPServer::RegisterHTTPHandler(const string& sHandlerGroup, const string& sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler)
-{
-    LogFnPrint("http", "[%s] registering HTTP handler for %s (exactmatch %d)", 
-        sHandlerGroup, sPrefix, bExactMatch);
-    m_vPathHandlers.emplace_back(sHandlerGroup, sPrefix, bExactMatch, handler);
-}
-
-void CHTTPServer::UnregisterHTTPHandlers(const string& sHandlerGroup)
-{
-    LogFnPrint("http", "Unregistering %s HTTP handlers", sHandlerGroup);
-    auto it = m_vPathHandlers.begin();
-    while (it != m_vPathHandlers.end())
-	{
-        if (!it->IsGroup(sHandlerGroup))
-            ++it;
-
-        it = m_vPathHandlers.erase(it);
-	}
-}
-
-bool CHTTPServer::FindHTTPHandler(const string& sURI, string &sPath, HTTPRequestHandler& handler) const noexcept
-{
-    bool bFoundMatch = false;
-    for (const auto& pathHandler : m_vPathHandlers)
-	{
-		if (pathHandler.IsMatch(sURI))
-		{
-			handler = pathHandler.GetHandler();
-            sPath = sURI.substr(pathHandler.GetPrefixSize());
-			bFoundMatch = true;
-			break;
-		}
-	}
-    return bFoundMatch;
-}
-
 void ReplyInternalServerError(struct evhttp_request* req, const char *szErrorDesc)
 {
     if (!req)
@@ -624,12 +261,21 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             LogFnPrint("http", "Invalid HTTP request");
             return;
         }
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
         auto pHttpWorkerContext = static_cast<CHttpWorkerContext*>(arg);
         if (!pHttpWorkerContext)
         {
             ReplyInternalServerError(req, "No worker context available");
             return;
         }
+#else
+        auto pWorkQueue = static_cast<WorkQueue*>(arg);
+		if (!pWorkQueue)
+		{
+			ReplyInternalServerError(req, "No work queue available");
+			return;
+		}
+#endif
         // get evhttp connection
         auto evcon = evhttp_request_get_connection(req);
         if (!evcon)
@@ -649,6 +295,7 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             ReplyInternalServerError(req, "Invalid client socket");
             return;
         }
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
         auto pHttpConnection = pHttpWorkerContext->GetHttpConnection(clientSocket);
         if (!pHttpConnection)
         {
@@ -656,20 +303,28 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
             return;
         }
         const size_t nWorkerID = pHttpWorkerContext->GetWorkerID();
-
+        string sLogPrefix = strprintf("[httpworker #%zu]", nWorkerID);
+#else
+        const struct sockaddr* addr = evhttp_connection_get_addr(evcon);
+        auto pHttpConnection = make_shared<CHttpConnection>(clientSocket, addr, static_cast<socklen_t>(sizeof(sockaddr)));
+        void* pHttpWorkerContext = nullptr;
+        string sLogPrefix;
+#endif
         // create local HTTPRequest object
         auto pHttpRequest = make_unique<HTTPRequest>(req, pHttpConnection);
         if (!pHttpConnection->ValidateClientConnection(pHttpWorkerContext, pHttpRequest, evcon))
         {
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
             pHttpWorkerContext->CloseHttpConnection(clientSocket, true);
+#endif
             return;
         }
 
         const CService& peer = pHttpConnection->GetPeer();
         const RequestMethod method = pHttpRequest->GetRequestMethod();
         const string sURI = pHttpRequest->GetURI();
-        LogPrint("http", "[httpworker #%zu] Received a %s request for %s from %s (fd %" PRId64 ")\n",
-            nWorkerID, RequestMethodString(method), sURI, peer.ToString(), clientSocket);
+        LogPrint("http", "%sReceived a %s request for %s from %s (fd %" PRId64 ")\n",
+            sLogPrefix, RequestMethodString(method), sURI, peer.ToString(), clientSocket);
 
         if (sURI.size() > MAX_URI_LENGTH)
         {
@@ -693,12 +348,33 @@ static void http_request_cb(struct evhttp_request* req, void* arg)
         }
         pHttpRequest->SetRequestHandler(sPath, fnRequestHandler);
 
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
         // Process the request
         pHttpRequest->execute();
         pHttpRequest->Cleanup();
 
-        LogPrint("http", "[httpworker #%zu] Finished processing HTTP request (fd %" PRId64 ")\n",
-            nWorkerID, clientSocket);
+        LogPrint("http", "%sFinished processing HTTP request (fd %" PRId64 ")\n",
+            sLogPrefix, clientSocket);
+#else
+        // add request to the queue for processing in the worker thread
+        auto [rejectedRequest, nQueueSize] = pWorkQueue->EnqueueRequest(std::move(pHttpRequest));
+        if (rejectedRequest)
+        {
+            LogFnPrintf("Work queue size %zu exceeded, rejecting request", nQueueSize);
+			pHttpRequest->WriteReply(HTTPStatusCode::SERVICE_UNAVAILABLE);
+		}
+        else if (nQueueSize > 10)
+        {
+            static atomic_int64_t nLastLogTime(0);
+            time_t nNow = time(nullptr);
+            // log only every 60 seconds
+            if (nNow - nLastLogTime.load() > 30)
+            {
+                nLastLogTime.store(nNow);
+                LogFnPrintf("Work queue size %zu", nQueueSize);
+            }
+        }
+#endif
     } catch (const exception& e)
 	{
 		LogFnPrintf("Exception in HTTP request callback: %s", e.what());
@@ -717,6 +393,7 @@ static void http_reject_request_cb(struct evhttp_request* req, void*)
     evhttp_send_error(req, to_integral_type(HTTPStatusCode::SERVICE_UNAVAILABLE), "pasteld is shutting down");
 }
 
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
 CHttpWorkerContext::CHttpWorkerContext(const size_t nWorkerID) noexcept :
     m_base(nullptr),
     m_http(nullptr),
@@ -760,7 +437,6 @@ bool CHttpWorkerContext::Initialize(string &error)
     }
     guard_event_base.dismiss();
     LogPrint("http", "[%s] created HTTP server\n", m_sLoopName);
-
 	return true;
 }
 
@@ -919,12 +595,15 @@ void CHttpWorkerContext::WaitForEvent()
     m_bEvent = false;
 }
 
+#endif // EVHTTP_MULTIPLE_EVENT_LOOPS
+
 size_t WorkQueue::size() const
 {
     SIMPLE_LOCK(cs);
     return m_queue.size();
 }
 
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
 /**
 * Enqueue a new http connection.
 * 
@@ -943,17 +622,32 @@ tuple<unique_ptr<CHttpConnection>, size_t> WorkQueue::EnqueueConnection(unique_p
     cond.notify_one();
     return make_tuple(nullptr, nQueueSize + 1);
 }
+#else
+tuple<unique_ptr<HTTPRequest>, size_t> WorkQueue::EnqueueRequest(unique_ptr<HTTPRequest>&& request)
+{
+    SIMPLE_LOCK(cs);
+	size_t nQueueSize = m_queue.size();
+	if (nQueueSize >= m_nMaxQueueSize)
+		return make_tuple(std::move(request), nQueueSize);
+	m_queue.emplace_back(std::move(request));
+	cond.notify_one();
+	return make_tuple(nullptr, nQueueSize + 1);
+}
+#endif
 
 void WorkQueue::worker(const size_t nWorkerID)
 {
-    LogFnPrintf("HTTP worker thread #%zu started", nWorkerID);
+    string sLogPrefix = strprintf("[httpworker #%zu] ", nWorkerID);
+    LogPrintf("%sHTTP worker thread started\n", sLogPrefix);
+	m_bRunning = true;
+
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
     http_worker_context_t pHttpWorkerContext;
     {
         SIMPLE_LOCK(cs);
         pHttpWorkerContext = make_shared<CHttpWorkerContext>(nWorkerID);
         m_WorkerContextMap.emplace(nWorkerID, pHttpWorkerContext);
     }
-	m_bRunning = true;
 
     string error;
     if (!pHttpWorkerContext->Initialize(error))
@@ -974,11 +668,13 @@ void WorkQueue::worker(const size_t nWorkerID)
     evhttp_set_max_headers_size(http, DEFAULT_HTTP_MAX_HEADERS_SIZE);
     evhttp_set_max_body_size(http, MAX_DATA_SIZE);
     evhttp_set_gencb(http, http_request_cb, pHttpWorkerContext.get());
+#endif 
 
     try
     {
         while (true)
         {
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
             unique_ptr<CHttpConnection> pHttpConnection;
             {
                 unique_lock<mutex> lock(cs);
@@ -990,13 +686,39 @@ void WorkQueue::worker(const size_t nWorkerID)
             }
             if (!pHttpConnection)
             {
-                LogPrintf("[httpworker #%zu] Invalid HTTP connection\n", nWorkerID);
+                LogPrintf("%sInvalid HTTP connection\n", sLogPrefix);
                 continue;
             }
-            LogPrint("http", "[httpworker #%zu] Processing new HTTP connection (fd %" PRId64 ")\n",
-                nWorkerID, pHttpConnection->GetClientSocket());
+            LogPrint("http", "%sProcessing new HTTP connection (fd %" PRId64 ")\n",
+                sLogPrefix, pHttpConnection->GetClientSocket());
 
             pHttpWorkerContext->AddHttpConnection(std::move(pHttpConnection));
+#else
+            unique_ptr<HTTPRequest> pHttpRequest;
+            {
+                unique_lock<mutex> lock(cs);
+                cond.wait(lock, [this] { return !m_bRunning || !m_queue.empty(); });
+                if (!m_bRunning && m_queue.empty())
+                    break;
+                pHttpRequest = std::move(m_queue.front());
+                m_queue.pop_front();
+            }
+            if (!pHttpRequest)
+            {
+                LogPrintf("%sInvalid HTTP request\n", sLogPrefix);
+                continue;
+            }
+            evutil_socket_t clientSocket = pHttpRequest->GetClientSocket();
+            LogPrint("http", "%sProcessing new HTTP request (fd %" PRId64 "\n", 
+                sLogPrefix, clientSocket);
+
+            pHttpRequest->execute();
+            pHttpRequest->Cleanup();
+
+            LogPrint("http", "%sFinished processing HTTP request (fd %" PRId64 ")\n",
+                sLogPrefix, clientSocket);
+
+#endif
         }
     } catch (const exception& e)
 	{
@@ -1005,7 +727,9 @@ void WorkQueue::worker(const size_t nWorkerID)
     {
         LogPrintf("Unknown exception in http worker thread #%zu\n", nWorkerID);
     }
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
     pHttpWorkerContext->waitForStop();
+#endif
 }
 
 CHttpConnection::CHttpConnection(evutil_socket_t clientSocket, const struct sockaddr* addr, socklen_t addrlen) noexcept :
@@ -1030,28 +754,37 @@ CHttpConnection::~CHttpConnection()
         m_peer.ToString(), m_clientSocket);
 }
 
-bool CHttpConnection::ValidateClientConnection(CHttpWorkerContext* pHttpWorkerContext, 
+bool CHttpConnection::ValidateClientConnection(void* pHttpWorkerContext, 
     const unique_ptr<HTTPRequest> &pHttpRequest, struct evhttp_connection *evcon)
 {
     if (m_bClientValidated)
         return m_bClientIsAllowed;
+
     m_bClientIsAllowed = gl_HttpServer->IsClientAllowed(m_peer);
     m_bClientValidated = true;
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+    CHttpWorkerContext* pWorkerContext = static_cast<CHttpWorkerContext*>(pHttpWorkerContext);
     const size_t nWorkerID = pHttpWorkerContext->GetWorkerID();
+    string sPrefix = strprintf("[httpworker #%zu] ", nWorkerID);
+#else
+    string sPrefix;
+#endif
     if (!m_bClientIsAllowed)
     {
-        LogPrint("http", "[httpworker #%zu] Rejecting connection from %s (fd %" PRId64 ")\n",
-            nWorkerID, m_peer.ToString(), m_clientSocket);
+        LogPrint("http", "%sRejecting connection from %s (fd %" PRId64 ")\n",
+            sPrefix, m_peer.ToString(), m_clientSocket);
         pHttpRequest->WriteReply(HTTPStatusCode::FORBIDDEN);
         return false;
     }
     const auto& [bHeaderPresent, sHeaderValue] = pHttpRequest->GetHeader("Connection");
     m_bUsesKeepAliveConnection = bHeaderPresent && str_icmp(sHeaderValue, "keep-alive");
 
-    LogPrint("http", "[httpworker #%zu] HTTP connection from %s (fd %" PRId64 ") is allowed%s\n",
-        nWorkerID, m_peer.ToString(), m_clientSocket, m_bUsesKeepAliveConnection ? ", keep-alive" : "");
+    LogPrint("http", "%sHTTP connection from %s (fd %" PRId64 ") is allowed%s\n",
+        sPrefix, m_peer.ToString(), m_clientSocket, m_bUsesKeepAliveConnection ? ", keep-alive" : "");
 
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
     evhttp_connection_set_closecb(evcon, http_connection_close_cb, pHttpWorkerContext);
+#endif
     return true;
 }
 
@@ -1131,19 +864,40 @@ void HTTPRequest::WriteReply(HTTPStatusCode httpStatusCode, const string& strRep
     // Send event to the worker thread to send reply message
     struct evbuffer* evbOutput = evhttp_request_get_output_buffer(m_req);
     assert(evbOutput);
-    evbuffer_add(evbOutput, strReply.data(), strReply.size());
+    const size_t nReplySize = strReply.size();
+    evbuffer_add(evbOutput, strReply.data(), nReplySize);
 
     const int nStatusCode = to_integral_type(httpStatusCode);
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
 	evhttp_send_reply(m_req, nStatusCode, nullptr, evbOutput);
     if (m_pHttpConnection)
 	    LogPrint("http", "Sent reply to %s (fd %" PRId64 "): status %d, output size %zu\n", 
-		    GetPeerStr(), m_pHttpConnection->GetClientSocket(), nStatusCode, strReply.size());
+		    GetPeerStr(), m_pHttpConnection->GetClientSocket(), nStatusCode, nReplySize);
+#else
+    auto req = m_req;
+    auto clientSocket = m_pHttpConnection ? m_pHttpConnection->GetClientSocket() : -1;
+    string sPeer = GetPeerStr();
+    auto *ev = new HTTPEvent(gl_HttpServer->GetEventBase(), true,
+        [req, clientSocket, nStatusCode, evbOutput, nReplySize, sPeer]()
+        { 
+			evhttp_send_reply(req, nStatusCode, nullptr, evbOutput);
+			LogPrint("http", "Sent reply to %s (fd %" PRId64 "): status %d, output size %zu\n", 
+				sPeer, clientSocket, nStatusCode, nReplySize);
+		});
+    ev->trigger(0);
+    m_req = nullptr;
+#endif
 	m_bReplySent = true;
 }
 
 const string HTTPRequest::GetPeerStr() const noexcept
 {
    	return m_pHttpConnection ? m_pHttpConnection->GetPeer().ToString() : string();
+}
+
+evutil_socket_t HTTPRequest::GetClientSocket() const noexcept
+{
+	return m_pHttpConnection ? m_pHttpConnection->GetClientSocket() : -1;
 }
 
 string HTTPRequest::GetURI()
@@ -1215,6 +969,449 @@ void HTTPRequest::SetRequestHandler(const string &sPath, const HTTPRequestHandle
 {
     m_sPath = sPath;
 	m_RequestHandler = handler;
+}
+
+CHTTPServer::CHTTPServer() noexcept :
+    CServiceThread("httplsnr"),
+    m_bInitialized(false),
+    m_bShuttingDown(false),
+    m_pMainEventBase(nullptr),
+#ifdef EVHTTP_MUTLIPLE_EVENT_LOOPS
+    m_http(nullptr),
+#endif
+    m_nRpcWorkerThreads(DEFAULT_HTTP_WORKER_THREADS),
+    m_nRpcServerTimeout(DEFAULT_HTTP_SERVER_TIMEOUT_SECS),
+    m_nAcceptBackLog(DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG)
+{}
+
+bool CHTTPServer::Initialize()
+{
+	if (m_bInitialized)
+		return true;
+
+    // read and validate HTTP server options
+    const int64_t nRpcThreads = max<int64_t>(GetArg("-rpcthreads", DEFAULT_HTTP_WORKER_THREADS), 1);
+    if ((nRpcThreads < 1) || (nRpcThreads > MAX_HTTP_THREADS))
+    {
+        m_sInitError = strprintf("Invalid number of RPC threads specified (must be between 1 and %d)", 
+            MAX_HTTP_THREADS);
+		return false;
+    }
+    m_nRpcWorkerThreads = static_cast<size_t>(nRpcThreads);
+
+    const int64_t nRpcServerTimeout = GetArg("-rpcservertimeout", DEFAULT_HTTP_SERVER_TIMEOUT_SECS);
+    if (nRpcServerTimeout > numeric_limits<int>::max())
+    {
+        m_sInitError = strprintf("'rpcservertimeout' parameter value [%" PRId64 "] is out of range (0..%d)", 
+            nRpcServerTimeout, numeric_limits<int>::max());
+        return false;
+    }
+    m_nRpcServerTimeout = static_cast<int>(nRpcServerTimeout);
+
+    const int64_t nWorkQueueMaxSize = max<int64_t>(GetArg("-rpcworkqueue", DEFAULT_HTTP_WORKQUEUE_MAX_SIZE), MIN_HTTP_WORKQUEUE_MAX_SIZE);
+    if (nWorkQueueMaxSize > numeric_limits<int>::max())
+    {
+        m_sInitError = strprintf("'-rpcworkqueue' parameter value [%" PRId64 "] is out of range (%d..%d)",
+            MIN_HTTP_WORKQUEUE_MAX_SIZE, numeric_limits<int>::max());
+        return false;
+    }
+    m_nWorkQueueMaxSize = static_cast<size_t>(nWorkQueueMaxSize);
+
+    const int64_t nAcceptBackLog = GetArg("-rpcacceptbacklog", DEFAULT_HTTP_SERVER_ACCEPT_BACKLOG);
+    if (nAcceptBackLog > numeric_limits<int>::max())
+	{
+		m_sInitError = strprintf("'-rpcacceptbacklog' parameter value [%" PRId64 "] is out of range (0..%d)",
+			nAcceptBackLog, numeric_limits<int>::max());
+		return false;
+	}
+    m_nAcceptBackLog = static_cast<int>(nAcceptBackLog);
+
+    if (!InitHTTPAllowList())
+        return false;
+
+    if (GetBoolArg("-rpcssl", false))
+    {
+        uiInterface.ThreadSafeMessageBox(
+            "SSL mode for RPC (-rpcssl) is no longer supported.",
+            "", CClientUIInterface::MSG_ERROR);
+        return false;
+    }
+
+    // Redirect libevent's logging to our own log
+    event_set_log_callback(&libevent_log_cb);
+#if LIBEVENT_VERSION_NUMBER >= 0x02010100
+    // If -debug=libevent, set full libevent debugging.
+    // Otherwise, disable all libevent debugging.
+    if (LogAcceptCategory("libevent"))
+        event_enable_debug_logging(EVENT_DBG_ALL);
+    else
+        event_enable_debug_logging(EVENT_DBG_NONE);
+#endif
+    event_set_fatal_callback([](int err) { LogPrintf("libevent: FATAL ERROR %d\n", err); });
+#ifdef WIN32
+    evthread_use_windows_threads();
+#else
+    evthread_use_pthreads();
+#endif
+    LogFnPrintf("Using libevent version %s", event_get_version());
+    m_pMainEventBase = event_base_new();
+    if (!m_pMainEventBase)
+    {
+        m_sInitError = "Couldn't create an event_base";
+        return false;
+    }
+
+    LogFnPrintf("HTTP: creating work queue with max size %zu", m_nWorkQueueMaxSize);
+    if (!m_pWorkQueue)
+    {
+        m_pWorkQueue = make_shared<WorkQueue>(*this, m_nWorkQueueMaxSize);
+        if (!m_pWorkQueue)
+		{
+			m_sInitError = "Failed to create work queue";
+			return false;
+		}
+    }
+#ifndef EVHTTP_MULTIPLE_EVENT_LOOPS
+    m_http = evhttp_new(m_pMainEventBase);
+	if (!m_http)
+	{
+		m_sInitError = "Couldn't create HTTP server";
+		return false;
+	}
+    evhttp_set_timeout(m_http, GetRpcServerTimeout());
+    evhttp_set_max_headers_size(m_http, DEFAULT_HTTP_MAX_HEADERS_SIZE);
+    evhttp_set_max_body_size(m_http, MAX_DATA_SIZE);
+	evhttp_set_gencb(m_http, http_request_cb, m_pWorkQueue.get());
+#endif
+
+    if (!BindAddresses())
+    {
+        m_sInitError = strprintf("Unable to bind any endpoint for RPC server. %s", m_sInitError);
+        return false;
+    }
+
+    LogFnPrint("http", "Initialized HTTP server");
+	m_bInitialized = true;
+	return m_bInitialized;
+}
+
+void CHTTPServer::execute()
+{
+    try
+    {
+        event_base_dispatch(m_pMainEventBase);
+    } catch (const exception& e)
+	{
+		LogFnPrintf("exception in http listener event loop: %s", e.what());
+	} catch (...)
+	{
+		LogFnPrintf("unknown exception in http listener event loop");
+	}
+    // Event loop will be interrupted by Interrupt() call
+}
+
+bool CHTTPServer::Start() noexcept
+{
+    try
+    {
+        if (!m_bInitialized)
+        {
+            m_sInitError = "HTTP server not initialized";
+            return false;
+        }
+        LogFnPrintf("HTTP Server: starting %zu worker threads", m_nRpcWorkerThreads);
+
+        string error;
+        if (!start(error))
+        {
+            m_sInitError = strprintf("Failed to start HTTP Server listener thread. %s", error);
+            return false;
+        }
+
+        for (size_t i = 0; i < m_nRpcWorkerThreads; i++)
+        {
+            const size_t nID = m_WorkerThreadPool.add_func_thread(error, strprintf("httpworker%zu", i + 1).c_str(),
+                [this, i]()
+            {
+                if (m_pWorkQueue)
+                    m_pWorkQueue->worker(i + 1);
+            }, true);
+            if (nID == INVALID_THREAD_OBJECT_ID)
+            {
+                m_sInitError = strprintf("Failed to create HTTP worker thread. %s", error);
+                return false;
+            }
+        }
+    } catch (const exception& e)
+    {
+        m_sInitError = strprintf("Exception starting HTTP server: %s", e.what());
+		return false;
+    } catch (...) {
+		m_sInitError = "Unknown exception starting HTTP server";
+		return false;
+	}
+    return true;
+}
+
+void CHTTPServer::Interrupt()
+{
+    LogFnPrintf("Stopping HTTP server");
+    m_bShuttingDown = true;
+    stop();
+    if (m_pMainEventBase)
+    {
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+        // disable all listeners
+        for (auto listener : m_vListeners)
+            evconnlistener_disable(listener);
+
+        // add small delay to allow pending requests to finish without error
+        // also to make sure stop() command sends back a response
+        this_thread::sleep_for(chrono::milliseconds(200));
+#else
+        for (auto pBoundSocket: m_vBoundSockets)
+            evhttp_del_accept_socket(m_http, pBoundSocket);
+        m_vBoundSockets.clear();
+
+        // Reject requests on current connections
+        evhttp_set_gencb(m_http, http_reject_request_cb, nullptr);
+#endif
+        // Break the main event loop
+        event_base_loopexit(m_pMainEventBase, nullptr);
+	}
+    m_WorkerThreadPool.stop_all();
+    if (m_pWorkQueue)
+        m_pWorkQueue->Interrupt();
+}
+
+void CHTTPServer::Stop()
+{
+    LogFnPrintf("Stopping HTTP server");
+    LogFnPrint("http", "Waiting for HTTP worker threads to exit");
+    m_WorkerThreadPool.join_all();
+    m_pWorkQueue.reset();
+    
+    LogFnPrint("http", "Waiting for HTTP event thread to exit");
+    waitForStop();
+    if (m_pMainEventBase)
+    {
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+        for (auto listener : m_vListeners)
+			evconnlistener_free(listener);
+		m_vListeners.clear();
+#else
+    if (m_http)
+		evhttp_free(m_http);
+#endif
+		event_base_free(m_pMainEventBase);
+		m_pMainEventBase = nullptr;
+    }
+    LogFnPrintf("Stopped HTTP server");
+}
+
+/** Check if a network address is allowed to access the HTTP server */
+bool CHTTPServer::IsClientAllowed(const CNetAddr& netaddr) const
+{
+    if (!netaddr.IsValid())
+        return false;
+    for (const auto& subnet : m_rpc_allow_subnets)
+    {
+        if (subnet.Match(netaddr))
+            return true;
+    }
+    return false;
+}
+
+/** Initialize ACL list for HTTP server */
+bool CHTTPServer::InitHTTPAllowList()
+{
+    m_rpc_allow_subnets.clear();
+    m_rpc_allow_subnets.push_back(CSubNet("127.0.0.0/8")); // always allow IPv4 local subnet
+    m_rpc_allow_subnets.push_back(CSubNet("::1"));         // always allow IPv6 localhost
+    if (mapMultiArgs.count("-rpcallowip"))
+    {
+        const auto& vAllow = mapMultiArgs["-rpcallowip"];
+        for (const auto &strAllow : vAllow)
+        {
+            CSubNet subnet(strAllow);
+            if (!subnet.IsValid())
+            {
+                uiInterface.ThreadSafeMessageBox(
+                    strprintf("Invalid -rpcallowip subnet specification: %s. Valid are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24).", strAllow),
+                    "", CClientUIInterface::MSG_ERROR);
+                return false;
+            }
+            m_rpc_allow_subnets.push_back(subnet);
+        }
+    }
+    string strAllowed;
+    for (const auto& subnet : m_rpc_allow_subnets)
+        strAllowed += subnet.ToString() + " ";
+    LogFnPrint("http", "Allowing HTTP connections from: %s", strAllowed);
+    return true;
+}
+
+/** Bind HTTP server to specified addresses */
+bool CHTTPServer::BindAddresses()
+{
+    const int64_t nPortParam = GetArg("-rpcport", BaseParams().RPCPort());
+    vector<pair<string, uint16_t> > endpoints;
+
+    if ((nPortParam > numeric_limits<uint16_t>::max()) || (nPortParam < 0))
+    {
+        m_sInitError = strprintf("'rpcport' parameter value [%" PRId64 "] is out of range (0..%hu)", 
+            nPortParam, numeric_limits<uint16_t>::max());
+        return false;
+    }
+    const uint16_t defaultPort = static_cast<uint16_t>(nPortParam);
+    // Determine what addresses to bind to
+    if (!mapArgs.count("-rpcallowip")) // Default to loopback if not allowing external IPs
+    { 
+        endpoints.push_back(make_pair("::1", defaultPort));
+        endpoints.push_back(make_pair("127.0.0.1", defaultPort));
+        if (mapArgs.count("-rpcbind"))
+        {
+            LogFnPrintf("WARNING: option -rpcbind was ignored because -rpcallowip was not specified, refusing to allow everyone to connect");
+        }
+    } else if (mapArgs.count("-rpcbind")) { // Specific bind address
+        const v_strings& vbind = mapMultiArgs["-rpcbind"];
+        for (const auto &sHostPort : vbind)
+        {
+            uint16_t port = defaultPort;
+            string host, error;
+            if (!SplitHostPort(error, sHostPort, port, host))
+            {
+                m_sInitError = strprintf("Invalid format for 'rpcbind' parameter. %s", error);
+                return false;
+            }
+            endpoints.emplace_back(host, port);
+        }
+    }
+    else // No specific bind address specified, bind to any
+    { 
+        endpoints.emplace_back("::", defaultPort);
+        endpoints.emplace_back("0.0.0.0", defaultPort);
+    }
+
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+    // Create listeners
+    m_vListeners.clear();
+    m_vListeners.reserve(endpoints.size());
+#endif
+    string sListenerInitError;
+    for (const auto &[address, port] : endpoints)
+    {
+        LogFnPrint("http", "Binding RPC on address %s port %hu", address, port);
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+        evconnlistener* listener = nullptr;
+#else
+        evhttp_bound_socket* bind_handle = nullptr;
+#endif
+
+        struct sockaddr_in sin;
+        memset(&sin, 0, sizeof(sin));
+        sin.sin_family = AF_INET;
+        sin.sin_port = htons(port);
+        // check for IPv4 address
+        int nRet = inet_pton(sin.sin_family, address.c_str(), &sin.sin_addr);
+        if (nRet == 1)
+        {
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+            listener = evconnlistener_new_bind(m_pMainEventBase, accept_connection_cb, m_pWorkQueue.get(),
+			    LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, m_nAcceptBackLog, (struct sockaddr*)&sin, sizeof(sin));
+#else
+            bind_handle = evhttp_bind_socket_with_handle(m_http, address.empty() ? nullptr : address.c_str(), port);
+#endif
+        }
+        else if (nRet == 0)
+        {
+            struct sockaddr_in6 sin6;
+            memset(&sin6, 0, sizeof(sin6));
+            sin6.sin6_family = AF_INET6;
+            sin6.sin6_port = htons(port);
+            nRet = inet_pton(sin6.sin6_family, address.c_str(), &sin6.sin6_addr);
+            if (nRet == 1)
+			{
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+				listener = evconnlistener_new_bind(m_pMainEventBase, accept_connection_cb, m_pWorkQueue.get(),
+					LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE, m_nAcceptBackLog, (struct sockaddr*)&sin6, sizeof(sin6));
+#else
+                bind_handle = evhttp_bind_socket_with_handle(m_http, address.empty() ? nullptr : address.c_str(), port);
+#endif
+			}
+        }
+        if (nRet != 1)
+		{
+            str_append_field(sListenerInitError, strprintf("Invalid address %s", address).c_str(), ". ");
+			continue;
+		}
+
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+        if (!listener)
+#else
+        if (!bind_handle)
+#endif
+        {
+			str_append_field(sListenerInitError, strprintf("Binding RPC on address %s port %hu failed. %s",
+                address, port, SAFE_SZ(evutil_socket_error_to_string(EVUTIL_SOCKET_ERROR()))).c_str(), ". ");
+			continue;
+		}
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+        evconnlistener_set_error_cb(listener, accept_error_cb);
+        m_vListeners.push_back(listener);
+#else
+        m_vBoundSockets.push_back(bind_handle);
+#endif
+        LogFnPrintf("HTTP RPC Server is listening on address %s port %hu", address, port);
+    }
+
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+    const bool bListenersCreated = !m_vListeners.empty();
+#else
+    const bool bListenersCreated = !m_vBoundSockets.empty();
+#endif
+    if (!bListenersCreated)
+    {
+		m_sInitError = strprintf("Failed to bind any endpoint for RPC server. %s", sListenerInitError);
+		return false;
+	}
+    return bListenersCreated;
+}
+
+void CHTTPServer::RegisterHTTPHandler(const string& sHandlerGroup, const string& sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler)
+{
+    LogFnPrint("http", "[%s] registering HTTP handler for %s (exactmatch %d)", 
+        sHandlerGroup, sPrefix, bExactMatch);
+    m_vPathHandlers.emplace_back(sHandlerGroup, sPrefix, bExactMatch, handler);
+}
+
+void CHTTPServer::UnregisterHTTPHandlers(const string& sHandlerGroup)
+{
+    LogFnPrint("http", "Unregistering %s HTTP handlers", sHandlerGroup);
+    auto it = m_vPathHandlers.begin();
+    while (it != m_vPathHandlers.end())
+	{
+        if (!it->IsGroup(sHandlerGroup))
+            ++it;
+
+        it = m_vPathHandlers.erase(it);
+	}
+}
+
+bool CHTTPServer::FindHTTPHandler(const string& sURI, string &sPath, HTTPRequestHandler& handler) const noexcept
+{
+    bool bFoundMatch = false;
+    for (const auto& pathHandler : m_vPathHandlers)
+	{
+		if (pathHandler.IsMatch(sURI))
+		{
+			handler = pathHandler.GetHandler();
+            sPath = sURI.substr(pathHandler.GetPrefixSize());
+			bFoundMatch = true;
+			break;
+		}
+	}
+    return bFoundMatch;
 }
 
 void RegisterHTTPHandler(const string &sHandlerGroup, const string &sPrefix, const bool bExactMatch, const HTTPRequestHandler &handler)

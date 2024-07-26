@@ -164,6 +164,24 @@ void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     Interrupt(threadGroup, scheduler);
 }
 
+/** Abort with a message */
+bool AbortNode(const string& strMessage, const string& userMessage)
+{
+    strMiscWarning = strMessage;
+    LogPrintf("*** %s\n", strMessage);
+    uiInterface.ThreadSafeMessageBox(
+        userMessage.empty() ? translate("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
+        "", CClientUIInterface::MSG_ERROR);
+    StartShutdown();
+    return false;
+}
+
+bool AbortNode(CValidationState& state, const string& strMessage, const string& userMessage)
+{
+    AbortNode(strMessage, userMessage);
+    return state.Error(strMessage);
+}
+
 class CCoinsViewErrorCatcher : public CCoinsViewBacked
 {
 public:

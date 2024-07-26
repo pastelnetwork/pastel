@@ -127,12 +127,15 @@ public:
         return m_sigTime > nSigTime;
     }
 
+    void HandleCheckResult(const MNP_CHECK_RESULT result);
+
 protected:
     CTxIn m_vin;
     uint256 m_blockHash;  // block hash when the ping was signed
     int64_t m_sigTime{0}; // "mnp" message signing time - in local time of the masternode
     v_uint8 m_vchSig;
     bool m_bDefined = false;
+    size_t m_nExpiredErrorCount = 0; // expired by height error count (used to suppress frequent log messages)
 
     bool isEqual(const CMasterNodePing& rhs) const noexcept
     {

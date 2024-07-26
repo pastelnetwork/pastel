@@ -32,6 +32,7 @@
 #include <metrics.h>
 #include <net.h>
 #include <txdb/txdb.h>
+#include <txdb/txidxprocessor.h>
 #include <txmempool.h>
 #include <accept_to_mempool.h>
 #include <ui_interface.h>
@@ -1251,24 +1252,6 @@ bool UndoReadFromDisk(CBlockUndo& blockundo, const CDiskBlockPos& pos, const uin
     return true;
 }
 
-/** Abort with a message */
-bool AbortNode(const string& strMessage, const string& userMessage="")
-{
-    strMiscWarning = strMessage;
-    LogPrintf("*** %s\n", strMessage);
-    uiInterface.ThreadSafeMessageBox(
-        userMessage.empty() ? translate("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
-        "", CClientUIInterface::MSG_ERROR);
-    StartShutdown();
-    return false;
-}
-
-bool AbortNode(CValidationState& state, const string& strMessage, const string& userMessage="")
-{
-    AbortNode(strMessage, userMessage);
-    return state.Error(strMessage);
-}
-
 } // anon namespace
 
 /**
@@ -1329,7 +1312,8 @@ BlockDisconnectResult DisconnectBlock(
     const bool bUpdateIndices)
 {
     // check that the block hash is the same as the best block in the view
-    assert(pindex->GetBlockHash() == view.GetBestBlock());
+    const uint256 hashBlock = pindex->GetBlockHash();
+    assert(hashBlock == view.GetBestBlock());
 
     bool fClean = true;
 
@@ -1341,8 +1325,9 @@ BlockDisconnectResult DisconnectBlock(
         return BlockDisconnectResult::FAILED;
     }
 
+    const uint256 hashPrevBlock = pindex->pprev->GetBlockHash();
     // retrieve the undo data for the block: a record of the information needed to reverse the effects of a block
-    if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash()))
+    if (!UndoReadFromDisk(blockUndo, pos, hashPrevBlock))
     {
         errorFn(__METHOD_NAME__, "failure reading undo data");
         return BlockDisconnectResult::FAILED;
@@ -1354,10 +1339,8 @@ BlockDisconnectResult DisconnectBlock(
         return BlockDisconnectResult::FAILED;
     }
 
-    address_index_vector_t vAddressIndex;
-    address_unspent_vector_t vAddressUnspentIndex;
-    spent_index_vector_t vSpentIndex;
-    burn_txindex_vector_t vBurnTxIndex;
+    CTxIndexProcessor txIndexProcessor(chainparams, view, pindex, 
+        hashBlock, hashPrevBlock, block.GetBlockTime());
 
     // undo transactions in reverse order
     if (!block.vtx.empty())
@@ -1366,42 +1349,15 @@ BlockDisconnectResult DisconnectBlock(
 
         CSerializeData vTicketData;
         string error;
-        for (uint32_t i = static_cast<uint32_t>(block.vtx.size()); i-- > 0;)
+        for (uint32_t nTxOrderNo = static_cast<uint32_t>(block.vtx.size()); nTxOrderNo-- > 0;)
         {
-            const CTransaction& tx = block.vtx[i];
+            const CTransaction& tx = block.vtx[nTxOrderNo];
             const uint256 &txid = tx.GetHash();
             optional<CAmount> burnAmount;
 
             // insightexplorer
-            if ((fAddressIndex || fBurnTxIndex) && bUpdateIndices)
-            {
-                for (uint32_t k = static_cast<uint32_t>(tx.vout.size()); k-- > 0;)
-                {
-                    const CTxOut &txout = tx.vout[k];
-                    ScriptType scriptType = txout.scriptPubKey.GetType();
-                    if (scriptType == ScriptType::UNKNOWN)
-                        continue;
-
-                    uint160 const addrHash = txout.scriptPubKey.AddressHash();
-
-                    if (fBurnTxIndex && (addrHash == destBurnAddress))
-                        burnAmount = txout.nValue;
-
-                    if (!fAddressIndex)
-                        continue;
-
-                    // undo receiving activity
-                    vAddressIndex.emplace_back(
-                        CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, k, false),
-                        txout.nValue);
-
-                    // undo unspent index
-                    vAddressUnspentIndex.emplace_back(
-                        CAddressUnspentKey(scriptType, addrHash, txid, k),
-                        CAddressUnspentValue());
-                }
-            }
-            
+            if (bUpdateIndices)
+                txIndexProcessor.UndoOutputs(tx, nTxOrderNo);
 
             // Check that all outputs are available and match the outputs in the block itself
             // exactly.
@@ -1426,61 +1382,28 @@ BlockDisconnectResult DisconnectBlock(
             // unspend nullifiers
             view.SetNullifiers(tx, false);
 
-            if (i == 0)
+            if (nTxOrderNo == 0)
                 break; // break on coinbase
 
             // restore inputs, not coinbases
-            const CTxUndo& txundo = blockUndo.vtxundo[i - 1];
+            const CTxUndo& txundo = blockUndo.vtxundo[nTxOrderNo - 1];
             if (txundo.vprevout.size() != tx.vin.size())
             {
                 errorFn(__METHOD_NAME__, "height=%u, transaction and undo data inconsistent", pindex->GetHeight());
                 return BlockDisconnectResult::FAILED;
             }
-            for (uint32_t j = static_cast<uint32_t>(tx.vin.size()); j-- > 0;)
+
+            for (uint32_t nTxIn = static_cast<uint32_t>(tx.vin.size()); nTxIn-- > 0;)
             {
-                const CTxIn &input = tx.vin[j];
+                const CTxIn &input = tx.vin[nTxIn];
                 const COutPoint& out = input.prevout;
-                const CTxInUndo& undo = txundo.vprevout[j];
-                if (!ApplyTxInUndo(undo, view, out))
+                const CTxInUndo& txInUndo = txundo.vprevout[nTxIn];
+                if (!ApplyTxInUndo(txInUndo, view, out))
                     fClean = false;
 
                 // insightexplorer
-                if ((fAddressIndex || (fBurnTxIndex && burnAmount)) && bUpdateIndices)
-                {
-                    const CTxOut &prevout = view.GetOutputFor(input);
-                    ScriptType scriptType = prevout.scriptPubKey.GetType();
-                    if (scriptType == ScriptType::UNKNOWN)
-                        continue;
-
-                    uint160 const addrHash = prevout.scriptPubKey.AddressHash();
-
-                    if (fBurnTxIndex && burnAmount)
-                    {
-						vBurnTxIndex.emplace_back(
-							CBurnTxIndexKey(scriptType, addrHash, pindex->GetHeight(), txid, j),
-							CBurnTxIndexValue(burnAmount.value(), pindex->GetBlockHash(), block.GetBlockTime()));
-                    }
-
-                    if (!fAddressIndex)
-                        continue;
-                    // undo spending activity
-                    vAddressIndex.emplace_back(
-                        CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, j, true),
-                        prevout.nValue * -1);
-
-                    // restore unspent index
-                    vAddressUnspentIndex.emplace_back(
-                        CAddressUnspentKey(scriptType, addrHash, input.prevout.hash, input.prevout.n),
-                        CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, undo.nHeight));
-                }
-                if (fSpentIndex && bUpdateIndices)
-                {
-                    // undo and delete the spent index
-                    vSpentIndex.emplace_back(
-                        CSpentIndexKey(input.prevout.hash, input.prevout.n),
-                        CSpentIndexValue());
-                }
-
+                if (bUpdateIndices)
+                    txIndexProcessor.UndoInput(tx, nTxOrderNo, nTxIn, txInUndo.nHeight);
             }
         }
     }
@@ -1499,38 +1422,11 @@ BlockDisconnectResult DisconnectBlock(
         view.PopAnchor(SaplingMerkleTree::empty_root(), SAPLING);
 
     // move best block pointer to prevout block
-    view.SetBestBlock(pindex->pprev->GetBlockHash());
+    view.SetBestBlock(hashPrevBlock);
 
-   // insightexplorer
-    if (fAddressIndex && bUpdateIndices)
-    {
-        if (!gl_pBlockTreeDB->EraseAddressIndex(vAddressIndex))
-        {
-            AbortNode(state, "Failed to delete address index");
-            return BlockDisconnectResult::FAILED;
-        }
-        if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(vAddressUnspentIndex))
-        {
-            AbortNode(state, "Failed to write address unspent index");
-            return BlockDisconnectResult::FAILED;
-        }
-    }
-    if (fBurnTxIndex && bUpdateIndices)
-    {
-        if (!gl_pBlockTreeDB->EraseBurnTxIndex(vBurnTxIndex))
-        {
-            AbortNode(state, "Failed to delete burn transaction index");
-            return BlockDisconnectResult::FAILED;
-        }
-    }
-    if (fSpentIndex && bUpdateIndices)
-    {
-        if (!gl_pBlockTreeDB->UpdateSpentIndex(vSpentIndex))
-        {
-            AbortNode(state, "Failed to write transaction index");
-            return BlockDisconnectResult::FAILED;
-        }
-    }
+    // insightexplorer
+    if (bUpdateIndices && !txIndexProcessor.EraseIndices(state))
+        return BlockDisconnectResult::FAILED;
 
     return fClean ? BlockDisconnectResult::OK : BlockDisconnectResult::UNCLEAN;
 }
@@ -1659,7 +1555,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
         return false;
 
     // verify that the view's current state corresponds to the previous block
-    const uint256 hashPrevBlock = !pindex->pprev ? uint256() : pindex->pprev->GetBlockHash();
+    const uint256 hashPrevBlock = pindex->pprev ? pindex->pprev->GetBlockHash() : uint256();
     assert(hashPrevBlock == view.GetBestBlock());
 
     const auto& consensusParams = chainparams.GetConsensus();
@@ -1668,14 +1564,14 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     if (hashBlock == consensusParams.hashGenesisBlock)
     {
         if (!fJustCheck)
-	{
-            view.SetBestBlock(pindex->GetBlockHash());
-            // Before the genesis block, there was an empty tree
-            SproutMerkleTree tree;
-            pindex->hashSproutAnchor = tree.root();
-            // The genesis block contained no JoinSplits
-            pindex->hashFinalSproutRoot = pindex->hashSproutAnchor;
-	}
+	    {
+                view.SetBestBlock(pindex->GetBlockHash());
+                // Before the genesis block, there was an empty tree
+                SproutMerkleTree tree;
+                pindex->hashSproutAnchor = tree.root();
+                // The genesis block contained no JoinSplits
+                pindex->hashFinalSproutRoot = pindex->hashSproutAnchor;
+	    }
         return true;
     }
 
@@ -1705,10 +1601,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     vector<pair<uint256, CDiskTxPos> > vPos;
     vPos.reserve(block.vtx.size());
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
-    address_index_vector_t vAddressIndex;
-    address_unspent_vector_t vAddressUnspentIndex;
-    spent_index_vector_t vSpentIndex;
-    burn_txindex_vector_t vBurnTxIndex;
+    CTxIndexProcessor txIndexProcessor(chainparams, view, pindex, 
+        hashBlock, hashPrevBlock, block.GetBlockTime());
 
     // Construct the incremental merkle tree at the current block position
     auto old_sprout_tree_root = view.GetBestAnchor(SPROUT);
@@ -1736,18 +1630,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     vector<PrecomputedTransactionData> txdata;
     txdata.reserve(block.vtx.size()); // Required so that pointers to individual PrecomputedTransactionData don't get invalidated
 
-    const uint160& destBurnAddress = chainparams.getPastelBurnAddressHash();
-
-    for (uint32_t i = 0; i < block.vtx.size(); i++)
+    for (uint32_t nTxOrderNo = 0; nTxOrderNo < block.vtx.size(); ++nTxOrderNo)
     {
-        const CTransaction &tx = block.vtx[i];
+        const CTransaction &tx = block.vtx[nTxOrderNo];
         const uint256 &txid = tx.GetHash();
-
-        // Coinbase transactions are the only case where this vector will not be the same
-        // length as `tx.vin` (since coinbase transactions have a single synthetic input).
-        // Only shielded coinbase transactions will need to produce sighashes for coinbase
-        // transactions; this is handled in ZIP 244 by having the coinbase sighash be the txid.
-        v_txouts vAllPrevOutputs;
 
         nInputs += tx.vin.size();
         nSigOps += GetLegacySigOpCount(tx);
@@ -1761,48 +1647,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
                 return state.DoS(100, errorFn(__METHOD_NAME__, "inputs missing/spent"),
                                  REJECT_INVALID, "bad-txns-inputs-missingorspent");
 
-			vAllPrevOutputs.reserve(tx.vin.size());
-            for (const auto& input : tx.vin)
-            {
-                const auto &prevout = view.GetOutputFor(input);
-                vAllPrevOutputs.push_back(prevout);
-            }
-
             // insightexplorer
-            if (fAddressIndex || fSpentIndex)
-            {
-                for (uint32_t j = 0; j < tx.vin.size(); j++)
-                {
-
-                    const CTxIn &input = tx.vin[j];
-                    const CTxOut &prevout = vAllPrevOutputs[j];
-                    ScriptType scriptType = prevout.scriptPubKey.GetType();
-                    const uint160 addrHash = prevout.scriptPubKey.AddressHash();
-                    if (fAddressIndex && scriptType != ScriptType::UNKNOWN)
-                    {
-                        // record spending activity
-                        vAddressIndex.emplace_back(
-                            CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, j, true),
-                            prevout.nValue * -1);
-
-                        // remove address from unspent index
-                        vAddressUnspentIndex.emplace_back(
-                            CAddressUnspentKey(scriptType, addrHash, input.prevout.hash, input.prevout.n),
-                            CAddressUnspentValue());
-                    }
-                    if (fSpentIndex)
-                    {
-                        // Add the spent index to determine the txid and input that spent an output
-                        // and to find the amount and address from an input.
-                        // If we do not recognize the script type, we still add an entry to the
-                        // spentindex db, with a script type of 0 and addrhash of all zeroes.
-                        vSpentIndex.emplace_back(
-                            CSpentIndexKey(input.prevout.hash, input.prevout.n),
-                            CSpentIndexValue(txid, j, pindex->nHeight, prevout.nValue, scriptType, addrHash));
-                    }
-                }
-            }
-            
+            txIndexProcessor.ProcessInputs(tx, nTxOrderNo);
             
             // are the shielded requirements met?
             if (!view.HaveShieldedRequirements(tx))
@@ -1817,7 +1663,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
                 return state.DoS(100, errorFn(__METHOD_NAME__, "too many sigops"),
                                  REJECT_INVALID, "bad-blk-sigops");
         }
-
         txdata.emplace_back(tx);
 
         if (!tx.IsCoinBase())
@@ -1826,63 +1671,18 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
 
             vector<CScriptCheck> vChecks;
             bool fCacheResults = fJustCheck; /* Don't cache results if we're actually connecting blocks (still consult the cache, though) */
-            if (!ContextualCheckInputs(tx, state, view, fExpensiveChecks, flags, fCacheResults, txdata[i], consensusParams, consensusBranchId, gl_ScriptCheckManager.GetThreadCount() ? &vChecks : nullptr))
+            if (!ContextualCheckInputs(tx, state, view, fExpensiveChecks, flags, fCacheResults, txdata[nTxOrderNo], consensusParams, consensusBranchId, gl_ScriptCheckManager.GetThreadCount() ? &vChecks : nullptr))
                 return false;
             scriptCheckControl->Add(vChecks);
         }
 
         // insightexplorer
-        if (fAddressIndex || fBurnTxIndex)
-        {
-            for (uint32_t k = 0; k < tx.vout.size(); k++)
-            {
-                const CTxOut &txout = tx.vout[k];
-                ScriptType scriptType = txout.scriptPubKey.GetType();
-                if (scriptType == ScriptType::UNKNOWN)
-                    continue;
-
-                const uint160 addrHash = txout.scriptPubKey.AddressHash();
-
-                // add to burn tx index only if transaction destination is burn address
-                if (fBurnTxIndex && (addrHash == destBurnAddress))
-				{
-                    for (uint32_t j = 0; j < tx.vin.size(); j++)
-                    {
-                        const CTxIn& input = tx.vin[j];
-                        const CTxOut& prevout = vAllPrevOutputs[j];
-                        if (prevout.IsNull())
-                            continue;
-
-                        ScriptType scriptTypeIn = prevout.scriptPubKey.GetType();
-                        if (scriptTypeIn == ScriptType::UNKNOWN)
-                            continue;
-
-                        const uint160 addrHash = prevout.scriptPubKey.AddressHash();
-                        vBurnTxIndex.emplace_back(
-                            CBurnTxIndexKey(scriptTypeIn, addrHash, pindex->GetHeight(), txid, j),
-                            CBurnTxIndexValue(txout.nValue * -1, hashBlock, block.GetBlockTime()));
-                    }
-				}
-				
-                if (!fAddressIndex)
-                    continue;
-
-                // record receiving activity
-                vAddressIndex.emplace_back(
-                    CAddressIndexKey(scriptType, addrHash, pindex->GetHeight(), i, txid, k, false),
-                    txout.nValue);
-
-                // record unspent output
-                vAddressUnspentIndex.emplace_back(
-                    CAddressUnspentKey(scriptType, addrHash, txid, k),
-                    CAddressUnspentValue(txout.nValue, txout.scriptPubKey, pindex->GetHeight()));
-            }
-        }
+        txIndexProcessor.ProcessOutputs(tx, nTxOrderNo);
 
         CTxUndo undoDummy;
-        if (i > 0)
+        if (nTxOrderNo > 0)
             blockundo.vtxundo.push_back(CTxUndo());
-        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight);
+        UpdateCoins(tx, view, nTxOrderNo == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight);
 
         for (const auto &outputDescription : tx.vShieldedOutput)
             sapling_tree.append(outputDescription.cm);
@@ -1975,49 +1775,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, const CChainPara
     if (fTxIndex && !gl_pBlockTreeDB->WriteTxIndex(vPos))
         return AbortNode(state, "Failed to write transaction index");
 
-    // START insightexplorer
-    if (fAddressIndex)
-    {
-        if (!gl_pBlockTreeDB->WriteAddressIndex(vAddressIndex))
-            return AbortNode(state, "Failed to write address index");
-        if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(vAddressUnspentIndex))
-            return AbortNode(state, "Failed to write address unspent index");
-    }
-    if (fBurnTxIndex)
-    {
-        if (!gl_pBlockTreeDB->UpdateBurnTxIndex(vBurnTxIndex))
-			return AbortNode(state, "Failed to write burn tx index");
-    }
-    if (fSpentIndex)
-    {
-        if (!gl_pBlockTreeDB->UpdateSpentIndex(vSpentIndex))
-            return AbortNode(state, "Failed to write spent index");
-    }
-    if (fTimestampIndex)
-    {
-        unsigned int logicalTS = pindex->nTime;
-        unsigned int prevLogicalTS = 0;
-
-        // retrieve logical timestamp of the previous block
-        if (pindex->pprev && !gl_pBlockTreeDB->ReadTimestampBlockIndex(pindex->pprev->GetBlockHash(), prevLogicalTS))
-            LogFnPrintf("Failed to read previous block's logical timestamp");
-
-        if (logicalTS <= prevLogicalTS)
-        {
-            logicalTS = prevLogicalTS + 1;
-            // skip log for regtest where lot of blocks can be generated in a short time
-            if (!chainparams.IsRegTest())
-                LogFnPrintf("Previous logical timestamp is newer Actual[%u] prevLogical[%u] Logical[%u]",
-                    pindex->nTime, prevLogicalTS, logicalTS);
-        }
-
-        if (!gl_pBlockTreeDB->WriteTimestampIndex(CTimestampIndexKey(logicalTS, pindex->GetBlockHash())))
-            return AbortNode(state, "Failed to write timestamp index");
-
-        if (!gl_pBlockTreeDB->WriteTimestampBlockIndex(CTimestampBlockIndexKey(pindex->GetBlockHash()), CTimestampBlockIndexValue(logicalTS)))
-            return AbortNode(state, "Failed to write blockhash index");
-    }
-    // END insightexplorer
+    // insightexplorer
+    if (!txIndexProcessor.WriteIndexes(state))
+        return false;
 
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());

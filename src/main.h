@@ -346,13 +346,6 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus
 
 /** Functions for validating blocks and updating the block tree */
 
-typedef enum class _BlockDisconnectResult
-{
-    OK,      // All good.
-    UNCLEAN, // Rolled back, but UTXO set was inconsistent with block.
-    FAILED   // Something else went wrong.
-} BlockDisconnectResult;
-
 /** Undo the effects of this block (with given index) on the UTXO set represented by coins.
  *  In case pfClean is provided, operation will try to be tolerant about errors, and *pfClean
  *  will be true if no problems were found. Otherwise, the return value will be false in case

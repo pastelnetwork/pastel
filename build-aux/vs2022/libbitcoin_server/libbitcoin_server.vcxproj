@@ -200,6 +200,7 @@
     <ClCompile Include="..\..\..\src\torcontrol.cpp" />
     <ClCompile Include="..\..\..\src\txdb\burntxindex.cpp" />
     <ClCompile Include="..\..\..\src\txdb\txdb.cpp" />
+    <ClCompile Include="..\..\..\src\txdb\txidxprocessor.cpp" />
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
@@ -332,6 +333,7 @@
     <ClInclude Include="..\..\..\src\txdb\spentindex.h" />
     <ClInclude Include="..\..\..\src\txdb\timestampindex.h" />
     <ClInclude Include="..\..\..\src\txdb\txdb.h" />
+    <ClInclude Include="..\..\..\src\txdb\txidxprocessor.h" />
     <ClInclude Include="..\..\..\src\txmempool.h" />
     <ClInclude Include="..\..\..\src\txmempool_entry.h" />
     <ClInclude Include="..\..\..\src\ui_interface.h" />

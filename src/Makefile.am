@@ -340,6 +340,7 @@ PASTEL_CORE_H = \
   txdb/burntxindex.h \
   txdb/index_defs.h \
   txdb/spentindex.h \
+  txdb/txidxprocessor.h \
   txdb/timestampindex.h \
   txdb/txdb.h \
   deprecation.h \
@@ -493,6 +494,7 @@ libbitcoin_server_a_SOURCES = \
   torcontrol.cpp \
   txdb/burntxindex.cpp \
   txdb/txdb.cpp \
+  txdb/txidxprocessor.cpp \
   txmempool.cpp \
   validationinterface.cpp \
   $(MNODE_CPP) \

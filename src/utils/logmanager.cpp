@@ -15,6 +15,8 @@
 #include <utils/util.h>
 #include <utils/str_utils.h>
 #include <utils/serialize.h>
+#include <clientversion.h>
+#include <version.h>
 
 using namespace std;
 
@@ -322,6 +324,8 @@ bool CLogManager::RotateDebugLogFile(const bool bReopenLog)
         OpenDebugLogFile();
         LogPrintf("Log file rotated at %s to [%s]\n\n",
             DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()), newLogFilePath.string());
+        LogPrintf("Pastel version %s (%s), protocol version (%d)\n", 
+            FormatFullVersion(), CLIENT_DATE, PROTOCOL_VERSION);
     }
     return true;
 }

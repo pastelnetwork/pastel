@@ -16,6 +16,8 @@
 #include <rpc/protocol.h>
 #include <netbase.h>
 
+//#define EVHTTP_MULTIPLE_EVENT_LOOPS 1
+
 // default number of threads for the HTTP server
 constexpr int DEFAULT_HTTP_WORKER_THREADS = 4;
 // maximum number of threads for the HTTP server
@@ -43,18 +45,19 @@ enum class RequestMethod
 };
 
 class HTTPRequest;
-class CHttpWorkerContext;
 class CHttpConnection;
-
 using http_connection_t = std::shared_ptr<CHttpConnection>;
+
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+class CHttpWorkerContext;
 using http_worker_context_t = std::shared_ptr<CHttpWorkerContext>;
+#endif
 
 /** Handler for requests to a certain HTTP path */
 typedef std::function<void(HTTPRequest* req, const std::string &)> HTTPRequestHandler;
 /** Register handler for prefix.
  * If multiple handlers match a prefix, the first-registered one will
- * be invoked.
- */
+ * be invoked. */
 void RegisterHTTPHandler(const std::string &sHandlerGroup, const std::string &prefix, 
     bool exactMatch, const HTTPRequestHandler &handler);
 /** Unregister handler by handler group name */
@@ -107,6 +110,7 @@ public:
      */
     virtual void WriteReply(HTTPStatusCode httpStatusCode, const std::string& strReply = "");
     virtual const std::string GetPeerStr() const noexcept;
+    evutil_socket_t GetClientSocket() const noexcept;
 
 protected:
     bool m_bReplySent; // true if reply has been sent
@@ -129,7 +133,7 @@ public:
     struct sockaddr* GetAddr() { return &m_addr; }
     socklen_t GetAddrlen() { return m_addrlen; }
     socklen_t GetSockAddrParams(struct sockaddr* addr) const noexcept;
-    bool ValidateClientConnection(CHttpWorkerContext* pHttpWorkerContext,
+    bool ValidateClientConnection(void* pHttpWorkerContext,
         const std::unique_ptr<HTTPRequest> &pHttpRequest, struct evhttp_connection *evcon);
 
     bool UsesKeepAliveConnection() const noexcept { return m_bUsesKeepAliveConnection; }
@@ -146,6 +150,7 @@ private:
     std::atomic_bool m_bClientValidated;
 };
 
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
 /**
  * HTTP worker context.
  * It runs its own event loop and processes HTTP requests.
@@ -157,8 +162,12 @@ public:
     ~CHttpWorkerContext();
 
     bool Initialize(std::string& error);
+
     void execute() override;
     void stop() noexcept override;
+
+    void TriggerEvent() noexcept;
+    void WaitForEvent();
 
     struct event_base* GetEventBase() { return m_base; }
     evhttp* GetHttp() { return m_http; }
@@ -168,9 +177,6 @@ public:
     void CloseHttpConnection(const evutil_socket_t clientSocket, const bool bCloseSocket);
     http_connection_t GetHttpConnection(const evutil_socket_t clientSocket);
 
-    void TriggerEvent() noexcept;
-    void WaitForEvent();
-
 private:
     size_t m_nWorkerID;
 
@@ -179,19 +185,20 @@ private:
     CWaitableCriticalSection m_ConnectionMapLock;
 
     struct event_base* m_base; // libevent event loop
-    evhttp* m_http;      // HTTP server
-    std::string m_sLoopName; // name of the event loop
+    struct evhttp* m_http;     // HTTP server
     std::atomic_bool m_bEvent;
     std::atomic_bool m_bInEventLoop;
 
     CWaitableCriticalSection m_LoopMutex;
     CConditionVariable m_LoopCond;
 
+    void DestroyEventLoop();
+
+    std::string m_sLoopName; // name of the event loop
     CWaitableCriticalSection m_mutex;
     CConditionVariable m_cond;
-
-    void DestroyEventLoop();
 };
+#endif // EVHTTP_MULTIPLE_EVENT_LOOPS
 
 /** Event class. This can be used either as a cross-thread trigger or as a timer.
  */
@@ -237,8 +244,13 @@ public:
             throw std::invalid_argument("Max queue size must be greater than 0");
     }
 
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
     // Enqueue a new connection
     std::tuple<std::unique_ptr<CHttpConnection>, size_t> EnqueueConnection(std::unique_ptr<CHttpConnection>&& connection);
+#else
+    // Enqueue a new request
+	std::tuple<std::unique_ptr<HTTPRequest>, size_t> EnqueueRequest(std::unique_ptr<HTTPRequest>&& request);
+#endif
 
     /** http worker job */
     void worker(const size_t nWorkerID);
@@ -259,10 +271,15 @@ private:
     mutable CWaitableCriticalSection cs;
     CConditionVariable cond;
     std::atomic_bool m_bRunning;
-    std::deque<std::unique_ptr<CHttpConnection>> m_queue;
-    std::unordered_map<size_t, http_worker_context_t> m_WorkerContextMap;
     size_t m_nMaxQueueSize;
     CHTTPServer &m_httpServer;
+
+#ifdef EVHTTP_MULTIPLE_EVENT_LOOPS
+    std::deque<std::unique_ptr<CHttpConnection>> m_queue;
+    std::unordered_map<size_t, http_worker_context_t> m_WorkerContextMap;
+#else
+    std::deque<std::unique_ptr<HTTPRequest>> m_queue;
+#endif
 };
 
 struct HTTPPathHandler
@@ -321,10 +338,15 @@ private:
     std::string m_sInitError;
     std::thread m_MainThread;
     struct event_base* m_pMainEventBase;
-    std::vector<evconnlistener*> m_vListeners;
     // Work queue for handling longer requests off the event loop thread
     std::shared_ptr<WorkQueue> m_pWorkQueue;
     CServiceThreadGroup m_WorkerThreadPool;
+#ifdef EVHTTP_MUTLIPLE_EVENT_LOOPS
+    std::vector<evconnlistener*> m_vListeners;
+#else
+    struct evhttp* m_http; // HTTP server
+    std::vector<evhttp_bound_socket*> m_vBoundSockets;
+#endif
 
     // list of subnets to allow RPC connections from
     std::vector<CSubNet> m_rpc_allow_subnets;
