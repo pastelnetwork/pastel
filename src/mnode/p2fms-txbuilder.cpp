@@ -302,7 +302,7 @@ bool CP2FMS_TX_Builder::SignTransaction(CMutableTransaction& tx_out)
 
     for (uint32_t i = 0; i < tx_out.vin.size(); i++)
     {
-        futures.emplace_back(async(launch::async, [&](uint32_t i)
+        futures.emplace_back(async(launch::async, [&, i]()
         {
             try
             {
@@ -322,7 +322,7 @@ bool CP2FMS_TX_Builder::SignTransaction(CMutableTransaction& tx_out)
 				bSignError = true;
 				m_error = strprintf("Error signing transaction input #%u. %s", i, e.what());
             }
-        }, i));
+        }));
     }
     for (auto &f: futures)
         f.get();

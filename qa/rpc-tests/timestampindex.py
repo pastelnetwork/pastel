@@ -30,7 +30,7 @@ class TimestampIndexTest(BitcoinTestFramework):
         # -insightexplorer causes spentindex to be enabled (fSpentIndex = true)
 
         self.nodes = start_nodes(
-            3, self.options.tmpdir,
+            self.num_nodes, self.options.tmpdir,
             [[
                 '-debug=rpc',
                 '-txindex', 

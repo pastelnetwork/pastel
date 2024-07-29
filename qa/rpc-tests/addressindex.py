@@ -4,7 +4,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #
-# Test addressindex generation and fetching for insightexplorer or lightwalletd
+# Test addressindex generation and fetching for insightexplorer
 # 
 # RPCs tested here:
 #
@@ -52,7 +52,6 @@ class AddressIndexTest(BitcoinTestFramework):
     def setup_network(self, split = False):
         # -insightexplorer causes addressindex to be enabled (fAddressIndex = true)
         args = [
-            '-debug=rpc',
             '-txindex',
             '-insightexplorer'
         ]
@@ -61,7 +60,6 @@ class AddressIndexTest(BitcoinTestFramework):
         for n in range(self.num_nodes):
             connect_nodes(self.nodes[0], n + 1)
 
-        self.is_network_split = False
         self.sync_all()
 
 
@@ -175,7 +173,7 @@ class AddressIndexTest(BitcoinTestFramework):
         self.sync_all()
 
         txFeePat = self.nodes[0].gettxfee(txid)["txFeePat"]
-        
+
         # the one tx in the mempool refers to addresses addr1 and addr2,
         # change by default goes back to the sender, so there will be one
         # output to addr1 with a change (4 - 3 - txFee) and one output to addr2
