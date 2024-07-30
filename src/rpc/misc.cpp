@@ -30,7 +30,6 @@
 #include <netmsg/nodemanager.h>
 
 #include <zcash/Address.hpp>
-#include "rpc-utils.h"
 
 using namespace std;
 
