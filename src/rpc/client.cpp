@@ -26,7 +26,7 @@ public:
 };
 
 // 0-based indexes of the params to convert
-static const array<CRPCConvertParam, 86> gl_vRPCConvertParams =
+static const array<CRPCConvertParam, 87> gl_vRPCConvertParams =
 {{
     { "addmultisigaddress", nullptr, {0, 1} },
     { "createmultisig", nullptr, {0, 1} },
@@ -39,6 +39,7 @@ static const array<CRPCConvertParam, 86> gl_vRPCConvertParams =
     { "getaddednodeinfo", nullptr, {0} },
     { "getaddressmempool", nullptr, {0} },
     { "getaddressutxos", nullptr, {0} },
+    { "getaddressutxosextra", nullptr, {0} },
     { "getaddressdeltas", nullptr, {0} },
     { "getaddressbalance", nullptr, {0} },
     { "getaddresstxids", nullptr, {0} },
