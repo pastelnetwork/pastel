@@ -29,6 +29,8 @@
 #include <sys/sysctl.h>
 #elif defined(__linux__)
 #include <sys/sysinfo.h>
+#elif defined(WIN32)
+#include <fcntl.h>
 #endif
 
 #include <utils/str_utils.h>
@@ -39,7 +41,6 @@
 #include <extlibs/scope_guard.hpp>
 #include <utils/utiltime.h>
 #include <utils/random.h>
-#include <utils/serialize.h>
 #include <chainparamsbase.h>
 #include <clientversion.h>
 
@@ -103,48 +104,10 @@ using namespace std;
 m_strings mapArgs;
 map<string, v_strings> mapMultiArgs;
 bool fDebug = false;
-/**
- * Print to console modes:
- * 0 - do not print anything to console
- * 1 - print only to console
- * 2 - print to console and debug.log
- */
-atomic_uint32_t gl_nPrintToConsoleMode = 0;
-bool fPrintToDebugLog = true;
 bool fDaemon = false;
 bool fServer = false;
 string strMiscWarning;
-bool fLogTimestamps = DEFAULT_LOGTIMESTAMPS;
-bool fLogTimeMicros = DEFAULT_LOGTIMEMICROS;
-bool fLogIPs = DEFAULT_LOGIPS;
-atomic<bool> fReopenDebugLog(false);
 CTranslationInterface translationInterface;
-
-/**
- * LogPrintf() has been broken a couple of times now
- * by well-meaning people adding mutexes in the most straightforward way.
- * It breaks because it may be called by global destructors during shutdown.
- * Since the order of destruction of static/global objects is undefined,
- * defining a mutex as a global object doesn't work (the mutex gets
- * destroyed, and then some later destructor calls OutputDebugStringF,
- * maybe indirectly, and you get a core dump at shutdown trying to lock
- * the mutex).
- */
-
-static once_flag debugPrintInitFlag;
-
-/**
- * We use call_once() to make sure mutexDebugLog and
- * vMsgsBeforeOpenLog are initialized in a thread-safe manner.
- *
- * NOTE: fileout, mutexDebugLog and sometimes vMsgsBeforeOpenLog
- * are leaked on exit. This is ugly, but will be cleaned up by
- * the OS/libc. When the shutdown sequence is fully audited and
- * tested, explicit destruction of these objects can be implemented.
- */
-static FILE* fileout = nullptr;
-static mutex* mutexDebugLog = nullptr;
-static list<string> *vMsgsBeforeOpenLog;
 
 [[noreturn]] void new_handler_terminate()
 {
@@ -159,257 +122,6 @@ static list<string> *vMsgsBeforeOpenLog;
     // The log was successful, terminate now.
     terminate();
 };
-
-/**
- * Set print-to-console mode gl_nPrintToConsoleMode.
- * Supported modes:
- *   0 - do not print anything to console (default)
- *   1 - print only to console
- *   2 - print to console and debug.log
- * 
- * \param error - error message if the function fails
- * \return true if the function succeeds, false otherwise
- */
-bool SetPrintToConsoleMode(string &error)
-{
-     string sPrintToConsoleMode = GetArg("-printtoconsole", "0");
-     string sConversionErrorMsg;
-     bool bConversionError = false;
-     try
-     {
-         const int nPrintToConsoleMode = stoi(sPrintToConsoleMode);
-
-         // Check if the mode is valid
-         if (nPrintToConsoleMode < 0 || nPrintToConsoleMode > 2)
-		 {
-			 error = translate(strprintf("-printtoconsole option value [%s] is invalid. Supported values are: 0, 1, or 2.",
-                 				 sPrintToConsoleMode).c_str());
-			 return false;
-		 }
-         // Set the mode
-		 gl_nPrintToConsoleMode = nPrintToConsoleMode;
-
-     } catch (const invalid_argument &e1)
-	 {
-         sConversionErrorMsg = SAFE_SZ(e1.what());
-         bConversionError = true;
-     } catch (const out_of_range& e2)
-     {
-         sConversionErrorMsg = SAFE_SZ(e2.what());
-         bConversionError = true;
-     }
-     if (bConversionError)
-     {
-         error = translate(strprintf("-printtoconsole option value [%s] is invalid - %s. Supported values are: 0, 1, or 2.",
-             sPrintToConsoleMode, sConversionErrorMsg).c_str());
-         return false;
-     }
-     return true;
-}
-
-bool IsPrintToConsole() noexcept
-{
-    return gl_nPrintToConsoleMode > 0;
-}
-
-static size_t FileWriteStr(const string &str, FILE *fp)
-{
-    return fwrite(str.data(), 1, str.size(), fp);
-}
-
-static void DebugPrintInit()
-{
-    assert(mutexDebugLog == nullptr);
-    mutexDebugLog = new mutex();
-    vMsgsBeforeOpenLog = new list<string>;
-}
-
-void OpenDebugLog()
-{
-    call_once(debugPrintInitFlag, &DebugPrintInit);
-    scoped_lock scoped_lock(*mutexDebugLog);
-
-    assert(fileout == nullptr);
-    assert(vMsgsBeforeOpenLog);
-    const fs::path pathDebugLog = GetDataDir() / "debug.log";
-#if defined(_MSC_VER) && (_MSC_VER >= 1400)
-    fileout = _fsopen(pathDebugLog.string().c_str(), "a+", _SH_DENYWR);
-#else
-    fileout = fopen(pathDebugLog.string().c_str(), "a");
-#endif
-    const int err = fileout ? 0 : errno;
-    if (!fileout)
-    {
-        printf("ERROR: failed to open debug log file [%s]. %s", pathDebugLog.string().c_str(), GetErrorString(err).c_str());
-        return;
-    }
-    setvbuf(fileout, nullptr, _IONBF, 0); // unbuffered
-
-    // dump buffered messages from before we opened the log
-    while (!vMsgsBeforeOpenLog->empty())
-    {
-        FileWriteStr(vMsgsBeforeOpenLog->front(), fileout);
-        vMsgsBeforeOpenLog->pop_front();
-    }
-
-    delete vMsgsBeforeOpenLog;
-    vMsgsBeforeOpenLog = nullptr;
-}
-
-bool LogAcceptCategory(const char* category)
-{
-    if (category)
-    {
-        if (!fDebug)
-            return false;
-
-        // Give each thread quick access to -debug settings.
-        // This helps prevent issues debugging global destructors,
-        // where mapMultiArgs might be deleted before another
-        // global destructor calls LogPrint()
-        static thread_local unique_ptr<set<string>> ptrCategory;
-        if (!ptrCategory)
-        {
-            const auto &vCategories = mapMultiArgs["-debug"];
-            // preprocess debug log categories
-            // support multiple categories separated by comma
-            set<string> setCategories;
-            for (const auto& sCategory : vCategories)
-            {
-                if (sCategory.find(',') != string::npos)
-                {
-                    v_strings v;
-                    str_split(v, sCategory, ',');
-                    setCategories.insert(v.cbegin(), v.cend());
-                }
-                else
-                    setCategories.insert(sCategory);
-            }
-            ptrCategory = make_unique<set<string>>(move(setCategories));
-            // thread_specific_ptr automatically deletes the set when the thread ends.
-        }
-        const auto& setCategories = *ptrCategory.get();
-
-        // if not debugging everything and not debugging specific category, LogPrint does nothing.
-        if (setCategories.count(string("")) == 0 &&
-            setCategories.count(string("1")) == 0 &&
-            setCategories.count(string(category)) == 0)
-            return false;
-    }
-    return true;
-}
-
-#ifdef __linux__
-thread_local pid_t gl_LinuxTID = gettid();
-#endif // __linux__
-
-/**
-* Get thread id in decimal format.
-* 
-* \return thread id
-*/
-string get_tid() noexcept
-{
-#ifdef __linux__
-    auto tid = gl_LinuxTID;
-#else
-    auto tid = this_thread::get_id();
-#endif
-    ostringstream s;
-    s << tid;
-    return s.str();
-}
-
-/**
-* Get thread id in hex format.
-* 
-* \return thread id
-*/
-inline string get_tid_hex() noexcept
-{
-#ifdef __linux__
-    auto tid = gl_LinuxTID;
-#else
-    auto tid = this_thread::get_id();
-#endif
-    ostringstream s;
-    s << hex << uppercase << tid;
-    return s.str();
-}
-
-/**
- * fStartedNewLine is a state variable held by the calling context that will
- * suppress printing of the timestamp when multiple calls are made that don't
- * end in a newline. Initialize it to true, and hold it, in the calling context.
- */
-static string LogTimestampStr(const string &str, bool *fStartedNewLine)
-{
-    string strStamped;
-    strStamped.reserve(30 + str.size());
-
-    if (!fLogTimestamps)
-        return str;
-
-    strStamped = get_tid_hex() + " - ";
-    if (*fStartedNewLine)
-        strStamped += DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()) + ' ' + str;
-    else
-        strStamped += str;
-
-    if (!str.empty() && str[str.size()-1] == '\n')
-        *fStartedNewLine = true;
-    else
-        *fStartedNewLine = false;
-
-    return strStamped;
-}
-
-size_t LogPrintStr(const string &str)
-{
-    size_t nCharsWritten = 0; // Returns total number of characters written
-    static bool fStartedNewLine = true;
-    const uint32_t nPrintToConsoleMode = gl_nPrintToConsoleMode;
-    if (nPrintToConsoleMode > 0)
-    {
-        // print to console
-        nCharsWritten = fwrite(str.data(), 1, str.size(), stdout);
-        fflush(stdout);
-    }
-    if (fPrintToDebugLog && (nPrintToConsoleMode != 1))
-    {
-        call_once(debugPrintInitFlag, &DebugPrintInit);
-        scoped_lock scoped_lock(*mutexDebugLog);
-
-        string strTimestamped = LogTimestampStr(str, &fStartedNewLine);
-
-        // buffer if we haven't opened the log yet
-        if (!fileout)
-        {
-            assert(vMsgsBeforeOpenLog);
-            nCharsWritten = strTimestamped.length();
-            vMsgsBeforeOpenLog->push_back(strTimestamped);
-        }
-        else
-        {
-            // reopen the log file, if requested
-            if (fReopenDebugLog)
-            {
-                fReopenDebugLog = false;
-                fs::path pathDebug = GetDataDir() / "debug.log";
-#if defined(_MSC_VER) && (_MSC_VER >= 1400)
-                const errno_t err = freopen_s(&fileout, pathDebug.string().c_str(), "a", fileout);
-#else
-                fileout = freopen(pathDebug.string().c_str(), "a", fileout);
-#endif
-                if (fileout)
-                    setvbuf(fileout, nullptr, _IONBF, 0); // unbuffered
-            }
-
-            nCharsWritten = FileWriteStr(strTimestamped, fileout);
-        }
-    }
-    return nCharsWritten;
-}
 
 static void InterpretNegativeSetting(string name, map<string, string>& mapSettingsRet)
 {
@@ -839,11 +551,6 @@ void FileCommit(FILE *fileout)
 #endif
 }
 
-void LogFlush()
-{
-    FileCommit(fileout);
-}   
-
 bool TruncateFile(FILE *file, unsigned int length) {
 #if defined(WIN32)
     return _chsize(_fileno(file), length) == 0;
@@ -921,40 +628,6 @@ void AllocateFileRange(FILE *file, unsigned int offset, unsigned int length) {
         length -= now;
     }
 #endif
-}
-
-void ShrinkDebugFile()
-{
-    // Scroll debug.log if it's getting too big
-    fs::path pathLog = GetDataDir() / "debug.log";
-
-    FILE* file = nullptr;
-#if defined(_MSC_VER) && (_MSC_VER >= 1400)
-    errno_t err = fopen_s(&file, pathLog.string().c_str(), "r");
-#else
-    file = fopen(pathLog.string().c_str(), "r");
-#endif
-    if (file && fs::file_size(pathLog) > 10 * 1000000)
-    {
-        // Restart the file with some of the end
-        vector <char> vch(200000,0);
-        fseek(file, -((long)vch.size()), SEEK_END);
-        size_t nBytes = fread(begin_ptr(vch), 1, vch.size(), file);
-        fclose(file);
-
-#if defined(_MSC_VER) && (_MSC_VER >= 1400)
-        err = fopen_s(&file, pathLog.string().c_str(), "w");
-#else
-        file = fopen(pathLog.string().c_str(), "w");
-#endif
-        if (file)
-        {
-            fwrite(begin_ptr(vch), 1, nBytes, file);
-            fclose(file);
-        }
-    }
-    else if (file)
-        fclose(file);
 }
 
 #ifdef WIN32

@@ -169,8 +169,32 @@ public:
     // Writes do not need similar protection, as failure to write is handled by the caller.
 };
 
+class CLogRotationManager : public CStoppableServiceThread
+{
+public:
+    CLogRotationManager() :
+        CStoppableServiceThread("logrt")
+    {}
+    static constexpr auto LOG_ROTATION_INTERVAL = chrono::minutes(10);
+
+    void execute() override
+    {
+        // check if debug log needs to be rotated every 10 minutes
+        while (!shouldStop())
+        {
+            unique_lock lock(m_mutex);
+            if (m_condVar.wait_for(lock, LOG_ROTATION_INTERVAL) == cv_status::timeout)
+            {
+                if (gl_LogMgr)
+                    gl_LogMgr->ShrinkDebugLogFile();
+            }
+        }
+    }
+};
+
 static unique_ptr<CCoinsViewDB> gl_pCoinsDbView;
 static unique_ptr<CCoinsViewErrorCatcher> pCoinsCatcher;
+static shared_ptr<CLogRotationManager> gl_LogRotationManager;
 
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 {
@@ -180,6 +204,8 @@ void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     InterruptREST();
     threadGroup.stop_all();
     scheduler.stop(false);
+    if (gl_LogRotationManager)
+        gl_LogRotationManager->stop();
 }
 
 void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
@@ -197,6 +223,9 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     RenameThread("psl-shutoff");
     mempool.AddTransactionsUpdated(1);
 
+    if (gl_LogRotationManager)
+        gl_LogRotationManager->waitForStop();
+
     StopHTTPRPC();
     StopREST();
     StopRPC();
@@ -213,8 +242,12 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
  #endif
 #endif
     StopNode();
+    LogFnPrintf("Waiting for Pastel threads to exit...");
     threadGroup.join_all();
+    LogFnPrintf("...done");
+    LogFnPrintf("Waiting for scheduler threads to exit...");
     scheduler.join_all();
+    LogFnPrintf("...done");
     UnregisterNodeSignals(GetNodeSignals());
 
     if (fFeeEstimatesInitialized)
@@ -290,7 +323,8 @@ void HandleSIGTERM(int)
 
 void HandleSIGHUP(int)
 {
-    fReopenDebugLog = true;
+    if (gl_LogMgr)
+        gl_LogMgr->ScheduleReopenDebugLog();
 }
 
 bool static InitError(const string &str)
@@ -796,6 +830,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 {
     string strError;
 
+    if (!gl_LogMgr)
+        return InitError("Error: Log Manager is not initialized");
+
     // ********************************************************* Step 1: setup
 #ifdef _MSC_VER
     // Turn off Microsoft heap dump noise
@@ -866,7 +903,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // Set this early so that parameter interactions go to console
     string error;
-    if (!SetPrintToConsoleMode(error))
+    if (!gl_LogMgr->SetPrintToConsoleMode(error))
         return InitError(error);
     fLogTimestamps = GetBoolArg("-logtimestamps", true);
     fLogIPs = GetBoolArg("-logips", false);
@@ -1194,10 +1231,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     CreatePidFile(GetPidFile(), getpid());
 #endif
     if (GetBoolArg("-shrinkdebugfile", !fDebug))
-        ShrinkDebugFile();
+        gl_LogMgr->ShrinkDebugLogFile(true);
 
-    if (fPrintToDebugLog)
-        OpenDebugLog();
+    gl_LogMgr->OpenDebugLogFile();
+    if (!gl_LogRotationManager)
+    {
+		gl_LogRotationManager = make_unique<CLogRotationManager>();
+		if (threadGroup.add_thread(error, gl_LogRotationManager, true) == INVALID_THREAD_OBJECT_ID)
+			return InitError(translate("Failed to create log rotation thread. ") + error);
+    }
 
     LogPrintf("Using OpenSSL version %s\n", OpenSSL_version(OPENSSL_VERSION_STRING));
 #ifdef ENABLE_WALLET
@@ -1226,7 +1268,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     if (!chainparams.IsRegTest() &&
             GetBoolArg("-showmetrics", isatty(STDOUT_FILENO)) &&
-            !IsPrintToConsole() && !GetBoolArg("-daemon", false))
+            !gl_LogMgr->IsPrintToConsole() && !GetBoolArg("-daemon", false))
     {
         // Start the persistent metrics interface
         ConnectMetricsScreen();
@@ -1240,6 +1282,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     libsnark::inhibit_profiling_counters = true;
 
     // Initialize Zcash circuit parameters
+    uiInterface.InitMessage(translate("Initializing chain parameters..."));
     ZC_LoadParams(chainparams);
 
     /* Start the RPC server already.  It will be started in "warmup" mode
