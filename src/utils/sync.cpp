@@ -229,7 +229,8 @@ static void potential_deadlock_detected(const pair<lockid_t, lockid_t>& mismatch
     }
 
 #ifdef ASSERT_ONLY_MAYBE_DEADLOCK
-    LogFlush();
+    if (gl_LogMgr)
+        gl_LogMgr->LogFlush();
     assert(onlyMaybeDeadlock);
 #else
     cout << "POTENTIAL DEADLOCK DETECTED" << endl;

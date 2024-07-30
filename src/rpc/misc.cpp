@@ -22,6 +22,7 @@
 #include <rpc/server.h>
 #include <rpc/chain-rpc-utils.h>
 #include <rpc/rpc_consts.h>
+#include <rpc/rpc-utils.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
@@ -29,7 +30,6 @@
 #include <netmsg/nodemanager.h>
 
 #include <zcash/Address.hpp>
-#include "rpc-utils.h"
 
 using namespace std;
 
@@ -357,11 +357,11 @@ CScript _createmultisig_redeemScript(const UniValue& params)
             throw runtime_error(" Invalid public key: "+ks);
         }
     }
-    CScript result = GetScriptForMultisig(nRequired, pubkeys);
+    CScript result = GetScriptForMultisig(static_cast<int>(nRequired), pubkeys);
 
     if (result.size() > MAX_SCRIPT_ELEMENT_SIZE)
         throw runtime_error(
-                strprintf("redeemScript exceeds size limit: %d > %d", result.size(), MAX_SCRIPT_ELEMENT_SIZE));
+                strprintf("redeemScript exceeds size limit: %u > %u", result.size(), MAX_SCRIPT_ELEMENT_SIZE));
 
     return result;
 }
@@ -1157,7 +1157,7 @@ Examples:
     rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSUTXOS);
 
     bool simpleInfo = false;
-    int64_t height = 0;
+    uint32_t height = 0;
     string senderFilter = "";
     if (params[0].isObject())
     {
@@ -1166,7 +1166,11 @@ Examples:
             simpleInfo = get_bool_value(simple);
         UniValue minHeight = find_value(params[0].get_obj(), "minHeight");
         if (!minHeight.isNull())
-            height = get_long_number(minHeight);
+        {
+            int64_t nParamMinHeight = get_long_number(minHeight);
+            rpc_check_unsigned_param<uint32_t>("minHeight", nParamMinHeight);
+            height = static_cast<uint32_t>(nParamMinHeight);
+        }
         UniValue sender = find_value(params[0].get_obj(), "sender");
         if (!sender.isNull())
             senderFilter = sender.get_str();
@@ -1316,7 +1320,9 @@ Examples:
     if (!indexValue.isNum())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid index, must be an integer");
     uint256 txid = ParseHashV(txidValue, "txid");
-    auto outputIndex = get_long_number(indexValue);
+    int64_t nParamOutputIndex = get_long_number(indexValue);
+    rpc_check_unsigned_param<uint32_t>("index", nParamOutputIndex);
+    uint32_t outputIndex = static_cast<uint32_t>(nParamOutputIndex);
 
     CSpentIndexKey key(txid, outputIndex);
     CSpentIndexValue value;

@@ -252,6 +252,7 @@ UTILS_CPP = \
   utils/bech32.cpp \
   utils/datacompressor.cpp \
   utils/hash.cpp \
+  utils/logmanager.cpp \
   utils/ping_util.cpp \
   utils/random.cpp \
   utils/scheduler.cpp \
@@ -272,6 +273,7 @@ UTILS_H = \
   utils/enum_util.h \
   utils/fs.h \
   utils/hash.h \
+  utils/logmanager.h \
   utils/map_types.h \
   utils/numeric_range.h \
   utils/ping_util.h \
