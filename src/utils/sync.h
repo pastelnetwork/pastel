@@ -535,15 +535,15 @@ private:
     size_t nValue;
 
 public:
-    CSemaphore(size_t nInitValue) : 
-        nValue(nInitValue) {}
+    CSemaphore(size_t nInitValue) noexcept : 
+        nValue(nInitValue)
+    {}
 
     void wait()
     {
         std::unique_lock<std::mutex> lock(mtx);
-        while (nValue < 1) {
+        while (nValue < 1)
             condition.wait(lock);
-        }
         nValue--;
     }
 

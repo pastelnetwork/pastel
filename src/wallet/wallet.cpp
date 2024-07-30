@@ -3050,7 +3050,7 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         }
                         // send change to original address
                         auto& [pTx, nOut] = *setCoins.rbegin();
-                        scriptChange = move(pTx->vout[nOut].scriptPubKey);
+                        scriptChange = std::move(pTx->vout[nOut].scriptPubKey);
                     }
                     else // send change to newly generated address
                     {

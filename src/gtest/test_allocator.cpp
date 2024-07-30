@@ -164,7 +164,7 @@ TEST(AllocatorTests, lockedpool_tests_mock)
 {
     // Test over three virtual arenas, of which one will succeed being locked
     auto x = make_unique<TestLockedPageAllocator>(3, 1);
-    LockedPool pool(move(x));
+    LockedPool pool(std::move(x));
     EXPECT_EQ(pool.stats().total , 0);
     EXPECT_EQ(pool.stats().locked , 0);
 

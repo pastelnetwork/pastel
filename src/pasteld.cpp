@@ -6,7 +6,7 @@
 #include <cstdio>
 
 #include <clientversion.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/scheduler.h>
 #include <utils/util.h>
 #include <rpc/server.h>

@@ -4,7 +4,7 @@
 #include <cinttypes>
 
 #include <consensus/validation.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/reverselock.h>
 #include <chain_options.h>
 #include <main.h>
@@ -67,7 +67,7 @@ void CBlockCache::add_block(const uint256& hash, const NodeId& nodeId, const TxO
             }
         }
     }
-    m_BlockCacheMap.emplace(hash, BLOCK_CACHE_ITEM(nodeId, nBlockHeight, txOrigin, move(block)));
+    m_BlockCacheMap.emplace(hash, BLOCK_CACHE_ITEM(nodeId, nBlockHeight, txOrigin, std::move(block)));
 
     // monitor cache size and adjust revalidation wait time if needed
     time_t nCurrentTime = time(nullptr);
@@ -213,12 +213,12 @@ void CBlockCache::ProcessNextBlockAndActivateBestChain(const uint256 &hash, cons
 {
     bool bProcessedNextBlocks = false;
     {
-        reverse_lock<unique_lock<mutex> > rlock(lck);
+        reverse_lock rlock(lck);
         bProcessedNextBlocks = ProcessNextBlock(hash);
     }
     if (bProcessedNextBlocks)
     {
-        reverse_lock<unique_lock<mutex> > rlock(lck);
+        reverse_lock rlock(lck);
         CValidationState state1(state.getTxOrigin());
         ActivateBestChain(state1, chainparams);
     }
@@ -358,7 +358,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
 		}
         uint256 tipHash;
         {
-            reverse_lock<unique_lock<mutex> > rlock(lck);
+            reverse_lock rlock(lck);
 		    LOCK(cs_main);
             auto chainTip = chainActive.Tip();
             if (chainTip)
@@ -368,7 +368,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
         bool bBlockInTheActiveChain = false;
         do
         {
-            reverse_lock<unique_lock<mutex> > rlock(lck);
+            reverse_lock rlock(lck);
             LOCK(cs_main);
 
             auto chainTip = chainActive.Tip();
@@ -465,7 +465,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
 
         pItem->bRevalidating = true;
         {
-            reverse_lock<unique_lock<mutex> > rlock(lck);
+            reverse_lock rlock(lck);
             // try to reprocess the block
             //   - try to revalidate block and update blockchain tip (connect newly accepted block)
             //   - calls ActivateBestChain in case block is validated
@@ -481,7 +481,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
             // to unblock chain download (otherwise the peer will stall download)
             if (pItem->bIsInForkedChain)
             {
-                reverse_lock<unique_lock<mutex> > rlock(lck);
+                reverse_lock rlock(lck);
                 LOCK(cs_main);
                 // reconsider this block
                 // cs_main should be locked to access to mapBlockIndex
@@ -530,7 +530,7 @@ size_t CBlockCache::revalidate_blocks(const CChainParams& chainparams, const boo
 
             // check if the block was included into the blockchain after ProcessNewBlock call
             {
-                reverse_lock<unique_lock<mutex> > rlock(lck);
+                reverse_lock rlock(lck);
                 LOCK(cs_main);
                 auto itBlock = mapBlockIndex.find(hash);
                 if (itBlock != mapBlockIndex.end())

@@ -2,8 +2,8 @@ dnl require autoconf 2.60 (AS_ECHO/AS_ECHO_N)
 AC_PREREQ([2.60])
 define(_CLIENT_VERSION_MAJOR, 2)
 define(_CLIENT_VERSION_MINOR, 2)
-define(_CLIENT_VERSION_REVISION, 3)
-define(_CLIENT_VERSION_BUILD, 50)
+define(_CLIENT_VERSION_REVISION, 7)
+define(_CLIENT_VERSION_BUILD, 0)
 define(_ZC_BUILD_VAL,
     m4_if(m4_eval(_CLIENT_VERSION_BUILD < 25), 1, m4_incr(_CLIENT_VERSION_BUILD),
         m4_eval(_CLIENT_VERSION_BUILD < 50), 1, 
@@ -19,7 +19,7 @@ define(_CLIENT_VERSION_IS_RELEASE, true)
 define(_COPYRIGHT_YEAR, 2023)
 AC_INIT([Pastel],[_CLIENT_VERSION_MAJOR._CLIENT_VERSION_MINOR._CLIENT_VERSION_SUFFIX(_ZC_BUILD_VAL)],[https://github.com/PastelNetwork/Pastel/issues],[pastel])
 AC_CONFIG_SRCDIR([src/main.cpp])
-AC_CONFIG_HEADERS([src/config/bitcoin-config.h])
+AC_CONFIG_HEADERS([src/config/pastel-config.h])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([build-aux/m4])
 
@@ -425,7 +425,7 @@ AC_C_BIGENDIAN
 dnl Check for pthread compile/link requirements
 AX_PTHREAD
 
-# The following macro will add the necessary defines to bitcoin-config.h, but
+# The following macro will add the necessary defines to pastel-config.h, but
 # they also need to be passed down to any subprojects. Pull the results out of
 # the cache and add them to CPPFLAGS.
 AC_SYS_LARGEFILE

@@ -3,10 +3,10 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #include <cinttypes>
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 #include <utils/str_utils.h>
 #include <utils/utilstrencodings.h>
@@ -170,7 +170,7 @@ void CPastelTicketProcessor::UpdateDB_MVK(const CPastelTicket& ticket, const str
 bool CPastelTicketProcessor::UpdateDB(CPastelTicket &ticket, string& txid, const unsigned int nBlockHeight)
 {
     if (!txid.empty())
-        ticket.SetTxId(move(txid));
+        ticket.SetTxId(std::move(txid));
     if (nBlockHeight != 0)
         ticket.SetBlock(nBlockHeight);
     auto itDB = dbs.find(ticket.ID());
@@ -237,7 +237,7 @@ bool CPastelTicketProcessor::preParseTicket(const CMutableTransaction& tx, CComp
         }
         ticket_id = static_cast<TicketID>(nTicketID);
         const size_t nOutputDataSize = vOutputData.size();
-        bRet = data_stream.SetData(error, bCompressed, 1, move(vOutputData), bUncompressData);
+        bRet = data_stream.SetData(error, bCompressed, 1, std::move(vOutputData), bUncompressData);
         if (!bRet)
             error = strprintf("Failed to uncompress data for '%s' ticket. %s", GetTicketDescription(ticket_id), error);
         else if (bCompressed)
@@ -443,7 +443,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateTicketFees(const uint32_t nH
         } // for tx.vouts
         if (tv1.IsNotValid())
         {
-            tv = move(tv1);
+            tv = std::move(tv1);
             break;
         }
 
@@ -530,7 +530,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
             }
             // deserialize ticket data
             data_stream >> *ticket;
-            ticket->SetTxId(move(ticketBlockTxIdStr));
+            ticket->SetTxId(std::move(ticketBlockTxIdStr));
             ticket->SetBlock(nHeight);
             ticket->SetMultiSigOutputsCount(nMultiSigOutputsCount);
             ticket->SetMultiSigTxTotalFee(nMultiSigTxTotalFee);
@@ -552,7 +552,7 @@ ticket_validation_t CPastelTicketProcessor::ValidateIfTicketTransaction(CValidat
             tv.errorMsg = "Failed to parse and unpack ticket - Unknown exception";
             break;
         }
-        tv = ValidateTicketFees(nHeight, tx, move(ticket));
+        tv = ValidateTicketFees(nHeight, tx, std::move(ticket));
         if (tv.IsNotValid())
         {
             LogFnPrintf("Invalid ticket ['%s', txid=%s, nHeight=%u]. ERROR: %s",
@@ -702,7 +702,7 @@ PastelTicketPtr CPastelTicketProcessor::GetTicket(const uint256 &txid, uint256* 
         {
             // deserialize data to ticket object
             data.data_stream >> *ticket;
-            ticket->SetTxId(move(sTxId));
+            ticket->SetTxId(std::move(sTxId));
             ticket->SetBlock(data.nTicketHeight);
             ticket->SetSerializedSize(data.data_stream.GetSavedDecompressedSize());
             ticket->SetMultiSigOutputsCount(data.nMultiSigOutputsCount);
@@ -1121,7 +1121,7 @@ v_strings CPastelTicketProcessor::GetAllKeys(const TicketID id) const
         {
             sKey.clear();
             if (pcursor->GetKey(sKey))
-                vResults.emplace_back(move(sKey));
+                vResults.emplace_back(std::move(sKey));
             pcursor->Next();
         }
     }
@@ -1207,7 +1207,7 @@ bool ReadTicketFromDB(unique_ptr<CDBIterator>& pcursor, string& sKey, PastelTick
         }
         if (pcursor->GetValue(dbTicket))
         {
-            ticket = make_unique<typename TicketTypeMapper<ID>::TicketType>(move(dbTicket));
+            ticket = make_unique<typename TicketTypeMapper<ID>::TicketType>(std::move(dbTicket));
             return true;
         }
 	}
@@ -1241,92 +1241,101 @@ bool CPastelTicketProcessor::ProcessAllTickets(TicketID id, process_ticket_data_
             case TicketID::PastelID:
 			{
 				if (ReadTicketFromDB<TicketID::PastelID>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
             case TicketID::NFT:
             {
                 if (ReadTicketFromDB<TicketID::NFT>(pcursor, sKey, ticket))
-                    ticketFunctor(move(sKey), ticket);
+                    ticketFunctor(std::move(sKey), ticket);
             } break;
 
             case TicketID::Activate:
 			{
 				if (ReadTicketFromDB<TicketID::Activate>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
             case TicketID::Offer:
             {
                 if (ReadTicketFromDB<TicketID::Offer>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
             case TicketID::Accept:
 			{
 				if (ReadTicketFromDB<TicketID::Accept>(pcursor, sKey, ticket))
-                    ticketFunctor(move(sKey), ticket);
+                    ticketFunctor(std::move(sKey), ticket);
             } break;
 
             case TicketID::Transfer:
             {
                 if (ReadTicketFromDB<TicketID::Transfer>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
             case TicketID::Down:
 			{
 				if (ReadTicketFromDB<TicketID::Down>(pcursor, sKey, ticket))
-                    ticketFunctor(move(sKey), ticket);
+                    ticketFunctor(std::move(sKey), ticket);
             } break;
 
             case TicketID::Royalty:
 			{
 				if (ReadTicketFromDB<TicketID::Royalty>(pcursor, sKey, ticket))
-                    ticketFunctor(move(sKey), ticket);
+                    ticketFunctor(std::move(sKey), ticket);
 			} break;
 
 			case TicketID::Username:
 			{
 				if (ReadTicketFromDB<TicketID::Username>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
 			case TicketID::EthereumAddress:
 			{
 				if (ReadTicketFromDB<TicketID::EthereumAddress>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
 			case TicketID::ActionReg:
 			{
 				if (ReadTicketFromDB<TicketID::ActionReg>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
 			case TicketID::ActionActivate:
 			{
 				if (ReadTicketFromDB<TicketID::ActionActivate>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
 			case TicketID::CollectionReg:
 			{
 				if (ReadTicketFromDB<TicketID::CollectionReg>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
 			case TicketID::CollectionAct:
 			{
 				if (ReadTicketFromDB<TicketID::CollectionAct>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
 
             case TicketID::Contract:
             {
 				if (ReadTicketFromDB<TicketID::Contract>(pcursor, sKey, ticket))
-					ticketFunctor(move(sKey), ticket);
+					ticketFunctor(std::move(sKey), ticket);
 			} break;
+
+            case TicketID::COUNT:
+                break;
+
+            case TicketID::InvalidID:
+                break;
+
+            default:
+				break;
 		}
 		pcursor->Next();
 	}
@@ -1348,7 +1357,7 @@ void CPastelTicketProcessor::listTickets(F f, const uint32_t nMinHeight) const
         if (key.front() == '@')
             continue;
         _TicketType ticket;
-        ticket.SetKeyOne(move(key));
+        ticket.SetKeyOne(std::move(key));
         if (!FindTicket(ticket))
             continue;
         if (ticket.GetBlock() < nMinHeight)
@@ -1843,7 +1852,7 @@ bool CPastelTicketProcessor::WalkBackTradingChain(
                     pastelTicket->GetTxId(), sTxId, pastelTicket->GetTicketName());
                 break;
         }
-        chain.emplace_back(move(pastelTicket));
+        chain.emplace_back(std::move(pastelTicket));
         bOk = true;
     }
     while(false);
@@ -1896,7 +1905,7 @@ tuple<string, string> CPastelTicketProcessor::SendTicket(const CPastelTicket& ti
 
     CMutableTransaction tx;
     CP2FMS_TX_Builder txBuilder(data_stream, ticket.TicketPricePSL(gl_nChainHeight + 1), sFundingAddress);
-    txBuilder.setExtraOutputs(move(vExtraOutputs), nExtraAmountInPat);
+    txBuilder.setExtraOutputs(std::move(vExtraOutputs), nExtraAmountInPat);
     if (!txBuilder.build(error, tx))
         throw runtime_error(strprintf("Failed to create P2FMS from data provided. %s", error));
 
@@ -2433,7 +2442,7 @@ string CPastelTicketProcessor::CreateFakeTransaction(CPastelTicket& ticket, cons
 
     CMutableTransaction tx;
     CP2FMS_TX_Builder txBuilder(data_stream, ticketPricePSL);
-    txBuilder.setExtraOutputs(move(vExtraOutputs), extraAmount);
+    txBuilder.setExtraOutputs(std::move(vExtraOutputs), extraAmount);
     if (!txBuilder.build(error, tx))
         throw runtime_error(strprintf("Failed to create P2FMS from data provided. %s", error));
 

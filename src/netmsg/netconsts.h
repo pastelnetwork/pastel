@@ -10,7 +10,7 @@ constexpr size_t MAX_INV_SZ = 50'000;
 constexpr size_t MAX_INV_SEND_SZ = 1'000;
 /** The maximum number of entries in an 'addr' protocol message */
 /** The maximum number of new addresses to accumulate before announcing. */
-static constexpr size_t MAX_ADDR_SZ = 1'000;
+constexpr size_t MAX_ADDR_SZ = 1'000;
 /** The maximum number of entries in an 'getdata' protocol message */
 constexpr size_t MAX_GETDATA_SZ = 1'000;
 /** The maximum number of entries in mapAskFor */

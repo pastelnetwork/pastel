@@ -161,7 +161,7 @@ ticket_validation_t CChangeEthereumAddressTicket::IsValid(const TxOrigin txOrigi
 
 CChangeEthereumAddressTicket CChangeEthereumAddressTicket::Create(string _pastelID, string _ethereumAddress, SecureString&& strKeyPass)
 {
-    CChangeEthereumAddressTicket ticket(move(_pastelID), move(_ethereumAddress));
+    CChangeEthereumAddressTicket ticket(std::move(_pastelID), std::move(_ethereumAddress));
 
     // Check if Pastel ID already have an Ethereum Address on the blockchain.
     if (!masterNodeCtrl.masternodeTickets.CheckTicketExistBySecondaryKey(ticket)) {
@@ -175,7 +175,7 @@ CChangeEthereumAddressTicket CChangeEthereumAddressTicket::Create(string _pastel
     ticket.GenerateTimestamp();
 
     string strTicket = ticket.ToStr();
-    ticket.signature = string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, move(strKeyPass)));
+    ticket.signature = string_to_vector(CPastelID::Sign(strTicket, ticket.pastelID, std::move(strKeyPass)));
 
     return ticket;
 }

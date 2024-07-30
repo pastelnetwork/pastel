@@ -11,11 +11,11 @@
 #include <utils/sync.h>
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
+#include <utils/random.h>
 #include <chain_options.h>
 #include <rpc/server.h>
 #include <init.h>
 #include <key_io.h>
-#include <random.h>
 #include <ui_interface.h>
 #include <asyncrpcqueue.h>
 
@@ -327,19 +327,19 @@ bool StartRPC()
 
 void InterruptRPC()
 {
-    LogPrint("rpc", "Interrupting RPC\n");
+    LogFnPrint("rpc", "Interrupting RPC");
     // Interrupt e.g. running longpolls
     fRPCRunning = false;
 }
 
 void StopRPC()
 {
-    LogPrint("rpc", "Stopping RPC\n");
+    LogFnPrint("rpc", "Stopping RPC");
     deadlineTimers.clear();
     g_rpcSignals.Stopped();
 
     // Tells async queue to cancel all operations and shutdown.
-    LogPrintf("%s: waiting for async rpc workers to stop\n", __func__);
+    LogFnPrintf("waiting for async rpc workers to stop");
     getAsyncRPCQueue()->closeAndWait();
 }
 
@@ -377,24 +377,24 @@ void JSONRequest::parse(const UniValue& valRequest)
     const UniValue& request = valRequest.get_obj();
 
     // Parse id now so errors from here on will have the id
-    id = find_value(request, "id");
+    m_id = find_value(request, "id");
 
     // Parse method
-    UniValue valMethod = find_value(request, "method");
+    const UniValue valMethod = find_value(request, "method");
     if (valMethod.isNull())
         throw JSONRPCError(RPC_INVALID_REQUEST, "Missing method");
     if (!valMethod.isStr())
         throw JSONRPCError(RPC_INVALID_REQUEST, "Method must be a string");
-    strMethod = valMethod.get_str();
-    if (strMethod != "getblocktemplate")
-        LogPrint("rpc", "ThreadRPCServer method=%s\n", SanitizeString(strMethod));
+    m_strMethod = valMethod.get_str();
+    if (m_strMethod != "getblocktemplate")
+        LogPrint("rpc", "ThreadRPCServer method=%s\n", SanitizeString(m_strMethod));
 
     // Parse params
-    UniValue valParams = find_value(request, "params");
+    const UniValue valParams = find_value(request, "params");
     if (valParams.isArray())
-        params = valParams.get_array();
+        m_params = valParams.get_array();
     else if (valParams.isNull())
-        params = UniValue(UniValue::VARR);
+        m_params = UniValue(UniValue::VARR);
     else
         throw JSONRPCError(RPC_INVALID_REQUEST, "Params must be an array");
 }
@@ -407,17 +407,17 @@ static UniValue JSONRPCExecOne(const UniValue& req)
     try {
         jreq.parse(req);
 
-        UniValue result = tableRPC.execute(jreq.strMethod, jreq.params);
-        rpc_result = JSONRPCReplyObj(result, NullUniValue, jreq.id);
+        UniValue result = tableRPC.execute(jreq.method(), jreq.params());
+        rpc_result = JSONRPCReplyObj(result, NullUniValue, jreq.id());
     }
     catch (const UniValue& objError)
     {
-        rpc_result = JSONRPCReplyObj(NullUniValue, objError, jreq.id);
+        rpc_result = JSONRPCReplyObj(NullUniValue, objError, jreq.id());
     }
     catch (const exception& e)
     {
         rpc_result = JSONRPCReplyObj(NullUniValue,
-                                     JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id);
+                                     JSONRPCError(RPC_PARSE_ERROR, e.what()), jreq.id());
     }
 
     return rpc_result;
@@ -426,6 +426,7 @@ static UniValue JSONRPCExecOne(const UniValue& req)
 string JSONRPCExecBatch(const UniValue& vReq)
 {
     UniValue ret(UniValue::VARR);
+    ret.reserve(vReq.size());
     for (size_t reqIdx = 0; reqIdx < vReq.size(); reqIdx++)
         ret.push_back(JSONRPCExecOne(vReq[reqIdx]));
 
@@ -528,13 +529,14 @@ void RPCRunLater(const string& name, function<void(void)> func, int64_t nSeconds
     deadlineTimers.erase(name);
     RPCTimerInterface* timerInterface = timerInterfaces[0];
     LogPrint("rpc", "queue run of timer %s in %i seconds (using %s)\n", name, nSeconds, timerInterface->Name());
-    deadlineTimers.insert(make_pair(name, shared_ptr<RPCTimerBase>(timerInterface->NewTimer(func, nSeconds*1000))));
+    deadlineTimers.emplace(name, shared_ptr<RPCTimerBase>(timerInterface->NewTimer(func, nSeconds*1000)));
 }
 
 CRPCTable tableRPC;
 
-// Return async rpc queue
+// Return async rpc queue•
 shared_ptr<AsyncRPCQueue> getAsyncRPCQueue()
 {
     return AsyncRPCQueue::sharedInstance();
 }
+

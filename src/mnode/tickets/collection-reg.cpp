@@ -43,23 +43,23 @@ CollectionRegTicket CollectionRegTicket::Create(
     const CAmount storageFee)
 {
     bool bInvalidBase64Encoding = false;
-    string sDecodedCollectionTicket = DecodeBase64(move(collection_ticket_base64_encoded), &bInvalidBase64Encoding);
+    string sDecodedCollectionTicket = DecodeBase64(std::move(collection_ticket_base64_encoded), &bInvalidBase64Encoding);
     if (bInvalidBase64Encoding)
         throw runtime_error("Invalid base64 encoding found in collection ticket");
 
-    CollectionRegTicket ticket(move(sDecodedCollectionTicket));
+    CollectionRegTicket ticket(std::move(sDecodedCollectionTicket));
     ticket.parse_collection_ticket();
 
     // parse and set principal's and MN2/3's signatures
     ticket.set_signatures(signatures);
-    ticket.m_label = move(label);
+    ticket.m_label = std::move(label);
     ticket.m_storageFee = storageFee;
     ticket.GenerateKeyOne();
     ticket.GenerateTimestamp();
 
-    ticket.m_vPastelID[SIGN_MAIN] = move(sPastelID);
+    ticket.m_vPastelID[SIGN_MAIN] = std::move(sPastelID);
     // sign the ticket hash using principal Pastel ID with ed448 algorithm
-    string_to_vector(CPastelID::Sign(ticket.m_sCollectionTicket, ticket.m_vPastelID[SIGN_MAIN], move(strKeyPass)), ticket.m_vTicketSignature[SIGN_MAIN]);
+    string_to_vector(CPastelID::Sign(ticket.m_sCollectionTicket, ticket.m_vPastelID[SIGN_MAIN], std::move(strKeyPass)), ticket.m_vTicketSignature[SIGN_MAIN]);
     return ticket;
 }
 

@@ -44,7 +44,7 @@ const CBaseChainParams& BaseParams();
  * Looks for -regtest or -testnet and returns the appropriate Network ID.
  * Returns MAX_NETWORK_TYPES if an invalid combination is given.
  */
-ChainNetwork NetworkIdFromCommandLine();
+ChainNetwork NetworkIdFromCommandLine() noexcept;
 
 /**
  * Calls NetworkIdFromCommandLine() and then calls SelectParams as appropriate.

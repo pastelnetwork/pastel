@@ -7,7 +7,7 @@
 
 #include <univalue.h>
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <utils/util.h>
 #include <amount.h>
 #include <chainparams.h>
@@ -456,9 +456,9 @@ Get only masternodes eligible for mining next block:
             if (!mnEligibility.bEligibleForMining)
                 node.pushKV("blocksUntilEligibilityRestored", nMnEligibilityThreshold - nBlocksSinceLastSigned);
         }
-		nodes.push_back(move(node));
+		nodes.push_back(std::move(node));
 	}
-    obj.pushKV("nodes", move(nodes));
+    obj.pushKV("nodes", std::move(nodes));
     return obj;
 }
 
@@ -598,7 +598,7 @@ Examples:
             }
             obj.pushKV("mnid", mnid.value());
         }
-		retObj.push_back(move(obj));
+		retObj.push_back(std::move(obj));
 
 		pBlockIndex = pBlockIndex->pprev;
     }
@@ -661,7 +661,7 @@ Examples:
 		throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'", sGenId));
 	}
     string sMerkleRoot(pChainTip->hashMerkleRoot.cbegin(), pChainTip->hashMerkleRoot.cend());
-    string sMerkelRootSignature = CPastelID::Sign(sMerkleRoot, sGenId, move(sPassPhrase));
+    string sMerkelRootSignature = CPastelID::Sign(sMerkleRoot, sGenId, std::move(sPassPhrase));
 
 	UniValue obj(UniValue::VOBJ);
 	obj.pushKV("pastelid", sGenId);

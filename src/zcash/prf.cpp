@@ -1,8 +1,9 @@
-#include "prf.h"
-#include "crypto/sha256.h"
-#include "hash.h"
-
 #include <array>
+
+#include <utils/hash.h>
+#include <zcash/prf.h>
+#include <crypto/sha256.h>
+
 #include <librustzcash.h>
 
 const unsigned char ZCASH_EXPANDSEED_PERSONALIZATION[crypto_generichash_blake2b_PERSONALBYTES] = {'Z','c','a','s','h','_','E','x','p','a','n','d','S','e','e','d'};

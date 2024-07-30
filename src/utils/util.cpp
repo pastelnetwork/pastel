@@ -5,11 +5,10 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <fstream>
-#include <mutex>
 #include <cstdint>
 #include <cstdio>
 #include <cstdarg>
@@ -37,13 +36,12 @@
 #include <utils/util.h>
 #include <utils/sync.h>
 #include <utils/utilstrencodings.h>
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
+#include <utils/utiltime.h>
+#include <utils/random.h>
 #include <utils/serialize.h>
 #include <chainparamsbase.h>
-#include <random.h>
-#include <utiltime.h>
 #include <clientversion.h>
-
 
 #ifndef WIN32
 // for posix_fallocate

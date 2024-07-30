@@ -18,7 +18,7 @@ TEST(test_reverselock, reverselock_basics)
 
     EXPECT_TRUE(lock.owns_lock());
     {
-        reverse_lock<unique_lock<mutex> > rlock(lock);
+        reverse_lock rlock(lock);
         EXPECT_TRUE(!lock.owns_lock());
     }
     EXPECT_TRUE(lock.owns_lock());
@@ -36,7 +36,7 @@ TEST(test_reverselock, reverselock_errors)
 
     bool failed = false;
     try {
-        reverse_lock<unique_lock<mutex> > rlock(lock);
+        reverse_lock rlock(lock);
     } catch(...) {
         failed = true;
     }
@@ -51,7 +51,7 @@ TEST(test_reverselock, reverselock_errors)
     lock.lock();
     EXPECT_TRUE(lock.owns_lock());
     {
-        reverse_lock<unique_lock<mutex> > rlock(lock);
+        reverse_lock rlock(lock);
         EXPECT_TRUE(!lock.owns_lock());
     }
 

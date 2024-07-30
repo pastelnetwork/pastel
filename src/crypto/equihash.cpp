@@ -14,7 +14,7 @@
 // https://www.internetsociety.org/sites/default/files/blogs-media/equihash-asymmetric-proof-of-work-based-generalized-birthday-problem.pdf
 
 #if defined(HAVE_CONFIG_H)
-#include <config/bitcoin-config.h>
+#include <config/pastel-config.h>
 #endif
 
 #include <algorithm>

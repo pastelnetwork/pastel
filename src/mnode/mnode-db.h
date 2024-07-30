@@ -10,7 +10,7 @@
 #include <utils/util.h>
 #include <utils/serialize.h>
 #include <utils/streams.h>
-#include <hash.h>
+#include <utils/hash.h>
 
 /** 
 *   Generic Dumping and Loading

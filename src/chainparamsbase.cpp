@@ -6,8 +6,8 @@
 
 #include <assert.h>
 
+#include <config/port_config.h>
 #include <chainparamsbase.h>
-#include <port_config.h>
 #include <utils/util.h>
 
 using namespace std;
@@ -124,13 +124,14 @@ void SelectBaseParams(const ChainNetwork network)
     globalChainBaseParams = CreateBaseChainParams(network);
 }
 
-ChainNetwork NetworkIdFromCommandLine()
+ChainNetwork NetworkIdFromCommandLine() noexcept
 {
     const bool fRegTest = GetBoolArg("-regtest", false);
     const bool fTestNet = GetBoolArg("-testnet", false);
     const bool fDevNet = GetBoolArg("-devnet", false);
 
-    if (fTestNet && fRegTest || fTestNet && fDevNet || fDevNet && fRegTest)
+    const int nNetworkTypesSum = fRegTest + fTestNet + fDevNet;
+    if (nNetworkTypesSum > 1)
         return ChainNetwork::MAX_NETWORK_TYPES;
     if (fRegTest)
         return ChainNetwork::REGTEST;

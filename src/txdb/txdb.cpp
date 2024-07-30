@@ -6,9 +6,9 @@
 #include <cstdint>
 
 #include <utils/uint256.h>
+#include <utils/hash.h>
 #include <txdb/txdb.h>
 #include <chainparams.h>
-#include <hash.h>
 #include <main.h>
 #include <mining/pow.h>
 #include <script/scripttype.h>

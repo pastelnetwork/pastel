@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <json/json.hpp>
+#include <extlibs/json.hpp>
 
 #include <utils/enum_util.h>
 #include <amount.h>

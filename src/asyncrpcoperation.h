@@ -1,5 +1,5 @@
 #pragma once
-// // Copyright (c) 2018-2021 The Pastel developers
+// // Copyright (c) 2018-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <string>
@@ -132,7 +132,7 @@ protected:
     
     void set_result(UniValue &&v) {
         std::lock_guard<std::mutex> guard(lock_);
-        this->result_ = move(v);
+        this->result_ = std::move(v);
     }
     
 private:

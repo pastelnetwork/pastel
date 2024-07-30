@@ -6,7 +6,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #else
 
 /**
@@ -15,8 +15,8 @@
 
 //! These need to be macros, as clientversion.cpp's and pastel*-res.rc's voodoo requires it
 #define CLIENT_VERSION_MAJOR 2
-#define CLIENT_VERSION_MINOR 3
-#define CLIENT_VERSION_REVISION 1
+#define CLIENT_VERSION_MINOR 2
+#define CLIENT_VERSION_REVISION 7
 #define CLIENT_VERSION_BUILD 0
 
 //! Set to true for release, false for prerelease or test build
@@ -41,7 +41,7 @@
 #define COPYRIGHT_STR "2009-" STRINGIZE(COPYRIGHT_YEAR) " The Bitcoin Core Developers; The Zcash developers and The Pastel Developers"
 
 /**
- * bitcoind-res.rc includes this file, but it cannot cope with real c++ code.
+ * pasteld-res.rc includes this file, but it cannot cope with real c++ code.
  * WINDRES_PREPROC is defined to indicate that its pre-processor is running.
  * Anything other than a define should be guarded below.
  */

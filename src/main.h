@@ -6,7 +6,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/bitcoin-config.h"
+#include <config/pastel-config.h>
 #endif
 
 #include <cstdint>
@@ -486,7 +486,8 @@ public:
         READWRITE(VARINT(nTimeLast));
     }
 
-     void SetNull() {
+     void SetNull() noexcept
+     {
          nBlocks = 0;
          nSize = 0;
          nUndoSize = 0;
@@ -496,14 +497,16 @@ public:
          nTimeLast = 0;
      }
 
-     CBlockFileInfo() {
+     CBlockFileInfo() noexcept
+     {
          SetNull();
      }
 
      std::string ToString() const;
 
      /** update statistics (does not update nSize) */
-     void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) {
+     void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) noexcept
+     {
          if (nBlocks==0 || nHeightFirst > nHeightIn)
              nHeightFirst = nHeightIn;
          if (nBlocks==0 || nTimeFirst > nTimeIn)
@@ -517,7 +520,8 @@ public:
 };
 
 /** RAII wrapper for VerifyDB: Verify consistency of the block and coin databases */
-class CVerifyDB {
+class CVerifyDB
+{
 public:
     CVerifyDB();
     ~CVerifyDB();

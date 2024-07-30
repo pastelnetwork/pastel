@@ -55,7 +55,7 @@ As json rpc:
         sFundingAddress = params[4].get_str();
 
     auto mnidRegData = make_optional<CMNID_RegData>(true);
-    const auto regTicket = CPastelIDRegTicket::Create(move(sPastelID), move(strKeyPass), sFundingAddress.value_or(""), mnidRegData);
+    const auto regTicket = CPastelIDRegTicket::Create(std::move(sPastelID), std::move(strKeyPass), sFundingAddress.value_or(""), mnidRegData);
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(regTicket, sFundingAddress));
 }
 
@@ -94,7 +94,8 @@ As json rpc:
     SecureString strKeyPass(params[3].get_str());
     string sFundingAddress = params[4].get_str();
 
-    const auto pastelIDRegTicket = CPastelIDRegTicket::Create(move(pastelID), move(strKeyPass), sFundingAddress);
+    const auto pastelIDRegTicket = CPastelIDRegTicket::Create(std::move(pastelID), std::move(strKeyPass),
+        sFundingAddress);
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(pastelIDRegTicket, sFundingAddress));
 }
 
@@ -130,7 +131,8 @@ As json rpc:
     if (params.size() >= 6)
 		sFundingAddress = params[5].get_str();
 
-    const auto ContractTicket = CContractTicket::Create(move(sContractTicket), move(sContractSubType), move(sSecondaryKey));
+    const auto ContractTicket = CContractTicket::Create(std::move(sContractTicket), std::move(sContractSubType), 
+        std::move(sSecondaryKey));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(ContractTicket, sFundingAddress));
 }
 
@@ -225,8 +227,8 @@ As json rpc:
         sFundingAddress = params[8].get_str();
 
     const auto NFTRegTicket = CNFTRegTicket::Create(
-        move(nft_ticket), signatures, move(sPastelID), move(strKeyPass),
-        move(label), nStorageFee);
+        std::move(nft_ticket), signatures, std::move(sPastelID), std::move(strKeyPass),
+        std::move(label), nStorageFee);
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTRegTicket, sFundingAddress));
 }
 
@@ -331,8 +333,8 @@ As json rpc:
         sFundingAddress = params[8].get_str();
 
     const auto CollectionRegTicket = CollectionRegTicket::Create(
-        move(collection_ticket_base64_encoded), signatures, move(sPastelID), move(strKeyPass),
-        move(label), nStorageFee);
+        std::move(collection_ticket_base64_encoded), signatures, std::move(sPastelID), std::move(strKeyPass),
+        std::move(label), nStorageFee);
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(CollectionRegTicket, sFundingAddress));
 }
 
@@ -414,10 +416,10 @@ As json rpc:
     if (params.size() >= 11)
         sIntendedForPastelID = params[10].get_str();
 
-    const auto offerTicket = COfferTicket::Create(move(txid), priceInPSL, 
+    const auto offerTicket = COfferTicket::Create(std::move(txid), priceInPSL, 
         static_cast<uint32_t>(nValidAfter), static_cast<uint32_t>(nValidBefore), 
         static_cast<uint16_t>(nCopyNumber), 
-        move(sIntendedForPastelID), move(pastelID), move(strKeyPass));
+        std::move(sIntendedForPastelID), std::move(pastelID), std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(offerTicket, sFundingAddress));
 }
 
@@ -466,7 +468,7 @@ As json rpc:
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto acceptTicket = CAcceptTicket::Create(move(offerTxID), static_cast<uint32_t>(nPricePSL), move(sPastelID), move(strKeyPass));
+    const auto acceptTicket = CAcceptTicket::Create(std::move(offerTxID), static_cast<uint32_t>(nPricePSL), std::move(sPastelID), std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(acceptTicket, sFundingAddress));
 }
 
@@ -517,8 +519,8 @@ As json rpc:
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto transferTicket = CTransferTicket::Create(move(offerTxID), 
-        move(acceptTxID), move(sPastelID), move(strKeyPass));
+    const auto transferTicket = CTransferTicket::Create(std::move(offerTxID), 
+        std::move(acceptTxID), std::move(sPastelID), std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(transferTicket, sFundingAddress));
 }
 
@@ -571,7 +573,8 @@ As json rpc:
     if (params.size() >= 7)
         sFundingAddress = params[6].get_str();
 
-    const auto NFTRoyaltyTicket = CNFTRoyaltyTicket::Create(move(sNFTTxId), move(sNewPastelID), move(sPastelID), move(strKeyPass));
+    const auto NFTRoyaltyTicket = CNFTRoyaltyTicket::Create(std::move(sNFTTxId), std::move(sNewPastelID), 
+        std::move(sPastelID), std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(NFTRoyaltyTicket, sFundingAddress));
 }
 
@@ -652,7 +655,8 @@ As json rpc:
     if (params.size() >= 6)
         sFundingAddress = params[5].get_str();
 
-    const auto changeUsernameTicket = CChangeUsernameTicket::Create(move(sPastelID), move(sUserName), move(strKeyPass));
+    const auto changeUsernameTicket = CChangeUsernameTicket::Create(std::move(sPastelID), std::move(sUserName), 
+        std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(changeUsernameTicket, sFundingAddress));
 }
 
@@ -696,7 +700,7 @@ As json rpc:
     if (params.size() >= 6)
         sFundingAddress = params[5].get_str();
 
-    const auto EthereumAddressTicket = CChangeEthereumAddressTicket::Create(pastelID, ethereumAddress, move(strKeyPass));
+    const auto EthereumAddressTicket = CChangeEthereumAddressTicket::Create(pastelID, ethereumAddress, std::move(strKeyPass));
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(EthereumAddressTicket, sFundingAddress));
 }
 
@@ -782,8 +786,8 @@ As json rpc:
         sFundingAddress = params[8].get_str();
 
     const auto ActionRegTicket = CActionRegTicket::Create(
-        move(sActionTicket), signatures, move(sPastelID), move(strKeyPass),
-        move(label), nStorageFee);
+        std::move(sActionTicket), signatures, std::move(sPastelID), std::move(strKeyPass),
+        std::move(label), nStorageFee);
     return GenerateSendTicketResult(CPastelTicketProcessor::SendTicket(ActionRegTicket, sFundingAddress));
 }
 

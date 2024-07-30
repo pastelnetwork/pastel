@@ -1,6 +1,6 @@
 // Copyright (c) 2014-2016 The Bitcoin Core developers
 // Copyright (c) 2016-2018 The Zcash developers
-// Copyright (c) 2018-2023 Pastel Core Developers
+// Copyright (c) 2018-2024 Pastel Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cassert>
@@ -25,7 +25,7 @@ private:
 	const KeyConstants& m_KeyConstants;
 
 public:
-	DestinationEncoder(const KeyConstants& keyConstants) : 
+	DestinationEncoder(const KeyConstants& keyConstants) noexcept : 
 		m_KeyConstants(keyConstants)
 	{}
 
@@ -52,7 +52,7 @@ private:
 	const KeyConstants& m_KeyConstants;
 
 public:
-	PaymentAddressEncoder(const KeyConstants& keyConstants) :
+	PaymentAddressEncoder(const KeyConstants& keyConstants) noexcept :
 		m_KeyConstants(keyConstants)
 	{}
 
@@ -78,7 +78,7 @@ private:
 	const KeyConstants& m_KeyConstants;
 
 public:
-	ViewingKeyEncoder(const KeyConstants& keyConstants) :
+	ViewingKeyEncoder(const KeyConstants& keyConstants) noexcept :
 		m_KeyConstants(keyConstants)
 	{}
 
@@ -107,7 +107,7 @@ private:
 	const KeyConstants& m_KeyConstants;
 
 public:
-	SpendingKeyEncoder(const KeyConstants& keyConstants) :
+	SpendingKeyEncoder(const KeyConstants& keyConstants) noexcept :
 		m_KeyConstants(keyConstants)
 	{}
 

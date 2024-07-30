@@ -3,7 +3,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <gtest/gtest.h>
 
-#include <utils/scope_guard.hpp>
+#include <extlibs/scope_guard.hpp>
 #include <mnode/mnode-db.h>
 #include <mnode/mnode-payments.h>
 

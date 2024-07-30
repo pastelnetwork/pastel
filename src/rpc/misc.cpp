@@ -813,7 +813,7 @@ Arguments:
 
 Result:
 {
-  "addressess":
+  "addresses":
     [
       {
         "address"     (string)  The base58check encoded address
@@ -863,11 +863,11 @@ Examples:
         UniValue addr_obj(UniValue::VOBJ);
         addr_obj.pushKV("address", it.first);
         addr_obj.pushKV("balance", it.second);
-        addresses.push_back(addr_obj);
+        addresses.push_back(std::move(addr_obj));
     }
 
     UniValue result(UniValue::VOBJ);
-    result.pushKV("addresses", addresses);
+    result.pushKV("addresses", std::move(addresses));
     result.pushKV("balance", balance);
     result.pushKV("received", received);
     return result;

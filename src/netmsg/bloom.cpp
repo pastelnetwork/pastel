@@ -1,17 +1,17 @@
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <math.h>
 #include <cstdlib>
 
 #include <utils/streams.h>
+#include <utils/random.h>
+#include <utils/hash.h>
 #include <netmsg/bloom.h>
 #include <primitives/transaction.h>
-#include <hash.h>
 #include <script/script.h>
 #include <script/standard.h>
-#include <random.h>
 
 #define LN2SQUARED 0.4804530139182014246671025263266649717305529515945455
 #define LN2 0.6931471805599453094172321214581765680755001343602552

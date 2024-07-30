@@ -37,12 +37,15 @@ Genesis block for RegTest found
 #include <variant>
 #include <vector>
 
+#include <config/port_config.h>
 #include <utils/util.h>
 #include <utils/utilstrencodings.h>
+#include <utils/arith_uint256.h>
 #include <key_io.h>
 #include <main.h>
+#include <net.h>
+#include <netmsg/netconsts.h>
 #include <crypto/equihash.h>
-#include <port_config.h>
 #include <chainparamsseeds.h>
 
 using namespace std;
@@ -833,7 +836,7 @@ unique_ptr<const CChainParams> CreateChainParams(const ChainNetwork network)
             ChainParams = make_unique<CMainParams>();
             break;
     }
-    return move(ChainParams);
+    return std::move(ChainParams);
 }
 
 /**

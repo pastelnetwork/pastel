@@ -141,7 +141,7 @@ v_doubles benchmark_solve_equihash_threaded(int nThreads)
     for (int i = 0; i < nThreads; i++) {
         packaged_task<double(void)> task(&benchmark_solve_equihash);
         tasks.emplace_back(task.get_future());
-        threads.emplace_back(move(task));
+        threads.emplace_back(std::move(task));
     }
     for (auto it = tasks.begin(); it != tasks.end(); it++) {
         it->wait();
