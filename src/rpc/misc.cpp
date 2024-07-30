@@ -243,7 +243,8 @@ public:
     }
 };
 
-UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t minHeight, bool includeSender, bool justSendersAddress);
+UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t minHeight,
+                      const string &senderFilter, bool includeSender, bool justSendersAddress);
 
 UniValue z_validateaddress(const UniValue& params, bool fHelp)
 {
@@ -1075,7 +1076,7 @@ Examples:
     if (!getAddressesFromParams(params, vAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    UniValue utxos = getUtxosData(vAddresses, 0, false, false);
+    UniValue utxos = getUtxosData(vAddresses, 0, "", false, false);
 
     if (!includeChainInfo)
         return utxos;
@@ -1111,6 +1112,7 @@ Arguments:
     ],
   "simple"  (boolean, optional, default=false) Do not include full info about inputs with results
   "minHeight"  (number, optional, default=0) The minimum block height to include
+  "sender"  (string, optional, default='') Filter output by sender address
 }
 
 Result
@@ -1155,6 +1157,7 @@ Examples:
 
     bool simpleInfo = false;
     int height = 0;
+    string senderFilter = "";
     if (params[0].isObject())
     {
         UniValue simple = find_value(params[0].get_obj(), "simple");
@@ -1163,16 +1166,19 @@ Examples:
         UniValue minHeight = find_value(params[0].get_obj(), "minHeight");
         if (!minHeight.isNull())
             height = minHeight.get_int();
+        UniValue sender = find_value(params[0].get_obj(), "sender");
+        if (!sender.isNull())
+            senderFilter = sender.get_str();
     }
     vector<pair<uint160, ScriptType>> vAddresses;
     if (!getAddressesFromParams(params, vAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    UniValue utxos = getUtxosData(vAddresses, height, true, simpleInfo);
+    UniValue utxos = getUtxosData(vAddresses, height, senderFilter, true, simpleInfo);
     return utxos;
 }
 
-UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t minHeight,
+UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t minHeight, const string &senderFilter,
                       bool includeSender, bool justSendersAddress) {
     vector<CAddressUnspentDbEntry> vUnspentOutputs;
     for (const auto& it : vAddresses)
@@ -1219,6 +1225,7 @@ UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t mi
                 continue;
                 //TODO ERROR
             }
+            bool bFoundSenders = false;
             for (const auto &txin: tx.vin) {
                 UniValue in(UniValue::VOBJ);
                 if (tx.IsCoinBase()) {
@@ -1244,20 +1251,27 @@ UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t mi
                             in.pushKV("patoshis", spentInfo.patoshis);
                         auto dest = DestFromAddressHash(spentInfo.addressType, spentInfo.addressHash);
                         if (IsValidDestination(dest)) {
-                            auto address = keyIO.EncodeDestination(dest);
+                            auto senderAddress = keyIO.EncodeDestination(dest);
+                            if (!senderFilter.empty() && senderFilter != senderAddress) {
+                                continue;
+                            }
+                            bFoundSenders = true;
                             if (justSendersAddress)
-                                vin.push_back(address);
+                                vin.push_back(senderAddress);
                             else
-                                in.pushKV("address", address);
+                                in.pushKV("address", senderAddress);
                         }
                     }
                 }
                 if (!justSendersAddress)
-                    vin.push_back(move(in));
+                    vin.push_back(std::move(in));
+            }
+            if (!senderFilter.empty() && !bFoundSenders) {
+                continue;
             }
             output.pushKV("senders", vin);
         }
-        utxos.push_back(move(output));
+        utxos.push_back(std::move(output));
     }
     return utxos;
 }
