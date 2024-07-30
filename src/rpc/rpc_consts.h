@@ -33,6 +33,7 @@ constexpr auto RPC_API_GETADDRESSDELTAS		    = "getaddressdeltas";
 constexpr auto RPC_API_GETADDRESSMEMPOOL		= "getaddressmempool";
 constexpr auto RPC_API_GETADDRESSTXIDS			= "getaddresstxids";
 constexpr auto RPC_API_GETADDRESSUTXOS			= "getaddressutxos";
+constexpr auto RPC_API_GETADDRESSUTXOSEXTRA		= "getaddressutxosextra";
 constexpr auto RPC_API_GETSPENTINFO				= "getspentinfo";
 
 inline const char *get_rpc_result(const bool bSucceeded) noexcept { return bSucceeded ? RPC_RESULT_SUCCESS : RPC_RESULT_FAILED; }

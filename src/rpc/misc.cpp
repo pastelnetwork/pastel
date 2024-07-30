@@ -243,6 +243,8 @@ public:
     }
 };
 
+UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t minHeight, bool includeSender, bool justSendersAddress);
+
 UniValue z_validateaddress(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
@@ -1073,38 +1075,7 @@ Examples:
     if (!getAddressesFromParams(params, vAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    vector<CAddressUnspentDbEntry> vUnspentOutputs;
-    for (const auto& it : vAddresses)
-    {
-        if (!GetAddressUnspent(it.first, it.second, vUnspentOutputs))
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
-    }
-    std::sort(vUnspentOutputs.begin(), vUnspentOutputs.end(),
-        [](const CAddressUnspentDbEntry& a, const CAddressUnspentDbEntry& b) -> bool {
-            return a.second.blockHeight < b.second.blockHeight;
-        });
-
-    UniValue utxos(UniValue::VARR);
-    utxos.reserve(vUnspentOutputs.size());
-
-    string address;
-    for (const auto& it : vUnspentOutputs)
-    {
-        UniValue output(UniValue::VOBJ);
-        auto scriptTypeOpt = toScriptType(it.first.type);
-        if (!scriptTypeOpt)
-			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
-        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
-
-        output.pushKV("address", address);
-        output.pushKV(RPC_KEY_TXID, it.first.txhash.GetHex());
-        output.pushKV("outputIndex", it.first.index);
-        output.pushKV("script", HexStr(it.second.script.begin(), it.second.script.end()));
-        output.pushKV("patoshis", it.second.patoshis);
-        output.pushKV(RPC_KEY_HEIGHT, it.second.blockHeight);
-        utxos.push_back(move(output));
-    }
+    UniValue utxos = getUtxosData(vAddresses, 0, false, false);
 
     if (!includeChainInfo)
         return utxos;
@@ -1118,6 +1089,177 @@ Examples:
         result.pushKV(RPC_KEY_HEIGHT, gl_nChainHeight.load());
     }
     return result;
+}
+
+// insightexplorer
+UniValue getaddressutxosextra(const UniValue& params, bool fHelp)
+{
+    string disabledMsg = rpcDisabledInsightExplorerHelpMsg(RPC_API_GETADDRESSUTXOSEXTRA);
+
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+                R"(getaddressutxos {"addresses": ["taddr", ...], ("simple": true|false), ("minHeight": n)}
+
+Returns all unspent outputs for an address including inputs for the transaction (vin).
+)" + disabledMsg + R"(
+Arguments:
+{
+  "addresses":
+    [
+      "address"  (string) The base58check encoded address
+      ,...
+    ],
+  "simple"  (boolean, optional, default=false) Do not include full info about inputs with results
+  "minHeight"  (number, optional, default=0) The minimum block height to include
+}
+
+Result
+[
+  {
+    "address"  (string) The address base58check encoded
+    "txid"  (string) The output txid
+    "height"  (number) The block height
+    "outputIndex"  (number) The output index
+    "script"  (string) The script hex encoded
+    "patoshis"  (number) The number of )" + MINOR_CURRENCY_UNIT + R"( of the output
+    "senders"  (array, optional) The inputs for the transaction
+  }, ...
+]
+
+Where "senders" is an array of objects with the following fields:
+[
+    {
+      "txid"  (string) The input txid
+      "outputIndex"  (number) The input output index
+      "address"  (string) The base58check encoded address
+      "patoshis"  (number) The number of )" + MINOR_CURRENCY_UNIT + R"( of the input
+    }, ...
+]
+OR, if input is coinbase:
+[
+    "coinbase"  (string) The coinbase hex encoded
+    ...
+]
+OR, if "simple" is true:
+[
+    "address"  (string) The base58check encoded address
+    ...
+]
+
+Examples:
+)" + HelpExampleCli(RPC_API_GETADDRESSUTXOSEXTRA, R"('{"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"], "simple": true, "minHeight": 1000}')") +
+                HelpExampleRpc(RPC_API_GETADDRESSUTXOSEXTRA, R"({"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"]})")
+        );
+
+    rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSUTXOS);
+
+    bool simpleInfo = false;
+    int height = 0;
+    if (params[0].isObject())
+    {
+        UniValue simple = find_value(params[0].get_obj(), "simple");
+        if (!simple.isNull())
+            simpleInfo = simple.get_bool();
+        UniValue minHeight = find_value(params[0].get_obj(), "minHeight");
+        if (!minHeight.isNull())
+            height = minHeight.get_int();
+    }
+    vector<pair<uint160, ScriptType>> vAddresses;
+    if (!getAddressesFromParams(params, vAddresses))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+
+    UniValue utxos = getUtxosData(vAddresses, height, true, simpleInfo);
+    return utxos;
+}
+
+UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t minHeight,
+                      bool includeSender, bool justSendersAddress) {
+    vector<CAddressUnspentDbEntry> vUnspentOutputs;
+    for (const auto& it : vAddresses)
+    {
+        if (!GetAddressUnspent(it.first, it.second, vUnspentOutputs))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+    }
+    sort(vUnspentOutputs.begin(), vUnspentOutputs.end(),
+        [](const CAddressUnspentDbEntry& a, const CAddressUnspentDbEntry& b) -> bool {
+            return a.second.blockHeight < b.second.blockHeight;
+        });
+
+    UniValue utxos(UniValue::VARR);
+    utxos.reserve(vUnspentOutputs.size());
+
+    string address;
+    for (const auto& it : vUnspentOutputs)
+    {
+        if (minHeight > 0 && it.second.blockHeight < minHeight)
+            continue;
+
+        UniValue output(UniValue::VOBJ);
+        auto scriptTypeOpt = toScriptType(it.first.type);
+        if (!scriptTypeOpt)
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown script type");
+        if (!getAddressFromIndex(scriptTypeOpt.value(), it.first.hashBytes, address))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+
+        output.pushKV("address", address);
+        output.pushKV(RPC_KEY_TXID, it.first.txhash.GetHex());
+        output.pushKV("outputIndex", it.first.index);
+        if (!justSendersAddress)
+            output.pushKV("script", HexStr(it.second.script.begin(), it.second.script.end()));
+        output.pushKV("patoshis", it.second.patoshis);
+        output.pushKV(RPC_KEY_HEIGHT, it.second.blockHeight);
+
+        if (includeSender) {
+            CTransaction tx;
+            uint256 hashBlock;
+            CBlockIndex *blockindex = nullptr;
+            KeyIO keyIO(Params());
+            UniValue vin(UniValue::VARR);
+            if (!GetTransaction(it.first.txhash, tx, Params().GetConsensus(), hashBlock, true, nullptr, blockindex)) {
+                continue;
+                //TODO ERROR
+            }
+            for (const auto &txin: tx.vin) {
+                UniValue in(UniValue::VOBJ);
+                if (tx.IsCoinBase()) {
+                    if (justSendersAddress) continue;
+                    in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
+                }
+                else {
+                    if (!justSendersAddress) {
+                        in.pushKV("txid", txin.prevout.hash.GetHex());
+                        in.pushKV("outputIndex", txin.prevout.n);
+                    }
+
+                    // Add address and value info if spentindex enabled
+                    if (fSpentIndex) {
+                        CSpentIndexValue spentInfo;
+                        CSpentIndexKey spentKey(txin.prevout.hash, txin.prevout.n);
+                        {
+                            LOCK(cs_main);
+                            if (!GetSpentIndex(spentKey, spentInfo))
+                                continue;
+                        }
+                        if (!justSendersAddress)
+                            in.pushKV("patoshis", spentInfo.patoshis);
+                        auto dest = DestFromAddressHash(spentInfo.addressType, spentInfo.addressHash);
+                        if (IsValidDestination(dest)) {
+                            auto address = keyIO.EncodeDestination(dest);
+                            if (justSendersAddress)
+                                vin.push_back(address);
+                            else
+                                in.pushKV("address", address);
+                        }
+                    }
+                }
+                if (!justSendersAddress)
+                    vin.push_back(move(in));
+            }
+            output.pushKV("senders", vin);
+        }
+        utxos.push_back(move(output));
+    }
+    return utxos;
 }
 
 // insightexplorer
@@ -1193,6 +1335,7 @@ static const CRPCCommand commands[] =
     { "addressindex",       "getaddressbalance",      &getaddressbalance,      false }, /* insight explorer */
     { "addressindex",       "getaddressdeltas",       &getaddressdeltas,       false }, /* insight explorer */
     { "addressindex",       "getaddressutxos",        &getaddressutxos,        false }, /* insight explorer */
+    { "addressindex",       "getaddressutxosextra",   &getaddressutxosextra,   false }, /* insight explorer */
     { "addressindex",       "getaddressmempool",      &getaddressmempool,      true  }, /* insight explorer */
     { "blockchain",         "getspentinfo",           &getspentinfo,           false }, /* insight explorer */
     // END insightexplorer
