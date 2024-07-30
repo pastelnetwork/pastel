@@ -29,6 +29,7 @@
 #include <netmsg/nodemanager.h>
 
 #include <zcash/Address.hpp>
+#include "rpc-utils.h"
 
 using namespace std;
 
@@ -304,7 +305,7 @@ Examples:
  */
 CScript _createmultisig_redeemScript(const UniValue& params)
 {
-    int nRequired = params[0].get_int();
+    auto nRequired = get_long_number(params[0]);
     const UniValue& keys = params[1].get_array();
 
     // Gather public keys
@@ -685,7 +686,7 @@ Examples:)"
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
 
         UniValue delta(UniValue::VOBJ);
-        delta.pushKV("address", move(address));
+        delta.pushKV("address", std::move(address));
         delta.pushKV(RPC_KEY_TXID, it.first.txhash.GetHex());
         delta.pushKV("index", it.first.index);
         delta.pushKV("patoshis", it.second.amount);
@@ -694,7 +695,7 @@ Examples:)"
             delta.pushKV("prevtxid", it.second.prevhash.GetHex());
             delta.pushKV("prevout", it.second.prevout);
         }
-        result.push_back(move(delta));
+        result.push_back(std::move(delta));
     }
     return result;
 }
@@ -775,7 +776,7 @@ Examples:
         const uint32_t txindex = index_key.txindex;
         string txid = index_key.txhash.GetHex();
         // Duplicate entries (two addresses in same tx) are suppressed
-        txids.emplace(height, txindex, move(txid));
+        txids.emplace(height, txindex, std::move(txid));
     }
     UniValue result(UniValue::VARR);
     result.reserve(txids.size());
@@ -954,7 +955,7 @@ Examples:
     {
         UniValue chainInfo = find_value(params[0].get_obj(), "chainInfo");
         if (!chainInfo.isNull())
-            includeChainInfo = chainInfo.get_bool();
+            includeChainInfo = get_bool_value(chainInfo);
     }
 
     UniValue deltas(UniValue::VARR);
@@ -1070,7 +1071,7 @@ Examples:
     {
         UniValue chainInfo = find_value(params[0].get_obj(), "chainInfo");
         if (!chainInfo.isNull())
-            includeChainInfo = chainInfo.get_bool();
+            includeChainInfo = get_bool_value(chainInfo);
     }
     vector<pair<uint160, ScriptType>> vAddresses;
     if (!getAddressesFromParams(params, vAddresses))
@@ -1156,16 +1157,16 @@ Examples:
     rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSUTXOS);
 
     bool simpleInfo = false;
-    int height = 0;
+    int64_t height = 0;
     string senderFilter = "";
     if (params[0].isObject())
     {
         UniValue simple = find_value(params[0].get_obj(), "simple");
         if (!simple.isNull())
-            simpleInfo = simple.get_bool();
+            simpleInfo = get_bool_value(simple);
         UniValue minHeight = find_value(params[0].get_obj(), "minHeight");
         if (!minHeight.isNull())
-            height = minHeight.get_int();
+            height = get_long_number(minHeight);
         UniValue sender = find_value(params[0].get_obj(), "sender");
         if (!sender.isNull())
             senderFilter = sender.get_str();
@@ -1186,7 +1187,7 @@ UniValue getUtxosData(vector<pair<uint160, ScriptType>> &vAddresses, uint32_t mi
         if (!GetAddressUnspent(it.first, it.second, vUnspentOutputs))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
     }
-    sort(vUnspentOutputs.begin(), vUnspentOutputs.end(),
+    std::sort(vUnspentOutputs.begin(), vUnspentOutputs.end(),
         [](const CAddressUnspentDbEntry& a, const CAddressUnspentDbEntry& b) -> bool {
             return a.second.blockHeight < b.second.blockHeight;
         });
@@ -1315,7 +1316,7 @@ Examples:
     if (!indexValue.isNum())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid index, must be an integer");
     uint256 txid = ParseHashV(txidValue, "txid");
-    int outputIndex = indexValue.get_int();
+    auto outputIndex = get_long_number(indexValue);
 
     CSpentIndexKey key(txid, outputIndex);
     CSpentIndexValue value;
