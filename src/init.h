@@ -6,6 +6,7 @@
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <string>
 
+#include <consensus/validation.h>
 #include <utils/svc_thread.h>
 
 class CScheduler;
@@ -19,6 +20,8 @@ bool ShutdownRequested();
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
+bool AbortNode(const std::string& strMessage, const std::string& userMessage = "");
+bool AbortNode(CValidationState& state, const std::string& strMessage, const std::string& userMessage = "");
 
 /** The help message mode determines what help message to show */
 enum HelpMessageMode {

@@ -14,20 +14,10 @@ struct CSpentIndexKey
     uint256 txid;
     unsigned int outputIndex;
 
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream>
-    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
-    {
-        READWRITE(txid);
-        READWRITE(outputIndex);
-    }
-
-    CSpentIndexKey(uint256 t, unsigned int i) noexcept
-    {
-        txid = t;
-        outputIndex = i;
-    }
+    CSpentIndexKey(const uint256 &_txid, unsigned int i) noexcept :
+        txid(_txid),
+		outputIndex(i)
+	{}
 
     CSpentIndexKey() noexcept
     {
@@ -38,6 +28,15 @@ struct CSpentIndexKey
     {
         txid.SetNull();
         outputIndex = 0;
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
+        READWRITE(txid);
+        READWRITE(outputIndex);
     }
 };
 
@@ -50,38 +49,15 @@ struct CSpentIndexValue
     ScriptType addressType;
     uint160 addressHash;
 
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream>
-    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
-    {
-        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
-
-        READWRITE(txid);
-        READWRITE(inputIndex);
-        READWRITE(blockHeight);
-        READWRITE(patoshis);
-        int nAddressType = to_integral_type(addressType);
-        READWRITE(nAddressType);
-        if (bRead)
-        {
-            if (!is_enum_valid<ScriptType>(nAddressType, ScriptType::UNKNOWN, ScriptType::P2SH))
-                throw std::runtime_error(strprintf("Not supported ScriptType [%d]", nAddressType));
-            addressType = static_cast<ScriptType>(nAddressType);
-        }
-        READWRITE(addressHash);
-    }
-
-    CSpentIndexValue(const uint256 &_txid, const uint32_t _inputIndex, const int height, 
-        const CAmount s, const ScriptType type, const uint160 &a) noexcept
-    {
-        txid = _txid;
-        inputIndex = _inputIndex;
-        blockHeight = height;
-        patoshis = s;
-        addressType = type;
-        addressHash = a;
-    }
+    CSpentIndexValue(const uint256 &_txid, const uint32_t _inputIndex, const uint32_t nHeight, 
+        const CAmount s, const ScriptType type, const uint160 &_addressHash) noexcept :
+        txid(_txid),
+        inputIndex(_inputIndex),
+        blockHeight(nHeight),
+        patoshis(s),
+        addressType(type),
+        addressHash(_addressHash)
+    {}
 
     CSpentIndexValue() noexcept
     {
@@ -107,6 +83,28 @@ struct CSpentIndexValue
         {
             return true;
         }
+    }
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream>
+    inline void SerializationOp(Stream& s, const SERIALIZE_ACTION ser_action)
+    {
+        const bool bRead = ser_action == SERIALIZE_ACTION::Read;
+
+        READWRITE(txid);
+        READWRITE(inputIndex);
+        READWRITE(blockHeight);
+        READWRITE(patoshis);
+        int nAddressType = to_integral_type(addressType);
+        READWRITE(nAddressType);
+        if (bRead)
+        {
+            if (!is_enum_valid<ScriptType>(nAddressType, ScriptType::P2PKH, ScriptType::P2SH))
+                throw std::runtime_error(strprintf("Not supported ScriptType [%d]", nAddressType));
+            addressType = static_cast<ScriptType>(nAddressType);
+        }
+        READWRITE(addressHash);
     }
 };
 

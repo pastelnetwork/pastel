@@ -361,8 +361,34 @@ bool IsScriptDestination(const CTxDestination& dest) noexcept
     return holds_alternative<CScriptID>(dest);
 }
 
+// This function accepts an address and returns in the output parameters
+// the version and raw bytes for the RIPEMD-160 hash.
+bool GetTxDestinationHash(const CTxDestination& dest, uint160& hashBytes, ScriptType& type)
+{
+    if (!IsValidDestination(dest))
+    {
+        type = ScriptType::UNKNOWN;
+        return false;
+    }
+    if (IsKeyDestination(dest))
+    {
+        auto x = get_if<CKeyID>(&dest);
+        memcpy(&hashBytes, x->begin(), uint160::SIZE);
+        type = ScriptType::P2PKH;
+        return true;
+    }
+    if (IsScriptDestination(dest))
+    {
+        auto x = get_if<CScriptID>(&dest);
+        memcpy(&hashBytes, x->begin(), uint160::SIZE);
+        type = ScriptType::P2SH;
+        return true;
+    }
+    return false;
+}
+
 // insightexplorer
-CTxDestination DestFromAddressHash(const ScriptType scriptType, uint160& addressHash)
+CTxDestination DestFromAddressHash(const ScriptType scriptType, const uint160& addressHash)
 {
     switch (scriptType)
     {

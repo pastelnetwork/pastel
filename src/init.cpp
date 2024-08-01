@@ -149,6 +149,24 @@ bool ShutdownRequested()
     return fRequestShutdown;
 }
 
+/** Abort with a message */
+bool AbortNode(const string& strMessage, const string& userMessage)
+{
+    strMiscWarning = strMessage;
+    LogPrintf("*** %s\n", strMessage);
+    uiInterface.ThreadSafeMessageBox(
+        userMessage.empty() ? translate("Error: A fatal internal error occurred, see debug.log for details") : userMessage,
+        "", CClientUIInterface::MSG_ERROR);
+    StartShutdown();
+    return false;
+}
+
+bool AbortNode(CValidationState& state, const string& strMessage, const string& userMessage)
+{
+    AbortNode(strMessage, userMessage);
+    return state.Error(strMessage);
+}
+
 class CCoinsViewErrorCatcher : public CCoinsViewBacked
 {
 public:
@@ -1600,6 +1618,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         CleanupBlockRevFiles();
                 }
 
+                // Initialize the ticket database
+                masterNodeCtrl.InitTicketDB();
+
                 if (!LoadBlockIndex(strLoadError))
                 {
                     strLoadError = translate("Error loading block database. ") + strLoadError;
@@ -1635,9 +1656,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
                         break;
                     }
                 }
-
-                // Initialize the ticket database
-                masterNodeCtrl.InitTicketDB();
 
                 const uint32_t nBlockDBCheckBlocks = static_cast<uint32_t>(GetArg("-checkblocks", DEFAULT_BLOCKDB_CHECKBLOCKS));
                 const uint32_t nBlockDBCheckLevel = static_cast<uint32_t>(GetArg("-checklevel", DEFAULT_BLOCKDB_CHECKLEVEL));

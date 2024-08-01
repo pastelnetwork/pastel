@@ -36,7 +36,31 @@ void CCoins::CalcMaskSize(unsigned int &nBytes, unsigned int &nNonzeroBytes) con
     nBytes += nLastUsedByte;
 }
 
-bool CCoins::Spend(uint32_t nPos) 
+void CCoins::Cleanup() noexcept
+{
+    while (vout.size() > 0 && vout.back().IsNull())
+        vout.pop_back();
+    if (vout.empty())
+        v_txouts().swap(vout);
+}
+
+void CCoins::ClearUnspendable() noexcept
+{
+    for (auto &txOut : vout)
+    {
+        if (txOut.scriptPubKey.IsUnspendable())
+            txOut.Clear();
+    }
+    Cleanup();
+}
+
+/**
+ * Mark an output as spent.
+ * 
+ * \param nPos - The index of the output to mark as spent.
+ * \return true if the output was successfully marked as spent, false otherwise.
+ */
+bool CCoins::Spend(const uint32_t nPos) noexcept
 {
     if (nPos >= vout.size() || vout[nPos].IsNull())
         return false;
@@ -44,6 +68,28 @@ bool CCoins::Spend(uint32_t nPos)
     Cleanup();
     return true;
 }
+
+/**
+ * Check whether a particular output is still available.
+ * 
+ * \param nPos - The index of the output to check.
+ * \return true if the output is available, false otherwise.
+ */
+bool CCoins::IsAvailable(const uint32_t nPos) const noexcept
+{
+	return nPos < vout.size() && !vout[nPos].IsNull();
+}
+
+bool CCoins::IsPruned() const noexcept
+{
+    for (const auto &out : vout)
+    {
+        if (!out.IsNull())
+            return false;
+    }
+    return true;
+}
+
 bool CCoinsView::GetSproutAnchorAt(const uint256 &rt, SproutMerkleTree &tree) const { return false; }
 bool CCoinsView::GetSaplingAnchorAt(const uint256 &rt, SaplingMerkleTree &tree) const { return false; }
 bool CCoinsView::GetNullifier(const uint256 &nullifier, ShieldedType type) const { return false; }
@@ -592,21 +638,20 @@ bool CCoinsViewCache::HaveShieldedRequirements(const CTransaction& tx) const
             return false;
         }
     }
-
     return true;
 }
 
 bool CCoinsViewCache::HaveInputs(const CTransaction& tx) const
 {
-    if (!tx.IsCoinBase())
+    if (tx.IsCoinBase())
+        return true;
+
+    for (const auto &txIn : tx.vin)
     {
-        for (const auto &txIn : tx.vin)
-        {
-            const COutPoint& prevout = txIn.prevout;
-            const CCoins* coins = AccessCoins(prevout.hash);
-            if (!coins || !coins->IsAvailable(prevout.n))
-                return false;
-        }
+        const COutPoint& prevout = txIn.prevout;
+        const CCoins* coins = AccessCoins(prevout.hash);
+        if (!coins || !coins->IsAvailable(prevout.n))
+            return false;
     }
     return true;
 }

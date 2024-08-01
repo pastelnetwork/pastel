@@ -35,12 +35,11 @@
 #include <script/sigcache.h>
 #include <script/standard.h>
 #include <txmempool.h>
-#include <txdb/txdb.h>
+#include <txdb/index_defs.h>
 #include <script_check.h>
 #include <netmsg/netconsts.h>
 
 class CBlockIndex;
-class CBlockTreeDB;
 class CBloomFilter;
 class CInv;
 class CValidationInterface;
@@ -337,15 +336,6 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
 
 } // namespace Consensus
 
-bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
-bool GetAddressIndex(const uint160& addressHash, const ScriptType type,
-    std::vector<CAddressIndexDbEntry>& vAddressIndex,
-    const std::tuple<uint32_t, uint32_t>& height_range);
-bool GetAddressUnspent(const uint160& addressHash, const ScriptType type,
-    std::vector<CAddressUnspentDbEntry>& unspentOutputs);
-bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
-    std::vector<std::pair<uint256, unsigned int> >& vHashes);
-
 /** Functions for disk access for blocks */
 bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos, const CMessageHeader::MessageStartChars& messageStart);
 bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos, const Consensus::Params& consensusParams);
@@ -353,13 +343,6 @@ bool ReadBlockFromDisk(CBlock& block, const CBlockIndex* pindex, const Consensus
 
 
 /** Functions for validating blocks and updating the block tree */
-
-typedef enum class _BlockDisconnectResult
-{
-    OK,      // All good.
-    UNCLEAN, // Rolled back, but UTXO set was inconsistent with block.
-    FAILED   // Something else went wrong.
-} BlockDisconnectResult;
 
 /** Undo the effects of this block (with given index) on the UTXO set represented by coins.
  *  In case pfClean is provided, operation will try to be tolerant about errors, and *pfClean
@@ -447,8 +430,6 @@ bool AcceptBlockHeader(
     CValidationState& state, 
     const CChainParams& chainparams,
     CBlockIndex** ppindex = nullptr);
-
-
 
 /**
  * When there are blocks in the active chain with missing data (e.g. if the
@@ -549,9 +530,6 @@ extern CChain chainActive;
 
 /** Global variable that points to the active CCoinsView (protected by cs_main) */
 extern std::unique_ptr<CCoinsViewCache> gl_pCoinsTip;
-
-/** Global variable that points to the active block tree (protected by cs_main) */
-extern std::unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().

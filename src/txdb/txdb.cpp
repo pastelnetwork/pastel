@@ -9,7 +9,9 @@
 #include <utils/hash.h>
 #include <txdb/txdb.h>
 #include <chainparams.h>
+#include <chain_options.h>
 #include <main.h>
+#include <init.h>
 #include <mining/pow.h>
 #include <script/scripttype.h>
 
@@ -388,7 +390,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams, string &s
 }
 
 // START insightexplorer
-bool CBlockTreeDB::WriteAddressIndex(const vector<CAddressIndexDbEntry> &vAddressIndex)
+bool CBlockTreeDB::WriteAddressIndex(const address_index_vector_t &vAddressIndex)
 {
     if (vAddressIndex.empty())
         return true;
@@ -400,7 +402,7 @@ bool CBlockTreeDB::WriteAddressIndex(const vector<CAddressIndexDbEntry> &vAddres
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::EraseAddressIndex(const std::vector<CAddressIndexDbEntry> &vAddressIndex)
+bool CBlockTreeDB::EraseAddressIndex(const address_index_vector_t &vAddressIndex)
 {
     if (vAddressIndex.empty())
         return true;
@@ -413,28 +415,33 @@ bool CBlockTreeDB::EraseAddressIndex(const std::vector<CAddressIndexDbEntry> &vA
 }
 
 bool CBlockTreeDB::ReadAddressIndex(
-    const uint160 &addressHash, const uint8_t type,
-    vector<CAddressIndexDbEntry> &vAddressIndex,
+    const uint160 &addressHash, const ScriptType addressType,
+    address_index_vector_t &vAddressIndex,
     const uint32_t nStartHeight, const uint32_t nEndHeight) const
 {
-    LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu, height range [%u..%u]",
-		addressHash.GetHex(), type, nStartHeight, nEndHeight);
+    if (nStartHeight && nEndHeight)
+        LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu, height range [%u..%u]",
+		    addressHash.GetHex(), to_integral_type(addressType), nStartHeight, nEndHeight);
+    else
+		LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu", addressHash.GetHex(), to_integral_type(addressType));
 
     unique_ptr<CDBIterator> pcursor(NewIterator());
 
     if (nStartHeight > 0 && nEndHeight > 0)
-        pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorHeightKey(type, addressHash, nStartHeight)));
+        pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorHeightKey(addressType, addressHash, nStartHeight)));
     else
-        pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorKey(type, addressHash)));
+        pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorKey(addressType, addressHash)));
 
     while (pcursor->Valid())
     {
         func_thread_interrupt_point();
         pair<char,CAddressIndexKey> key;
-        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSINDEX) && (key.second.hashBytes == addressHash)))
+        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSINDEX) && (key.second.addressHash == addressHash)))
             break;
+
         if (nEndHeight > 0 && key.second.blockHeight > nEndHeight)
             break;
+
         CAmount nValue;
         if (!pcursor->GetValue(nValue))
             return error("failed to get address index value");
@@ -444,7 +451,7 @@ bool CBlockTreeDB::ReadAddressIndex(
     return true;
 }
 
-bool CBlockTreeDB::UpdateAddressUnspentIndex(const vector<CAddressUnspentDbEntry> &v)
+bool CBlockTreeDB::UpdateAddressUnspentIndex(const address_unspent_vector_t &v)
 {
     if (v.empty())
 		return true;
@@ -460,18 +467,19 @@ bool CBlockTreeDB::UpdateAddressUnspentIndex(const vector<CAddressUnspentDbEntry
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const uint8_t type, vector<CAddressUnspentDbEntry> &vUnspentOutputs) const
+bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const ScriptType addressType, address_unspent_vector_t &vUnspentOutputs) const
 {
-    LogFnPrint("txdb", "AddressUnspentIndex - reading address %s, type %d", addressHash.GetHex(), type);
+    LogFnPrint("txdb", "AddressUnspentIndex - reading address %s, type %hdd",
+        addressHash.GetHex(), to_integral_type(addressType));
 
     unique_ptr<CDBIterator> pcursor(NewIterator());
 
-    pcursor->Seek(make_pair(DB_ADDRESSUNSPENTINDEX, CAddressIndexIteratorKey(type, addressHash)));
+    pcursor->Seek(make_pair(DB_ADDRESSUNSPENTINDEX, CAddressIndexIteratorKey(addressType, addressHash)));
     while (pcursor->Valid())
     {
         func_thread_interrupt_point();
         pair<char,CAddressUnspentKey> key;
-        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSUNSPENTINDEX) && (key.second.hashBytes == addressHash)))
+        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSUNSPENTINDEX) && (key.second.addressHash == addressHash)))
             break;
 
         CAddressUnspentValue nValue;
@@ -488,7 +496,7 @@ bool CBlockTreeDB::ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) 
     return Read(make_pair(DB_SPENTINDEX, key), value);
 }
 
-bool CBlockTreeDB::UpdateSpentIndex(const std::vector<CSpentIndexDbEntry> &v)
+bool CBlockTreeDB::UpdateSpentIndex(const spent_index_vector_t &v)
 {
     if (v.empty())
         return true;
@@ -549,10 +557,81 @@ bool CBlockTreeDB::WriteTimestampBlockIndex(const CTimestampBlockIndexKey &block
 bool CBlockTreeDB::ReadTimestampBlockIndex(const uint256 &hash, unsigned int &ltimestamp) const
 {
     CTimestampBlockIndexValue(lts);
-    if (!Read(std::make_pair(DB_BLOCKHASHINDEX, hash), lts))
+    if (!Read(make_pair(DB_BLOCKHASHINDEX, hash), lts))
         return false;
 
     ltimestamp = lts.ltimestamp;
     return true;
 }
 // END insightexplorer
+
+unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
+
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
+{
+    AssertLockHeld(cs_main);
+    if (!fSpentIndex)
+    {
+        LogPrint("rpc", "Spent index not enabled\n");
+        return false;
+    }
+    if (mempool.getSpentIndex(key, value))
+        return true;
+
+    if (!gl_pBlockTreeDB->ReadSpentIndex(key, value))
+    {
+        LogPrint("rpc", "Unable to get spent index information\n");
+        return false;
+    }
+    return true;
+}
+
+bool GetAddressIndex(const uint160& addressHash, const ScriptType addressType,
+                     address_index_vector_t& vAddressIndex,
+                     const tuple<uint32_t, uint32_t> &height_range)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "Address index not enabled\n");
+        return false;
+    }
+    if (!gl_pBlockTreeDB->ReadAddressIndex(addressHash, addressType, vAddressIndex, 
+            get<0>(height_range), get<1>(height_range)))
+    {
+        LogPrint("rpc", "Unable to get txids for address\n");
+        return false;
+    }
+    return true;
+}
+
+bool GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
+                       address_unspent_vector_t& vUnspentOutputs)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "Address index not enabled\n");
+        return false;
+    }
+    if (!gl_pBlockTreeDB->ReadAddressUnspentIndex(addressHash, addressType, vUnspentOutputs))
+    {
+        LogPrint("rpc", "Unable to get txids for address\n");
+        return false;
+    }
+    return true;
+}
+
+bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
+    vector<pair<uint256, unsigned int> > &vHashes)
+{
+    if (!fTimestampIndex)
+    {
+        LogPrint("rpc", "Timestamp index not enabled\n");
+        return false;
+    }
+    if (!gl_pBlockTreeDB->ReadTimestampIndex(high, low, fActiveOnly, vHashes))
+    {
+        LogPrint("rpc", "Unable to get vHashes for timestamps\n");
+        return false;
+    }
+    return true;
+}

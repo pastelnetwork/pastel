@@ -107,21 +107,9 @@ public:
     CCoins() : fCoinBase(false), vout(0), nHeight(0), nVersion(0) { }
 
     //!remove spent outputs at the end of vout
-    void Cleanup() {
-        while (vout.size() > 0 && vout.back().IsNull())
-            vout.pop_back();
-        if (vout.empty())
-            v_txouts().swap(vout);
-    }
+    void Cleanup() noexcept;
 
-    void ClearUnspendable() {
-        for (auto &txout : vout)
-        {
-            if (txout.scriptPubKey.IsUnspendable())
-                txout.Clear();
-        }
-        Cleanup();
-    }
+    void ClearUnspendable() noexcept;
 
     void swap(CCoins &to) {
         std::swap(to.fCoinBase, fCoinBase);
@@ -214,24 +202,14 @@ public:
     }
 
     //! mark a vout spent
-    bool Spend(uint32_t nPos);
+    bool Spend(const uint32_t nPos) noexcept;
 
     //! check whether a particular output is still available
-    bool IsAvailable(unsigned int nPos) const {
-        return (nPos < vout.size() && !vout[nPos].IsNull());
-    }
+    bool IsAvailable(const uint32_t nPos) const noexcept;
 
     //! check whether the entire CCoins is spent
     //! note that only !IsPruned() CCoins can be serialized
-    bool IsPruned() const
-    {
-        for(const auto &out : vout)
-        {
-            if (!out.IsNull())
-                return false;
-        }
-        return true;
-    }
+    bool IsPruned() const noexcept;
 
     size_t DynamicMemoryUsage() const
     {
