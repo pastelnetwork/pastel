@@ -37,8 +37,10 @@ private:
     v_txouts m_vAllPrevOutputs;
     uint32_t m_nHeight;
     int64_t m_nBlockTime;
+    std::unordered_map<size_t, CFundsTransferIndexInValue> m_vAddressInTxData;
 
     address_index_vector_t m_vAddressIndex;
     address_unspent_vector_t m_vAddressUnspentIndex;
     spent_index_vector_t m_vSpentIndex;
+    funds_transfer_vector_t m_vFundsTransferIndex;
 };

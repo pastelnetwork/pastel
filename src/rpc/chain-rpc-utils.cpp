@@ -89,7 +89,7 @@ uint32_t rpc_get_height_param(const UniValue& params, size_t no)
     return (params.size() > no) ? rpc_parse_height_param(params[no]) : gl_nChainHeight.load();
 }
 
-tuple<uint32_t, uint32_t> rpc_get_height_range(const UniValue& params)
+height_range_opt_t rpc_get_height_range(const UniValue& params)
 {
     uint32_t nStartHeight = 0;
     uint32_t nEndHeight = 0;
@@ -116,7 +116,7 @@ tuple<uint32_t, uint32_t> rpc_get_height_range(const UniValue& params)
     if (nStartHeight > nChainHeight || nEndHeight > nChainHeight)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Start or end is outside chain range");
 
-    return make_tuple(nStartHeight, nEndHeight);
+    return make_optional<height_range_t>(nStartHeight, nEndHeight);
 }
 
 CBlockScanner::CBlockScanner(const uint256& hashBlockStart)

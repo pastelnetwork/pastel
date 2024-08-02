@@ -1898,6 +1898,7 @@ void SetInsightExplorer(const bool fEnable)
 	fAddressIndex = fEnable;
 	fSpentIndex = fEnable;
 	fTimestampIndex = fEnable;
+    fFundsTransferIndex = fEnable;
 }
 
 /**
@@ -3783,6 +3784,17 @@ static bool LoadBlockIndexDB(const CChainParams& chainparams, string &strLoadErr
             strLoadError = translate("You need to rebuild the database using -reindex to change -insightexplorer");
             return false;
         }
+
+        // fundstransferindex introduced later than insightexplorer indices
+        // check if flag is set in DB
+        bool fFundsTransferIndexPreviouslySet = false;
+        gl_pBlockTreeDB->ReadFlag(TXDB_FLAG_FUNDSTRANSFERINDEX, fFundsTransferIndexPreviouslySet);
+        LogFnPrintf("(DB option) fundstransferindex %s", fFundsTransferIndex ? "enabled" : "disabled");
+        if (fInsightExplorerPreviouslySet && !fFundsTransferIndexPreviouslySet)
+        {
+            strLoadError = translate("You need to rebuild the database using -reindex to add FundsTransferIndex in -insightexplorer mode");
+			return false;
+        }
     }
 
     // Fill in-memory data
@@ -4472,6 +4484,7 @@ bool InitBlockIndex(const CChainParams& chainparams)
 
     // Use the provided setting for -insightexplorer in the new database
     gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_INSIGHT_EXPLORER, fInsightExplorer.load());
+    gl_pBlockTreeDB->WriteFlag(TXDB_FLAG_FUNDSTRANSFERINDEX, fFundsTransferIndex.load());
 
     LogFnPrintf("Initializing databases...");
 

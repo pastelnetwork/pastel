@@ -10,6 +10,7 @@ atomic_bool fInsightExplorer = false;
 atomic_bool fAddressIndex = false;
 atomic_bool fSpentIndex = true;
 atomic_bool fTimestampIndex = false;
+atomic_bool fFundsTransferIndex = false;
 
 CChainOptions gl_ChainOptions;
 

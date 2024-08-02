@@ -780,5 +780,8 @@
     <ClInclude Include="..\..\..\src\txdb\index_defs.h">
       <Filter>Source Files\txdb</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\txdb\fundstransferindex.h">
+      <Filter>Source Files\txdb</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

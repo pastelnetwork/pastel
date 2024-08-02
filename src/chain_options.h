@@ -43,7 +43,14 @@ extern std::atomic_bool fSpentIndex;
 
 // Maintain a full timestamp index, used to query for blocks within a time range
 extern std::atomic_bool fTimestampIndex;
+
+// Maintain a full funds transfer index
+extern std::atomic_bool fFundsTransferIndex;
 // END insightexplorer
+
+// range of block heights from start to end
+using height_range_t = std::pair<uint32_t, uint32_t>;
+using height_range_opt_t = std::optional<height_range_t>;
 
 class CChainOptions
 {

@@ -8,11 +8,13 @@
 #include <utility>
 #include <vector>
 #include <atomic>
+#include <optional>
 
 #include <coins.h>
 #include <dbwrapper.h>
 #include <utils/uint256.h>
 #include <txdb/index_defs.h>
+#include <chain_options.h>
 #include <chainparams.h>
 #include <chain.h>
 
@@ -27,9 +29,10 @@ static const int64_t nMaxDbCache = sizeof(void*) > 4 ? 16384 : 1024;
 //! min. -dbcache in (MiB)
 static const int64_t nMinDbCache = 4;
 
-constexpr auto TXDB_FLAG_INSIGHT_EXPLORER = "insightexplorer";
-constexpr auto TXDB_FLAG_TXINDEX = "txindex";
-constexpr auto TXDB_FLAG_PRUNEDBLOCKFILES = "prunedblockfiles";
+constexpr auto TXDB_FLAG_INSIGHT_EXPLORER   = "insightexplorer";
+constexpr auto TXDB_FLAG_FUNDSTRANSFERINDEX = "fundstransferindex";
+constexpr auto TXDB_FLAG_TXINDEX            = "txindex";
+constexpr auto TXDB_FLAG_PRUNEDBLOCKFILES   = "prunedblockfiles";
 
 /** CCoinsView backed by the coin database (chainstate/) */
 class CCoinsViewDB : public CCoinsView
@@ -82,18 +85,30 @@ public:
     // START insightexplorer
     bool UpdateAddressUnspentIndex(const address_unspent_vector_t &vect);
     bool ReadAddressUnspentIndex(const uint160 &addressHash, const ScriptType addressType, address_unspent_vector_t &vect) const;
+
     bool WriteAddressIndex(const address_index_vector_t &vect);
     bool EraseAddressIndex(const address_index_vector_t &vect);
     bool ReadAddressIndex(const uint160 &addressHash, const ScriptType addressType, address_index_vector_t &addressIndex, 
-        const uint32_t nStartHeight = 0, const uint32_t nEndHeight = 0) const;
+        const height_range_opt_t &height_range) const;
+
     bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const;
     bool UpdateSpentIndex(const spent_index_vector_t &vect);
+
     bool WriteTimestampIndex(const CTimestampIndexKey &timestampIndex);
     bool ReadTimestampIndex(unsigned int high, unsigned int low,
             const bool fActiveOnly, std::vector<std::pair<uint256, unsigned int> > &vect);
     bool WriteTimestampBlockIndex(const CTimestampBlockIndexKey &blockhashIndex,
             const CTimestampBlockIndexValue &logicalts);
     bool ReadTimestampBlockIndex(const uint256 &hash, unsigned int &logicalTS) const;
+
+    bool WriteFundsTransferIndex(const funds_transfer_vector_t& vFundsTransferIndex);
+    bool ReadFundsTransferIndex(
+        const uint160& addressHashFrom, const ScriptType addressTypeFrom,
+        const uint160& addressHashTo, const ScriptType addressTypeTo,
+        funds_transfer_vector_t& vFundsTransferIndex,
+        const height_range_opt_t &height_range) const;
+    bool EraseFundsTransferIndex(const funds_transfer_vector_t& vFundsTransferIndex);
+
     // END insightexplorer
 };
 
@@ -103,8 +118,13 @@ extern std::unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
 bool GetAddressIndex(const uint160& addressHash, const ScriptType addressType,
     address_index_vector_t& vAddressIndex,
-    const std::tuple<uint32_t, uint32_t>& height_range);
+    const height_range_opt_t& height_range);
 bool GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
     address_unspent_vector_t& unspentOutputs);
 bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
     std::vector<std::pair<uint256, unsigned int> >& vHashes);
+bool GetFundsTransferIndex(const uint160& addressHashFrom, const ScriptType addressTypeFrom,
+	const uint160& addressHashTo, const ScriptType addressTypeTo,
+	funds_transfer_vector_t& vFundsTransferIndex,
+	const height_range_opt_t& height_range);
+

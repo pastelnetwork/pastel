@@ -21,6 +21,9 @@ constexpr size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
 constexpr size_t DEFAULT_MAX_PEER_CONNECTIONS = 125;
 /** Maximum length of incoming protocol messages (no message over 2 MiB is currently acceptable). */
 constexpr unsigned int MAX_PROTOCOL_MESSAGE_LENGTH = 2 * 1024 * 1024;
+/** Number of headers sent in one getheaders result. We rely on the assumption that if a peer sends
+ *  less than this number, we reached its tip. Changing this value is a protocol upgrade. */
+constexpr size_t MAX_HEADERS_RESULTS = 160;
 
 enum class LocalAddressType : uint8_t
 {

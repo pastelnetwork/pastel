@@ -336,6 +336,7 @@ PASTEL_CORE_H = \
   core_io.h \
   core_memusage.h \
   txdb/addressindex.h \
+  txdb/fundstransferindex.h \
   txdb/index_defs.h \
   txdb/spentindex.h \
   txdb/txidxprocessor.h \

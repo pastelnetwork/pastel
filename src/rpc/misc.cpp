@@ -677,7 +677,7 @@ Examples:)"
 // Parse an address list then fetch the corresponding addressindex information.
 static void getAddressesInHeightRange(
     const UniValue& params,
-    const tuple<uint32_t, uint32_t> &height_range,
+    const height_range_opt_t &height_range,
     address_vector_t& vAddresses,
     address_index_vector_t &vAddressIndex)
 {
@@ -809,7 +809,7 @@ Examples:
     address_index_vector_t vAddressIndex;
     // this method doesn't take start and end block height params, so set
     // to zero (full range, entire blockchain)
-    getAddressesInHeightRange(params, make_tuple(0, 0), vAddresses, vAddressIndex);
+    getAddressesInHeightRange(params, nullopt, vAddresses, vAddressIndex);
 
     CAmount balance = 0;
     CAmount received = 0;
@@ -952,8 +952,8 @@ Examples:
 
     UniValue result(UniValue::VOBJ);
 
-    uint32_t start = get<0>(height_range);
-    uint32_t end = get<1>(height_range);
+    uint32_t start = height_range ? height_range.value().first : 0;
+    uint32_t end = height_range ? height_range.value().second : 0;
     if (!(includeChainInfo && start > 0 && end > 0))
         return deltas;
 

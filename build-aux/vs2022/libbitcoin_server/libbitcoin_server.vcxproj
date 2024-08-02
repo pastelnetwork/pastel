@@ -327,6 +327,7 @@
     <ClInclude Include="..\..\..\src\timedata.h" />
     <ClInclude Include="..\..\..\src\torcontrol.h" />
     <ClInclude Include="..\..\..\src\txdb\addressindex.h" />
+    <ClInclude Include="..\..\..\src\txdb\fundstransferindex.h" />
     <ClInclude Include="..\..\..\src\txdb\index_defs.h" />
     <ClInclude Include="..\..\..\src\txdb\spentindex.h" />
     <ClInclude Include="..\..\..\src\txdb\timestampindex.h" />

@@ -77,9 +77,6 @@ constexpr unsigned int BLOCK_STALLING_TIMEOUT_SECS = 2;
 constexpr int64_t BLOCK_STALLING_TIMEOUT_MICROSECS = BLOCK_STALLING_TIMEOUT_SECS * 1'000'000;
 /** Timeout in seconds to log block download timeout reduction */
 constexpr int64_t BLOCK_STALLING_LOG_TIMEOUT_MICROSECS = 60 * 1'000'000;
-/** Number of headers sent in one getheaders result. We rely on the assumption that if a peer sends
- *  less than this number, we reached its tip. Changing this value is a protocol upgrade. */
-constexpr size_t MAX_HEADERS_RESULTS = 160;
 /** Size of the "block download window": how far ahead of our current height do we fetch?
  *  Larger windows tolerate larger download speed differences between peer, but increase the potential
  *  degree of disordering of blocks on disk (which make reindexing and in the future perhaps pruning

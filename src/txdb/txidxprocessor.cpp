@@ -32,7 +32,7 @@ void CTxIndexProcessor::ProcessInputs(const CTransaction& tx, const uint32_t nTx
         m_vAllPrevOutputs.push_back(prevout);
     }
 
-    if (!fAddressIndex && !fSpentIndex)
+    if (!fAddressIndex && !fSpentIndex && !fFundsTransferIndex)
         return;
 
     const uint256 &txid = tx.GetHash();
@@ -43,6 +43,7 @@ void CTxIndexProcessor::ProcessInputs(const CTransaction& tx, const uint32_t nTx
         const CTxOut& prevout = m_vAllPrevOutputs[nTxIn];
         const ScriptType scriptType = prevout.scriptPubKey.GetType();
         const uint160 addrHash = prevout.scriptPubKey.AddressHash();
+
         if (fAddressIndex && scriptType != ScriptType::UNKNOWN)
         {
             // record spending activity
@@ -65,34 +66,67 @@ void CTxIndexProcessor::ProcessInputs(const CTransaction& tx, const uint32_t nTx
                 CSpentIndexKey(txIn.prevout.hash, txIn.prevout.n),
                 CSpentIndexValue(txid, nTxIn, m_nHeight, prevout.nValue, scriptType, addrHash));
         }
+
+        if (fFundsTransferIndex && scriptType != ScriptType::UNKNOWN)
+        {
+            // save intermediate data for funds transfer index
+            // record transfer from this input address to each distinct output address
+            // output address will be defined later on in ProcessOutputs
+            CFundsTransferIndexInKey key(scriptType, addrHash, nTxOrderNo);
+            const size_t inDataHash = key.GetHash();
+            auto it = m_vAddressInTxData.find(inDataHash);
+            if (it == m_vAddressInTxData.end())
+			{
+                auto [itNew, bInserted] = m_vAddressInTxData.emplace(inDataHash, 
+                    CFundsTransferIndexInValue(scriptType, addrHash, nTxOrderNo));
+                if (bInserted)
+                    it = itNew;
+			}
+			it->second.AddInputIndex(nTxIn, prevout.nValue);
+        }
     }
 }
 
 void CTxIndexProcessor::ProcessOutputs(const CTransaction& tx, const uint32_t nTxOrderNo)
 {
-    if (!fAddressIndex)
+    if (!fAddressIndex && !fFundsTransferIndex)
         return;
 
     const uint256 &txid = tx.GetHash();
 
     for (uint32_t nTxOut = 0; nTxOut < tx.vout.size(); ++nTxOut)
     {
-        const CTxOut& txout = tx.vout[nTxOut];
-        const ScriptType scriptType = txout.scriptPubKey.GetType();
+        const CTxOut& txOut = tx.vout[nTxOut];
+        const ScriptType scriptType = txOut.scriptPubKey.GetType();
         if (scriptType == ScriptType::UNKNOWN)
             continue;
 
-        const uint160 addrHash = txout.scriptPubKey.AddressHash();
+        const uint160 addrHash = txOut.scriptPubKey.AddressHash();
 
-        // record receiving activity
-        m_vAddressIndex.emplace_back(
-            CAddressIndexKey(scriptType, addrHash, m_nHeight, nTxOrderNo, txid, nTxOut, false),
-            txout.nValue);
+        if (fAddressIndex)
+        {
+            // record receiving activity
+            m_vAddressIndex.emplace_back(
+                CAddressIndexKey(scriptType, addrHash, m_nHeight, nTxOrderNo, txid, nTxOut, false),
+                txOut.nValue);
 
-        // record unspent output
-        m_vAddressUnspentIndex.emplace_back(
-            CAddressUnspentKey(scriptType, addrHash, txid, nTxOut),
-            CAddressUnspentValue(txout.nValue, txout.scriptPubKey, m_nHeight));
+            // record unspent output
+            m_vAddressUnspentIndex.emplace_back(
+                CAddressUnspentKey(scriptType, addrHash, txid, nTxOut),
+                CAddressUnspentValue(txOut.nValue, txOut.scriptPubKey, m_nHeight));
+        }
+
+        if (fFundsTransferIndex)
+        {
+            // record transfer from each distinct input address to this output address
+            for (auto& [_, inData] : m_vAddressInTxData)
+            {
+                m_vFundsTransferIndex.emplace_back(
+                    CFundsTransferIndexKey(inData.addressType, inData.addressHash,
+                                           scriptType, addrHash, m_nHeight, txid),
+                    CFundsTransferIndexValue(std::move(inData.vInputIndex), nTxOut, txOut.nValue));
+            }
+        }
     }
 }
 
@@ -105,6 +139,11 @@ bool CTxIndexProcessor::WriteIndexes(CValidationState& state)
         if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(m_vAddressUnspentIndex))
             return AbortNode(state, "Failed to write address unspent index");
     }
+    if (fFundsTransferIndex)
+	{
+		if (!gl_pBlockTreeDB->WriteFundsTransferIndex(m_vFundsTransferIndex))
+			return AbortNode(state, "Failed to write funds transfer index");
+	}
     if (fSpentIndex)
     {
         if (!gl_pBlockTreeDB->UpdateSpentIndex(m_vSpentIndex))
@@ -137,9 +176,66 @@ bool CTxIndexProcessor::WriteIndexes(CValidationState& state)
     return true;
 }
 
+void CTxIndexProcessor::UndoInput(const CTransaction &tx, const uint32_t nTxOrderNo, const uint32_t nTxIn,
+    const uint32_t nUndoHeight)
+{
+    if (!fAddressIndex && !fSpentIndex && !fFundsTransferIndex)
+		return;
+
+    const uint256 &txid = tx.GetHash();
+    const CTxIn& txin = tx.vin[nTxIn];
+    bool bRet = false;
+
+    if (fAddressIndex || fFundsTransferIndex)
+    {
+        const CTxOut& prevout = m_CoinsViewCache.GetOutputFor(txin);
+        const ScriptType scriptType = prevout.scriptPubKey.GetType();
+        if (scriptType == ScriptType::UNKNOWN)
+            return;
+
+        uint160 const addrHash = prevout.scriptPubKey.AddressHash();
+
+        if (fAddressIndex)
+        {
+            // undo spending activity
+            m_vAddressIndex.emplace_back(
+                CAddressIndexKey(scriptType, addrHash, m_pBlockIndex->GetHeight(), nTxOrderNo, txid, nTxIn, true),
+                prevout.nValue * -1);
+
+            // restore unspent index
+            m_vAddressUnspentIndex.emplace_back(
+                CAddressUnspentKey(scriptType, addrHash, txin.prevout.hash, txin.prevout.n),
+                CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, nUndoHeight));
+        }
+
+        if (fFundsTransferIndex)
+        {
+            CFundsTransferIndexInKey key(scriptType, addrHash, nTxOrderNo);
+            const size_t inDataHash = key.GetHash();
+            auto it = m_vAddressInTxData.find(inDataHash);
+            if (it == m_vAddressInTxData.end())
+			{
+                auto [itNew, bInserted] = m_vAddressInTxData.emplace(inDataHash, 
+                    CFundsTransferIndexInValue(scriptType, addrHash, nTxOrderNo));
+                if (bInserted)
+                    it = itNew;
+			}
+			it->second.AddInputIndex(nTxIn, prevout.nValue);
+        }
+    }
+
+    if (fSpentIndex)
+    {
+        // undo and delete the spent index
+        m_vSpentIndex.emplace_back(
+            CSpentIndexKey(txin.prevout.hash, txin.prevout.n),
+            CSpentIndexValue());
+    }
+}
+
 void CTxIndexProcessor::UndoOutputs(const CTransaction& tx, const uint32_t nTxOrderNo)
 {
-    if (!fAddressIndex)
+    if (!fAddressIndex && !fFundsTransferIndex)
         return;
 
     if (tx.vout.empty())
@@ -156,53 +252,30 @@ void CTxIndexProcessor::UndoOutputs(const CTransaction& tx, const uint32_t nTxOr
 
         uint160 const addrHash = txout.scriptPubKey.AddressHash();
 
-        // undo receiving activity
-        m_vAddressIndex.emplace_back(
-            CAddressIndexKey(scriptType, addrHash, m_nHeight, nTxOrderNo, txid, nTxOut, false),
-            txout.nValue);
+        if (fAddressIndex)
+        {
+            // undo receiving activity
+            m_vAddressIndex.emplace_back(
+                CAddressIndexKey(scriptType, addrHash, m_nHeight, nTxOrderNo, txid, nTxOut, false),
+                txout.nValue);
 
-        // undo unspent index
-        m_vAddressUnspentIndex.emplace_back(
-            CAddressUnspentKey(scriptType, addrHash, txid, nTxOut),
-            CAddressUnspentValue());
-    }
-}
+            // undo unspent index
+            m_vAddressUnspentIndex.emplace_back(
+                CAddressUnspentKey(scriptType, addrHash, txid, nTxOut),
+                CAddressUnspentValue());
+        }
 
-void CTxIndexProcessor::UndoInput(const CTransaction &tx, const uint32_t nTxOrderNo, const uint32_t nTxIn,
-    const uint32_t nUndoHeight)
-{
-    if (!fAddressIndex && !fSpentIndex)
-		return;
-
-    const uint256 &txid = tx.GetHash();
-    const CTxIn& txin = tx.vin[nTxIn];
-    bool bRet = false;
-
-    if (fAddressIndex)
-    {
-        const CTxOut& prevout = m_CoinsViewCache.GetOutputFor(txin);
-        const ScriptType scriptType = prevout.scriptPubKey.GetType();
-        if (scriptType == ScriptType::UNKNOWN)
-            return;
-
-        uint160 const addrHash = prevout.scriptPubKey.AddressHash();
-
-        // undo spending activity
-        m_vAddressIndex.emplace_back(
-            CAddressIndexKey(scriptType, addrHash, m_pBlockIndex->GetHeight(), nTxOrderNo, txid, nTxIn, true),
-            prevout.nValue * -1);
-
-        // restore unspent index
-        m_vAddressUnspentIndex.emplace_back(
-            CAddressUnspentKey(scriptType, addrHash, txin.prevout.hash, txin.prevout.n),
-            CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, nUndoHeight));
-    }
-    if (fSpentIndex)
-    {
-        // undo and delete the spent index
-        m_vSpentIndex.emplace_back(
-            CSpentIndexKey(txin.prevout.hash, txin.prevout.n),
-            CSpentIndexValue());
+        if (fFundsTransferIndex)
+        {
+            // undo transfer index from each distinct input address to this output address
+            for (auto& [_, inData] : m_vAddressInTxData)
+            {
+                m_vFundsTransferIndex.emplace_back(
+                    CFundsTransferIndexKey(inData.addressType, inData.addressHash,
+                        scriptType, addrHash, m_nHeight, txid),
+                    CFundsTransferIndexValue(std::move(inData.vInputIndex), nTxOut, txout.nValue));
+            }
+        }
     }
 }
 
@@ -216,6 +289,13 @@ bool CTxIndexProcessor::EraseIndices(CValidationState& state)
         if (!gl_pBlockTreeDB->UpdateAddressUnspentIndex(m_vAddressUnspentIndex))
             return AbortNode(state, "Failed to write address unspent index");
     }
+
+    if (fFundsTransferIndex)
+    {
+        if (!gl_pBlockTreeDB->EraseFundsTransferIndex(m_vFundsTransferIndex))
+			return AbortNode(state, "Failed to delete funds transfer index");
+    }
+
     if (fSpentIndex && !gl_pBlockTreeDB->UpdateSpentIndex(m_vSpentIndex))
         return AbortNode(state, "Failed to write transaction index");
     return true;

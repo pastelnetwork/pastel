@@ -17,6 +17,8 @@
 
 using namespace std;
 
+unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
+
 // NOTE: Per issue #3277, do not use the prefix 'X' or 'x' as they were
 // previously used by DB_SAPLING_ANCHOR and DB_BEST_SAPLING_ANCHOR.
 static constexpr char DB_SPROUT_ANCHOR = 'A';
@@ -41,6 +43,7 @@ static const char DB_ADDRESSUNSPENTINDEX = 'u';
 static constexpr char DB_SPENTINDEX = 'p';
 static const char DB_TIMESTAMPINDEX = 'T';
 static const char DB_BLOCKHASHINDEX = 'h';
+static const char DB_FUNDSTRANSFERINDEX = 'D';
 
 CCoinsViewDB::CCoinsViewDB(string dbName, size_t nCacheSize, bool fMemory, bool fWipe) :
     db(GetDataDir() / dbName, nCacheSize, fMemory, fWipe)
@@ -417,17 +420,22 @@ bool CBlockTreeDB::EraseAddressIndex(const address_index_vector_t &vAddressIndex
 bool CBlockTreeDB::ReadAddressIndex(
     const uint160 &addressHash, const ScriptType addressType,
     address_index_vector_t &vAddressIndex,
-    const uint32_t nStartHeight, const uint32_t nEndHeight) const
+    const height_range_opt_t &height_range) const
 {
-    if (nStartHeight && nEndHeight)
+    uint32_t nStartHeight = 0;
+    uint32_t nEndHeight = 0;
+    if (height_range)
+    {
+        tie(nStartHeight, nEndHeight) = height_range.value();
         LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu, height range [%u..%u]",
-		    addressHash.GetHex(), to_integral_type(addressType), nStartHeight, nEndHeight);
+            addressHash.GetHex(), to_integral_type(addressType), nStartHeight, nEndHeight);
+    }
     else
 		LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu", addressHash.GetHex(), to_integral_type(addressType));
 
     unique_ptr<CDBIterator> pcursor(NewIterator());
 
-    if (nStartHeight > 0 && nEndHeight > 0)
+    if (height_range && nStartHeight > 0)
         pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorHeightKey(addressType, addressHash, nStartHeight)));
     else
         pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorKey(addressType, addressHash)));
@@ -563,9 +571,91 @@ bool CBlockTreeDB::ReadTimestampBlockIndex(const uint256 &hash, unsigned int &lt
     ltimestamp = lts.ltimestamp;
     return true;
 }
-// END insightexplorer
 
-unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
+bool CBlockTreeDB::WriteFundsTransferIndex(const funds_transfer_vector_t &vFundsTransferIndex)
+{
+	if (vFundsTransferIndex.empty())
+		return true;
+
+	LogFnPrint("txdb", "FundsTransferIndex - writing %zu entries", vFundsTransferIndex.size());
+
+	CDBBatch batch(*this);
+	for (const auto &[key, value] : vFundsTransferIndex)
+		batch.Write(make_pair(DB_FUNDSTRANSFERINDEX, key), value);
+	return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::ReadFundsTransferIndex(
+    const uint160& addressHashFrom, const ScriptType addressTypeFrom,
+    const uint160& addressHashTo,   const ScriptType addressTypeTo,
+    funds_transfer_vector_t& vFundsTransferIndex,
+    const height_range_opt_t &height_range) const
+{
+    uint32_t nStartHeight = 0;
+    uint32_t nEndHeight = 0;
+    if (height_range)
+    {
+        tie(nStartHeight, nEndHeight) = height_range.value();
+        LogFnPrint("txdb", "FundsTransferIndex - reading address %s, type %hhu, height range [%u..%u]",
+            addressHashFrom.GetHex(), to_integral_type(addressTypeFrom), nStartHeight, nEndHeight);
+    }
+	else
+		LogFnPrint("txdb", "FundsTransferIndex - reading address %s, type %hhu", addressHashFrom.GetHex(), to_integral_type(addressTypeFrom));
+
+	unique_ptr<CDBIterator> pcursor(NewIterator());
+
+    if (height_range && nStartHeight > 0)
+    {
+        if (nEndHeight < nStartHeight)
+            return error("invalid height range");
+
+        pcursor->Seek(make_pair(DB_FUNDSTRANSFERINDEX, 
+            CFundsTransferIndexIteratorHeightKey(addressTypeFrom, addressHashFrom, addressTypeTo, addressHashTo, nStartHeight)));
+    }
+    else
+        pcursor->Seek(make_pair(DB_FUNDSTRANSFERINDEX,
+            CFundsTransferIndexIteratorKey(addressTypeFrom, addressHashFrom, addressTypeTo, addressHashTo)));
+
+	while (pcursor->Valid())
+	{
+		func_thread_interrupt_point();
+		pair<char, CFundsTransferIndexKey> key;
+        if (!pcursor->GetKey(key))
+            break;
+
+        auto &idxKey = key.second;
+		if (!((key.first == DB_FUNDSTRANSFERINDEX) && 
+              (idxKey.addressTypeFrom == addressTypeFrom) &&
+              (idxKey.addressHashFrom == addressHashFrom) &&
+              (idxKey.addressTypeTo == addressTypeTo) &&
+              (idxKey.addressHashTo == addressHashTo)))
+			break;
+
+		if (nEndHeight > 0 && idxKey.blockHeight > nEndHeight)
+			break;
+
+		CFundsTransferIndexValue value;
+		if (!pcursor->GetValue(value))
+			return error("failed to get funds transfer index value");
+
+		vFundsTransferIndex.emplace_back(idxKey, value);
+		pcursor->Next();
+	}
+	return true;
+}
+
+bool CBlockTreeDB::EraseFundsTransferIndex(const funds_transfer_vector_t& vFundsTransferIndex)
+{
+    if (vFundsTransferIndex.empty())
+		return true;
+
+	LogFnPrint("txdb", "FundsTransferIndex - erasing %zu entries", vFundsTransferIndex.size());
+
+	CDBBatch batch(*this);
+	for (const auto &[key, value] : vFundsTransferIndex)
+		batch.Erase(make_pair(DB_FUNDSTRANSFERINDEX, key));
+	return WriteBatch(batch);
+}
 
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
 {
@@ -588,19 +678,39 @@ bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
 
 bool GetAddressIndex(const uint160& addressHash, const ScriptType addressType,
                      address_index_vector_t& vAddressIndex,
-                     const tuple<uint32_t, uint32_t> &height_range)
+                     const height_range_opt_t &height_range)
 {
     if (!fAddressIndex)
     {
         LogPrint("rpc", "Address index not enabled\n");
         return false;
     }
-    if (!gl_pBlockTreeDB->ReadAddressIndex(addressHash, addressType, vAddressIndex, 
-            get<0>(height_range), get<1>(height_range)))
+
+    if (!gl_pBlockTreeDB->ReadAddressIndex(addressHash, addressType, vAddressIndex, height_range))
     {
         LogPrint("rpc", "Unable to get txids for address\n");
         return false;
     }
+    return true;
+}
+
+bool GetFundsTransferIndex(const uint160& addressHashFrom, const ScriptType addressTypeFrom,
+    const uint160& addressHashTo, const ScriptType addressTypeTo,
+    funds_transfer_vector_t& vFundsTransferIndex,
+    const height_range_opt_t& height_range)
+{
+    if (!fFundsTransferIndex)
+    {
+        LogPrint("rpc", "Funds transfer index not enabled\n");
+        return false;
+    }
+	
+    if (!gl_pBlockTreeDB->ReadFundsTransferIndex(addressHashFrom, addressTypeFrom, 
+        addressHashTo, addressTypeTo, vFundsTransferIndex, height_range))
+	{
+		LogPrint("rpc", "Unable to get funds transfer index information\n");
+		return false;
+	}
     return true;
 }
 
@@ -635,3 +745,5 @@ bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
     }
     return true;
 }
+
+// END insightexplorer
