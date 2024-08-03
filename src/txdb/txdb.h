@@ -84,7 +84,10 @@ public:
 
     // START insightexplorer
     bool UpdateAddressUnspentIndex(const address_unspent_vector_t &vect);
-    bool ReadAddressUnspentIndex(const uint160 &addressHash, const ScriptType addressType, address_unspent_vector_t &vect) const;
+    bool ReadAddressUnspentIndex(const uint160 &addressHash, const ScriptType addressType,
+        address_unspent_vector_t &vect) const;
+    std::optional<CAddressUnspentValue> GetAddressUnspentIndexValue(const uint160 &addressHash, const ScriptType addressType,
+        const uint256 &txid, const uint32_t nTxOut) const;
 
     bool WriteAddressIndex(const address_index_vector_t &vect);
     bool EraseAddressIndex(const address_index_vector_t &vect);
@@ -121,6 +124,8 @@ bool GetAddressIndex(const uint160& addressHash, const ScriptType addressType,
     const height_range_opt_t& height_range);
 bool GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
     address_unspent_vector_t& unspentOutputs);
+std::optional<CAddressUnspentValue> GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
+    const uint256 &txid, const uint32_t nTxOut);
 bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
     std::vector<std::pair<uint256, unsigned int> >& vHashes);
 bool GetFundsTransferIndex(const uint160& addressHashFrom, const ScriptType addressTypeFrom,

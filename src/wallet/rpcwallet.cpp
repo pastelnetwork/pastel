@@ -1438,7 +1438,8 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
                 obj.pushKV("involvesWatchonly", true);
             obj.pushKV("address",       keyIO.EncodeDestination(dest));
             obj.pushKV("account",       strAccount);
-            obj.pushKV("amount",        ValueFromAmount(nAmount));
+            obj.pushKV(RPC_KEY_AMOUNT,  ValueFromAmount(nAmount));
+            obj.pushKV(RPC_KEY_AMOUNT_PATOSHIS, nAmount);
             obj.pushKV("confirmations", (nConf == numeric_limits<int>::max() ? 0 : nConf));
             UniValue transactions(UniValue::VARR);
             if (it != mapTally.end())
@@ -1461,7 +1462,8 @@ UniValue ListReceived(const UniValue& params, bool fByAccounts)
             if (tally.fIsWatchonly)
                 obj.pushKV("involvesWatchonly", true);
             obj.pushKV("account",       sAccount);
-            obj.pushKV("amount",        ValueFromAmount(nAmount));
+            obj.pushKV(RPC_KEY_AMOUNT,  ValueFromAmount(nAmount));
+            obj.pushKV(RPC_KEY_AMOUNT_PATOSHIS, nAmount);
             obj.pushKV("confirmations", (nConf == numeric_limits<int>::max() ? 0 : nConf));
             ret.push_back(obj);
         }
@@ -1589,8 +1591,8 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
             entry.pushKV("account", strSentAccount);
             MaybePushAddress(entry, s.destination);
             entry.pushKV("category", "send");
-            entry.pushKV("amount", ValueFromAmount(-s.amount));
-            entry.pushKV("amountPat", -s.amount);
+            entry.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(-s.amount));
+            entry.pushKV(RPC_KEY_AMOUNT_PATOSHIS, -s.amount);
             entry.pushKV("vout", s.vout);
             entry.pushKV("fee", ValueFromAmount(-nFee));
             if (fLong)
@@ -1628,8 +1630,8 @@ void ListTransactions(const CWalletTx& wtx, const string& strAccount, int nMinDe
                 {
                     entry.pushKV("category", "receive");
                 }
-                entry.pushKV("amount", ValueFromAmount(r.amount));
-                entry.pushKV("amountPat", r.amount);
+                entry.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(r.amount));
+                entry.pushKV(RPC_KEY_AMOUNT_PATOSHIS, r.amount);
                 entry.pushKV("vout", r.vout);
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
@@ -1650,7 +1652,8 @@ void AcentryToJSON(const CAccountingEntry& acentry, const string& strAccount, Un
         entry.pushKV("account", acentry.strAccount);
         entry.pushKV("category", "move");
         entry.pushKV("time", acentry.nTime);
-        entry.pushKV("amount", ValueFromAmount(acentry.nCreditDebit));
+        entry.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(acentry.nCreditDebit));
+        entry.pushKV(RPC_KEY_AMOUNT_PATOSHIS, acentry.nCreditDebit);
         entry.pushKV("otheraccount", acentry.strOtherAccount);
         entry.pushKV("comment", acentry.strComment);
         ret.push_back(entry);
@@ -2039,8 +2042,8 @@ Examples:
     const CAmount nNet = nCredit - nDebit;
     const CAmount nFee = (wtx.IsFromMe(filter) ? wtx.GetValueOut() - nDebit : 0);
 
-    entry.pushKV("amount", ValueFromAmount(nNet - nFee));
-    entry.pushKV("amountPat", nNet - nFee);
+    entry.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(nNet - nFee));
+    entry.pushKV(RPC_KEY_AMOUNT_PATOSHIS, nNet - nFee);
     if (wtx.IsFromMe(filter))
         entry.pushKV("fee", ValueFromAmount(nFee));
 
@@ -2753,7 +2756,8 @@ Examples
         }
 
         entry.pushKV("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end()));
-        entry.pushKV("amount", ValueFromAmount(txOut.nValue));
+        entry.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(txOut.nValue));
+        entry.pushKV(RPC_KEY_AMOUNT_PATOSHIS, txOut.nValue);
         entry.pushKV("confirmations", out.nDepth);
         entry.pushKV("spendable", out.fSpendable);
         results.push_back(std::move(entry));
@@ -2891,7 +2895,9 @@ Examples:
             const bool hasSaplingSpendingKey = HaveSpendingKeyForPaymentAddress(pwalletMain)(entry.address);
             obj.pushKV("spendable", hasSaplingSpendingKey);
             obj.pushKV("address", keyIO.EncodePaymentAddress(entry.address));
-            obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value()))); // note.value() is equivalent to plaintext.value()
+            CAmount amount = CAmount(entry.note.value());
+            obj.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(amount)); // note.value() is equivalent to plaintext.value()
+            obj.pushKV(RPC_KEY_AMOUNT_PATOSHIS, amount);
             obj.pushKV("memo", HexStr(entry.memo));
             if (hasSaplingSpendingKey)
                 obj.pushKV("change", pwalletMain->IsNoteSaplingChange(nullifierSet, entry.address, entry.op));
@@ -3291,8 +3297,9 @@ Examples:
         {
             UniValue obj(UniValue::VOBJ);
             obj.pushKV(RPC_KEY_TXID, entry.op.hash.ToString());
-            obj.pushKV("amount", ValueFromAmount(CAmount(entry.note.value())));
-            obj.pushKV("amountPat", CAmount(entry.note.value()));
+            CAmount amount = CAmount(entry.note.value());
+            obj.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(amount));
+            obj.pushKV(RPC_KEY_AMOUNT_PATOSHIS, amount);
             obj.pushKV("memo", HexStr(entry.memo));
             obj.pushKV("outindex", entry.op.n);
             obj.pushKV("confirmations", entry.confirmations);
@@ -3850,7 +3857,7 @@ Examples:
                 throw JSONRPCError(RPC_INVALID_PARAMETER,  strprintf("Invalid parameter, size of memo is larger than maximum allowed %d", ZC_MEMO_SIZE ));
         }
 
-        const UniValue av = find_value(o, "amount");
+        const UniValue av = find_value(o, RPC_KEY_AMOUNT);
         const CAmount nAmount = AmountFromValue( av );
         if (nAmount < 0)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, amount must be positive");
@@ -4940,18 +4947,18 @@ Examples:
             txObj.pushKV("blockindex", nHeight);
             txObj.pushKV("confirmations", nCurrentHeight - nHeight + 1);
             txObj.pushKV("timestamp", pBlockIndex->GetBlockTime());
-            txObj.pushKV("txout", idxValue.nOutputIndex);
-            txObj.pushKV("amount", ValueFromAmount(idxValue.nOutputValue));
-            txObj.pushKV("amountPat", idxValue.nOutputValue);
+            txObj.pushKV(RPC_KEY_OUTPUT_INDEX, idxValue.nOutputIndex);
+            txObj.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(idxValue.nOutputValue));
+            txObj.pushKV(RPC_KEY_AMOUNT_PATOSHIS, idxValue.nOutputValue);
 
             UniValue txInputs(UniValue::VARR);
             txInputs.reserve(idxValue.vInputIndex.size());
             for (const auto& inputIndex : idxValue.vInputIndex)
 			{
 				UniValue txInputObj(UniValue::VOBJ);
-				txInputObj.pushKV("txin", inputIndex.first);
-				txInputObj.pushKV("amount", ValueFromAmount(inputIndex.second));
-				txInputObj.pushKV("amountPat", inputIndex.second);
+				txInputObj.pushKV("txin", get<1>(inputIndex));
+				txInputObj.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(get<2>(inputIndex)));
+				txInputObj.pushKV(RPC_KEY_AMOUNT_PATOSHIS, get<2>(inputIndex));
 				txInputs.push_back(std::move(txInputObj));
 			}
             txObj.pushKV("vin", std::move(txInputs));
@@ -4980,29 +4987,27 @@ Examples:
 				if (address != txDestBurnAddress)
 					continue;
 
-                uint32_t nTxIn = 0;
-                for (const auto& txin : tx.vin)
+                for (const auto& txIn : tx.vin)
                 {
-                    ++nTxIn;
-					if (txin.prevout.IsNull())
+					if (txIn.prevout.IsNull())
 						continue;
 
 					CTransaction prevTx;
 					uint256 hashInputBlock;
-					if (!GetTransaction(txin.prevout.hash, prevTx, chainparams.GetConsensus(), hashInputBlock, true))
+					if (!GetTransaction(txIn.prevout.hash, prevTx, chainparams.GetConsensus(), hashInputBlock, true))
 						continue;
 
-					if (prevTx.vout.size() <= txin.prevout.n)
+					if (prevTx.vout.size() <= txIn.prevout.n)
 						continue;
 
-					const auto &prevTxOut = prevTx.vout[txin.prevout.n];
+					const auto &prevTxOut = prevTx.vout[txIn.prevout.n];
 					if (!ExtractDestination(prevTxOut.scriptPubKey, address))
 						continue;
 
 					if (address != txDestTrackingAddress)
 						continue;
 
-                    vInTxData.emplace_back(nTxIn, prevTxOut.nValue);
+                    vInTxData.emplace_back(txIn.prevout.hash, txIn.prevout.n, prevTxOut.nValue);
 				}
                 if (!vInTxData.empty())
                 {
@@ -5012,18 +5017,18 @@ Examples:
                     txObj.pushKV("blockindex", 0);
                     txObj.pushKV("confirmations", 0);
                     txObj.pushKV("timestamp", 0);
-                    txObj.pushKV("txout", nTxOut);
-                    txObj.pushKV("amount", ValueFromAmount(txout.nValue));
-                    txObj.pushKV("amountPat", txout.nValue);
+                    txObj.pushKV(RPC_KEY_OUTPUT_INDEX, nTxOut - 1);
+                    txObj.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(txout.nValue));
+                    txObj.pushKV(RPC_KEY_AMOUNT_PATOSHIS, txout.nValue);
 
                     UniValue txInputs(UniValue::VARR);
                     txInputs.reserve(vInTxData.size());
                     for (const auto& inTxData : vInTxData)
 					{
 						UniValue txInputObj(UniValue::VOBJ);
-						txInputObj.pushKV("txin", inTxData.first);
-						txInputObj.pushKV("amount", ValueFromAmount(inTxData.second));
-						txInputObj.pushKV("amountPat", inTxData.second);
+						txInputObj.pushKV("txin", get<1>(inTxData));
+						txInputObj.pushKV(RPC_KEY_AMOUNT, ValueFromAmount(get<2>(inTxData)));
+						txInputObj.pushKV(RPC_KEY_AMOUNT_PATOSHIS, get<2>(inTxData));
 						txInputs.push_back(std::move(txInputObj));
 					}
                     txObj.pushKV("vin", std::move(txInputs));

@@ -20,27 +20,26 @@ CTxIndexProcessor::CTxIndexProcessor(const CChainParams& chainparams, const CCoi
 
 void CTxIndexProcessor::ProcessInputs(const CTransaction& tx, const uint32_t nTxOrderNo)
 {
+    if (!fAddressIndex && !fSpentIndex && !fFundsTransferIndex)
+        return;
+
     // Coinbase transactions are the only case where this vector will not be the same
     // length as `tx.vin` (since coinbase transactions have a single synthetic input).
     // Only shielded coinbase transactions will need to produce sighashes for coinbase
     // transactions; this is handled in ZIP 244 by having the coinbase sighash be the txid.
-    m_vAllPrevOutputs.clear();
-	m_vAllPrevOutputs.reserve(tx.vin.size());
+    v_txouts vAllPrevOutputs;
+	vAllPrevOutputs.reserve(tx.vin.size());
     for (const auto& txIn : tx.vin)
     {
         const auto &prevout = m_CoinsViewCache.GetOutputFor(txIn);
-        m_vAllPrevOutputs.push_back(prevout);
+        vAllPrevOutputs.push_back(prevout);
     }
 
-    if (!fAddressIndex && !fSpentIndex && !fFundsTransferIndex)
-        return;
-
     const uint256 &txid = tx.GetHash();
-
     for (uint32_t nTxIn = 0; nTxIn < tx.vin.size(); ++nTxIn)
     {
         const CTxIn& txIn = tx.vin[nTxIn];
-        const CTxOut& prevout = m_vAllPrevOutputs[nTxIn];
+        const CTxOut& prevout = vAllPrevOutputs[nTxIn];
         const ScriptType scriptType = prevout.scriptPubKey.GetType();
         const uint160 addrHash = prevout.scriptPubKey.AddressHash();
 
@@ -75,14 +74,19 @@ void CTxIndexProcessor::ProcessInputs(const CTransaction& tx, const uint32_t nTx
             CFundsTransferIndexInKey key(scriptType, addrHash, nTxOrderNo);
             const size_t inDataHash = key.GetHash();
             auto it = m_vAddressInTxData.find(inDataHash);
-            if (it == m_vAddressInTxData.end())
+            bool bExists = it != m_vAddressInTxData.end();
+            if (!bExists)
 			{
                 auto [itNew, bInserted] = m_vAddressInTxData.emplace(inDataHash, 
                     CFundsTransferIndexInValue(scriptType, addrHash, nTxOrderNo));
                 if (bInserted)
+                {
+                    bExists = true;
                     it = itNew;
+                }
 			}
-			it->second.AddInputIndex(nTxIn, prevout.nValue);
+            if (bExists)
+			    it->second.AddInputIndex(txIn.prevout.hash, txIn.prevout.n, prevout.nValue);
         }
     }
 }
@@ -124,7 +128,7 @@ void CTxIndexProcessor::ProcessOutputs(const CTransaction& tx, const uint32_t nT
                 m_vFundsTransferIndex.emplace_back(
                     CFundsTransferIndexKey(inData.addressType, inData.addressHash,
                                            scriptType, addrHash, m_nHeight, txid),
-                    CFundsTransferIndexValue(std::move(inData.vInputIndex), nTxOut, txOut.nValue));
+                    CFundsTransferIndexValue(inData.vInputIndex, nTxOut, txOut.nValue));
             }
         }
     }
@@ -183,12 +187,12 @@ void CTxIndexProcessor::UndoInput(const CTransaction &tx, const uint32_t nTxOrde
 		return;
 
     const uint256 &txid = tx.GetHash();
-    const CTxIn& txin = tx.vin[nTxIn];
+    const CTxIn& txIn = tx.vin[nTxIn];
     bool bRet = false;
 
     if (fAddressIndex || fFundsTransferIndex)
     {
-        const CTxOut& prevout = m_CoinsViewCache.GetOutputFor(txin);
+        const CTxOut& prevout = m_CoinsViewCache.GetOutputFor(txIn);
         const ScriptType scriptType = prevout.scriptPubKey.GetType();
         if (scriptType == ScriptType::UNKNOWN)
             return;
@@ -204,7 +208,7 @@ void CTxIndexProcessor::UndoInput(const CTransaction &tx, const uint32_t nTxOrde
 
             // restore unspent index
             m_vAddressUnspentIndex.emplace_back(
-                CAddressUnspentKey(scriptType, addrHash, txin.prevout.hash, txin.prevout.n),
+                CAddressUnspentKey(scriptType, addrHash, txIn.prevout.hash, txIn.prevout.n),
                 CAddressUnspentValue(prevout.nValue, prevout.scriptPubKey, nUndoHeight));
         }
 
@@ -220,7 +224,7 @@ void CTxIndexProcessor::UndoInput(const CTransaction &tx, const uint32_t nTxOrde
                 if (bInserted)
                     it = itNew;
 			}
-			it->second.AddInputIndex(nTxIn, prevout.nValue);
+			it->second.AddInputIndex(txIn.prevout.hash, txIn.prevout.n, prevout.nValue);
         }
     }
 
@@ -228,7 +232,7 @@ void CTxIndexProcessor::UndoInput(const CTransaction &tx, const uint32_t nTxOrde
     {
         // undo and delete the spent index
         m_vSpentIndex.emplace_back(
-            CSpentIndexKey(txin.prevout.hash, txin.prevout.n),
+            CSpentIndexKey(txIn.prevout.hash, txIn.prevout.n),
             CSpentIndexValue());
     }
 }

@@ -563,6 +563,22 @@ static bool getAddressFromIndex(
 }
 
 // insightexplorer
+static address_opt_t getAddressFromParams(const UniValue& params, const string &name)
+{
+    const auto &addressValue = find_value(params.get_obj(), name);
+	if (!addressValue.isStr())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("Invalid %s parameter", name));
+
+    KeyIO keyIO(Params());
+    string sAddress = addressValue.get_str();
+    auto address = keyIO.DecodeDestination(sAddress);
+    uint160 addressHash;
+    ScriptType addressType = ScriptType::UNKNOWN;
+    if (!GetTxDestinationHash(address, addressHash, addressType))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    return make_optional<address_t>(move(addressHash), addressType);
+}
+
 static bool getAddressesFromParams(const UniValue& params, address_vector_t &vAddresses)
 {
     unordered_map<string, bool> vParamAddresses;
@@ -978,11 +994,144 @@ Examples:
 }
 
 // insightexplorer
-UniValue getUtxosData(address_vector_t &vAddresses, uint32_t minHeight, const string &senderFilter,
-                      bool includeSender, bool justSendersAddress)
+UniValue getUtxosDataWithSender(const address_vector_t& vDestAddresses, const height_range_opt_t& height_range,
+    const address_t& senderAddress, bool bJustSendersAddress, bool bScanMemPoolTxs)
 {
+    funds_transfer_vector_t vFundsTransfers;
+    for (const auto& [addressHashTo, addressTypeTo] : vDestAddresses)
+    {
+        if (!GetFundsTransferIndex(senderAddress.first, senderAddress.second, addressHashTo, addressTypeTo,
+            vFundsTransfers, height_range))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Failed to get information from funds transfer index");
+    }
+
+    const auto &chainparams = Params();
+    KeyIO keyIO(chainparams);
+    UniValue utxos(UniValue::VARR);
+    utxos.reserve(vFundsTransfers.size());
+
+    string sAddressTo;
+    string sAddressFrom = keyIO.EncodeDestination(DestFromAddressHash(senderAddress.second, senderAddress.first));
+    for (const auto& [key, value] : vFundsTransfers)
+    {
+        auto unspentValue = GetAddressUnspent(key.addressHashTo, key.addressTypeTo, key.txid, value.nOutputIndex);
+        if (!unspentValue)
+            continue;
+
+        UniValue output(UniValue::VOBJ);
+        sAddressTo.clear();
+        if (!getAddressFromIndex(key.addressTypeTo, key.addressHashTo, sAddressTo))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+
+        output.pushKV("address", sAddressTo);
+        output.pushKV(RPC_KEY_TXID, key.txid.GetHex());
+        output.pushKV(RPC_KEY_OUTPUT_INDEX, value.nOutputIndex);
+        output.pushKV("patoshis", value.nOutputValue);
+        output.pushKV(RPC_KEY_HEIGHT, key.blockHeight);
+        output.pushKV("senderAddress", sAddressFrom);
+
+        if (bJustSendersAddress)
+            continue;
+
+        UniValue vin(UniValue::VARR);
+        vin.reserve(value.vInputIndex.size());
+        for (const auto& [prevoutHash, prevoutN, nAmount]: value.vInputIndex)
+		{
+			UniValue in(UniValue::VOBJ);
+            in.pushKV(RPC_KEY_TXID, prevoutHash.GetHex());
+            in.pushKV(RPC_KEY_OUTPUT_INDEX, prevoutN);
+            in.pushKV("patoshis", nAmount);
+			vin.push_back(std::move(in));
+		}
+        output.pushKV("senders", std::move(vin));
+		utxos.push_back(std::move(output));
+    }
+    if (bScanMemPoolTxs)
+    {
+        address_t addressFrom, addressTo;
+
+        LOCK2(cs_main, mempool.cs);
+        for (const auto& entry : mempool.mapTx)
+        {
+            const auto& tx = entry.GetTx();
+            if (tx.IsCoinBase())
+                continue;
+
+            uint32_t nTxOut = 0;
+            for (const auto& txOut : tx.vout)
+            {
+                ++nTxOut;
+                CTxDestination addressToDest;
+                if (!ExtractDestination(txOut.scriptPubKey, addressToDest))
+                    continue;
+
+                if (!GetTxDestinationHash(addressToDest, addressTo.first, addressTo.second))
+                    continue;
+
+                // check if this address is in the list of destination addresses
+                if (find(vDestAddresses.begin(), vDestAddresses.end(), addressTo) == vDestAddresses.end())
+					continue;
+
+                for (const auto& txIn : tx.vin)
+                {
+                    if (txIn.prevout.IsNull())
+                        continue;
+
+                    CTransaction prevTx;
+					uint256 hashInputBlock;
+					if (!GetTransaction(txIn.prevout.hash, prevTx, chainparams.GetConsensus(), hashInputBlock, true))
+						continue;
+
+					if (prevTx.vout.size() <= txIn.prevout.n)
+						continue;
+
+                    CTxDestination addressFromDest;
+					const auto &prevTxOut = prevTx.vout[txIn.prevout.n];
+					if (!ExtractDestination(prevTxOut.scriptPubKey, addressFromDest))
+						continue;
+
+                    if (!GetTxDestinationHash(addressFromDest, addressFrom.first, addressFrom.second))
+                        continue;
+
+					if (addressFrom != senderAddress)
+						continue;
+
+                    UniValue output(UniValue::VOBJ);
+                    output.pushKV("address", keyIO.EncodeDestination(addressToDest));
+                    output.pushKV(RPC_KEY_TXID, tx.GetHash().GetHex());
+                    output.pushKV(RPC_KEY_OUTPUT_INDEX, nTxOut - 1);
+                    output.pushKV("patoshis", txOut.nValue);
+                    output.pushKV(RPC_KEY_HEIGHT, -1);
+                    output.pushKV("senderAddress", keyIO.EncodeDestination(addressFromDest));
+
+                    if (bJustSendersAddress)
+                        continue;
+
+                    UniValue vin(UniValue::VARR);
+                    UniValue in(UniValue::VOBJ);
+                    in.pushKV(RPC_KEY_TXID, txIn.prevout.hash.GetHex());
+                    in.pushKV(RPC_KEY_OUTPUT_INDEX, txIn.prevout.n);
+                    in.pushKV("patoshis", prevTxOut.nValue);
+                    vin.push_back(std::move(in));
+                    output.pushKV("senders", std::move(vin));
+                    utxos.push_back(std::move(output));
+                }
+            }
+        }
+    }
+    return utxos;
+}
+
+UniValue getUtxosData(const address_vector_t &vDestAddresses, const height_range_opt_t &height_range, 
+                      const address_opt_t &senderAddress, bool bIncludeSender, bool bJustSendersAddress,
+                      bool bScanMemPoolTxs)
+{
+    if (senderAddress)
+        return getUtxosDataWithSender(vDestAddresses, height_range, senderAddress.value(), 
+                                      bJustSendersAddress, bScanMemPoolTxs);
+
     address_unspent_vector_t vUnspentOutputs;
-    for (const auto& [addressHash, addressType] : vAddresses)
+    for (const auto& [addressHash, addressType] : vDestAddresses)
     {
         if (!GetAddressUnspent(addressHash, addressType, vUnspentOutputs))
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
@@ -998,7 +1147,7 @@ UniValue getUtxosData(address_vector_t &vAddresses, uint32_t minHeight, const st
     string sAddress;
     for (const auto& [key, value] : vUnspentOutputs)
     {
-        if (minHeight > 0 && value.blockHeight < minHeight)
+        if (height_range && value.blockHeight < height_range.value().first)
             continue;
 
         UniValue output(UniValue::VOBJ);
@@ -1008,13 +1157,13 @@ UniValue getUtxosData(address_vector_t &vAddresses, uint32_t minHeight, const st
 
         output.pushKV("address", sAddress);
         output.pushKV(RPC_KEY_TXID, key.txid.GetHex());
-        output.pushKV("outputIndex", key.index);
-        if (!justSendersAddress)
+        output.pushKV(RPC_KEY_OUTPUT_INDEX, key.index);
+        if (!bJustSendersAddress)
             output.pushKV("script", HexStr(value.script.begin(), value.script.end()));
         output.pushKV("patoshis", value.patoshis);
         output.pushKV(RPC_KEY_HEIGHT, value.blockHeight);
 
-        if (includeSender)
+        if (bIncludeSender)
         {
             CTransaction tx;
             uint256 hashBlock;
@@ -1031,15 +1180,15 @@ UniValue getUtxosData(address_vector_t &vAddresses, uint32_t minHeight, const st
                 UniValue in(UniValue::VOBJ);
                 if (tx.IsCoinBase())
                 {
-                    if (justSendersAddress)
+                    if (bJustSendersAddress)
                         continue;
                     in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
                 }
                 else {
-                    if (!justSendersAddress)
+                    if (!bJustSendersAddress)
                     {
-                        in.pushKV("txid", txin.prevout.hash.GetHex());
-                        in.pushKV("outputIndex", txin.prevout.n);
+                        in.pushKV(RPC_KEY_TXID, txin.prevout.hash.GetHex());
+                        in.pushKV(RPC_KEY_OUTPUT_INDEX, txin.prevout.n);
                     }
 
                     // Add address and value info if spentindex enabled
@@ -1052,30 +1201,25 @@ UniValue getUtxosData(address_vector_t &vAddresses, uint32_t minHeight, const st
                             if (!GetSpentIndex(spentKey, spentInfo))
                                 continue;
                         }
-                        if (!justSendersAddress)
+                        if (!bJustSendersAddress)
                             in.pushKV("patoshis", spentInfo.patoshis);
                         auto dest = DestFromAddressHash(spentInfo.addressType, spentInfo.addressHash);
                         if (IsValidDestination(dest))
                         {
                             auto senderAddress = keyIO.EncodeDestination(dest);
-                            if (!senderFilter.empty() && senderFilter != senderAddress) {
-                                continue;
-                            }
                             bFoundSenders = true;
-                            if (justSendersAddress)
+                            if (bJustSendersAddress)
                                 vin.push_back(senderAddress);
                             else
                                 in.pushKV("address", senderAddress);
                         }
                     }
                 }
-                if (!justSendersAddress)
+                if (!bJustSendersAddress)
                     vin.push_back(std::move(in));
             }
-            if (!senderFilter.empty() && !bFoundSenders)
-                continue;
 
-            output.pushKV("senders", vin);
+            output.pushKV("senders", std::move(vin));
         }
         utxos.push_back(std::move(output));
     }
@@ -1148,11 +1292,11 @@ Examples:
         if (!chainInfo.isNull())
             includeChainInfo = get_bool_value(chainInfo);
     }
-    address_vector_t vAddresses;
-    if (!getAddressesFromParams(params, vAddresses))
+    address_vector_t vDestAddresses;
+    if (!getAddressesFromParams(params, vDestAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    UniValue utxos = getUtxosData(vAddresses, 0, "", false, false);
+    UniValue utxos = getUtxosData(vDestAddresses, nullopt, nullopt, false, false, false);
 
     if (!includeChainInfo)
         return utxos;
@@ -1175,7 +1319,7 @@ UniValue getaddressutxosextra(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-R"(getaddressutxos {"addresses": ["taddr", ...], ("simple": true|false), ("minHeight": n)}
+R"(getaddressutxosextra {"addresses": ["taddr", ...], ("simple": true|false), ("minHeight": n)}
 
 Returns all unspent outputs for an address including inputs for the transaction (vin).
 )" + disabledMsg + R"(
@@ -1189,6 +1333,7 @@ Arguments:
   "simple"    (boolean, optional, default=false) Do not include full info about inputs with results
   "minHeight" (number, optional, default=0)      The minimum block height to include
   "sender"    (string, optional, default='')     Filter output by sender address
+  "mempool"   (boolean, optional, default=false) Include mempool transactions
 }
 
 Result
@@ -1208,7 +1353,7 @@ Where "senders" is an array of objects with the following fields:
 [
     {
       "txid"        (string) The input txid
-      "outputIndex" (number) The input output index
+      "outputIndex" (number) The output index
       "address"     (string) The base58check encoded address
       "patoshis"    (number) The number of )" + MINOR_CURRENCY_UNIT + R"( of the input
     }, ...
@@ -1226,35 +1371,45 @@ OR, if "simple" is true:
 
 Examples:
 )" + HelpExampleCli(RPC_API_GETADDRESSUTXOSEXTRA, R"('{"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"], "simple": true, "minHeight": 1000}')") +
-                HelpExampleRpc(RPC_API_GETADDRESSUTXOSEXTRA, R"({"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"]})")
-        );
+     HelpExampleRpc(RPC_API_GETADDRESSUTXOSEXTRA, R"({"addresses": ["tmYXBYJj1K7vhejSec5osXK2QsGa5MTisUQ"]})"));
 
     rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSUTXOS);
 
-    bool simpleInfo = false;
-    uint32_t height = 0;
-    string senderFilter = "";
+    bool bSimpleInfo = false;
+    bool bScanMempoolTxs = false;
+    height_range_opt_t height_range;
+    address_opt_t senderAddress;
+    KeyIO keyIO(Params());
     if (params[0].isObject())
     {
         UniValue simple = find_value(params[0].get_obj(), "simple");
         if (!simple.isNull())
-            simpleInfo = get_bool_value(simple);
+            bSimpleInfo = get_bool_value(simple);
         UniValue minHeight = find_value(params[0].get_obj(), "minHeight");
         if (!minHeight.isNull())
         {
             int64_t nParamMinHeight = get_long_number(minHeight);
             rpc_check_unsigned_param<uint32_t>("minHeight", nParamMinHeight);
-            height = static_cast<uint32_t>(nParamMinHeight);
+            uint32_t nStartHeight = static_cast<uint32_t>(nParamMinHeight);
+            height_range = make_pair(nStartHeight, gl_nChainHeight.load());
         }
         UniValue sender = find_value(params[0].get_obj(), "sender");
         if (!sender.isNull())
-            senderFilter = sender.get_str();
+        {
+            uint160 addressHash;
+            ScriptType addressType;
+            string sSenderAddress = sender.get_str();
+            const CTxDestination dest = keyIO.DecodeDestination(sSenderAddress);
+            if (!GetTxDestinationHash(dest, addressHash, addressType))
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel send address");
+            senderAddress = make_pair(addressHash, addressType);
+        }
     }
-    address_vector_t vAddresses;
-    if (!getAddressesFromParams(params, vAddresses))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+    address_vector_t vDestAddresses;
+    if (!getAddressesFromParams(params, vDestAddresses))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel destination address");
 
-    UniValue utxos = getUtxosData(vAddresses, height, senderFilter, true, simpleInfo);
+    UniValue utxos = getUtxosData(vDestAddresses, height_range, senderAddress, true, bSimpleInfo, bScanMempoolTxs);
     return utxos;
 }
 
@@ -1289,14 +1444,14 @@ Examples:
 
     rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETSPENTINFO);
 
-    const auto &txidValue = find_value(params[0].get_obj(), "txid");
+    const auto &txidValue = find_value(params[0].get_obj(), RPC_KEY_TXID);
     const auto &indexValue = find_value(params[0].get_obj(), "index");
 
     if (!txidValue.isStr())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid txid, must be a string");
     if (!indexValue.isNum())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid index, must be an integer");
-    uint256 txid = ParseHashV(txidValue, "txid");
+    uint256 txid = ParseHashV(txidValue, RPC_KEY_TXID);
     int64_t nParamOutputIndex = get_long_number(indexValue);
     rpc_check_unsigned_param<uint32_t>("index", nParamOutputIndex);
     uint32_t outputIndex = static_cast<uint32_t>(nParamOutputIndex);

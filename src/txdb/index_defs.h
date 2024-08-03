@@ -17,6 +17,7 @@ using CAddressIndexDbEntry = std::pair<CAddressIndexKey, CAmount>;
 using CSpentIndexDbEntry = std::pair<CSpentIndexKey, CSpentIndexValue>;
 using CFundsTransferDbEntry = std::pair<CFundsTransferIndexKey, CFundsTransferIndexValue>;
 using address_t = std::pair<uint160, ScriptType>;
+using address_opt_t = std::optional<address_t>;
 
 using address_unspent_vector_t = std::vector<CAddressUnspentDbEntry>;
 using address_index_vector_t = std::vector<CAddressIndexDbEntry>;

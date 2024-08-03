@@ -32,6 +32,55 @@ struct CFundsTransferIndexKey
 		SetNull();
 	}
 
+	CFundsTransferIndexKey(const CFundsTransferIndexKey &key) noexcept :
+		addressTypeFrom(key.addressTypeFrom),
+		addressHashFrom(key.addressHashFrom),
+		addressTypeTo(key.addressTypeTo),
+		addressHashTo(key.addressHashTo),
+		blockHeight(key.blockHeight),
+		txid(key.txid)
+	{}
+
+	CFundsTransferIndexKey& operator=(const CFundsTransferIndexKey &key) noexcept
+	{
+		if (this != &key)
+		{
+			addressTypeFrom = key.addressTypeFrom;
+			addressHashFrom = key.addressHashFrom;
+			addressTypeTo = key.addressTypeTo;
+			addressHashTo = key.addressHashTo;
+			blockHeight = key.blockHeight;
+			txid = key.txid;
+		}
+		return *this;
+	}
+
+	CFundsTransferIndexKey(CFundsTransferIndexKey &&key) noexcept :
+		addressTypeFrom(key.addressTypeFrom),
+		addressHashFrom(key.addressHashFrom),
+		addressTypeTo(key.addressTypeTo),
+		addressHashTo(key.addressHashTo),
+		blockHeight(key.blockHeight),
+		txid(std::move(key.txid))
+	{
+		key.SetNull();
+	}
+
+	CFundsTransferIndexKey& operator=(CFundsTransferIndexKey &&key) noexcept
+	{
+		if (this != &key)
+		{
+			addressTypeFrom = key.addressTypeFrom;
+			addressHashFrom = key.addressHashFrom;
+			addressTypeTo = key.addressTypeTo;
+			addressHashTo = key.addressHashTo;
+			blockHeight = key.blockHeight;
+			txid = std::move(key.txid);
+			key.SetNull();
+		}
+		return *this;
+	}
+
 	void SetNull() noexcept
 	{
 		addressTypeFrom = ScriptType::UNKNOWN;
@@ -74,19 +123,19 @@ struct CFundsTransferIndexKey
 	}
 };
 
-using address_intxdata_t = std::pair<uint32_t, CAmount>;
+using address_intxdata_t = std::tuple<uint256, uint32_t, CAmount>;
 using address_intxdata_vector_t = std::vector<address_intxdata_t>;
 
 struct CFundsTransferIndexValue
 {
-	// vin index and amount value (from prevout)
+	// vin txid:index and amount value (from prevout)
 	address_intxdata_vector_t vInputIndex;
 	uint32_t nOutputIndex; // txOut index
 	CAmount nOutputValue;  // txOut value
 
-	CFundsTransferIndexValue(address_intxdata_vector_t &&_vInputIndex, 
+	CFundsTransferIndexValue(const address_intxdata_vector_t &_vInputIndex, 
 							 const uint32_t _nOutputIndex, const CAmount _nOutputValue) noexcept :
-		vInputIndex(std::move(_vInputIndex)),
+		vInputIndex(_vInputIndex),
 		nOutputIndex(_nOutputIndex),
 		nOutputValue(_nOutputValue)
 	{}
@@ -94,6 +143,43 @@ struct CFundsTransferIndexValue
 	CFundsTransferIndexValue() noexcept
 	{
 		SetNull();
+	}
+
+	CFundsTransferIndexValue(const CFundsTransferIndexValue &value) noexcept :
+		vInputIndex(value.vInputIndex),
+		nOutputIndex(value.nOutputIndex),
+		nOutputValue(value.nOutputValue)
+	{}
+
+	CFundsTransferIndexValue& operator=(const CFundsTransferIndexValue &value) noexcept
+	{
+		if (this != &value)
+		{
+			vInputIndex = value.vInputIndex;
+			nOutputIndex = value.nOutputIndex;
+			nOutputValue = value.nOutputValue;
+		}
+		return *this;
+	}
+
+	CFundsTransferIndexValue(CFundsTransferIndexValue &&value) noexcept :
+		vInputIndex(std::move(value.vInputIndex)),
+		nOutputIndex(value.nOutputIndex),
+		nOutputValue(value.nOutputValue)
+	{
+		value.SetNull();
+	}
+
+	CFundsTransferIndexValue& operator=(CFundsTransferIndexValue &&value) noexcept
+	{
+		if (this != &value)
+		{
+			vInputIndex = std::move(value.vInputIndex);
+			nOutputIndex = value.nOutputIndex;
+			nOutputValue = value.nOutputValue;
+			value.SetNull();
+		}
+		return *this;
 	}
 
 	void SetNull() noexcept
@@ -116,19 +202,22 @@ struct CFundsTransferIndexValue
 			vInputIndex.reserve(nInputIndexSize);
 			for (uint64_t i = 0; i < nInputIndexSize; ++i)
 			{
-				uint32_t nTxIn;
+				uint256 prevout_hash;
+				uint32_t prevout_n;
 				CAmount nValue;
-				READWRITE(VARINT(nTxIn));
+				READWRITE(prevout_hash);
+				READWRITE(VARINT(prevout_n));
 				READWRITE(VARINT(nValue));
-				vInputIndex.emplace_back(nTxIn, nValue);
+				vInputIndex.emplace_back(prevout_hash, prevout_n, nValue);
 			}
 		}
 		else
 		{
 			WriteCompactSize(s, vInputIndex.size());
-			for (const auto& [nTxIn, nAmount] : vInputIndex)
+			for (auto& [prevout_hash, prevout_n, nAmount] : vInputIndex)
 			{
-				READWRITE(VARINT(nTxIn));
+				READWRITE(prevout_hash);
+				READWRITE(VARINT(prevout_n));
 				READWRITE(VARINT(nAmount));
 			}
 		}
@@ -173,9 +262,9 @@ struct CFundsTransferIndexInValue
 		nTxOrderNo(_nTxOrderNo)
 	{}
 
-	void AddInputIndex(const uint32_t nTxIn, const CAmount nValue) noexcept
+	void AddInputIndex(const uint256 &prevoutHash, const uint32_t prevoutN, const CAmount nValue) noexcept
 	{
-		vInputIndex.emplace_back(nTxIn, nValue);
+		vInputIndex.emplace_back(prevoutHash, prevoutN, nValue);
 	}
 };
 

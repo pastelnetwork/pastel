@@ -34,7 +34,6 @@ private:
     const uint256& m_hashBlock;
     const uint256& m_hashPrevBlock;
 
-    v_txouts m_vAllPrevOutputs;
     uint32_t m_nHeight;
     int64_t m_nBlockTime;
     std::unordered_map<size_t, CFundsTransferIndexInValue> m_vAddressInTxData;

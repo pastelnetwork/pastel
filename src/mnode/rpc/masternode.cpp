@@ -731,7 +731,7 @@ UniValue masternode_list_conf(const UniValue& params)
         mnObj.pushKV("address", mne.getIp());
         mnObj.pushKV("privateKey", mne.getPrivKey());
         mnObj.pushKV("txHash", mne.getTxHash());
-        mnObj.pushKV("outputIndex", mne.getOutputIndex());
+        mnObj.pushKV(RPC_KEY_OUTPUT_INDEX, mne.getOutputIndex());
         mnObj.pushKV("extAddress", mne.getExtIp());
         mnObj.pushKV("extP2P", mne.getExtP2P());
         if (pmn)

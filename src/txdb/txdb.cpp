@@ -475,7 +475,8 @@ bool CBlockTreeDB::UpdateAddressUnspentIndex(const address_unspent_vector_t &v)
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const ScriptType addressType, address_unspent_vector_t &vUnspentOutputs) const
+bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const ScriptType addressType, 
+    address_unspent_vector_t &vUnspentOutputs) const
 {
     LogFnPrint("txdb", "AddressUnspentIndex - reading address %s, type %hdd",
         addressHash.GetHex(), to_integral_type(addressType));
@@ -487,8 +488,12 @@ bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const Scr
     {
         func_thread_interrupt_point();
         pair<char,CAddressUnspentKey> key;
-        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSUNSPENTINDEX) && (key.second.addressHash == addressHash)))
+        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSUNSPENTINDEX)))
             break;
+
+        const auto &unspentKey = key.second;
+        if ((unspentKey.addressHash != addressHash) || (unspentKey.type != addressType))
+			break;
 
         CAddressUnspentValue nValue;
         if (!pcursor->GetValue(nValue))
@@ -497,6 +502,16 @@ bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const Scr
         pcursor->Next();
     }
     return true;
+}
+
+optional<CAddressUnspentValue> CBlockTreeDB::GetAddressUnspentIndexValue(const uint160& addressHash, const ScriptType addressType,
+    const uint256& txid, const uint32_t nTxOut) const
+{
+    CAddressUnspentKey key(addressType, addressHash, txid, nTxOut);
+	CAddressUnspentValue value;
+	if (!Read(make_pair(DB_ADDRESSUNSPENTINDEX, key), value))
+		return nullopt;
+	return value;
 }
 
 bool CBlockTreeDB::ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const
@@ -728,6 +743,17 @@ bool GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
         return false;
     }
     return true;
+}
+
+optional<CAddressUnspentValue> GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
+    const uint256& txid, const uint32_t nTxOut)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "Address index not enabled\n");
+        return nullopt;
+    }
+    return gl_pBlockTreeDB->GetAddressUnspentIndexValue(addressHash, addressType, txid, nTxOut);
 }
 
 bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
