@@ -1404,6 +1404,9 @@ Examples:
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel send address");
             senderAddress = make_pair(addressHash, addressType);
         }
+        UniValue mempool = find_value(params[0].get_obj(), "mempool");
+        if (!mempool.isNull())
+			bScanMempoolTxs = get_bool_value(mempool);
     }
     address_vector_t vDestAddresses;
     if (!getAddressesFromParams(params, vDestAddresses))
