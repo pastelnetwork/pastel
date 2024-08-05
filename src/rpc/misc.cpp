@@ -1030,20 +1030,19 @@ UniValue getUtxosDataWithSender(const address_vector_t& vDestAddresses, const he
         output.pushKV(RPC_KEY_HEIGHT, key.blockHeight);
         output.pushKV("senderAddress", sAddressFrom);
 
-        if (bJustSendersAddress)
-            continue;
+        if (!bJustSendersAddress) {
+            UniValue vin(UniValue::VARR);
+            vin.reserve(value.vInputIndex.size());
+            for (const auto &[prevoutHash, prevoutN, nAmount]: value.vInputIndex) {
+                UniValue in(UniValue::VOBJ);
+                in.pushKV(RPC_KEY_TXID, prevoutHash.GetHex());
+                in.pushKV(RPC_KEY_OUTPUT_INDEX, prevoutN);
+                in.pushKV("patoshis", nAmount);
+                vin.push_back(std::move(in));
+            }
+            output.pushKV("senders", std::move(vin));
+        }
 
-        UniValue vin(UniValue::VARR);
-        vin.reserve(value.vInputIndex.size());
-        for (const auto& [prevoutHash, prevoutN, nAmount]: value.vInputIndex)
-		{
-			UniValue in(UniValue::VOBJ);
-            in.pushKV(RPC_KEY_TXID, prevoutHash.GetHex());
-            in.pushKV(RPC_KEY_OUTPUT_INDEX, prevoutN);
-            in.pushKV("patoshis", nAmount);
-			vin.push_back(std::move(in));
-		}
-        output.pushKV("senders", std::move(vin));
 		utxos.push_back(std::move(output));
     }
     if (bScanMemPoolTxs)
@@ -1104,16 +1103,16 @@ UniValue getUtxosDataWithSender(const address_vector_t& vDestAddresses, const he
                     output.pushKV(RPC_KEY_HEIGHT, -1);
                     output.pushKV("senderAddress", keyIO.EncodeDestination(addressFromDest));
 
-                    if (bJustSendersAddress)
-                        continue;
+                    if (!bJustSendersAddress) {
+                        UniValue vin(UniValue::VARR);
+                        UniValue in(UniValue::VOBJ);
+                        in.pushKV(RPC_KEY_TXID, txIn.prevout.hash.GetHex());
+                        in.pushKV(RPC_KEY_OUTPUT_INDEX, txIn.prevout.n);
+                        in.pushKV("patoshis", prevTxOut.nValue);
+                        vin.push_back(std::move(in));
+                        output.pushKV("senders", std::move(vin));
+                    }
 
-                    UniValue vin(UniValue::VARR);
-                    UniValue in(UniValue::VOBJ);
-                    in.pushKV(RPC_KEY_TXID, txIn.prevout.hash.GetHex());
-                    in.pushKV(RPC_KEY_OUTPUT_INDEX, txIn.prevout.n);
-                    in.pushKV("patoshis", prevTxOut.nValue);
-                    vin.push_back(std::move(in));
-                    output.pushKV("senders", std::move(vin));
                     utxos.push_back(std::move(output));
                 }
             }
