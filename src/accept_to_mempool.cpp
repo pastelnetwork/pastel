@@ -79,6 +79,7 @@ bool IsStandardTx(const CTransaction& tx, string& reason, const CChainParams& ch
         }
     }
 
+    const auto& destBurnAddress = chainparams.getPastelBurnAddressHash();
     for (const auto& txin : tx.vin)
     {
         // Biggest 'standard' txin is a 15-of-15 P2SH multisig with compressed
@@ -115,7 +116,16 @@ bool IsStandardTx(const CTransaction& tx, string& reason, const CChainParams& ch
         else if ((whichType == TX_MULTISIG) && (!fIsBareMultisigStd)) {
             reason = "bare-multisig";
             return false;
-        } else if (txout.IsDust(gl_ChainOptions.minRelayTxFee)) {
+        }
+
+        // skip dust check if transaction is to the burn transaction
+        bool bSkipDustCheck = false;
+        if ((whichType == TX_PUBKEYHASH) || (whichType == TX_SCRIPTHASH))
+        {
+            const uint160 addressHash = txout.scriptPubKey.AddressHash();
+            bSkipDustCheck = (addressHash == destBurnAddress);
+        }
+        if (!bSkipDustCheck && txout.IsDust(gl_ChainOptions.minRelayTxFee)) {
             reason = "dust";
             return false;
         }

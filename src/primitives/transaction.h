@@ -454,12 +454,14 @@ public:
             return 0;
 
         const size_t nSize = GetSerializeSize(*this, SER_DISK, 0) + 148u;
+
         return 3*minRelayTxFee.GetFee(nSize);
     }
 
     bool IsDust(const CFeeRate &minRelayTxFee) const
     {
-        return (nValue < GetDustThreshold(minRelayTxFee));
+        auto dustThreshold =  GetDustThreshold(minRelayTxFee);
+        return (nValue < dustThreshold);
     }
 
     friend bool operator==(const CTxOut& a, const CTxOut& b)
