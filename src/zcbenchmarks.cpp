@@ -21,6 +21,7 @@
 #include <consensus/validation.h>
 #include <main.h>
 #include <mining/miner.h>
+#include <mining/mining-settings.h>
 #include <mining/pow.h>
 #include <rpc/server.h>
 #include <script/sign.h>
@@ -73,9 +74,10 @@ void post_wallet_load()
 #ifdef ENABLE_MINING
     // Generate coins in the background
     const auto& chainparams = Params();
-    if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, static_cast<int>(GetArg("-genproclimit", 1)), chainparams);
-#endif    
+    string sMinerAddress = gl_MiningSettings.getMinerAddress();
+    if (pwalletMain || !sMinerAddress.empty())
+        GenerateBitcoins(gl_MiningSettings.isLocalMiningEnabled(), pwalletMain, chainparams);
+#endif
 }
 
 

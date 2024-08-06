@@ -20,6 +20,7 @@
 #include <key_io.h>
 #include <main.h>
 #include <mining/miner.h>
+#include <mining/mining-settings.h>
 #include <net.h>
 #include <netbase.h>
 #include <rpc/protocol.h>
@@ -144,9 +145,9 @@ void AsyncRPCOperation_mergetoaddress::main()
 
 #ifdef ENABLE_MINING
     const int nThreadCount = static_cast<int>(GetArg("-genproclimit", 1));
-    const bool bGenerate = GetBoolArg("-gen", false);
+    const bool bGenerate = gl_MiningSettings.isLocalMiningEnabled();
 #ifdef ENABLE_WALLET
-    GenerateBitcoins(bGenerate, pwalletMain, nThreadCount, chainparams);
+    GenerateBitcoins(bGenerate, pwalletMain, chainparams);
 #else
     GenerateBitcoins(bGenerate, nThreadCount, chainparams);
 #endif

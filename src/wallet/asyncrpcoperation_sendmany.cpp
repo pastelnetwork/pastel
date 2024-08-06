@@ -31,6 +31,7 @@
 #include <zcash/IncrementalMerkleTree.hpp>
 #include <sodium.h>
 #include <mining/miner.h>
+#include <mining/mining-settings.h>
 
 using namespace libzcash;
 using namespace std;
@@ -153,9 +154,9 @@ void AsyncRPCOperation_sendmany::main() {
 
 #ifdef ENABLE_MINING
     const int nThreadCount = static_cast<int>(GetArg("-genproclimit", 1));
-    const bool bGenerate = GetBoolArg("-gen", false);
+    const bool bGenerate = gl_MiningSettings.isLocalMiningEnabled();
 #ifdef ENABLE_WALLET
-    GenerateBitcoins(bGenerate, pwalletMain, nThreadCount, chainparams);
+    GenerateBitcoins(bGenerate, pwalletMain, chainparams);
 #else
     GenerateBitcoins(bGenerate, nThreadCount, chainparams);
 #endif

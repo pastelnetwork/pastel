@@ -194,7 +194,7 @@ Examples:
     + HelpExampleRpc("getgenerate", ""));
 
     LOCK(cs_main);
-    return GetBoolArg("-gen", false);
+    return gl_MiningSettings.isLocalMiningEnabled();
 }
 
 UniValue generate(const UniValue& params, bool fHelp)
@@ -220,7 +220,8 @@ Generate 11 blocks
    + HelpExampleRpc("generate", "11")
 );
 
-    if (GetArg("-mineraddress", "").empty()) {
+    string sMinerAddress = gl_MiningSettings.getMinerAddress();
+    if (sMinerAddress.empty()) {
 #ifdef ENABLE_WALLET
         if (!pwalletMain) {
             throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Wallet disabled and -mineraddress not set");
@@ -341,7 +342,9 @@ Using json rpc
 )" + HelpExampleRpc("setgenerate", "true, 1")
 );
 
-    if (GetArg("-mineraddress", "").empty()) {
+    string sMinerAddress = gl_MiningSettings.getMinerAddress();
+    if (sMinerAddress.empty())
+    {
 #ifdef ENABLE_WALLET
         if (!pwalletMain)
             throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Wallet disabled and -mineraddress not set");
@@ -367,10 +370,12 @@ Using json rpc
 
     mapArgs["-gen"] = (fGenerate ? "1" : "0");
     mapArgs ["-genproclimit"] = to_string(nGenProcLimit);
+    gl_MiningSettings.setThreadCount(nGenProcLimit);
+    gl_MiningSettings.setLocalMiningEnabled(fGenerate);
 #ifdef ENABLE_WALLET
-    GenerateBitcoins(fGenerate, pwalletMain, nGenProcLimit, chainparams);
+    GenerateBitcoins(fGenerate, pwalletMain, chainparams);
 #else
-    GenerateBitcoins(fGenerate, nGenProcLimit, chainparams);
+    GenerateBitcoins(fGenerate, chainparams);
 #endif
 
     return NullUniValue;
@@ -500,7 +505,7 @@ Examples:
     obj.pushKV("currentblocktx",   nLastBlockTx);
     obj.pushKV("difficulty",       (double)GetNetworkDifficulty());
     obj.pushKV("errors",           GetWarnings("statusbar"));
-    obj.pushKV("genproclimit",     GetArg("-genproclimit", -1));
+    obj.pushKV("genproclimit",     gl_MiningSettings.getThreadCount());
     obj.pushKV("localsolps"  ,     getlocalsolps(params, false));
     obj.pushKV("networksolps",     getnetworksolps(params, false));
     obj.pushKV("networkhashps",    getnetworksolps(params, false));
@@ -796,8 +801,9 @@ Examples:
 
     LOCK(cs_main);
 
+    string sMinerAddress = gl_MiningSettings.getMinerAddress();
     // Wallet or miner address is required because we support coinbasetxn
-    if (GetArg("-mineraddress", "").empty())
+    if (sMinerAddress.empty())
     {
 #ifdef ENABLE_WALLET
         if (!pwalletMain)
