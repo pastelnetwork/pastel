@@ -100,9 +100,9 @@ void AsyncRPCOperation_shieldcoinbase::main() {
     const auto& chainparams = Params();
 #ifdef ENABLE_MINING
   #ifdef ENABLE_WALLET
-    GenerateBitcoins(false, nullptr, 0, chainparams);
+    GenerateBitcoins(false, nullptr, chainparams);
   #else
-    GenerateBitcoins(false, 0, chainparams);
+    GenerateBitcoins(false, chainparams);
   #endif
 #endif
 
@@ -128,12 +128,11 @@ void AsyncRPCOperation_shieldcoinbase::main() {
     }
 
 #ifdef ENABLE_MINING
-    const int nThreadCount = static_cast<int>(GetArg("-genproclimit", 1));
     const bool bGenerate = gl_MiningSettings.isLocalMiningEnabled();
 #ifdef ENABLE_WALLET
     GenerateBitcoins(bGenerate, pwalletMain, chainparams);
 #else
-    GenerateBitcoins(bGenerate, nThreadCount, chainparams);
+    GenerateBitcoins(bGenerate, chainparams);
 #endif
 #endif
 
