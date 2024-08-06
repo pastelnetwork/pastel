@@ -20,6 +20,7 @@ bool ShutdownRequested();
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
+void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler& scheduler);
 bool AbortNode(const std::string& strMessage, const std::string& userMessage = "");
 bool AbortNode(CValidationState& state, const std::string& strMessage, const std::string& userMessage = "");
 

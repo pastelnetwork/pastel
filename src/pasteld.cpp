@@ -40,18 +40,6 @@ using namespace std;
 
 static bool fDaemon;
 
-void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
-{
-    bool fShutdown = ShutdownRequested();
-    // Tell the main threads to shutdown.
-    while (!fShutdown)
-    {
-        MilliSleep(200);
-        fShutdown = ShutdownRequested();
-    }
-    Interrupt(threadGroup, scheduler);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 //
 // Start
