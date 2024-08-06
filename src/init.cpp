@@ -139,14 +139,29 @@ CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 //
 
 atomic_bool fRequestShutdown(false);
+static condition_variable gl_cvShutdown;
+static mutex gl_csShutdown;
 
 void StartShutdown()
 {
+    unique_lock lock(gl_csShutdown);
     fRequestShutdown = true;
+    LogFnPrintf("Shutdown requested");
+	gl_cvShutdown.notify_all();
 }
-bool ShutdownRequested()
+
+bool IsShutdownRequested()
 {
     return fRequestShutdown;
+}
+
+void WaitForShutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
+{
+    unique_lock lock(gl_csShutdown);
+    gl_cvShutdown.wait(lock, [] { return IsShutdownRequested(); });
+
+    LogFnPrintf("Shutdown signal received, exiting...");
+    Interrupt(threadGroup, scheduler);
 }
 
 /** Abort with a message */
@@ -220,7 +235,9 @@ void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
     InterruptHTTPRPC();
     InterruptRPC();
     InterruptREST();
+    LogFnPrintf("Stopping Pastel threads...");
     threadGroup.stop_all();
+    LogFnPrintf("Stopping scheduler threads...");
     scheduler.stop(false);
     if (gl_LogRotationManager)
         gl_LogRotationManager->stop();
@@ -254,9 +271,9 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
 #endif
 #ifdef ENABLE_MINING
  #ifdef ENABLE_WALLET
-    GenerateBitcoins(false, nullptr, 0, Params());
+    GenerateBitcoins(false, nullptr, Params());
  #else
-    GenerateBitcoins(false, 0, Params());
+    GenerateBitcoins(false, Params());
  #endif
 #endif
     StopNode();
@@ -336,7 +353,7 @@ void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler)
  */
 void HandleSIGTERM(int)
 {
-    fRequestShutdown = true;
+    StartShutdown();
 }
 
 void HandleSIGHUP(int)
@@ -557,6 +574,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageGroup(translate("Mining options:"));
     strUsage += HelpMessageOpt("-gen", strprintf(translate("Generate coins (default: %u)"), 0));
     strUsage += HelpMessageOpt("-genproclimit=<n>", strprintf(translate("Set the number of threads for coin generation if enabled (-1 = all cores, default: %d)"), 1));
+    strUsage += HelpMessageOpt("-gensleepmsecs=<n>", strprintf(translate("Set the number of milliseconds to sleep for miner threads (default: %u)"), DEFAULT_MINER_SLEEP_MSECS));
     strUsage += HelpMessageOpt("-equihashsolver=<name>", translate("Specify the Equihash solver to be used if enabled (default: \"default\")"));
     strUsage += HelpMessageOpt("-mineraddress=<addr>", translate("Send mined coins to a specific single address"));
     strUsage += HelpMessageOpt("-minetolocalwallet", strprintf(
@@ -879,6 +897,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (!SetupNetworking())
         return InitError("Error: Initializing networking failed");
 
+    if (IsShutdownRequested())
+		return false;
+
 #ifndef WIN32
     if (GetBoolArg("-sysperms", false)) {
 #ifdef ENABLE_WALLET
@@ -1054,6 +1075,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     fCheckBlockIndex = GetBoolArg("-checkblockindex", chainparams.DefaultConsistencyChecks());
     fCheckpointsEnabled = GetBoolArg("-checkpoints", true);
 
+    if (IsShutdownRequested())
+		return false;
+
     // -par=0 means autodetect, but nScriptCheckThreads==0 means no concurrency
     gl_ScriptCheckManager.SetThreadCount(GetArg("-par", DEFAULT_SCRIPTCHECK_THREADS));
 
@@ -1161,19 +1185,6 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     if (nMaxTipAge != DEFAULT_MAX_TIP_AGE)
         LogPrintf("Setting maximum tip age to %d seconds\n", nMaxTipAge);
 
-#ifdef ENABLE_MINING
-    if (mapArgs.count("-mineraddress"))
-    {
-        const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
-        if (!IsValidDestination(addr))
-	{
-            return InitError(strprintf(
-                translate("Invalid address for -mineraddress=<addr>: '%s' (must be a transparent address)"),
-                mapArgs["-mineraddress"]));
-        }
-    }
-#endif
-
     if (!mapMultiArgs["-nuparams"].empty()) {
         // Allow overriding network upgrade parameters for testing
         if (!chainparams.IsRegTest())
@@ -1207,6 +1218,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
             }
         }
     }
+
+    if (IsShutdownRequested())
+		return false;
 
     // ********************************************************* Step 4: application initialization: dir lock, daemonize, pidfile, debug log
 
@@ -1276,6 +1290,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
         LogPrintf("Using debug log categories: %s\n", str_join(categories, ", "));
     ostringstream strErrors;
 
+    if (IsShutdownRequested())
+		return false;
+
     gl_ScriptCheckManager.create_workers(threadGroup);
 
     // Start the lightweight task scheduler thread
@@ -1299,9 +1316,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     libsnark::inhibit_profiling_info = true;
     libsnark::inhibit_profiling_counters = true;
 
+    if (IsShutdownRequested())
+		return false;
+
     // Initialize Zcash circuit parameters
     uiInterface.InitMessage(translate("Initializing chain parameters..."));
     ZC_LoadParams(chainparams);
+
+    if (IsShutdownRequested())
+		return false;
 
     /* Start the RPC server already.  It will be started in "warmup" mode
      * and not really process calls already (but it will signify connections
@@ -1587,6 +1610,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     // connect Pastel Ticket txmempool tracker
     mempool.AddTxMemPoolTracker(CPastelTicketProcessor::GetTxMemPoolTracker());
 
+    if (IsShutdownRequested())
+		return false;
+
     bool bClearWitnessCaches = false;
     bool fLoaded = false;
     while (!fLoaded)
@@ -1623,6 +1649,9 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
                 if (!LoadBlockIndex(strLoadError))
                 {
+                    if (IsShutdownRequested())
+                        break;
+
                     strLoadError = translate("Error loading block database. ") + strLoadError;
                     break;
                 }
@@ -1877,34 +1906,8 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 #endif // !ENABLE_WALLET
 
 #ifdef ENABLE_MINING
-    const bool bMiningEnabled = GetBoolArg("-gen", false);
- #ifndef ENABLE_WALLET
-    if (GetBoolArg("-minetolocalwallet", false)) {
-        return InitError(translate("Pastel was not built with wallet support. Set -minetolocalwallet=0 to use -mineraddress, or rebuild Pastel with wallet support."));
-    }
-    if (GetArg("-mineraddress", "").empty() && bMiningEnabled) {
-        return InitError(translate("Pastel was not built with wallet support. Set -mineraddress, or rebuild Pastel with wallet support."));
-    }
- #endif // !ENABLE_WALLET
-
     if (!gl_MiningSettings.initialize(chainparams, strError))
         return InitError(strprintf(translate("Could not initialize PastelMiner settings. %s"), strError));
-
-    if (mapArgs.count("-mineraddress"))
-    {
- #ifdef ENABLE_WALLET
-        bool minerAddressInLocalWallet = false;
-        if (pwalletMain)
-	    {
-            // Address has alreday been validated
-            const auto addr = keyIO.DecodeDestination(mapArgs["-mineraddress"]);
-            CKeyID keyID = get<CKeyID>(addr);
-            minerAddressInLocalWallet = pwalletMain->HaveKey(keyID);
-        }
-        if (GetBoolArg("-minetolocalwallet", true) && !minerAddressInLocalWallet)
-            return InitError(translate("-mineraddress is not in the local wallet. Either use a local address, or set -minetolocalwallet=0"));
- #endif // ENABLE_WALLET
-    }
 #endif // ENABLE_MINING
 
     // ********************************************************* Step 9: data directory maintenance
@@ -1997,12 +2000,11 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
 #ifdef ENABLE_MINING
     // Generate coins in the background
-    const int nProcLimit = static_cast<int>(GetArg("-genproclimit", 1));
  #ifdef ENABLE_WALLET
-    if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(bMiningEnabled, pwalletMain, nProcLimit, chainparams);
+    if (pwalletMain || !gl_MiningSettings.getMinerAddress().empty())
+        GenerateBitcoins(gl_MiningSettings.isLocalMiningEnabled(), pwalletMain, chainparams);
  #else
-    GenerateBitcoins(bMiningEnabled, nProcLimit, chainparams);
+    GenerateBitcoins(gl_MiningSettings.isLocalMiningEnabled(), chainparams);
  #endif
 #endif
     string sRewindChainBlockHash = GetArg("-rewindchain", "");

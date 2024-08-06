@@ -70,6 +70,12 @@ typedef u_int SOCKET;
 #define S_IRUSR             0400
 #define S_IWUSR             0200
 #endif
+#ifndef SHUT_RD
+#define SHUT_RD             SD_RECEIVE
+#define SHUT_WR             SD_SEND
+#define SHUT_RDWR           SD_BOTH
+#endif
+
 #else
 #define MAX_PATH            1024
 #endif
@@ -82,12 +88,16 @@ typedef u_int SOCKET;
 #ifndef WIN32
 // PRIO_MAX is not defined on Solaris
 #ifndef PRIO_MAX
-#define PRIO_MAX 20
+#define PRIO_MAX (20)
 #endif
-#define THREAD_PRIORITY_LOWEST          PRIO_MAX
+#ifndef PRIO_MIN
+#define PRIO_MIN (-20)
+#endif
+#define THREAD_PRIORITY_LOWEST          PRIO_MIN
 #define THREAD_PRIORITY_BELOW_NORMAL    2
 #define THREAD_PRIORITY_NORMAL          0
 #define THREAD_PRIORITY_ABOVE_NORMAL    (-2)
+#define THREAD_PRIORITY_HIGHEST         PRIO_MAX
 #endif
 
 #if defined(HAVE_DECL_STRNLEN) && (HAVE_DECL_STRNLEN == 0)
