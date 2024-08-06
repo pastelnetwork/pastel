@@ -11,8 +11,7 @@
 #include <utils/vector_types.h>
 #include <utils/sync.h>
 #include <coins.h>
-#include <txdb/addressindex.h>
-#include <txdb/spentindex.h>
+#include <txdb/index_defs.h>
 #include <script/scripttype.h>
 #include <txmempool_entry.h>
 #include <policy/fees.h>
@@ -139,7 +138,7 @@ public:
     void setSanityCheck(const double dFrequency = 1.0) noexcept { nCheckFrequency = static_cast<uint32_t>(dFrequency * 4294967295.0); }
 
     void addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewCache &view);
-	void getAddressIndex(const std::vector<std::pair<uint160, ScriptType>>& addresses,
+	void getAddressIndex(const address_vector_t& vAddresses,
                          std::vector<std::pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results) const;
     void removeAddressIndex(const uint256& txHash);
 

@@ -21,6 +21,7 @@
 #include <accept_to_mempool.h>
 #include <merkleblock.h>
 #include <net.h>
+#include <txdb/txdb.h>
 #include <primitives/transaction.h>
 #include <rpc/server.h>
 #include <rpc/rpc_consts.h>
@@ -122,7 +123,8 @@ void TxToJSON(const CTransaction& tx, const uint256& hashBlock, UniValue& entry)
             // Add address and value info if spentindex enabled
             CSpentIndexValue spentInfo;
             CSpentIndexKey spentKey(txin.prevout.hash, txin.prevout.n);
-            if (fSpentIndex && GetSpentIndex(spentKey, spentInfo)) {
+            if (fSpentIndex && GetSpentIndex(spentKey, spentInfo))
+            {
                 in.pushKV("value", ValueFromAmount(spentInfo.patoshis));
                 in.pushKV("valuePat", spentInfo.patoshis);
 

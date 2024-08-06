@@ -5,6 +5,7 @@ venv/
 venv27/
 
 compile_commands.json
+pastel-config.h.in
 
 *.tar.gz
 *.deb

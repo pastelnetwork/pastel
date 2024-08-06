@@ -371,19 +371,19 @@ uint160 CScript::AddressHash() const noexcept
     else {
         // unknown script type; return zeros (this can happen)
         v_uint8 hashBytes;
-        hashBytes.resize(20);
+        hashBytes.resize(uint160::SIZE);
         return uint160(hashBytes);
     }
 
-    if (this->size() < static_cast<uint32_t>(20 + start))
+    if (this->size() < static_cast<uint32_t>(uint160::SIZE + start))
     {
         // unknown script type; return zeros (this can happen)
         v_uint8 hashBytes;
-        hashBytes.resize(20);
+        hashBytes.resize(uint160::SIZE);
         return uint160(hashBytes);
     }
     
-    v_uint8 hashBytes(this->begin() + start, this->begin() + start + 20);
+    v_uint8 hashBytes(this->begin() + start, this->begin() + start + uint160::SIZE);
     return uint160(hashBytes);
 }
 

@@ -336,7 +336,10 @@ PASTEL_CORE_H = \
   core_io.h \
   core_memusage.h \
   txdb/addressindex.h \
+  txdb/fundstransferindex.h \
+  txdb/index_defs.h \
   txdb/spentindex.h \
+  txdb/txidxprocessor.h \
   txdb/timestampindex.h \
   txdb/txdb.h \
   deprecation.h \
@@ -375,7 +378,6 @@ PASTEL_CORE_H = \
   noui.h \
   orphan-tx.h\
   policy/fees.h \
-  port_config.h \
   primitives/block.h \
   primitives/transaction.h \
   protocol.h \
@@ -489,6 +491,7 @@ libbitcoin_server_a_SOURCES = \
   timedata.cpp \
   torcontrol.cpp \
   txdb/txdb.cpp \
+  txdb/txidxprocessor.cpp \
   txmempool.cpp \
   validationinterface.cpp \
   $(MNODE_CPP) \

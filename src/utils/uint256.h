@@ -218,7 +218,7 @@ using v_uint256 = std::vector<uint256>;
 
 namespace std
 {
-    template <>
+    template<>
     struct hash<uint256>
     {
         std::size_t operator()(const uint256& key) const noexcept
@@ -226,7 +226,7 @@ namespace std
             // Start with a hash value of 0
             size_t seed = 0;
 
-            static const auto N = key.SIZE / sizeof(uint64_t);
+            static constexpr auto N = key.SIZE / sizeof(uint64_t);
             // Modify 'seed' by XORing and bit-shifting in
             // one member of after the other
             auto p = key.begin();
@@ -234,6 +234,27 @@ namespace std
             {
                 hash_combine<uint64_t>(seed, *reinterpret_cast<const uint64_t*>(p));
                 p += sizeof(uint64_t);
+            }
+            return seed;
+        }
+    };
+
+    template<>
+    struct hash<uint160>
+    {
+        std::size_t operator()(const uint160& key) const noexcept
+        {
+            // Start with a hash value of 0
+            size_t seed = 0;
+
+            static constexpr auto N = key.SIZE / sizeof(uint32_t);
+            // Modify 'seed' by XORing and bit-shifting in
+            // one member of after the other
+            auto p = key.begin();
+            for (int i = 0; i < N; ++i)
+            {
+                hash_combine<uint32_t>(seed, *reinterpret_cast<const uint32_t*>(p));
+                p += sizeof(uint32_t);
             }
             return seed;
         }

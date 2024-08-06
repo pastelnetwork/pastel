@@ -42,7 +42,6 @@ Genesis block for RegTest found
 #include <utils/utilstrencodings.h>
 #include <utils/arith_uint256.h>
 #include <key_io.h>
-#include <main.h>
 #include <net.h>
 #include <netmsg/netconsts.h>
 #include <crypto/equihash.h>
@@ -348,6 +347,20 @@ static CBlock CreateRegtestGenesisBlock()
 #endif
 
     return block;
+}
+
+bool CChainParams::DecodePastelBurnAddress()
+{
+    KeyIO keyIO(*this);
+    ScriptType scriptType;
+    const CTxDestination dest = keyIO.DecodeDestination(m_sPastelBurnAddress);
+    return GetTxDestinationHash(dest, m_pastelBurnAddressHash, scriptType);
+}
+
+constexpr size_t equihash_parameters_acceptable(const int N, const int K) noexcept
+{
+    return ((CBlockHeader::HEADER_SIZE + equihash_solution_size(N, K)) * MAX_HEADERS_RESULTS < \
+        MAX_PROTOCOL_MESSAGE_LENGTH - 1000);
 }
 
 /**
@@ -703,6 +716,8 @@ public:
     {
         strNetworkID = "regtest";
         strCurrencyUnits = "REG";
+        // cUUjBtKN8BRriP1STe1KkEhJUpdARf8tj9T5gKuJPuY5mjtd2jP5
+        m_sPastelBurnAddress = "tPotfXKvYRAmJepR8rm849pRP2nmbyt2bGu";
         bip44CoinType = 1;
         consensus.nSubsidyHalvingInterval = 150;
         consensus.nMajorityEnforceBlockUpgrade = 750;
@@ -740,7 +755,6 @@ public:
         pchMessageStart[1] = 0xd8;
         pchMessageStart[2] = 0xfa;
         pchMessageStart[3] = 0x9e;
-        //vAlertPubKey = ParseHex("04b985ccafe6d17ac5d84cb8c06a69cefad733ee96b4b93bcf5ef0897778c227ee7e74e7680cc219236e4c6a609dbcdeb5bf65cea9c2576c2a0fbef590657c8e7a");
         vAlertPubKey = ParseHex("04d8a5b9bf6ef2396204fc879d370c85b3ccd665b6a06b9600165ceed4233ca38d27010abd3b6e607b46663ce21e8473df0e30f1bf7e425a3bdd58d2a6d1bb2049");
         nDefaultPort = REGTEST_DEFAULT_PORT;
         m_nPruneAfterHeight = 1000;
@@ -836,6 +850,8 @@ unique_ptr<const CChainParams> CreateChainParams(const ChainNetwork network)
             ChainParams = make_unique<CMainParams>();
             break;
     }
+    if (ChainParams)
+        ChainParams->DecodePastelBurnAddress();
     return std::move(ChainParams);
 }
 

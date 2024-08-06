@@ -2944,6 +2944,8 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
     assert(txNew.nLockTime <= (unsigned int)chainActive.Height());
     assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
 
+    const auto& destBurnAddress = Params().getPastelBurnAddressHash();
+
     {
         // cs_main already taken above
         LOCK(cs_wallet);
@@ -2978,7 +2980,9 @@ bool CWallet::CreateTransaction(const vector<CRecipient>& vecSend, CWalletTx& wt
                         }
                     }
 
-                    if (txout.IsDust(gl_ChainOptions.minRelayTxFee))
+                    const uint160 addressHash = txout.scriptPubKey.AddressHash();
+                    auto bSkipDustCheck = (addressHash == destBurnAddress);
+                    if (!bSkipDustCheck && txout.IsDust(gl_ChainOptions.minRelayTxFee))
                     {
                         if (recipient.fSubtractFeeFromAmount && nFeeRet > 0)
                         {

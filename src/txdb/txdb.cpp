@@ -9,11 +9,15 @@
 #include <utils/hash.h>
 #include <txdb/txdb.h>
 #include <chainparams.h>
+#include <chain_options.h>
 #include <main.h>
+#include <init.h>
 #include <mining/pow.h>
 #include <script/scripttype.h>
 
 using namespace std;
+
+unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
 
 // NOTE: Per issue #3277, do not use the prefix 'X' or 'x' as they were
 // previously used by DB_SAPLING_ANCHOR and DB_BEST_SAPLING_ANCHOR.
@@ -39,6 +43,7 @@ static const char DB_ADDRESSUNSPENTINDEX = 'u';
 static constexpr char DB_SPENTINDEX = 'p';
 static const char DB_TIMESTAMPINDEX = 'T';
 static const char DB_BLOCKHASHINDEX = 'h';
+static const char DB_FUNDSTRANSFERINDEX = 'D';
 
 CCoinsViewDB::CCoinsViewDB(string dbName, size_t nCacheSize, bool fMemory, bool fWipe) :
     db(GetDataDir() / dbName, nCacheSize, fMemory, fWipe)
@@ -388,7 +393,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts(const CChainParams& chainparams, string &s
 }
 
 // START insightexplorer
-bool CBlockTreeDB::WriteAddressIndex(const vector<CAddressIndexDbEntry> &vAddressIndex)
+bool CBlockTreeDB::WriteAddressIndex(const address_index_vector_t &vAddressIndex)
 {
     if (vAddressIndex.empty())
         return true;
@@ -400,7 +405,7 @@ bool CBlockTreeDB::WriteAddressIndex(const vector<CAddressIndexDbEntry> &vAddres
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::EraseAddressIndex(const std::vector<CAddressIndexDbEntry> &vAddressIndex)
+bool CBlockTreeDB::EraseAddressIndex(const address_index_vector_t &vAddressIndex)
 {
     if (vAddressIndex.empty())
         return true;
@@ -413,28 +418,38 @@ bool CBlockTreeDB::EraseAddressIndex(const std::vector<CAddressIndexDbEntry> &vA
 }
 
 bool CBlockTreeDB::ReadAddressIndex(
-    const uint160 &addressHash, const uint8_t type,
-    vector<CAddressIndexDbEntry> &vAddressIndex,
-    const uint32_t nStartHeight, const uint32_t nEndHeight) const
+    const uint160 &addressHash, const ScriptType addressType,
+    address_index_vector_t &vAddressIndex,
+    const height_range_opt_t &height_range) const
 {
-    LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu, height range [%u..%u]",
-		addressHash.GetHex(), type, nStartHeight, nEndHeight);
+    uint32_t nStartHeight = 0;
+    uint32_t nEndHeight = 0;
+    if (height_range)
+    {
+        tie(nStartHeight, nEndHeight) = height_range.value();
+        LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu, height range [%u..%u]",
+            addressHash.GetHex(), to_integral_type(addressType), nStartHeight, nEndHeight);
+    }
+    else
+		LogFnPrint("txdb", "AddressIndex - reading address %s, type %hhu", addressHash.GetHex(), to_integral_type(addressType));
 
     unique_ptr<CDBIterator> pcursor(NewIterator());
 
-    if (nStartHeight > 0 && nEndHeight > 0)
-        pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorHeightKey(type, addressHash, nStartHeight)));
+    if (height_range && nStartHeight > 0)
+        pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorHeightKey(addressType, addressHash, nStartHeight)));
     else
-        pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorKey(type, addressHash)));
+        pcursor->Seek(make_pair(DB_ADDRESSINDEX, CAddressIndexIteratorKey(addressType, addressHash)));
 
     while (pcursor->Valid())
     {
         func_thread_interrupt_point();
         pair<char,CAddressIndexKey> key;
-        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSINDEX) && (key.second.hashBytes == addressHash)))
+        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSINDEX) && (key.second.addressHash == addressHash)))
             break;
+
         if (nEndHeight > 0 && key.second.blockHeight > nEndHeight)
             break;
+
         CAmount nValue;
         if (!pcursor->GetValue(nValue))
             return error("failed to get address index value");
@@ -444,7 +459,7 @@ bool CBlockTreeDB::ReadAddressIndex(
     return true;
 }
 
-bool CBlockTreeDB::UpdateAddressUnspentIndex(const vector<CAddressUnspentDbEntry> &v)
+bool CBlockTreeDB::UpdateAddressUnspentIndex(const address_unspent_vector_t &v)
 {
     if (v.empty())
 		return true;
@@ -460,19 +475,25 @@ bool CBlockTreeDB::UpdateAddressUnspentIndex(const vector<CAddressUnspentDbEntry
     return WriteBatch(batch);
 }
 
-bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const uint8_t type, vector<CAddressUnspentDbEntry> &vUnspentOutputs) const
+bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const ScriptType addressType, 
+    address_unspent_vector_t &vUnspentOutputs) const
 {
-    LogFnPrint("txdb", "AddressUnspentIndex - reading address %s, type %d", addressHash.GetHex(), type);
+    LogFnPrint("txdb", "AddressUnspentIndex - reading address %s, type %hdd",
+        addressHash.GetHex(), to_integral_type(addressType));
 
     unique_ptr<CDBIterator> pcursor(NewIterator());
 
-    pcursor->Seek(make_pair(DB_ADDRESSUNSPENTINDEX, CAddressIndexIteratorKey(type, addressHash)));
+    pcursor->Seek(make_pair(DB_ADDRESSUNSPENTINDEX, CAddressIndexIteratorKey(addressType, addressHash)));
     while (pcursor->Valid())
     {
         func_thread_interrupt_point();
         pair<char,CAddressUnspentKey> key;
-        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSUNSPENTINDEX) && (key.second.hashBytes == addressHash)))
+        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSUNSPENTINDEX)))
             break;
+
+        const auto &unspentKey = key.second;
+        if ((unspentKey.addressHash != addressHash) || (unspentKey.type != addressType))
+			break;
 
         CAddressUnspentValue nValue;
         if (!pcursor->GetValue(nValue))
@@ -483,12 +504,22 @@ bool CBlockTreeDB::ReadAddressUnspentIndex(const uint160 &addressHash, const uin
     return true;
 }
 
+optional<CAddressUnspentValue> CBlockTreeDB::GetAddressUnspentIndexValue(const uint160& addressHash, const ScriptType addressType,
+    const uint256& txid, const uint32_t nTxOut) const
+{
+    CAddressUnspentKey key(addressType, addressHash, txid, nTxOut);
+	CAddressUnspentValue value;
+	if (!Read(make_pair(DB_ADDRESSUNSPENTINDEX, key), value))
+		return nullopt;
+	return value;
+}
+
 bool CBlockTreeDB::ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const
 {
     return Read(make_pair(DB_SPENTINDEX, key), value);
 }
 
-bool CBlockTreeDB::UpdateSpentIndex(const std::vector<CSpentIndexDbEntry> &v)
+bool CBlockTreeDB::UpdateSpentIndex(const spent_index_vector_t &v)
 {
     if (v.empty())
         return true;
@@ -549,10 +580,196 @@ bool CBlockTreeDB::WriteTimestampBlockIndex(const CTimestampBlockIndexKey &block
 bool CBlockTreeDB::ReadTimestampBlockIndex(const uint256 &hash, unsigned int &ltimestamp) const
 {
     CTimestampBlockIndexValue(lts);
-    if (!Read(std::make_pair(DB_BLOCKHASHINDEX, hash), lts))
+    if (!Read(make_pair(DB_BLOCKHASHINDEX, hash), lts))
         return false;
 
     ltimestamp = lts.ltimestamp;
     return true;
 }
+
+bool CBlockTreeDB::WriteFundsTransferIndex(const funds_transfer_vector_t &vFundsTransferIndex)
+{
+	if (vFundsTransferIndex.empty())
+		return true;
+
+	LogFnPrint("txdb", "FundsTransferIndex - writing %zu entries", vFundsTransferIndex.size());
+
+	CDBBatch batch(*this);
+	for (const auto &[key, value] : vFundsTransferIndex)
+		batch.Write(make_pair(DB_FUNDSTRANSFERINDEX, key), value);
+	return WriteBatch(batch);
+}
+
+bool CBlockTreeDB::ReadFundsTransferIndex(
+    const uint160& addressHashFrom, const ScriptType addressTypeFrom,
+    const uint160& addressHashTo,   const ScriptType addressTypeTo,
+    funds_transfer_vector_t& vFundsTransferIndex,
+    const height_range_opt_t &height_range) const
+{
+    uint32_t nStartHeight = 0;
+    uint32_t nEndHeight = 0;
+    if (height_range)
+    {
+        tie(nStartHeight, nEndHeight) = height_range.value();
+        LogFnPrint("txdb", "FundsTransferIndex - reading address %s, type %hhu, height range [%u..%u]",
+            addressHashFrom.GetHex(), to_integral_type(addressTypeFrom), nStartHeight, nEndHeight);
+    }
+	else
+		LogFnPrint("txdb", "FundsTransferIndex - reading address %s, type %hhu", addressHashFrom.GetHex(), to_integral_type(addressTypeFrom));
+
+	unique_ptr<CDBIterator> pcursor(NewIterator());
+
+    if (height_range && nStartHeight > 0)
+    {
+        if (nEndHeight < nStartHeight)
+            return error("invalid height range");
+
+        pcursor->Seek(make_pair(DB_FUNDSTRANSFERINDEX, 
+            CFundsTransferIndexIteratorHeightKey(addressTypeFrom, addressHashFrom, addressTypeTo, addressHashTo, nStartHeight)));
+    }
+    else
+        pcursor->Seek(make_pair(DB_FUNDSTRANSFERINDEX,
+            CFundsTransferIndexIteratorKey(addressTypeFrom, addressHashFrom, addressTypeTo, addressHashTo)));
+
+	while (pcursor->Valid())
+	{
+		func_thread_interrupt_point();
+		pair<char, CFundsTransferIndexKey> key;
+        if (!pcursor->GetKey(key))
+            break;
+
+        auto &idxKey = key.second;
+		if (!((key.first == DB_FUNDSTRANSFERINDEX) && 
+              (idxKey.addressTypeFrom == addressTypeFrom) &&
+              (idxKey.addressHashFrom == addressHashFrom) &&
+              (idxKey.addressTypeTo == addressTypeTo) &&
+              (idxKey.addressHashTo == addressHashTo)))
+			break;
+
+		if (nEndHeight > 0 && idxKey.blockHeight > nEndHeight)
+			break;
+
+		CFundsTransferIndexValue value;
+		if (!pcursor->GetValue(value))
+			return error("failed to get funds transfer index value");
+
+		vFundsTransferIndex.emplace_back(idxKey, value);
+		pcursor->Next();
+	}
+	return true;
+}
+
+bool CBlockTreeDB::EraseFundsTransferIndex(const funds_transfer_vector_t& vFundsTransferIndex)
+{
+    if (vFundsTransferIndex.empty())
+		return true;
+
+	LogFnPrint("txdb", "FundsTransferIndex - erasing %zu entries", vFundsTransferIndex.size());
+
+	CDBBatch batch(*this);
+	for (const auto &[key, value] : vFundsTransferIndex)
+		batch.Erase(make_pair(DB_FUNDSTRANSFERINDEX, key));
+	return WriteBatch(batch);
+}
+
+bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value)
+{
+    AssertLockHeld(cs_main);
+    if (!fSpentIndex)
+    {
+        LogPrint("rpc", "Spent index not enabled\n");
+        return false;
+    }
+    if (mempool.getSpentIndex(key, value))
+        return true;
+
+    if (!gl_pBlockTreeDB->ReadSpentIndex(key, value))
+    {
+        LogPrint("rpc", "Unable to get spent index information\n");
+        return false;
+    }
+    return true;
+}
+
+bool GetAddressIndex(const uint160& addressHash, const ScriptType addressType,
+                     address_index_vector_t& vAddressIndex,
+                     const height_range_opt_t &height_range)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "Address index not enabled\n");
+        return false;
+    }
+
+    if (!gl_pBlockTreeDB->ReadAddressIndex(addressHash, addressType, vAddressIndex, height_range))
+    {
+        LogPrint("rpc", "Unable to get txids for address\n");
+        return false;
+    }
+    return true;
+}
+
+bool GetFundsTransferIndex(const uint160& addressHashFrom, const ScriptType addressTypeFrom,
+    const uint160& addressHashTo, const ScriptType addressTypeTo,
+    funds_transfer_vector_t& vFundsTransferIndex,
+    const height_range_opt_t& height_range)
+{
+    if (!fFundsTransferIndex)
+    {
+        LogPrint("rpc", "Funds transfer index not enabled\n");
+        return false;
+    }
+	
+    if (!gl_pBlockTreeDB->ReadFundsTransferIndex(addressHashFrom, addressTypeFrom, 
+        addressHashTo, addressTypeTo, vFundsTransferIndex, height_range))
+	{
+		LogPrint("rpc", "Unable to get funds transfer index information\n");
+		return false;
+	}
+    return true;
+}
+
+bool GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
+                       address_unspent_vector_t& vUnspentOutputs)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "Address index not enabled\n");
+        return false;
+    }
+    if (!gl_pBlockTreeDB->ReadAddressUnspentIndex(addressHash, addressType, vUnspentOutputs))
+    {
+        LogPrint("rpc", "Unable to get txids for address\n");
+        return false;
+    }
+    return true;
+}
+
+optional<CAddressUnspentValue> GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
+    const uint256& txid, const uint32_t nTxOut)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "Address index not enabled\n");
+        return nullopt;
+    }
+    return gl_pBlockTreeDB->GetAddressUnspentIndexValue(addressHash, addressType, txid, nTxOut);
+}
+
+bool GetTimestampIndex(unsigned int high, unsigned int low, bool fActiveOnly,
+    vector<pair<uint256, unsigned int> > &vHashes)
+{
+    if (!fTimestampIndex)
+    {
+        LogPrint("rpc", "Timestamp index not enabled\n");
+        return false;
+    }
+    if (!gl_pBlockTreeDB->ReadTimestampIndex(high, low, fActiveOnly, vHashes))
+    {
+        LogPrint("rpc", "Unable to get vHashes for timestamps\n");
+        return false;
+    }
+    return true;
+}
+
 // END insightexplorer

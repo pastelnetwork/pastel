@@ -18,13 +18,14 @@
 #include <checkpoints.h>
 #include <consensus/validation.h>
 #include <key_io.h>
-#include <main.h>
+#include <txdb/txdb.h>
 #include <primitives/transaction.h>
 #include <rpc/rpc_consts.h>
 #include <rpc/server.h>
 #include <rpc/coin-supply.h>
 #include <rpc/rpc-utils.h>
 #include <rpc/chain-rpc-utils.h>
+#include <main.h>
 
 using namespace std;
 

@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <functional>
 #include <unordered_map>
-#include <tuple>
 
 #include <univalue.h>
 
@@ -14,11 +13,12 @@
 #include <utils/vector_types.h>
 #include <utils/uint256.h>
 #include <utils/svc_thread.h>
+#include <chain_options.h>
 
 std::variant<uint32_t, uint256> rpc_get_block_hash_or_height(const UniValue& paramValue);
 uint32_t rpc_parse_height_param(const UniValue& param);
 uint32_t rpc_get_height_param(const UniValue& params, size_t no);
-std::tuple<uint32_t, uint32_t> rpc_get_height_range(const UniValue& params);
+height_range_opt_t rpc_get_height_range(const UniValue& params);
 
 typedef struct _BlockScannerTask
 {

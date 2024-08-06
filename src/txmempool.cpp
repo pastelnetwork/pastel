@@ -185,14 +185,14 @@ void CTxMemPool::addAddressIndex(const CTxMemPoolEntry &entry, const CCoinsViewC
 }
 
 void CTxMemPool::getAddressIndex(
-    const vector<pair<uint160, ScriptType>>& vAddresses,
+    const address_vector_t& vAddresses,
     vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>>& results) const
 {
     LOCK(cs);
     for (const auto& [addressHash, addressType] : vAddresses)
     {
         auto ait = m_mapAddress.lower_bound(CMempoolAddressDeltaKey(addressType, addressHash));
-        while (ait != m_mapAddress.end() && (ait->first.addressBytes == addressHash) && (ait->first.type == addressType))
+        while (ait != m_mapAddress.end() && (ait->first.addressHash == addressHash) && (ait->first.type == addressType))
         {
             results.push_back(*ait);
             ait++;
