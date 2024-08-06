@@ -51,7 +51,7 @@ void pre_wallet_load()
         pwalletMain->Flush(false);
     const auto& chainparams = Params();
 #ifdef ENABLE_MINING
-    GenerateBitcoins(false, nullptr, 0, chainparams);
+    GenerateBitcoins(false, nullptr, chainparams);
 #endif
     UnregisterNodeSignals(GetNodeSignals());
     if (pwalletMain)
