@@ -5,9 +5,6 @@
 #include <cstdlib> // for function qsort
 
 #include <sodium.h>
-#ifdef __APPLE__
-#include <mining/pow/tromp/osx_barrier.h>
-#endif
 #include <compat/endian.h>
 
 typedef uint32_t u32;

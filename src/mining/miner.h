@@ -10,6 +10,7 @@
 #include <string>
 #include <atomic>
 
+#include <utils/svc_thread.h>
 #include <primitives/block.h>
 #include <chainparams.h>
 #include <amount.h>
@@ -44,14 +45,26 @@ extern std::atomic_bool gl_bEligibleForMiningNextBlock;
 // delay in seconds before a mined block is validated against blocks mined by other miners
 constexpr int64_t MINED_BLOCK_VALIDATION_DELAY_SECS = 20;
 
+class CPastelMinerThread : public CStoppableServiceThread
+{
+public:
+    CPastelMinerThread(const int nThreadNo, void* pwallet = nullptr);
+
+    void execute() override;
+
+private:
+    int m_nMinerThreadNo;
+    void* m_pWallet;
+};
+
 /** Modify the extranonce in a block */
 void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 /** Run the miner threads */
- #ifdef ENABLE_WALLET
-void GenerateBitcoins(bool fGenerate, CWallet* pwallet, int nThreads, const CChainParams& chainparams);
- #else
-void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams);
- #endif
+#ifdef ENABLE_WALLET
+void GenerateBitcoins(bool fGenerate, CWallet* pwallet, const CChainParams& chainparams);
+#else
+void GenerateBitcoins(bool fGenerate, const CChainParams& chainparams);
+#endif
 #endif
 
 void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev);

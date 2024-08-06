@@ -26,16 +26,16 @@ struct r1cs_example {
     r1cs_primary_input<FieldT> primary_input;
     r1cs_auxiliary_input<FieldT> auxiliary_input;
 
-    r1cs_example<FieldT>() = default;
-    r1cs_example<FieldT>(const r1cs_example<FieldT> &other) = default;
-    r1cs_example<FieldT>(const r1cs_constraint_system<FieldT> &constraint_system,
+    r1cs_example() = default;
+    r1cs_example(const r1cs_example &other) = default;
+    r1cs_example(const r1cs_constraint_system<FieldT> &constraint_system,
                          const r1cs_primary_input<FieldT> &primary_input,
                          const r1cs_auxiliary_input<FieldT> &auxiliary_input) :
         constraint_system(constraint_system),
         primary_input(primary_input),
         auxiliary_input(auxiliary_input)
     {};
-    r1cs_example<FieldT>(r1cs_constraint_system<FieldT> &&constraint_system,
+    r1cs_example(r1cs_constraint_system<FieldT> &&constraint_system,
                          r1cs_primary_input<FieldT> &&primary_input,
                          r1cs_auxiliary_input<FieldT> &&auxiliary_input) :
         constraint_system(std::move(constraint_system)),
