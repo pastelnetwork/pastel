@@ -38,7 +38,7 @@ class PTestMiner : public TestWithParam<tuple<string, bool>>
 public:
     static void SetUpTestSuite()
     {
-    SelectParams(ChainNetwork::MAIN);
+        SelectParams(ChainNetwork::MAIN);
 	}
     static void TearDownTestSuite()
     {
@@ -54,7 +54,7 @@ public:
 TEST_P(PTestMiner, GetMinerScriptPubKey)
 {
     const auto& chainparams = Params();
-    
+
 #ifdef ENABLE_WALLET
     MockReserveKey reservekey;
     EXPECT_CALL(reservekey, GetReservedKey(_))
@@ -72,19 +72,19 @@ TEST_P(PTestMiner, GetMinerScriptPubKey)
 
     const string& sMinerAddress = get<0>(GetParam());
     const bool bExpectedResult = get<1>(GetParam());
-    
+
     SetMinerAddress(sMinerAddress);
     auto scriptPubKey = TestGetMinerScriptPubKey();
 
     if (bExpectedResult)
     {
-    CKeyID keyID;
-    keyID.SetHex("9E7848625B3B465D273EC83851907A143B483BF2");
-    CScript expectedScriptPubKey = CScript() << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
+        CKeyID keyID;
+        keyID.SetHex("9E7848625B3B465D273EC83851907A143B483BF2");
+        CScript expectedScriptPubKey = CScript() << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
 
-    EXPECT_TRUE((bool)scriptPubKey);
-    EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
-}
+		EXPECT_TRUE((bool)scriptPubKey);
+        EXPECT_EQ(expectedScriptPubKey, *scriptPubKey);
+	}
 	else
 	{
 		EXPECT_FALSE((bool)scriptPubKey);

@@ -36,7 +36,7 @@
 #   Copyright (c) 2016, 2018 Krzesimir Nowak <qdlacz@gmail.com>
 #   Copyright (c) 2019 Enji Cooper <yaneurabeya@gmail.com>
 #   Copyright (c) 2020 Jason Merrill <jason@redhat.com>
-#   Copyright (c) 2021 Jörn Heusipp <osmanx@problemloesungsmaschine.de>
+#   Copyright (c) 2021 JÃ¶rn Heusipp <osmanx@problemloesungsmaschine.de>
 #
 #   Copying and distribution of this file, with or without modification, are
 #   permitted in any medium without royalty provided the copyright notice
@@ -111,10 +111,10 @@ AC_DEFUN([AX_CXX_COMPILE_STDCXX], [dnl
           dnl AS_TR_SH maps both `:` and `=` to `_` so -std:c++17 would collide
           dnl with -std=c++17.  We suffix the cache variable name with _MSVC to
           dnl avoid this.
-          switch=-std:c++${alternative}
+          switch=-std=c++${alternative}
           cachevar=AS_TR_SH([ax_cv_cxx_compile_cxx$1_${switch}_MSVC])
         else
-        cachevar=AS_TR_SH([ax_cv_cxx_compile_cxx$1_$switch])
+          cachevar=AS_TR_SH([ax_cv_cxx_compile_cxx$1_$switch])
         fi
         AC_CACHE_CHECK(whether $CXX supports C++$1 features with $switch,
                        $cachevar,
@@ -161,7 +161,6 @@ dnl  Test body for checking C++11 support
 m4_define([_AX_CXX_COMPILE_STDCXX_testbody_11],
   _AX_CXX_COMPILE_STDCXX_testbody_new_in_11
 )
-
 
 dnl  Test body for checking C++14 support
 

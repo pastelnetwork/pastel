@@ -28,7 +28,6 @@ class ForkNotifyTest(BitcoinTestFramework):
                                 ["-blockversion=211"]))
         connect_nodes(self.nodes[1], 0)
 
-        self.is_network_split = False
         self.sync_all()
 
     def run_test(self):

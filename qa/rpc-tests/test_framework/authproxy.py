@@ -35,14 +35,23 @@
 
 import base64
 import decimal
-import simplejson as json
-import logging
-from http.client import HTTPConnection, HTTPSConnection, BadStatusLine
+from http.client import (
+    HTTPConnection,
+    HTTPSConnection,
+    BadStatusLine,
+    RemoteDisconnected,
+)
 from urllib.parse import urlparse
+import logging
+import simplejson as json
+import time
 
 USER_AGENT = "AuthServiceProxy/0.1"
 
-HTTP_TIMEOUT_IN_SECS = 900
+HTTP_TIMEOUT_IN_SECS = 1000
+HTTP_MAX_RETRIES = 5
+HTTP_RETRY_DELAY_SECS = 2
+
 
 log = logging.getLogger("PastelRPC")
 
@@ -129,23 +138,23 @@ class AuthServiceProxy():
         headers = {'Host': self.__url.hostname,
                    'User-Agent': USER_AGENT,
                    'Authorization': self.__auth_header,
+                   'Connection': 'keep-alive',
                    'Content-type': 'application/json'}
-        try:
-            self.__conn.request(method, path, postdata, headers)
-            return self._get_response()
-        except Exception as e:
-            # If connection was closed, try again.
-            # Python 3.5+ raises BrokenPipeError instead of BadStatusLine when the connection was reset.
-            # ConnectionResetError happens on FreeBSD with Python 3.4.
-            # This can be simplified now that we depend on Python 3 (previously, we could not
-            # refer to BrokenPipeError or ConnectionResetError which did not exist on Python 2)
-            if ((isinstance(e, BadStatusLine) and (e.line == "''" or e.line == "No status line received - the server has closed the connection"))
-                or e.__class__.__name__ in ('BrokenPipeError', 'ConnectionResetError')):
-                self.__conn.close()
+        for attempt in range(HTTP_MAX_RETRIES):
+            try:
                 self.__conn.request(method, path, postdata, headers)
                 return self._get_response()
-            else:
-                raise
+            except (RemoteDisconnected, BadStatusLine, ConnectionRefusedError, BrokenPipeError, ConnectionResetError) as e:
+                if attempt < HTTP_MAX_RETRIES - 1:
+                    log.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {HTTP_RETRY_DELAY_SECS} seconds...")
+                    self.__conn.close()
+                    time.sleep(HTTP_RETRY_DELAY_SECS)
+                else:
+                    log.error(f"All {HTTP_MAX_RETRIES} attempts failed. Raising exception.")
+                    raise
+            except Exception as e:
+                log.error(f"Unhandled exception: {e}. Raising exception.")
+                raise                
 
 
     def __call__(self, *args):

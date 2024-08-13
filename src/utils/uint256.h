@@ -22,12 +22,12 @@ template<unsigned int BITS>
 class base_blob
 {
 protected:
-    enum { WIDTH = BITS / 8 };
+    static constexpr size_t WIDTH = BITS / 8;
     alignas(uint32_t) uint8_t data[WIDTH];
 
 public:
-    inline static constexpr size_t SIZE = WIDTH;
-    inline static constexpr size_t STR_SIZE = WIDTH * 2;
+    static constexpr size_t SIZE = WIDTH;
+    static constexpr size_t STR_SIZE = WIDTH * 2;
 
     base_blob() noexcept
     {
@@ -226,7 +226,7 @@ namespace std
             // Start with a hash value of 0
             size_t seed = 0;
 
-            static constexpr auto N = key.SIZE / sizeof(uint64_t);
+            static constexpr auto N = uint256::SIZE / sizeof(uint64_t);
             // Modify 'seed' by XORing and bit-shifting in
             // one member of after the other
             auto p = key.begin();
@@ -247,7 +247,7 @@ namespace std
             // Start with a hash value of 0
             size_t seed = 0;
 
-            static constexpr auto N = key.SIZE / sizeof(uint32_t);
+            static constexpr auto N = uint160::SIZE / sizeof(uint32_t);
             // Modify 'seed' by XORing and bit-shifting in
             // one member of after the other
             auto p = key.begin();

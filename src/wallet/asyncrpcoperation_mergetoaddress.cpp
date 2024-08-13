@@ -113,8 +113,8 @@ void AsyncRPCOperation_mergetoaddress::main()
 
     bool success = false;
 
-    const auto& chainparams = Params();
 #ifdef ENABLE_MINING
+    const auto& chainparams = Params();
 #ifdef ENABLE_WALLET
     GenerateBitcoins(false, nullptr, chainparams);
 #else

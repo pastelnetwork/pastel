@@ -201,7 +201,6 @@
     <ClCompile Include="..\..\..\src\txdb\txidxprocessor.cpp" />
     <ClCompile Include="..\..\..\src\txmempool.cpp" />
     <ClCompile Include="..\..\..\src\validationinterface.cpp" />
-    <ClCompile Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.cpp" />
     <ClCompile Include="..\..\vs\port\uint128.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -338,7 +337,6 @@
     <ClInclude Include="..\..\..\src\ui_interface.h" />
     <ClInclude Include="..\..\..\src\undo.h" />
     <ClInclude Include="..\..\..\src\validationinterface.h" />
-    <ClInclude Include="..\..\vs\port\cyclicbarrier\cyclicbarrier.hpp" />
     <ClInclude Include="..\..\vs\port\uint128.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

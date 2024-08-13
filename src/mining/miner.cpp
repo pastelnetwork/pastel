@@ -86,9 +86,9 @@ public:
     double dPriority;
 
     COrphan(const CTransaction* ptxIn) noexcept:
-            ptx(ptxIn),
-            feeRate(0),
-            dPriority(0)
+        ptx(ptxIn),
+        feeRate(0),
+        dPriority(0)
     {}
 };
 
@@ -103,7 +103,7 @@ class TxPriorityCompare
 
 public:
     TxPriorityCompare(bool _byFee) noexcept:
-            byFee(_byFee)
+        byFee(_byFee)
     {}
 
     bool operator()(const TxPriority& a, const TxPriority& b) noexcept
@@ -133,7 +133,7 @@ void UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, 
 }
 
 CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& scriptPubKeyIn, const bool bV5Block,
-                               const string& sEligiblePastelID)
+    const string& sEligiblePastelID)
 {
     // Create new block
     auto pblocktemplate = make_unique<CBlockTemplate>();
@@ -182,8 +182,8 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             const CTransaction& tx = mi->GetTx();
 
             int64_t nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST)
-                                      ? nMedianTimePast
-                                      : pblock->GetBlockTime();
+                                    ? nMedianTimePast
+                                    : pblock->GetBlockTime();
 
             if (tx.IsCoinBase())
                 continue;
@@ -342,7 +342,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
             if (fPrintPriority)
             {
                 LogPrintf("priority %.1f fee %s txid %s\n",
-                          dPriority, feeRate.ToString(), tx.GetHash().ToString());
+                    dPriority, feeRate.ToString(), tx.GetHash().ToString());
             }
 
             // Add transactions that depend on this one to the priority queue
@@ -407,7 +407,7 @@ CBlockTemplate* CreateNewBlock(const CChainParams& chainparams, const CScript& s
                 {
                     LogPrintf("ERROR: PastelMiner: failed to get passphrase for PastelID '%s'\n", sEligiblePastelID);
                     throw runtime_error(strprintf("PastelMiner: failed to access secure container for Pastel ID '%s'",
-                                                  sEligiblePastelID));
+                        sEligiblePastelID));
                 }
                 string sPrevMerkleRoot(pindexPrev->hashMerkleRoot.cbegin(), pindexPrev->hashMerkleRoot.cend());
                 string sPrevMerkelRootSignature = CPastelID::Sign(sPrevMerkleRoot, sEligiblePastelID, std::move(sPassPhrase));
@@ -565,16 +565,16 @@ void CPastelMinerThread::execute()
     const double nMiningEligibilityThreshold = consensusParams.nMiningEligibilityThreshold;
 
     LogPrint("pow", "Using Equihash solver \"%s\" with n = %u, k = %u\n",
-             gl_MiningSettings.getEquihashSolverName(), n, k);
+        gl_MiningSettings.getEquihashSolverName(), n, k);
 
     mutex m_cs;
     bool cancelSolver = false;
     boost::signals2::connection c = uiInterface.NotifyBlockTip.connect(
-            [&](const uint256& hashNewTip) mutable
-            {
-                lock_guard<mutex> lock{m_cs};
-                cancelSolver = true;
-            }
+        [&](const uint256& hashNewTip) mutable
+        {
+            lock_guard<mutex> lock{m_cs};
+            cancelSolver = true;
+        }
     );
     miningTimer.start();
     // add scope guard to disconnect the signal when the thread exits
@@ -619,9 +619,9 @@ void CPastelMinerThread::execute()
             // check if we can use new mining
             const size_t nNewMiningAllowedHeight = consensusParams.GetNetworkUpgradeActivationHeight(Consensus::UpgradeIndex::UPGRADE_VERMEER);
             const bool bNewMiningAllowed = (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) ||
-                                           (gl_nChainHeight + 1 >= nNewMiningAllowedHeight + consensusParams.nNewMiningAlgorithmHeightDelay);
+                (gl_nChainHeight + 1 >= nNewMiningAllowedHeight + consensusParams.nNewMiningAlgorithmHeightDelay);
             const bool bV5Block = (nNewMiningAllowedHeight == Consensus::NetworkUpgrade::NO_ACTIVATION_HEIGHT) ||
-                                  (gl_nChainHeight + 1 >= nNewMiningAllowedHeight);
+				(gl_nChainHeight + 1 >= nNewMiningAllowedHeight);
 
             gl_bEligibleForMiningNextBlock = !bNewMiningAllowed;
             if (bNewMiningAllowed && !masterNodeCtrl.IsMasterNode())
@@ -827,7 +827,7 @@ void CPastelMinerThread::execute()
 #ifdef ENABLE_WALLET
                     if (ProcessBlockFound(pblock, chainparams, *static_cast<CWallet*>(m_pWallet), reservekey))
 #else
-                        if (ProcessBlockFound(pblock, chainparams))
+                    if (ProcessBlockFound(pblock, chainparams))
 #endif
                     {
                         // Ignore chain updates caused by us
@@ -909,7 +909,6 @@ void CPastelMinerThread::execute()
                         ehSolverRuns.increment();
                         if (found)
                             break;
-
                     } catch (EhSolverCancelledException&) {
                         LogPrint("pow", "Equihash solver cancelled\n");
                         lock_guard<mutex> lock{m_cs};

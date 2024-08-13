@@ -258,17 +258,16 @@ class MasterNodeTicketsTest(MasterNodeCommon):
         print("== NFT Registration Activation ticket transaction validation test ==")
 
         # valid ticket
-        self.nft_ticket1_txid = self.nodes[self.top_mns[0].index].tickets("register", "nft", self.ticket, json.dumps(self.signatures_dict),
+        nft_reg_result = self.nodes[self.top_mns[0].index].tickets("register", "nft", self.ticket, json.dumps(self.signatures_dict),
                                                                         self.top_mns[0].pastelid, self.passphrase,
                                                                         "nft-label",
-                                                                        str(self.storage_fee))["txid"]
+                                                                        str(self.storage_fee))
+        print(f"Created valid NFT Registration ticket: {json.dumps(nft_reg_result, indent=4)}")
+        self.nft_ticket1_txid = nft_reg_result["txid"]
         assert_true(self.nft_ticket1_txid, "No ticket was created")
 
-        self.sync_all(10,30)
-        self.nodes[self.mining_node_num].generate(5)
-        self.sync_all(10,30)
-
-        self.nodes[self.non_mn1].generate(10)
+        self.wait_for_min_confirmations()
+        self.generate_and_sync_inc(10, self.non_mn1)
 
         mn0_fee = int(self.storage_fee90percent*0.6)
         mn1_fee = int(self.storage_fee90percent*0.2)
