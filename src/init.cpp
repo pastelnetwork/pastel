@@ -1011,13 +1011,13 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // Make sure enough file descriptors are available
     int nBind = max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
-    nMaxConnections = static_cast<size_t>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
-    nMaxConnections = min(nMaxConnections, static_cast<size_t>(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS));
-    const size_t nFD = RaiseFileDescriptorLimit(nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
+    gl_nMaxConnections = static_cast<uint32_t>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
+    gl_nMaxConnections = min(gl_nMaxConnections, static_cast<uint32_t>(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS));
+    const size_t nFD = RaiseFileDescriptorLimit(gl_nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
     if (nFD < MIN_CORE_FILEDESCRIPTORS)
         return InitError(translate("Not enough file descriptors available."));
-    if (nFD - MIN_CORE_FILEDESCRIPTORS < nMaxConnections)
-        nMaxConnections = nFD - MIN_CORE_FILEDESCRIPTORS;
+    if (nFD - MIN_CORE_FILEDESCRIPTORS < gl_nMaxConnections)
+        gl_nMaxConnections = nFD - MIN_CORE_FILEDESCRIPTORS;
 
     // if using block pruning, then disable txindex
     // also disable the wallet (for now, until SPV support is implemented in wallet)
@@ -1282,7 +1282,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     LogPrintf("Default data directory %s\n", GetDefaultDataDir().string());
     LogPrintf("Using data directory %s\n", strDataDir);
     LogPrintf("Using config file %s\n", GetConfigFile().string());
-    LogPrintf("Using at most %i connections (%i file descriptors available)\n", nMaxConnections, nFD);
+    LogPrintf("Using at most %u connections (%i file descriptors available)\n", gl_nMaxConnections, nFD);
 #ifdef ENABLE_TICKET_COMPRESS
     LogPrintf("Ticket compression is enabled\n");
 #endif
