@@ -26,6 +26,8 @@ class PastelTestFramework (BitcoinTestFramework):
 
     passphrase = "passphrase"
     new_passphrase = "new passphrase"
+    BURN_ADDRESS = "tPotfXKvYRAmJepR8rm849pRP2nmbyt2bGu"
+    BURN_ADDRESS_PKEY = "cUUjBtKN8BRriP1STe1KkEhJUpdARf8tj9T5gKuJPuY5mjtd2jP5"
 
     # error strings
     ERR_READ_PASTELID_FILE = "Failed to read Pastel secure container file"

@@ -66,13 +66,21 @@ m4_ifdef([AC_PROG_OBJCXX],[AC_PROG_OBJCXX])
 dnl By default, libtool for mingw refuses to link static libs into a dll for
 dnl fear of mixing pic/non-pic objects, and import/export complications. Since
 dnl we have those under control, re-enable that functionality.
-case $host in
+case "${host}" in
   *mingw*)
      lt_cv_deplibs_check_method="pass_all"
+     dnl Require C++17 compiler (no GNU extensions)
+     AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory], [nodefault])
   ;;
-esac
+  *darwin*)
+     lt_cv_deplibs_check_method="pass_all"
 dnl Require C++17 compiler (no GNU extensions)
 AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory], [nodefault])
+     ;;
+  *)
+    dnl Require C++20 compiler (no GNU extensions)
+    AX_CXX_COMPILE_STDCXX([20], [noext], [mandatory], [nodefault])
+esac
 dnl Check if -latomic is required for <std::atomic>
 CHECK_ATOMIC
 

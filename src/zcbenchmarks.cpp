@@ -21,6 +21,7 @@
 #include <consensus/validation.h>
 #include <main.h>
 #include <mining/miner.h>
+#include <mining/mining-settings.h>
 #include <mining/pow.h>
 #include <rpc/server.h>
 #include <script/sign.h>
@@ -50,18 +51,14 @@ void pre_wallet_load()
         pwalletMain->Flush(false);
     const auto& chainparams = Params();
 #ifdef ENABLE_MINING
-    GenerateBitcoins(false, nullptr, 0, chainparams);
+    GenerateBitcoins(false, nullptr, chainparams);
 #endif
     UnregisterNodeSignals(GetNodeSignals());
     if (pwalletMain)
         pwalletMain->Flush(true);
 
     UnregisterValidationInterface(pwalletMain);
-    if (pwalletMain)
-    {
-        delete pwalletMain;
-        pwalletMain = nullptr;
-    }
+    safe_delete_obj(pwalletMain);
     bitdb.Reset();
     RegisterNodeSignals(GetNodeSignals());
     LogPrintf("%s: done\n", __func__);
@@ -73,9 +70,10 @@ void post_wallet_load()
 #ifdef ENABLE_MINING
     // Generate coins in the background
     const auto& chainparams = Params();
-    if (pwalletMain || !GetArg("-mineraddress", "").empty())
-        GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain, static_cast<int>(GetArg("-genproclimit", 1)), chainparams);
-#endif    
+    string sMinerAddress = gl_MiningSettings.getMinerAddress();
+    if (pwalletMain || !sMinerAddress.empty())
+        GenerateBitcoins(gl_MiningSettings.isLocalMiningEnabled(), pwalletMain, chainparams);
+#endif
 }
 
 

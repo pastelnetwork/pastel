@@ -7,6 +7,10 @@
 #include <thread>
 #include <condition_variable>
 #include <unordered_map>
+#ifndef WIN32
+#include <sys/resource.h>
+#include <sys/time.h>
+#endif // WIN32
 
 #include <compat.h>
 #include <extlibs/scope_guard.hpp>
@@ -41,6 +45,7 @@ public:
         m_bStopRequested(false)
     {
         m_sThreadName = strprintf("psl-%s", SAFE_SZ(szThreadName));
+        m_nThreadPriority = THREAD_PRIORITY_NORMAL;
     }
 
     // disable copy
@@ -94,6 +99,8 @@ public:
             RenameThread(m_sThreadName.c_str(), reinterpret_cast<void*>(m_Thread.native_handle()));
             if (m_bTrace)
                 LogPrintf("[%s] thread start\n", m_sThreadName);
+            if (m_nThreadPriority != THREAD_PRIORITY_NORMAL)
+				changePriority(m_nThreadPriority);
             execute();
             if (m_bTrace)
                 LogPrintf("[%s] thread exit\n", m_sThreadName);
@@ -135,6 +142,36 @@ public:
     std::string get_thread_name() const noexcept { return m_sThreadName; }
     // log thread start/stop
     void setTrace(const bool bTrace) noexcept { m_bTrace = bTrace; }
+    bool setPriority(const int nPriority) noexcept
+    {
+        if ((nPriority < THREAD_PRIORITY_LOWEST) || (nPriority > THREAD_PRIORITY_HIGHEST))
+			return false;
+        m_nThreadPriority = nPriority;
+		return true;
+    }
+    bool changePriority(const int nPriority) noexcept
+    {
+        if (m_nThreadPriority == nPriority)
+			return true;
+        if (!setPriority(nPriority))
+            return false;
+        if (!m_bRunning)
+            return true;
+#ifdef WIN32
+        HANDLE hThread = reinterpret_cast<HANDLE>(m_Thread.native_handle());
+        if (SetThreadPriority(hThread, nPriority) == 0)
+            return false;
+#else
+#ifdef PRIO_THREAD
+        if (setpriority(PRIO_THREAD, m_Thread.native_handle(), nPriority) != 0)
+			return false;
+#else 
+        if (setpriority(PRIO_PROCESS, 0, nPriority) != 0)
+			return false;
+#endif
+#endif // WIN32
+		return true;
+	}
 
     // main thread loop - should override this method
     virtual void execute() { throw new std::runtime_error("CServiceThread::execute method should be overriden"); }
@@ -145,6 +182,7 @@ protected:
     std::atomic_bool m_bRunning;       // true when thread is running
     std::atomic_bool m_bStopRequested; // true if stop was requested
     std::thread m_Thread;
+    int m_nThreadPriority;
 };
 
 inline void func_thread_interrupt_point()
@@ -189,10 +227,14 @@ public:
     void stop() noexcept override
     {
         CServiceThread::stop();
-        m_condVar.notify_one();
+        sendSignal();
     }
 
-    void sendSignal() noexcept { m_condVar.notify_one(); }
+    void sendSignal() noexcept
+    {
+        std::unique_lock lock(m_mutex);
+        m_condVar.notify_one();
+    }
 
 protected:
     std::mutex m_mutex;
