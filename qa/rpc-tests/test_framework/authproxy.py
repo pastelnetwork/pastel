@@ -138,7 +138,6 @@ class AuthServiceProxy():
         headers = {'Host': self.__url.hostname,
                    'User-Agent': USER_AGENT,
                    'Authorization': self.__auth_header,
-                   'Connection': 'keep-alive',
                    'Content-type': 'application/json'}
         for attempt in range(HTTP_MAX_RETRIES):
             try:
@@ -146,9 +145,12 @@ class AuthServiceProxy():
                 return self._get_response()
             except (RemoteDisconnected, BadStatusLine, ConnectionRefusedError, BrokenPipeError, ConnectionResetError) as e:
                 if attempt < HTTP_MAX_RETRIES - 1:
-                    log.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {HTTP_RETRY_DELAY_SECS} seconds...")
+                    is_broken_pipe = isinstance(e, BrokenPipeError)
+                    if not is_broken_pipe or attempt > 0:
+                        log.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {HTTP_RETRY_DELAY_SECS} seconds...")
                     self.__conn.close()
-                    time.sleep(HTTP_RETRY_DELAY_SECS)
+                    if not is_broken_pipe:
+                        time.sleep(HTTP_RETRY_DELAY_SECS)
                 else:
                     log.error(f"All {HTTP_MAX_RETRIES} attempts failed. Raising exception.")
                     raise

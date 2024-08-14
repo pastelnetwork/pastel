@@ -257,6 +257,8 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def fake_nftact_tnx_tests(self):
         print("== NFT Registration Activation ticket transaction validation test ==")
 
+        self.update_mn_indexes(0, -1, 6)
+        
         # valid ticket
         nft_reg_result = self.nodes[self.top_mns[0].index].tickets("register", "nft", self.ticket, json.dumps(self.signatures_dict),
                                                                         self.top_mns[0].pastelid, self.passphrase,
