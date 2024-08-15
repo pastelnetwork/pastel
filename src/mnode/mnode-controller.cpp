@@ -934,7 +934,7 @@ void CMasterNodeMaintenanceThread::execute_internal()
         // try to sync from all available nodes, one step at a time
         masterNodeCtrl.masternodeSync.ProcessTick();
 
-        if (masterNodeCtrl.masternodeSync.IsBlockchainSynced() && !ShutdownRequested())
+        if (masterNodeCtrl.masternodeSync.IsBlockchainSynced() && !IsShutdownRequested())
         {
             nTick++;
 

@@ -3905,7 +3905,7 @@ bool CVerifyDB::VerifyDB(const CChainParams& chainparams, CCoinsView *coinsview,
             } else
                 nGoodTransactions += block.vtx.size();
         }
-        if (ShutdownRequested())
+        if (IsShutdownRequested())
             return true;
     }
     if (pindexFailure)

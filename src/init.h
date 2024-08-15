@@ -15,7 +15,7 @@ class CWallet;
 extern CWallet* pwalletMain;
 
 void StartShutdown();
-bool ShutdownRequested();
+bool IsShutdownRequested();
 /** Interrupt threads */
 void Interrupt(CServiceThreadGroup& threadGroup, CScheduler &scheduler);
 void Shutdown(CServiceThreadGroup& threadGroup, CScheduler &scheduler);

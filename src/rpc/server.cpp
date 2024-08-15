@@ -534,7 +534,7 @@ void RPCRunLater(const string& name, function<void(void)> func, int64_t nSeconds
 
 CRPCTable tableRPC;
 
-// Return async rpc queue•
+// Return async rpc queue
 shared_ptr<AsyncRPCQueue> getAsyncRPCQueue()
 {
     return AsyncRPCQueue::sharedInstance();

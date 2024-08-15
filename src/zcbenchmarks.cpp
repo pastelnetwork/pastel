@@ -44,7 +44,7 @@ using namespace std;
 void pre_wallet_load()
 {
     LogPrintf("%s: In progress...\n", __func__);
-    if (ShutdownRequested())
+    if (IsShutdownRequested())
         throw runtime_error("The node is shutting down");
 
     if (pwalletMain)

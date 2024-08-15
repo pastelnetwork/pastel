@@ -1,3 +1,6 @@
+// Copyright (c) 2018-2024 The Pastel Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <fstream>
 
 #include <gmock/gmock.h>
@@ -63,63 +66,63 @@ protected:
 };
 
 TEST_F(DeprecationTest, NonDeprecatedNodeKeepsRunning) {
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EnforceNodeDeprecation(DEPRECATION_HEIGHT - DEPRECATION_WARN_LIMIT - 1);
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, NodeNearDeprecationIsWarned) {
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_WARNING));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT - DEPRECATION_WARN_LIMIT);
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, NodeNearDeprecationWarningIsNotDuplicated) {
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EnforceNodeDeprecation(DEPRECATION_HEIGHT - DEPRECATION_WARN_LIMIT + 1);
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, NodeNearDeprecationWarningIsRepeatedOnStartup) {
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_WARNING));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT - DEPRECATION_WARN_LIMIT + 1, true);
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, DeprecatedNodeShutsDown) {
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_ERROR));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT);
-    EXPECT_TRUE(ShutdownRequested());
+    EXPECT_TRUE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, DeprecatedNodeErrorIsNotDuplicated) {
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EnforceNodeDeprecation(DEPRECATION_HEIGHT + 1);
-    EXPECT_TRUE(ShutdownRequested());
+    EXPECT_TRUE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, DeprecatedNodeErrorIsRepeatedOnStartup) {
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EXPECT_CALL(mock_, ThreadSafeMessageBox(_, "", CClientUIInterface::MSG_ERROR));
     EnforceNodeDeprecation(DEPRECATION_HEIGHT + 1, true);
-    EXPECT_TRUE(ShutdownRequested());
+    EXPECT_TRUE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, DeprecatedNodeIgnoredOnRegtest) {
     SelectParams(ChainNetwork::REGTEST);
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EnforceNodeDeprecation(DEPRECATION_HEIGHT+1);
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, DeprecatedNodeIgnoredOnTestnet) {
     SelectParams(ChainNetwork::TESTNET);
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
     EnforceNodeDeprecation(DEPRECATION_HEIGHT+1);
-    EXPECT_FALSE(ShutdownRequested());
+    EXPECT_FALSE(IsShutdownRequested());
 }
 
 TEST_F(DeprecationTest, AlertNotify)
