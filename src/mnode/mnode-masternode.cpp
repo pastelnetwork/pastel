@@ -477,7 +477,7 @@ void CMasternode::Check(const bool fForce, const bool bLockMain)
 {
     LOCK(cs_mn);
 
-    if (ShutdownRequested())
+    if (IsShutdownRequested())
         return;
 
     // check masternodes every 5 secs (MasternodeCheckSeconds) or in forced mode

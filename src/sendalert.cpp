@@ -170,9 +170,9 @@ void ThreadSendAlert()
     // Confirm
     if (!mapArgs.count("-sendalert"))
         return;
-    while ((gl_NodeManager.GetNodeCount() == 0) && !ShutdownRequested())
+    while ((gl_NodeManager.GetNodeCount() == 0) && !IsShutdownRequested())
         MilliSleep(500);
-    if (ShutdownRequested())
+    if (IsShutdownRequested())
         return;
 
     // Send
