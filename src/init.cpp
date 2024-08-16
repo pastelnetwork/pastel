@@ -96,9 +96,9 @@ static AMQPNotificationInterface* pAMQPNotificationInterface = nullptr;
 // Win32 LevelDB doesn't use file descriptors, and the ones used for
 // accessing block files don't count towards the fd_set size limit
 // anyway.
-constexpr size_t MIN_CORE_FILEDESCRIPTORS = 0;
+constexpr uint32_t MIN_CORE_FILEDESCRIPTORS = 0;
 #else
-constexpr size_t MIN_CORE_FILEDESCRIPTORS = 150;
+constexpr uint32_t MIN_CORE_FILEDESCRIPTORS = 150;
 #endif
 
 /** Used to pass flags to the Bind() function */
@@ -457,6 +457,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-listen", translate("Accept connections from outside (default: 1 if no -proxy or -connect)"));
     strUsage += HelpMessageOpt("-listenonion", strprintf(translate("Automatically create Tor hidden service (default: %d)"), DEFAULT_LISTEN_ONION));
     strUsage += HelpMessageOpt("-maxconnections=<n>", strprintf(translate("Maintain at most <n> connections to peers (default: %u)"), DEFAULT_MAX_PEER_CONNECTIONS));
+    strUsage += HelpMessageOpt("-fdsoftlimit=<n>", strprintf(translate("Set the file descriptor soft limit to <n> (default: %u)"), DEFAULT_FD_SOFT_LIMIT));
     strUsage += HelpMessageOpt("-maxreceivebuffer=<n>", strprintf(translate("Maximum per-connection receive buffer, <n>*1000 bytes (default: %u)"), 5000));
     strUsage += HelpMessageOpt("-maxsendbuffer=<n>", strprintf(translate("Maximum per-connection send buffer, <n>*1000 bytes (default: %u)"), 1000));
     strUsage += HelpMessageOpt("-onion=<ip:port>", strprintf(translate("Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)"), "-proxy"));
@@ -1021,13 +1022,15 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
 
     // Make sure enough file descriptors are available
     int nBind = max((int)mapArgs.count("-bind") + (int)mapArgs.count("-whitebind"), 1);
+    uint32_t nFdSoftLimit = static_cast<uint32_t>(GetArg("-fdsoftlimit", DEFAULT_FD_SOFT_LIMIT));
     gl_nMaxConnections = static_cast<uint32_t>(GetArg("-maxconnections", DEFAULT_MAX_PEER_CONNECTIONS));
     gl_nMaxConnections = min(gl_nMaxConnections, static_cast<uint32_t>(FD_SETSIZE - nBind - MIN_CORE_FILEDESCRIPTORS));
-    const size_t nFD = RaiseFileDescriptorLimit(gl_nMaxConnections + MIN_CORE_FILEDESCRIPTORS);
-    if (nFD < MIN_CORE_FILEDESCRIPTORS)
+    const uint32_t nFdLimit = RaiseFileDescriptorLimit(max(nFdSoftLimit, gl_nMaxConnections + MIN_CORE_FILEDESCRIPTORS));
+    LogPrintf("File descriptor limit: %u\n", nFdLimit);
+    if (nFdLimit < MIN_CORE_FILEDESCRIPTORS)
         return InitError(translate("Not enough file descriptors available."));
-    if (nFD - MIN_CORE_FILEDESCRIPTORS < gl_nMaxConnections)
-        gl_nMaxConnections = nFD - MIN_CORE_FILEDESCRIPTORS;
+    if (nFdLimit - MIN_CORE_FILEDESCRIPTORS < gl_nMaxConnections)
+        gl_nMaxConnections = nFdLimit - MIN_CORE_FILEDESCRIPTORS;
 
     // if using block pruning, then disable txindex
     // also disable the wallet (for now, until SPV support is implemented in wallet)
@@ -1292,7 +1295,7 @@ bool AppInit2(CServiceThreadGroup& threadGroup, CScheduler& scheduler)
     LogPrintf("Default data directory %s\n", GetDefaultDataDir().string());
     LogPrintf("Using data directory %s\n", strDataDir);
     LogPrintf("Using config file %s\n", GetConfigFile().string());
-    LogPrintf("Using at most %u connections (%i file descriptors available)\n", gl_nMaxConnections, nFD);
+    LogPrintf("Using at most %u connections (%i file descriptors available)\n", gl_nMaxConnections, nFdLimit);
 #ifdef ENABLE_TICKET_COMPRESS
     LogPrintf("Ticket compression is enabled\n");
 #endif

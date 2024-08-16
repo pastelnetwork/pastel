@@ -561,26 +561,32 @@ bool TruncateFile(FILE *file, unsigned int length) {
 
 /**
  * this function tries to raise the file descriptor limit to the requested number.
- * It returns the actual file descriptor limit (which may be more or less than nMinFD)
+ * It returns the actual file descriptor limit (which may be more or less than nFDSoftLimit)
  */
-size_t RaiseFileDescriptorLimit(const size_t nMinFD)
+uint32_t RaiseFileDescriptorLimit(const uint32_t nFDSoftLimit)
 {
 #if defined(WIN32)
     return 2048;
 #else
-    struct rlimit limitFD;
-    if (getrlimit(RLIMIT_NOFILE, &limitFD) != -1)
+    rlim_t soft_limit = static_cast<rlim_t>(nFDSoftLimit);
+    if (!soft_limit)
+        soft_limit = DEFAULT_FD_SOFT_LIMIT;
+    struct rlimit rl;
+    memset(&rl, 0, sizeof(rl));
+    if (getrlimit(RLIMIT_NOFILE, &rl) != -1)
     {
-        if (limitFD.rlim_cur < (rlim_t)nMinFD) {
-            limitFD.rlim_cur = nMinFD;
-            if (limitFD.rlim_cur > limitFD.rlim_max)
-                limitFD.rlim_cur = limitFD.rlim_max;
-            setrlimit(RLIMIT_NOFILE, &limitFD);
-            getrlimit(RLIMIT_NOFILE, &limitFD);
+        if (soft_limit > rl.rlim_max)
+			soft_limit = rl.rlim_max;
+        if (soft_limit > rl.rlim_cur)
+        {
+            // try to set new fd soft limit 
+            rl.rlim_cur = soft_limit;
+            setrlimit(RLIMIT_NOFILE, &rl);
+            getrlimit(RLIMIT_NOFILE, &rl);
         }
-        return limitFD.rlim_cur;
+        return rl.rlim_cur;
     }
-    return nMinFD; // getrlimit failed, assume it's fine
+    return nFDSoftLimit; // getrlimit failed, assume it's fine
 #endif
 }
 
