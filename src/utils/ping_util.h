@@ -1,5 +1,5 @@
 #pragma once
-// Copyright (c) 2022-2023 The Pastel Core developers
+// Copyright (c) 2022-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <chrono>
@@ -9,7 +9,7 @@
 class CPingUtility
 {
 public:
-    CPingUtility();
+    CPingUtility() noexcept;
 
     enum class PingResult
     {
@@ -23,6 +23,8 @@ public:
 private:
     std::atomic_bool m_bPingUtilityChecked;
     std::atomic_bool m_bPingUtilityAvailable;
+    std::atomic_bool m_bPingUtilityFound;
+
     std::string m_sPingPath;  // Path to the ping utility
     std::chrono::time_point<std::chrono::steady_clock> m_lastCheckTime;
     static constexpr int m_recheckIntervalSeconds = 3600;  // Recheck every 6 hours
