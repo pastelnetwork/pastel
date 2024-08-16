@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2023 The Pastel Core developers
+// Copyright (c) 2022-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <utils/ping_util.h>
@@ -9,9 +9,10 @@
 using namespace std;
 using namespace chrono;
 
-CPingUtility::CPingUtility() : 
+CPingUtility::CPingUtility() noexcept : 
     m_bPingUtilityChecked(false),
-    m_bPingUtilityAvailable(false)
+    m_bPingUtilityAvailable(false),
+    m_bPingUtilityFound(false)
 {}
 
 bool CPingUtility::pingHostInternal(const std::string& sHostName)
@@ -34,6 +35,7 @@ CPingUtility::PingResult CPingUtility::pingHost(const string& sHostName)
         if (!m_bPingUtilityAvailable)
 		{
 			LogPrintf("%s\n", error);
+            m_bPingUtilityFound = false;
 		}
         m_bPingUtilityChecked = true;
         m_lastCheckTime = steady_clock::now();
@@ -67,7 +69,11 @@ bool CPingUtility::checkPingUtility(string &error)
     }
 
     m_sPingPath = stdOut;
-    LogPrintf("Found ping utility at [%s]\n", m_sPingPath);
+    if (!m_bPingUtilityFound)
+	{
+		LogPrintf("Found ping utility at [%s]\n", m_sPingPath);
+		m_bPingUtilityFound = true;
+	}
     if (!pingHostInternal("127.0.0.1"))
     {
 		error = "Ping utility is not working";
