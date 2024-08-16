@@ -30,6 +30,8 @@
 #include <utils/utiltime.h>
 #include <utils/logmanager.h>
 
+/** Default file descriptor soft limit. */
+constexpr uint32_t DEFAULT_FD_SOFT_LIMIT = 2048;
 
 /** Signals for translation. */
 class CTranslationInterface
@@ -168,7 +170,7 @@ void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void ParseParameters(int argc, const char*const argv[]);
 void FileCommit(FILE *fileout);
 bool TruncateFile(FILE *file, unsigned int length);
-size_t RaiseFileDescriptorLimit(const size_t nMinFD);
+uint32_t RaiseFileDescriptorLimit(const uint32_t nMinFD);
 void AllocateFileRange(FILE *file, unsigned int offset, unsigned int length);
 bool RenameOver(fs::path src, fs::path dest);
 bool TryCreateDirectory(const fs::path& p);

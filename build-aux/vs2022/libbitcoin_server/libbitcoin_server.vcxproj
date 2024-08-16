@@ -93,6 +93,7 @@
     <ClCompile Include="..\..\..\src\alert.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcoperation.cpp" />
     <ClCompile Include="..\..\..\src\asyncrpcqueue.cpp" />
+    <ClCompile Include="..\..\..\src\blockscanner.cpp" />
     <ClCompile Include="..\..\..\src\chain.cpp" />
     <ClCompile Include="..\..\..\src\checkpoints.cpp" />
     <ClCompile Include="..\..\..\src\dbwrapper.cpp" />
@@ -209,6 +210,7 @@
     <ClInclude Include="..\..\..\src\alert.h" />
     <ClInclude Include="..\..\..\src\asyncrpcoperation.h" />
     <ClInclude Include="..\..\..\src\asyncrpcqueue.h" />
+    <ClInclude Include="..\..\..\src\blockscanner.h" />
     <ClInclude Include="..\..\..\src\chain.h" />
     <ClInclude Include="..\..\..\src\checkpoints.h" />
     <ClInclude Include="..\..\..\src\checkqueue.h" />
