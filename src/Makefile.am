@@ -313,6 +313,7 @@ PASTEL_CORE_H = \
   amqp/amqpsender.h \
   asyncrpcoperation.h \
   asyncrpcqueue.h \
+  blockscanner.h \
   chain.h \
   chain_options.h \
   chainparams.h \
@@ -449,6 +450,7 @@ libbitcoin_server_a_SOURCES = \
   alertkeys.h \
   asyncrpcoperation.cpp \
   asyncrpcqueue.cpp \
+  blockscanner.cpp \
   chain.cpp \
   chain_options.cpp \
   checkpoints.cpp \
