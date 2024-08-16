@@ -952,14 +952,6 @@ void CPastelMinerThread::execute()
     }
 }
 
-#ifdef ENABLE_WALLET
-void static PastelMiner(const int nThreadNo, CWallet *pwallet)
-#else
-void static PastelMiner(const int nThreadNo)
-#endif
-{
-}
-
 static mutex g_minerThreadsMutex;
 static CServiceThreadGroup gl_minerThreads;
 
