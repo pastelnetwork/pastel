@@ -1,4 +1,4 @@
-Pastel v2.1 - Vermeer
+Pastel v2.2.7 - Vermeer
 
 [![PastelNetwork](https://circleci.com/gh/pastelnetwork/pastel.svg?style=shield)](https://app.circleci.com/pipelines/github/pastelnetwork/pastel)
 
