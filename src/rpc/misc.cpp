@@ -1123,10 +1123,10 @@ UniValue getUtxosDataWithSender(const address_vector_t& vDestAddresses, const he
 
 UniValue getUtxosData(const address_vector_t &vDestAddresses, const height_range_opt_t &height_range, 
                       const address_opt_t &senderAddress, bool bIncludeSender, bool bJustSendersAddress,
-                      bool bScanMemPoolTxs)
+                      bool bScanMemPoolTxs, const string &sStatus)
 {
     if (senderAddress)
-        return getUtxosDataWithSender(vDestAddresses, height_range, senderAddress.value(), 
+        return getUtxosDataWithSender(vDestAddresses, height_range, senderAddress.value(),
                                       bJustSendersAddress, bScanMemPoolTxs);
 
     address_unspent_vector_t vUnspentOutputs;
@@ -1139,6 +1139,42 @@ UniValue getUtxosData(const address_vector_t &vDestAddresses, const height_range
         [](const CAddressUnspentDbEntry& a, const CAddressUnspentDbEntry& b) -> bool {
             return a.second.blockHeight < b.second.blockHeight;
         });
+
+    if (sStatus != "all")
+    {
+        address_unspent_vector_t vUnspentOutputsSpending;
+        v_uint256 vtxid;
+        mempool.queryHashes(vtxid);
+        for (auto txid : vtxid) {
+            CTransaction tx;
+            uint256 hashBlock;
+            CBlockIndex *blockindex = nullptr;
+            if (!GetTransaction(txid, tx, Params().GetConsensus(), hashBlock, true, nullptr, blockindex)) {
+                continue;
+                //TODO ERROR
+            }
+            for (auto txin : tx.vin) {
+                if (txin.prevout.IsNull())
+                    continue;
+                if (sStatus == "unspent")
+                    vUnspentOutputs.erase(std::remove_if(vUnspentOutputs.begin(), vUnspentOutputs.end(),
+                        [&txin](const CAddressUnspentDbEntry& entry) {
+                            return entry.first.txid == txin.prevout.hash && entry.first.index == txin.prevout.n;
+                        }), vUnspentOutputs.end());
+                else if (sStatus == "spending") {
+                    auto it = std::find_if(vUnspentOutputs.begin(), vUnspentOutputs.end(),
+                        [&txin](const CAddressUnspentDbEntry& entry) {
+                            return entry.first.txid == txin.prevout.hash && entry.first.index == txin.prevout.n;
+                        });
+                    if (it != vUnspentOutputs.end())
+                        vUnspentOutputsSpending.push_back(*it);
+                }
+            }
+        }
+        if (sStatus == "spending")
+            vUnspentOutputs = std::move(vUnspentOutputsSpending);
+    }
+
 
     UniValue utxos(UniValue::VARR);
     utxos.reserve(vUnspentOutputs.size());
@@ -1231,7 +1267,7 @@ UniValue getaddressutxos(const UniValue& params, bool fHelp)
 
     if (fHelp || params.size() != 1)
         throw runtime_error(
-R"(getaddressutxos {"addresses": ["taddr", ...], ("chainInfo": true|false)}
+R"(getaddressutxos {"addresses": ["taddr", ...], ("chainInfo": true|false), ("status": "all"|"unspent"|"spending")}
 
 Returns all unspent outputs for an address.
 )" + disabledMsg + R"(
@@ -1242,7 +1278,8 @@ Arguments:
       "address"  (string) The base58check encoded address
       ,...
     ],
-  "chainInfo"  (boolean, optional, default=false) Include chain info with results
+  "chainInfo",  (boolean, optional, default=false) Include chain info with results
+  "status"  (string, optional, default=all) Spend status of UTXO. Options: "all" - all UTXOs are included, "unspent" - excludes UTXOs in the unconfirmed transactions, "spending" - only UTXOs in the unconfirmed transactions
 }
 (or)
 "address"  (string) The base58check encoded address
@@ -1285,17 +1322,25 @@ Examples:
     rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSUTXOS);
 
     bool includeChainInfo = false;
+    string sStatus = "all";
     if (params[0].isObject())
     {
         UniValue chainInfo = find_value(params[0].get_obj(), "chainInfo");
         if (!chainInfo.isNull())
             includeChainInfo = get_bool_value(chainInfo);
+        UniValue status = find_value(params[0].get_obj(), "status");
+        if (!status.isNull())
+        {
+            sStatus = status.get_str();
+            if (sStatus != "all" && sStatus != "unspent" && sStatus != "spending")
+                throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid status parameter");
+        }
     }
     address_vector_t vDestAddresses;
     if (!getAddressesFromParams(params, vDestAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
-    UniValue utxos = getUtxosData(vDestAddresses, nullopt, nullopt, false, false, false);
+    UniValue utxos = getUtxosData(vDestAddresses, nullopt, nullopt, false, false, false, sStatus);
 
     if (!includeChainInfo)
         return utxos;
@@ -1411,7 +1456,7 @@ Examples:
     if (!getAddressesFromParams(params, vDestAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel destination address");
 
-    UniValue utxos = getUtxosData(vDestAddresses, height_range, senderAddress, true, bSimpleInfo, bScanMempoolTxs);
+    UniValue utxos = getUtxosData(vDestAddresses, height_range, senderAddress, true, bSimpleInfo, bScanMempoolTxs, "all");
     return utxos;
 }
 
