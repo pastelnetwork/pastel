@@ -122,6 +122,7 @@
     <ClInclude Include="..\..\..\src\chain_options.h" />
     <ClInclude Include="..\..\..\src\coins.h" />
     <ClInclude Include="..\..\..\src\compressor.h" />
+    <ClInclude Include="..\..\..\src\config\port_config.h" />
     <ClInclude Include="..\..\..\src\consensus\consensus.h" />
     <ClInclude Include="..\..\..\src\consensus\params.h" />
     <ClInclude Include="..\..\..\src\consensus\upgrades.h" />
@@ -132,7 +133,6 @@
     <ClInclude Include="..\..\..\src\key_constants.h" />
     <ClInclude Include="..\..\..\src\key_io.h" />
     <ClInclude Include="..\..\..\src\netbase.h" />
-    <ClInclude Include="..\..\..\src\port_config.h" />
     <ClInclude Include="..\..\..\src\primitives\block.h" />
     <ClInclude Include="..\..\..\src\primitives\transaction.h" />
     <ClInclude Include="..\..\..\src\protocol.h" />

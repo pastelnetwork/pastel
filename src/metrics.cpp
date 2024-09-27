@@ -25,6 +25,7 @@
 #include <ui_interface.h>
 #include <utilmoneystr.h>
 #include <netmsg/nodemanager.h>
+#include <mining/miner.h>
 
 using namespace std;
 
@@ -268,13 +269,15 @@ int printMiningStatus(bool mining)
                                    GetArg("-equihashsolver", "default"), nThreads) << endl;
         else
         {
-            bool fvNodesEmpty = gl_NodeManager.GetNodeCount() == 0;
+            const bool fvNodesEmpty = gl_NodeManager.GetNodeCount() == 0;
             if (fvNodesEmpty)
                 cout << translate("Mining is paused while waiting for connections.") << endl;
             else if (fnIsInitialBlockDownload(consensusParams))
                 cout << translate("Mining is paused while downloading blocks.") << endl;
+            else if (!gl_bEligibleForMiningNextBlock)
+                cout << translate("Mining is paused (not eligible to mine next block).") << endl;
             else
-                cout << translate("Mining is paused (a JoinSplit may be in progress).") << endl;
+                cout << translate("Mining is paused.") << endl;
         }
         lines++;
     } else {

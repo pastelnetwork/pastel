@@ -14,6 +14,9 @@
     <Filter Include="Source Files\script">
       <UniqueIdentifier>{25589cb1-47ee-4baa-8c2f-13098b8c1c58}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\config">
+      <UniqueIdentifier>{8475fc84-56ca-4579-ada8-0b0f371d2714}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\amount.cpp">
@@ -168,9 +171,6 @@
     <ClInclude Include="..\..\..\src\utiltest.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\src\port_config.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\src\script\scripttype.h">
       <Filter>Source Files\script</Filter>
     </ClInclude>
@@ -179,6 +179,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\src\chain_options.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\src\config\port_config.h">
+      <Filter>Source Files\config</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -594,7 +594,7 @@ string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-rpcbind=<addr>", translate("Bind to given address to listen for JSON-RPC connections. Use [host]:port notation for IPv6. This option can be specified multiple times (default: bind to all interfaces)"));
     strUsage += HelpMessageOpt("-rpcuser=<user>", translate("Username for JSON-RPC connections"));
     strUsage += HelpMessageOpt("-rpcpassword=<pw>", translate("Password for JSON-RPC connections"));
-    strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(translate("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u)"), 9932, 19932));
+    strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(translate("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u or devnet: %u)"), MAINNET_DEFAULT_RPC_PORT, TESTNET_DEFAULT_RPC_PORT, DEVNET_DEFAULT_RPC_PORT));
     strUsage += HelpMessageOpt("-rpcallowip=<ip>", translate("Allow JSON-RPC connections from specified source. Valid for <ip> are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24). This option can be specified multiple times"));
     strUsage += HelpMessageOpt("-rpcthreads=<n>", strprintf(translate("Set the number of threads to service RPC calls (default: %d)"), DEFAULT_HTTP_THREADS));
     if (showDebug) {

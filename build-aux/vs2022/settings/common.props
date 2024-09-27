@@ -6,7 +6,7 @@
     <BIN_DIR>$(PSL_ROOT)bin\</BIN_DIR>
     <VS>vs2022</VS>
     <VSCOMMON>vs</VSCOMMON>
-    <VC>17</VC>
+    <VC>20</VC>
     <RELEASE_OUTDIR>$(BIN_DIR)$(VS)\$(Configuration)_$(PlatformName)\</RELEASE_OUTDIR>
     <DEPENDS>$(PSL_ROOT)depends\x86_64-pc-windows-msvc\</DEPENDS>
     <LIBDBGSFX Condition="'$(Configuration)'=='Debug'">d</LIBDBGSFX>

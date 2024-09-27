@@ -21,7 +21,7 @@ using namespace std;
  * \param paramValue - rpc parameter value (block hash or block height)
  * \return block hash or block height
  */
-variant<uint32_t, uint256> rpc_get_block_hash_or_height(const UniValue& paramValue)
+block_id_t rpc_get_block_hash_or_height(const UniValue& paramValue)
 {
     if (paramValue.isNull())
 		throw JSONRPCError(RPC_INVALID_PARAMETER, "Block hash or height parameter is required");

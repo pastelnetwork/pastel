@@ -1000,7 +1000,7 @@ public:
     bool AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, const bool fUpdate);
     bool AddTxToWallet(const CTransaction& tx, const CBlock* pblock, const bool fUpdate);
     void EraseFromWallet(const uint256 &hash) override;
-    int ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate = false);
+    int ScanForWalletTransactions(const CBlockIndex* pindexStart, bool fUpdate = false);
     void ReacceptWalletTransactions();
     void ResendWalletTransactions(int64_t nBestBlockTime) override;
     v_uint256 ResendWalletTransactionsBefore(int64_t nTime);
