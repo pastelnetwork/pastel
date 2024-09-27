@@ -2081,15 +2081,13 @@ void CWalletTx::GetAccountAmounts(const string& strAccount, CAmount& nReceived,
         LOCK(pwallet->cs_wallet);
         for (const auto &r : listReceived)
         {
-            if (pwallet->mapAddressBook.count(r.destination))
+            if (strAccount.empty())
+                nReceived += r.amount;
+            else if (pwallet->mapAddressBook.count(r.destination))
             {
                 const auto mi = pwallet->mapAddressBook.find(r.destination);
                 if (mi != pwallet->mapAddressBook.cend() && mi->second.name == strAccount)
                     nReceived += r.amount;
-            }
-            else if (strAccount.empty())
-            {
-                nReceived += r.amount;
             }
         }
     }
@@ -2106,13 +2104,13 @@ bool CWalletTx::WriteToDisk(CWalletDB *pwalletdb)
  * from or to us. If fUpdate is true, found transactions that already
  * exist in the wallet will be updated.
  */
-int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
+int CWallet::ScanForWalletTransactions(const CBlockIndex* pindexStart, bool fUpdate)
 {
     int ret = 0;
     int64_t nNow = GetTime();
     const CChainParams& chainParams = Params();
 
-    CBlockIndex* pindex = pindexStart;
+    const CBlockIndex* pindex = pindexStart;
     v_uint256 myTxHashes;
 
     {

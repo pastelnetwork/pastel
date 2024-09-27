@@ -202,7 +202,7 @@ Examples:
         string sKeyError;
         const CKey pslKey = ani2psl_secret(aniSecret, sKeyError);
         if (!pslKey.IsValid())
-            throw JSONRPCError(RPC_INVALID_PARAMETER, tinyformat::format("Invalid private key, %s", sKeyError.c_str()));
+            throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Invalid private key, %s", sKeyError.c_str()));
         return keyIO.EncodeSecret(pslKey);
     }
     return NullUniValue;

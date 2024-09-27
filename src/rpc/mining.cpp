@@ -545,7 +545,7 @@ Examples:
 )" + HelpExampleCli("getblockmininginfo", "1000 10")
    + HelpExampleRpc("getblockmininginfo", "1000 10"));
 
-    auto block_id = rpc_get_block_hash_or_height(params[0]);
+    const auto block_id = rpc_get_block_hash_or_height(params[0]);
 
     uint32_t nBlockCount = 1;
     if (params.size() > 1)

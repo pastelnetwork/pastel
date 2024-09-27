@@ -16,6 +16,7 @@
 #include <chain.h>
 #include <key_io.h>
 #include <rpc/server.h>
+#include <rpc/chain-rpc-utils.h>
 #include <init.h>
 #include <main.h>
 #include <script/script.h>
@@ -84,16 +85,17 @@ UniValue importprivkey(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
-    if (fHelp || params.size() < 1 || params.size() > 3)
+    if (fHelp || params.size() < 1 || params.size() > 4)
         throw runtime_error(
-R"(importprivkey "zcashprivkey" ( "label" rescan )
+R"(importprivkey "zcashprivkey" ( "label" rescan rescan_start )
 
 Adds a private key (as returned by dumpprivkey) to your wallet.
 
 Arguments:
-1. "zcashprivkey"   (string, required) The private key (see dumpprivkey)
-2. "label"          (string, optional, default="") An optional label
-3. rescan           (boolean, optional, default=true) Rescan the wallet for transactions
+1. "zcashprivkey"  (string, required) The private key (see dumpprivkey)
+2. "label"         (string, optional, default="") An optional label
+3. rescan          (boolean, optional, default=true) Rescan the wallet for transactions
+4. rescan_start    (numeric or string, optional, default=0) Block height or hash to start rescan from
 
 Note: This call can take minutes to complete if rescan is true.
 
@@ -114,7 +116,7 @@ As a JSON-RPC call
     EnsureWalletIsUnlocked();
 
     string strSecret = params[0].get_str();
-    string strLabel = "";
+    string strLabel;
     if (params.size() > 1)
         strLabel = params[1].get_str();
 
@@ -122,6 +124,11 @@ As a JSON-RPC call
     bool fRescan = true;
     if (params.size() > 2)
         fRescan = params[2].get_bool();
+
+    // Height or hash to rescan from, default is 0
+    block_id_t nRescanBlockId = 0u;
+    if (params.size() > 3)
+        nRescanBlockId = rpc_get_block_hash_or_height(params[3]);
 
     KeyIO keyIO(Params());
 
@@ -150,8 +157,22 @@ As a JSON-RPC call
         // whenever a key is imported, we need to scan the whole chain
         pwalletMain->nTimeFirstKey = 1; // 0 would be considered 'no value'
 
-        if (fRescan) {
-            pwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
+        if (fRescan)
+        {
+            CBlockIndex* pindex = nullptr;
+            if (holds_alternative<uint32_t>(nRescanBlockId))
+                pindex = chainActive[get<uint32_t>(nRescanBlockId)];
+            else
+            {
+                const auto it = mapBlockIndex.find(get<uint256>(nRescanBlockId));
+                if (it != mapBlockIndex.cend())
+                    pindex = it->second;
+            }
+            if (!pindex)
+                throw JSONRPCError(RPC_INVALID_PARAMETER, 
+                    strprintf("Block not found: %s", 
+                        holds_alternative<uint32_t>(nRescanBlockId) ? to_string(get<uint32_t>(nRescanBlockId)) : get<uint256>(nRescanBlockId).ToString()));
+            pwalletMain->ScanForWalletTransactions(pindex, true);
         }
     }
 
@@ -163,16 +184,17 @@ UniValue importaddress(const UniValue& params, bool fHelp)
     if (!EnsureWalletIsAvailable(fHelp))
         return NullUniValue;
     
-    if (fHelp || params.size() < 1 || params.size() > 3)
+    if (fHelp || params.size() < 1 || params.size() > 4)
         throw runtime_error(
-R"(importaddress "address" ( "label" rescan )
+R"(importaddress "address" ( "label" rescan rescan_start )
 
 Adds an address or script (in hex) that can be watched as if it were in your wallet but cannot be used to spend.
 
 Arguments:
-1. "address"          (string, required) The address
-2. "label"            (string, optional, default="") An optional label
-3. rescan             (boolean, optional, default=true) Rescan the wallet for transactions
+1. "address"     (string, required) The address
+2. "label"       (string, optional, default="") An optional label
+3. rescan        (boolean, optional, default=true) Rescan the wallet for transactions
+4. rescan_start  (numeric or string, optional, default=0) Block height or hash to start rescan from
 
 Note: This call can take minutes to complete if rescan is true.
 
@@ -195,12 +217,12 @@ As a JSON-RPC call
     if (IsValidDestination(dest))
         script = GetScriptForDestination(dest);
     else if (IsHex(params[0].get_str())) {
-        vector<unsigned char> data(ParseHex(params[0].get_str()));
+        v_uint8 data(ParseHex(params[0].get_str()));
         script = CScript(data.begin(), data.end());
     } else
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address or script");
 
-    string strLabel = "";
+    string strLabel;
     if (params.size() > 1)
         strLabel = params[1].get_str();
 
@@ -208,6 +230,11 @@ As a JSON-RPC call
     bool fRescan = true;
     if (params.size() > 2)
         fRescan = params[2].get_bool();
+
+    // Height or hash to rescan from, default is 0
+    block_id_t nRescanBlockId = 0u;
+    if (params.size() > 3)
+        nRescanBlockId = rpc_get_block_hash_or_height(params[3]);
 
     {
         if (IsMineSpendable(::GetIsMine(*pwalletMain, script)))
@@ -228,7 +255,19 @@ As a JSON-RPC call
 
         if (fRescan)
         {
-            pwalletMain->ScanForWalletTransactions(chainActive.Genesis(), true);
+            CBlockIndex* pindex = nullptr;
+            if (holds_alternative<uint32_t>(nRescanBlockId))
+                pindex = chainActive[get<uint32_t>(nRescanBlockId)];
+            else {
+                const auto it = mapBlockIndex.find(get<uint256>(nRescanBlockId));
+                if (it != mapBlockIndex.cend())
+                    pindex = it->second;
+            }
+            if (!pindex)
+                throw JSONRPCError(RPC_INVALID_PARAMETER,
+                                   strprintf("Block not found: %s",
+                                             holds_alternative<uint32_t>(nRescanBlockId) ? to_string(get<uint32_t>(nRescanBlockId)) : get<uint256>(nRescanBlockId).ToString()));
+            pwalletMain->ScanForWalletTransactions(pindex, true);
             pwalletMain->ReacceptWalletTransactions();
         }
     }
