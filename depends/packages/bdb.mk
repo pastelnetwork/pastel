@@ -7,8 +7,12 @@ $(package)_build_subdir=build_unix
 $(package)_patches=bdb.patch
 
 define $(package)_set_vars
-$(package)_config_opts=--disable-shared --enable-cxx --disable-replication --enable-option-checking
-$(package)_config_opts_mingw32=--enable-mingw --with-mutex=POSIX/pthreads/library/x86_64/gcc-assembly
+$(package)_config_opts=--disable-shared
+$(package)_config_opts+=--enable-cxx
+$(package)_config_opts+=--disable-replication
+$(package)_config_opts+=--enable-option-checking
+$(package)_config_opts_mingw32=--enable-mingw
+$(package)_config_opts_mingw32+=--with-mutex=POSIX/pthreads/library/x86_64/gcc-assembly
 $(package)_config_opts_linux=--with-pic
 $(package)_config_opts_debug=--enable-debug
 $(package)_cxxflags+=-std=c++20
