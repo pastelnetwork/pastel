@@ -11,10 +11,7 @@
 #include <mnode/tickets/ticket.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/mnode-controller.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
 
 /**
  * Common ticket validation.

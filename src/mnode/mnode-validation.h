@@ -5,10 +5,7 @@
 #include <string>
 
 #include <main.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif
 
 bool GetBlockHash(uint256& hashRet, int nBlockHeight);
 bool GetUTXOCoin(const COutPoint& outpoint, CCoins& coins);

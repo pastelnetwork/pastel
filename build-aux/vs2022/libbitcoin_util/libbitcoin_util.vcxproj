@@ -163,6 +163,7 @@
     <ClInclude Include="..\..\..\src\utils\str_utils.h" />
     <ClInclude Include="..\..\..\src\utils\svc_thread.h" />
     <ClInclude Include="..\..\..\src\utils\sync.h" />
+    <ClInclude Include="..\..\..\src\utils\timer.h" />
     <ClInclude Include="..\..\..\src\utils\tinyformat.h" />
     <ClInclude Include="..\..\..\src\utils\trimmean.h" />
     <ClInclude Include="..\..\..\src\utils\uint252.h" />

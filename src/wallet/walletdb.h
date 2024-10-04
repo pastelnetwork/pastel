@@ -4,6 +4,7 @@
 // Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#ifdef ENABLE_WALLET
 #include <list>
 #include <cstdint>
 #include <string>
@@ -223,3 +224,5 @@ private:
 
     void execute_internal();
 };
+#endif // ENABLE_WALLET
+

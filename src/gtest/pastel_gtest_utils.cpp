@@ -49,6 +49,26 @@ string generateRandomId(const size_t nLength)
     return s;
 }
 
+void generateRandomData(v_uint8 &v, const size_t nLength)
+{
+    static random_device rd;
+    static mt19937_64 gen(rd());
+    static uniform_int_distribution<uint64_t> dist;
+
+    if (v.capacity() < nLength)
+        v.reserve(nLength);
+
+    v.clear();
+    for (size_t i = 0; i < nLength; i += sizeof(uint64_t))
+    {
+        const uint64_t rand_value = dist(gen);
+        const size_t nToCopy = std::min(sizeof(uint64_t), nLength - i);
+        v.insert(v.end(), 
+            reinterpret_cast<const uint8_t*>(&rand_value),
+            reinterpret_cast<const uint8_t*>(&rand_value) + nToCopy);
+    }
+}
+
 string generateRandomTxId()
 {
     static random_device rd;

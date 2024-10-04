@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <variant>
 #include <vector>
+#include <set>
+#include <memory>
 
 #include <utils/uint256.h>
 #include <script/interpreter.h>
@@ -68,7 +70,8 @@ enum txnouttype
     TX_NULL_DATA
 };
 
-class CNoDestination {
+class CNoDestination
+{
 public:
     friend bool operator==(const CNoDestination &a, const CNoDestination &b) { return true; }
     friend bool operator!=(const CNoDestination &a, const CNoDestination &b) { return false; }
@@ -101,6 +104,29 @@ const char* GetTxnOutputType(const txnouttype t);
 bool GetTxDestinationHash(const CTxDestination& dest, uint160& hashBytes, ScriptType& type);
 
 using txdest_vector_t = std::vector<CTxDestination>;
+using txdest_set_t = std::set<CTxDestination>;
+using txdest_unique_set_t = std::unique_ptr<txdest_set_t>;
+using txdest_group_set_t = std::set<txdest_set_t>;
+
+// Custom comparator for unique_ptr<txdest_set_t>
+struct CompareTxDestSet
+{
+    bool operator()(const txdest_unique_set_t& lhs, const txdest_unique_set_t& rhs) const
+    {
+        if (!lhs || !rhs)
+            return false;
+        return *lhs < *rhs;  // Compare the underlying sets
+    }
+};
+using txdest_unique_group_set_t = std::set<txdest_unique_set_t, CompareTxDestSet>;
+
+struct CompareTxDestConstIterator
+{
+    bool operator()(const txdest_unique_group_set_t::const_iterator& lhs, const txdest_unique_group_set_t::const_iterator& rhs) const
+    {
+        return *lhs < *rhs;
+    }
+};
 
 /**
  * Parse a scriptPubKey and identify script type for standard scripts. If

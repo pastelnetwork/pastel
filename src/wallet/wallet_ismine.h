@@ -1,12 +1,12 @@
 #pragma once
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2021 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-
-#include "key.h"
-#include "script/standard.h"
+#ifdef ENABLE_WALLET
+#include <key.h>
+#include <script/standard.h>
 #include <string>
 
 class CKeyStore;
@@ -58,3 +58,6 @@ constexpr auto ISMINE_FILTERSTR_ALL            = "all"; // watch only & spendabl
 
 // convert string to isminetype
 isminetype StrToIsMineType(const std::string& s, const isminetype DefaultIsMineType = isminetype::NO) noexcept;
+
+#endif // ENABLE_WALLET
+

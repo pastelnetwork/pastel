@@ -331,7 +331,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_ticket_types.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_payments.cpp">
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_cache.cpp">
       <Filter>UnitTest Files\test_mnode</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\src\gtest\test_mnode\mock_p2fms_txbuilder.cpp">

@@ -2,10 +2,9 @@
 // Copyright (c) 2021-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
-#include <string>
-
 #include <univalue.h>
 
+#include <utils/vector_types.h>
 #include <utils/uint256.h>
 #include <consensus/params.h>
 
@@ -17,6 +16,9 @@ std::string generateRandomId(const size_t nLength);
 
 // generate random txid
 std::string generateRandomTxId();
+
+// generate random data
+void generateRandomData(v_uint8 &v, const size_t nLength);
 
 // generate random uint256
 uint256 generateRandomUint256();

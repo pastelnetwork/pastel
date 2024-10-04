@@ -12,9 +12,7 @@
 #include <mnode/tickets/collection-act.h>
 #include <mnode/tickets/ticket-utils.h>
 #include <mnode/ticket-mempool-processor.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
 
 using json = nlohmann::json;
 using namespace std;

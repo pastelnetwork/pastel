@@ -25,10 +25,7 @@
 #include <mnode/mnode-controller.h>
 #include <mnode/tickets/pastelid-reg.h>
 #include <netmsg/nodemanager.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
 
 using namespace std;
 
@@ -211,21 +208,22 @@ void CMasterNodePing::HandleCheckResult(const MNP_CHECK_RESULT result)
 //
 //  ----------------- masternode_info_t  ------------------------------------------------------------------------------
 //
-masternode_info_t::masternode_info_t(const MASTERNODE_STATE activeState, const int protoVer, const int64_t sTime,
-                    const COutPoint &outpoint, const CService &addr,
-                    const CPubKey &pkCollAddr, const CPubKey &pkMN,
-                    const string& extAddress, const string& extP2P, const string& extCfg,
-                    int64_t tWatchdogV, const bool bIsEligibleForMining) noexcept :
-    m_ActiveState{activeState}, 
-    nProtocolVersion{protoVer}, 
-    sigTime{sTime},
+masternode_info_t::masternode_info_t(const MASTERNODE_STATE activeState, const int _nProtocolVersion, 
+        const int64_t _sigTime,
+        const COutPoint &outpoint, const CService &addr,
+        const CPubKey &pkCollAddr, const CPubKey &pkMN,
+        const string& sExtAddress, const string& sExtP2P, const string& extCfg,
+        int64_t tWatchdogV, const bool bIsEligibleForMining) noexcept :
+    m_ActiveState(activeState),
+    nProtocolVersion(_nProtocolVersion), 
+    sigTime(_sigTime),
     m_vin(outpoint),
-    m_addr{addr},
-    pubKeyCollateralAddress{pkCollAddr}, pubKeyMasternode{pkMN},
-    strExtraLayerAddress{extAddress}, strExtraLayerP2P{extP2P}, 
-    strExtraLayerCfg{extCfg},
-    nTimeLastWatchdogVote{tWatchdogV},
-    m_bEligibleForMining{bIsEligibleForMining}
+    m_addr(addr),
+    pubKeyCollateralAddress(pkCollAddr), pubKeyMasternode(pkMN),
+    strExtraLayerAddress(sExtAddress), strExtraLayerP2P(sExtP2P), 
+    strExtraLayerCfg(extCfg),
+    nTimeLastWatchdogVote(tWatchdogV),
+    m_bEligibleForMining(bIsEligibleForMining)
 {}
 
 /**
@@ -260,6 +258,13 @@ bool CMasternode::fCompatibilityReadMode = false;
 //
 CMasternode::CMasternode() noexcept: 
     masternode_info_t{ MASTERNODE_STATE::ENABLED, PROTOCOL_VERSION, GetAdjustedTime()},
+    m_chainparams(Params())
+{
+    m_nPoSeBanScore.store(0);
+}
+
+CMasternode::CMasternode(const masternode_info_t& mnInfo) noexcept : 
+    masternode_info_t{mnInfo},
     m_chainparams(Params())
 {
     m_nPoSeBanScore.store(0);

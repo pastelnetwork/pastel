@@ -101,7 +101,7 @@ void CMasternodeMessage::Relay()
         return;
     }
 
-    LogFnPrintf("Relaying {item} %s", GetHash().ToString());
+    LogFnPrintf("Relaying mnmsg %s", GetHash().ToString());
 
     CInv inv(MSG_MASTERNODE_MESSAGE, GetHash());
     gl_NodeManager.RelayInv(inv);
@@ -115,7 +115,7 @@ string CMasternodeMessage::ToString() const
          "To: \"" << vinMasternodeTo.prevout.ToStringShort() << "\","
          "Time: \"" << sigTime << "\","
          "Message: \"" << message << "\","
-         "SigSize: " << (int)vchSig.size() <<
+         "SigSize: " << vchSig.size() <<
          "}";
     return info.str();
 }

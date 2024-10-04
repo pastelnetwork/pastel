@@ -959,8 +959,8 @@ string CMasternodePayments::ToString() const
 {
     ostringstream info;
 
-    info << "Votes: " << (int)mapMasternodePaymentVotes.size() <<
-            ", Blocks: " << (int)mapMasternodeBlockPayees.size();
+    info << "Votes: " << mapMasternodePaymentVotes.size() <<
+            ", Blocks: " << mapMasternodeBlockPayees.size();
 
     return info.str();
 }

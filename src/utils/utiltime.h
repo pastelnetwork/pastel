@@ -14,3 +14,5 @@ void SetMockTime(int64_t nMockTimeIn) noexcept;
 void MilliSleep(int64_t n);
 
 std::string DateTimeStrFormat(const char* pszFormat, int64_t nTime);
+
+constexpr int64_t DAYS = 24 * 60 * 60;

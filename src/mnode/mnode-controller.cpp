@@ -13,6 +13,7 @@
 #include <key_io.h>
 #include <netmsg/nodemanager.h>
 
+#include <mnode/mnode-consts.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-sync.h>
 #include <mnode/mnode-manager.h>
@@ -424,8 +425,11 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
     uiInterface.InitMessage(translate("Loading masternode cache..."));
     CFlatDB<CMasternodeMan> flatDB1(MNCACHE_FILENAME, MNCACHE_CACHE_MAGIC_STR);
     if (!flatDB1.Load(masternodeManager))
-    {
         LogFnPrintf("WARNING ! Could not load masternode cache from [%s]", flatDB1.getFilePath());
+    else
+    {
+        masternodeManager.CleanupMnbs();
+        masternodeManager.CleanupMnps(true);
     }
 
     if (!masternodeManager.empty())
@@ -433,9 +437,7 @@ bool CMasterNodeController::EnableMasterNode(ostringstream& strErrors, CServiceT
         uiInterface.InitMessage(translate("Loading masternode payment cache..."));
         CFlatDB<CMasternodePayments> flatDB2(MNPAYMENTS_CACHE_FILENAME, MNPAYMENTS_CACHE_MAGIC_STR);
         if (!flatDB2.Load(masternodePayments))
-        {
             LogFnPrintf("WARNING ! Could not load masternode payments cache from [%s]", flatDB2.getFilePath());
-        }
     } else
         uiInterface.InitMessage(translate("Masternode cache is empty, skipping payments and governance cache..."));
 

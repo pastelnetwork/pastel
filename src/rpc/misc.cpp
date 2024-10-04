@@ -23,10 +23,8 @@
 #include <rpc/chain-rpc-utils.h>
 #include <rpc/rpc_consts.h>
 #include <rpc/rpc-utils.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
-#endif
 #include <netmsg/nodemanager.h>
 
 #include <zcash/Address.hpp>

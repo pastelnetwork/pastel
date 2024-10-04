@@ -40,7 +40,7 @@ UniValue formatMnsInfo(const masternode_vector_t& topBlockMNs)
         objItem.pushKV("rank", strprintf("%d", ++i));
 
         objItem.pushKV("IP:port", pmn->get_address());
-        objItem.pushKV("protocol", (int64_t)(pmn->nProtocolVersion));
+        objItem.pushKV("protocol", pmn->nProtocolVersion);
         objItem.pushKV("outpoint", pmn->GetDesc());
 
         const CTxDestination dest = pmn->pubKeyCollateralAddress.GetID();

@@ -255,5 +255,8 @@
     <ClInclude Include="..\..\..\src\utils\logmanager.h">
       <Filter>Source Files\utils</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\src\utils\timer.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

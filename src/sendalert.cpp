@@ -55,8 +55,6 @@ the bad alert.
 
 using namespace std;
 
-static constexpr int64_t DAYS = 24 * 60 * 60;
-
 void ThreadSendAlert()
 {
     if (!mapArgs.count("-sendalert") && !mapArgs.count("-printalert"))

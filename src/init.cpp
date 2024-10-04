@@ -62,10 +62,8 @@
 #include <utilmoneystr.h>
 #include <validationinterface.h>
 #include <experimental_features.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
 #include <wallet/walletdb.h>
-#endif
 #include <mnode/mnode-controller.h>
 #include <script_check.h>
 #include <orphan-tx.h>
@@ -532,7 +530,7 @@ string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-nuparams=hexBranchId:activationHeight", "Use given activation height for specified network upgrade (regtest-only)");
     }
     string debugCategories = "addrman, alert, bench, coindb, compress, db, estimatefee, http, libevent, lock, mempool, mining, net, partitioncheck, pow, proxy, prune, "
-                             "rand, reindex, rpc, selectcoins, tor, txdb, zmq, zrpc, zrpcunsafe (implies zrpc)"; // Don't translate these
+                             "rand, reindex, rpc, selectcoins, tor, txdb, wallet, zmq, zrpc, zrpcunsafe (implies zrpc)"; // Don't translate these
     strUsage += HelpMessageOpt("-debug=<category>,...", strprintf(translate("Output debugging information (default: %u, supplying <category> is optional)"), 0) + ". " +
         translate("If <category> is not supplied or if <category> = 1, output all debugging information.") + " " + translate("<category> can be:") + " " + debugCategories + ".");
     strUsage += HelpMessageOpt("-experimentalfeatures", translate("Enable use of experimental features"));

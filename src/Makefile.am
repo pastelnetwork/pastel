@@ -289,6 +289,7 @@ UTILS_H = \
   utils/svc_thread.h \
   utils/sync.h \
   utils/threadsafety.h \
+  utils/timer.h \
   utils/tinyformat.h \
   utils/trimmean.h \
   utils/uint256.h \
@@ -522,7 +523,7 @@ endif
 
 # wallet: pasteld, but only linked when wallet enabled
 libbitcoin_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(PASTEL_INCLUDES)
-libbitcoin_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libbitcoin_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -DENABLE_WALLET
 libbitcoin_wallet_a_SOURCES = \
   zcbenchmarks.cpp \
   zcbenchmarks.h \

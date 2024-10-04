@@ -17,9 +17,7 @@
 #include <metrics.h>
 #include <orphan-tx.h>
 #include <accept_to_mempool.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
 
 #include <pastel_gtest_main.h>
 #include <pastel_gtest_utils.h>
