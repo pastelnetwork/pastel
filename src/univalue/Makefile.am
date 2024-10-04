@@ -34,6 +34,9 @@ gen: lib/univalue_escapes.h $(GENBIN)
 	@echo Updating $<
 	$(AM_V_at)$(GENBIN) > lib/univalue_escapes.h
 
+distclean-local:
+	rm -f $(GENBIN) $(DISTCLEANFILES)
+
 noinst_PROGRAMS = $(TESTS) test/test_json
 
 TEST_DATA_DIR=test

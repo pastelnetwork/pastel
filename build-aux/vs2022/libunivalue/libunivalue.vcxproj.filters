@@ -5,6 +5,9 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="autoconf">
+      <UniqueIdentifier>{2b172612-7948-4217-8fc6-a3b882ef0d61}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\univalue\lib\univalue.cpp">
@@ -30,5 +33,13 @@
     <ClInclude Include="..\..\..\src\univalue\include\univalue.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\univalue\configure.ac">
+      <Filter>autoconf</Filter>
+    </None>
+    <None Include="..\..\..\src\univalue\Makefile.am">
+      <Filter>autoconf</Filter>
+    </None>
   </ItemGroup>
 </Project>

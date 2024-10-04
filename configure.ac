@@ -60,7 +60,9 @@ else
   CXXFLAGS_overridden=no
 fi
 
+dnl Check for C++ compiler and options
 AC_PROG_CXX
+
 m4_ifdef([AC_PROG_OBJCXX],[AC_PROG_OBJCXX])
 
 dnl By default, libtool for mingw refuses to link static libs into a dll for
@@ -954,7 +956,7 @@ PKGCONFIG_LIBDIR_TEMP="$PKG_CONFIG_LIBDIR"
 unset PKG_CONFIG_LIBDIR
 PKG_CONFIG_LIBDIR="$PKGCONFIG_LIBDIR_TEMP"
 
-ac_configure_args="${ac_configure_args} --disable-shared --with-pic --with-bignum=no --enable-module-recovery"
+ac_configure_args="${ac_configure_args} --disable-shared --with-pic --with-bignum=no --enable-module-recovery CC=\"$CC\" CXX=\"$CXX\""
 AC_CONFIG_SUBDIRS([src/secp256k1 src/snark src/univalue])
 
 AC_OUTPUT

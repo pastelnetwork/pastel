@@ -135,6 +135,10 @@
     <ClCompile Include="..\..\..\src\secp256k1\src\secp256k1.c" />
     <ClCompile Include="..\..\vs\port\unistd.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\secp256k1\configure.ac" />
+    <None Include="..\..\..\src\secp256k1\Makefile.am" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
