@@ -27,6 +27,8 @@ AC_CONFIG_MACRO_DIR([build-aux/m4])
 AC_CONFIG_HEADERS([univalue-config.h])
 AM_INIT_AUTOMAKE([subdir-objects foreign])
 
+AC_CANONICAL_HOST
+
 dnl Check for C++ compiler and options
 AC_PROG_CXX
 AC_SUBST([CXX])
