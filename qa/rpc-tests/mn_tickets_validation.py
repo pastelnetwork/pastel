@@ -14,6 +14,9 @@ from test_framework.util import (
     str_to_b64str
 )
 import test_framework.rpc_consts as rpc
+from pastel_test_framework import (
+    TicketType
+)
 from mn_common import (
     MasterNodeCommon
 )
@@ -257,13 +260,15 @@ class MasterNodeTicketsTest(MasterNodeCommon):
     def fake_nftact_tnx_tests(self):
         print("== NFT Registration Activation ticket transaction validation test ==")
 
-        self.update_mn_indexes(0, -1, 6)
-        
+        self.create_nft_ticket_v1(self.non_mn3, 1, 0, False)
+        ticket = self.tickets[TicketType.NFT]
+        ticket_type_name = TicketType.NFT.type_name
+        top_mn_node = self.nodes[self.top_mns[0].index]
+
         # valid ticket
-        nft_reg_result = self.nodes[self.top_mns[0].index].tickets("register", "nft", self.ticket, json.dumps(self.signatures_dict),
-                                                                        self.top_mns[0].pastelid, self.passphrase,
-                                                                        "nft-label",
-                                                                        str(self.storage_fee))
+        nft_reg_result = top_mn_node.tickets("register", ticket_type_name, ticket.reg_ticket_base64_encoded, 
+                                             json.dumps(self.signatures_dict), self.top_mns[0].pastelid, self.passphrase,
+                                             "nft-label", str(self.storage_fee))
         print(f"Created valid NFT Registration ticket: {json.dumps(nft_reg_result, indent=4)}")
         self.nft_ticket1_txid = nft_reg_result["txid"]
         assert_true(self.nft_ticket1_txid, "No ticket was created")

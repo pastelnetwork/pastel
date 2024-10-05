@@ -53,7 +53,7 @@ class TxExpiringSoonTest(BitcoinTestFramework):
             testnode.send_message(msg_mempool())
 
         # Sync up with node after p2p messages delivered
-        testnode.sync_with_ping()
+        testnode.sync_with_ping(waiting_for=lambda x: x.last_inv)
 
         with mininode_lock:
             msg = testnode.last_inv
@@ -193,6 +193,7 @@ class TxExpiringSoonTest(BitcoinTestFramework):
         self.send_data_message(testnode0, tx3)
         self.verify_last_tx(testnode0, tx3)
         # Verify txid for tx3 is returned in "inv", but tx2 which is expiring soon is not returned
+        print("Verifying txid for tx3 is returned in inv, but tx2 which is expiring soon is not returned")
         self.verify_inv(testnode0, tx3)
         self.verify_inv(testnode2, tx3)
 

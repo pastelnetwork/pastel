@@ -380,7 +380,7 @@ UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsC
 
     obj.pushKV(RPC_KEY_HEIGHT, nHeight);
     obj.pushKV("IP:port", mnInfo.get_address());
-    obj.pushKV("protocol", (int64_t)mnInfo.nProtocolVersion);
+    obj.pushKV("protocol", mnInfo.nProtocolVersion);
     obj.pushKV("outpoint", mnInfo.GetDesc());
 
     CTxDestination dest = mnInfo.pubKeyCollateralAddress.GetID();
@@ -388,7 +388,7 @@ UniValue masternode_winner(const UniValue& params, KeyIO &keyIO, const bool bIsC
     obj.pushKV("payee", std::move(address));
 
     obj.pushKV("lastseen", mnInfo.nTimeLastPing);
-    obj.pushKV("activeseconds", mnInfo.nTimeLastPing - mnInfo.sigTime);
+    obj.pushKV("activeseconds", mnInfo.nTimeLastPing ? mnInfo.nTimeLastPing - mnInfo.sigTime : 0);
     return obj;
 }
 
