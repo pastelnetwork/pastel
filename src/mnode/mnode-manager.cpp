@@ -1302,12 +1302,14 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
             if (pmn->IsUpdateRequired() || pmn->hasPartialInfo())
                 continue; 
 
-            LogFnPrint("masternode", "DSEG -- Sending Masternode entry v%hd: masternode='%s' %s addr=%s", 
-                pmn->GetVersion(), outpoint.ToStringShort(), MasternodeStateToString(pmn->GetActiveState()), pmn->get_address());
             CMasternodeBroadcast mnb(*pmn);
             CMasterNodePing mnp(pmn->getLastPing());
             const uint256 hashMNB = mnb.GetHash();
             const uint256 hashMNP = mnp.GetHash();
+            LogFnPrint("masternode", "DSEG -- Sending Masternode entry v%hd: masternode='%s' %s addr=%s, mnb='%s', mnp='%s'", 
+                pmn->GetVersion(), outpoint.ToStringShort(), MasternodeStateToString(pmn->GetActiveState()), 
+                pmn->get_address(), hashMNB.ToString(), hashMNP.ToString());
+            LogFnPrint("masternode", "MNB v%hd: %s", mnb.GetVersion(), mnb.GetDesc());
             SetSeenMnb(hashMNB, GetTime(), mnb);
             SetSeenMnp(hashMNP, mnp);
 

@@ -89,7 +89,8 @@ TEST_F(TestMNodeCache, mnode_manager)
             nNow + i * 60, i % 2 == 0);
 
         vTestMN.push_back(mnInfo);
-        masternode_t pmn = make_shared<CMasternode>(mnInfo);
+        masternode_t pmn = make_shared<CMasternode>();
+        pmn->SetMasternodeInfo(mnInfo);
         EXPECT_TRUE(mnMgr.Add(pmn));
     }
 

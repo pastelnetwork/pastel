@@ -263,13 +263,6 @@ CMasternode::CMasternode() noexcept:
     m_nPoSeBanScore.store(0);
 }
 
-CMasternode::CMasternode(const masternode_info_t& mnInfo) noexcept : 
-    masternode_info_t{mnInfo},
-    m_chainparams(Params())
-{
-    m_nPoSeBanScore.store(0);
-}
-
 CMasternode::CMasternode(const CMasternode& other) noexcept :
     masternode_info_t{other},
     m_chainparams(Params()),
@@ -299,6 +292,80 @@ CMasternode::CMasternode(const CMasternodeBroadcast& mnb) :
     m_nPoSeBanScore = 0;
     m_nVersion = mnb.GetVersion();
     setLastPing(mnb.getLastPing());
+}
+
+CMasternode::CMasternode(CMasternode&& other) noexcept : 
+    m_chainparams(Params()),
+    masternode_info_t{std::move(other)}
+{
+    vchSig = std::move(other.vchSig);
+    m_collateralMinConfBlockHash = std::move(other.m_collateralMinConfBlockHash);
+    m_nBlockLastPaid = other.m_nBlockLastPaid;
+    fUnitTest = other.fUnitTest;
+    m_nMNFeePerMB = other.m_nMNFeePerMB;
+    m_nTicketChainStorageFeePerKB = other.m_nTicketChainStorageFeePerKB;
+    m_nSenseComputeFee = other.m_nSenseComputeFee;
+    m_nSenseProcessingFeePerMB = other.m_nSenseProcessingFeePerMB;
+    m_nVersion = other.m_nVersion;
+    setLastPing(other.getLastPing());
+    m_nPoSeBanScore.store(other.m_nPoSeBanScore.load());
+    m_nPoSeBanHeight.store(other.m_nPoSeBanHeight.load());
+}
+
+CMasternode& CMasternode::operator=(CMasternode const& from) noexcept
+{
+    if (this == &from)
+        return *this;
+
+    masternode_info_t::operator=(from);
+    setLastPing(from.getLastPing());
+    vchSig = from.vchSig;
+    m_collateralMinConfBlockHash = from.m_collateralMinConfBlockHash;
+    m_nBlockLastPaid = from.m_nBlockLastPaid;
+    m_nPoSeBanScore.store(from.m_nPoSeBanScore.load());
+    m_nPoSeBanHeight.store(from.m_nPoSeBanHeight.load());
+    fUnitTest = from.fUnitTest;
+    m_nMNFeePerMB = from.m_nMNFeePerMB;
+    m_nTicketChainStorageFeePerKB = from.m_nTicketChainStorageFeePerKB;
+    m_nSenseComputeFee = from.m_nSenseComputeFee;
+    m_nSenseProcessingFeePerMB = from.m_nSenseProcessingFeePerMB;
+    m_nVersion = from.m_nVersion;
+    return *this;
+}
+
+CMasternode& CMasternode::operator=(CMasternode&& other) noexcept
+{
+    masternode_info_t::operator=(std::move(other));
+    vchSig = std::move(other.vchSig);
+    m_collateralMinConfBlockHash = std::move(other.m_collateralMinConfBlockHash);
+    m_nBlockLastPaid = other.m_nBlockLastPaid;
+    fUnitTest = other.fUnitTest;
+    m_nMNFeePerMB = other.m_nMNFeePerMB;
+    m_nTicketChainStorageFeePerKB = other.m_nTicketChainStorageFeePerKB;
+    m_nSenseComputeFee = other.m_nSenseComputeFee;
+    m_nSenseProcessingFeePerMB = other.m_nSenseProcessingFeePerMB;
+    m_nVersion = other.m_nVersion;
+    setLastPing(other.getLastPing());
+    m_nPoSeBanScore.store(other.m_nPoSeBanScore.load());
+    m_nPoSeBanHeight.store(other.m_nPoSeBanHeight.load());
+    return *this;
+}
+
+void CMasternode::SetMasternodeInfo(const masternode_info_t& mnInfo)
+{
+    m_ActiveState = mnInfo.GetActiveState();
+    nProtocolVersion = mnInfo.nProtocolVersion;
+    sigTime = mnInfo.sigTime;
+    m_vin = mnInfo.get_vin();
+    m_addr = mnInfo.get_addr();
+    pubKeyCollateralAddress = mnInfo.pubKeyCollateralAddress;
+    pubKeyMasternode = mnInfo.pubKeyMasternode;
+    strExtraLayerAddress = mnInfo.strExtraLayerAddress;
+    strExtraLayerP2P = mnInfo.strExtraLayerP2P;
+    strExtraLayerCfg = mnInfo.strExtraLayerCfg;
+    nTimeLastWatchdogVote = mnInfo.nTimeLastWatchdogVote;
+    m_bEligibleForMining = mnInfo.IsEligibleForMining();
+    m_nVersion = MASTERNODE_VERSION;
 }
 
 /**
@@ -825,23 +892,6 @@ bool CMasternode::IsPingedWithin(const int nSeconds, int64_t nTimeToCheckAt, str
         }
     }
     return bIsPingedWithin;
-}
-
-CMasternode& CMasternode::operator=(CMasternode const& from)
-{
-    static_cast<masternode_info_t&>(*this)=from;
-    setLastPing(from.getLastPing());
-    vchSig = from.vchSig;
-    m_collateralMinConfBlockHash = from.m_collateralMinConfBlockHash;
-    m_nBlockLastPaid = from.m_nBlockLastPaid;
-    m_nPoSeBanScore.store(from.m_nPoSeBanScore.load());
-    m_nPoSeBanHeight.store(from.m_nPoSeBanHeight.load());
-    fUnitTest = from.fUnitTest;
-    m_nMNFeePerMB = from.m_nMNFeePerMB;
-    m_nTicketChainStorageFeePerKB = from.m_nTicketChainStorageFeePerKB;
-    m_nSenseComputeFee = from.m_nSenseComputeFee;
-    m_nSenseProcessingFeePerMB = from.m_nSenseProcessingFeePerMB;
-    return *this;
 }
 
 CAmount CMasternode::GetMNFeeInPSL(const MN_FEE mnFeeType) const noexcept

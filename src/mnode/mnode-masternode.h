@@ -148,10 +148,9 @@ class masternode_info_t
 public:
     masternode_info_t() noexcept = default;
     masternode_info_t(const masternode_info_t& other) noexcept = default;
-    masternode_info_t& operator=(const masternode_info_t& other) noexcept = default;
+    masternode_info_t& operator=(masternode_info_t const& from) = default;
     masternode_info_t(masternode_info_t&& other) noexcept = default;
-    masternode_info_t& operator=(masternode_info_t&& other) noexcept = default;
-
+    masternode_info_t& operator=(masternode_info_t&& from) = default;
     masternode_info_t(const MASTERNODE_STATE activeState, const int _nProtocolVersion, const int64_t _sigTime) noexcept :
         m_ActiveState{activeState},
         nProtocolVersion{_nProtocolVersion},
@@ -233,10 +232,16 @@ public:
     v_uint8 vchSig;
 
     CMasternode() noexcept;
-    CMasternode(const masternode_info_t& mnInfo) noexcept;
     CMasternode(const CMasternode& other) noexcept;
     CMasternode(const CMasternodeBroadcast& mnb);
-    CMasternode& operator=(CMasternode const& from);
+    CMasternode& operator=(CMasternode const& from) noexcept;
+    CMasternode(CMasternode&& other) noexcept;
+    CMasternode& operator=(CMasternode&& from) noexcept;
+
+    ~CMasternode() noexcept
+    {
+        LogFnPrint("masternode", "Masternode '%s' destroyed", GetDesc());
+    }
 
     template <typename Stream>
     CMasternode(deserialize_type, Stream& s) :
@@ -244,6 +249,8 @@ public:
     {
         Unserialize(s);
     }
+
+    void SetMasternodeInfo(const masternode_info_t& mnInfo);
 
     ADD_SERIALIZE_METHODS;
 
@@ -463,6 +470,39 @@ public:
         CMasternode(mn),
         fRecovery(false)
     {}
+    ~CMasternodeBroadcast() noexcept
+    {
+        LogFnPrint("masternode", "Masternode broadcast '%s' destroyed", GetDesc());
+    }
+    CMasternodeBroadcast(const CMasternodeBroadcast& other) noexcept : 
+        CMasternode(other),
+        fRecovery(other.fRecovery)
+    {}
+    CMasternodeBroadcast& operator=(CMasternodeBroadcast const& from)
+    {
+        if (this != &from)
+        {
+            CMasternode::operator=(from);
+            fRecovery = from.fRecovery;
+        }
+        return *this;
+    }
+    CMasternodeBroadcast(CMasternodeBroadcast&& other) noexcept : 
+        CMasternode(std::move(other)),
+        fRecovery(other.fRecovery)
+    {
+        other.fRecovery = false;
+    }
+    CMasternodeBroadcast& operator=(CMasternodeBroadcast&& from)
+    {
+        if (this != &from)
+        {
+            CMasternode::operator=(std::move(from));
+            fRecovery = from.fRecovery;
+            from.fRecovery = false;
+        }
+        return *this;
+    }
 
     enum class MNB_UPDATE_RESULT : int
     {
