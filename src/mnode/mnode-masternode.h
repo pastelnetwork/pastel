@@ -238,11 +238,6 @@ public:
     CMasternode(CMasternode&& other) noexcept;
     CMasternode& operator=(CMasternode&& from) noexcept;
 
-    ~CMasternode() noexcept
-    {
-        LogFnPrint("masternode", "Masternode '%s' destroyed", GetDesc());
-    }
-
     template <typename Stream>
     CMasternode(deserialize_type, Stream& s) :
         CMasternode()
@@ -470,10 +465,6 @@ public:
         CMasternode(mn),
         fRecovery(false)
     {}
-    ~CMasternodeBroadcast() noexcept
-    {
-        LogFnPrint("masternode", "Masternode broadcast '%s' destroyed", GetDesc());
-    }
     CMasternodeBroadcast(const CMasternodeBroadcast& other) noexcept : 
         CMasternode(other),
         fRecovery(other.fRecovery)
