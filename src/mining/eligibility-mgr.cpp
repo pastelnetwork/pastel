@@ -214,16 +214,17 @@ unordered_map<string, pair<uint32_t, uint32_t> > CMiningEligibilityManager::GetL
             break;
         if (pCurIndex->sPastelID.has_value())
         {
-            LogFnPrint("mining", "mined block: height=%d, mnid='%s'", pCurIndex->nHeight, pCurIndex->sPastelID.value());
+            const uint32_t nHeight = pCurIndex->GetHeight();
+            LogFnPrint("mining", "mined block: height=%u, mnid='%s'", nHeight, pCurIndex->sPastelID.value());
             auto it = mapMnids.find(pCurIndex->sPastelID.value());
             if (it == mapMnids.cend())
-                mapMnids.emplace(pCurIndex->sPastelID.value(), make_pair(1U, static_cast<uint32_t>(pCurIndex->nHeight)));
+                mapMnids.emplace(pCurIndex->sPastelID.value(), make_pair(1U, nHeight));
             else
             {
                 auto &pair = it->second;
                 pair.first++;
-                if (pair.second < static_cast<uint32_t>(pCurIndex->nHeight))
-                    pair.second = static_cast<uint32_t>(pCurIndex->nHeight);
+                if (pair.second < nHeight)
+                    pair.second = nHeight;
             }
         }
         ++nProcessed;

@@ -97,6 +97,10 @@
     <ClInclude Include="..\..\..\src\univalue\lib\univalue_escapes.h" />
     <ClInclude Include="..\..\..\src\univalue\lib\univalue_utffilter.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\univalue\configure.ac" />
+    <None Include="..\..\..\src\univalue\Makefile.am" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

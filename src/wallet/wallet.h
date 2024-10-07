@@ -4,6 +4,7 @@
 // Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
+#ifdef ENABLE_WALLET
 #include <algorithm>
 #include <optional>
 #include <set>
@@ -43,24 +44,24 @@ extern bool fSendFreeTransactions;
 extern bool fPayAtLeastCustomFee;
 
 //! -paytxfee default
-static constexpr CAmount DEFAULT_TRANSACTION_FEE = 0;
+constexpr CAmount DEFAULT_TRANSACTION_FEE = 0;
 //! -paytxfee will warn if called with a higher fee than this amount (in patoshis) per KB
-static constexpr CAmount nHighTransactionFeeWarning = static_cast<CAmount>(0.01 * COIN);
+constexpr CAmount nHighTransactionFeeWarning = static_cast<CAmount>(0.01 * COIN);
 //! -maxtxfee default
-static constexpr CAmount DEFAULT_TRANSACTION_MAXFEE = static_cast<CAmount>(0.1 * COIN);
+constexpr CAmount DEFAULT_TRANSACTION_MAXFEE = static_cast<CAmount>(0.1 * COIN);
 //! -txconfirmtarget default
-static constexpr unsigned int DEFAULT_TX_CONFIRM_TARGET = 2;
+constexpr unsigned int DEFAULT_TX_CONFIRM_TARGET = 2;
 //! -maxtxfee will warn if called with a higher fee than this amount (in patoshis)
-static constexpr CAmount nHighTransactionMaxFeeWarning = 100 * nHighTransactionFeeWarning;
+constexpr CAmount nHighTransactionMaxFeeWarning = 100 * nHighTransactionFeeWarning;
 //! Largest (in bytes) free transaction we're willing to create
-static constexpr size_t MAX_FREE_TRANSACTION_CREATE_SIZE = 1000;
+constexpr size_t MAX_FREE_TRANSACTION_CREATE_SIZE = 1000;
 //! Size of witness cache
 //  Should be large enough that we can expect not to reorg beyond our cache
 //  unless there is some exceptional network disruption.
-static constexpr unsigned int WITNESS_CACHE_SIZE = MAX_REORG_LENGTH + 1;
+constexpr unsigned int WITNESS_CACHE_SIZE = MAX_REORG_LENGTH + 1;
 
 //! Size of HD seed in bytes
-static constexpr size_t HD_WALLET_SEED_LENGTH = 32;
+constexpr size_t HD_WALLET_SEED_LENGTH = 32;
 
 class CBlockIndex;
 class CCoinControl;
@@ -629,7 +630,7 @@ private:
      */
     bool SelectCoins(const CAmount& nTargetValue, coin_set_t& setCoinsRet, CAmount& nValueRet, bool& fOnlyCoinbaseCoinsRet, bool& fNeedCoinbaseCoinsRet, const CCoinControl *coinControl = nullptr) const;
 
-    CWalletDB *pwalletdbEncryption;
+    std::unique_ptr<CWalletDB> pWalletDbEncryption;
 
     //! the current wallet version: clients below this version are not able to load the wallet
     int nWalletVersion;
@@ -773,11 +774,7 @@ public:
         fFileBacked = true;
     }
 
-    ~CWallet()
-    {
-        delete pwalletdbEncryption;
-        pwalletdbEncryption = nullptr;
-    }
+    ~CWallet() = default;
 
     void SetNull()
     {
@@ -785,7 +782,7 @@ public:
         nWalletMaxVersion = FEATURE_BASE;
         fFileBacked = false;
         nMasterKeyMaxID = 0;
-        pwalletdbEncryption = nullptr;
+        pWalletDbEncryption.reset();
         nOrderPosNext = 0;
         nNextResend = 0;
         nLastResend = 0;
@@ -1036,16 +1033,16 @@ public:
     bool NewKeyPool();
     bool TopUpKeyPool(unsigned int kpSize = 0);
     void ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool);
-    void KeepKey(int64_t nIndex);
-    void ReturnKey(int64_t nIndex);
+    void KeepKey(const int64_t nIndex);
+    void ReturnKey(const int64_t nIndex);
     bool GetKeyFromPool(CPubKey &key);
     int64_t GetOldestKeyPoolTime();
     void GetAllReserveKeys(std::set<CKeyID>& setAddress) const;
 
-    std::set< std::set<CTxDestination> > GetAddressGroupings();
+    txdest_group_set_t GetAddressGroupings();
     BalanceMap_t GetAddressBalances(const isminetype isMineFilter);
 
-    std::set<CTxDestination> GetAccountAddresses(const std::string& strAccount) const;
+    txdest_set_t GetAccountAddresses(const std::string& strAccount) const;
 
     std::pair<mapSaplingNoteData_t, SaplingIncomingViewingKeyMap> FindMySaplingNotes(const CTransaction& tx) const;
     bool IsSaplingNullifierFromMe(const uint256& nullifier) const;
@@ -1337,3 +1334,4 @@ public:
     KeyAddResult operator()(const libzcash::SaplingExtendedSpendingKey &sk) const;
     KeyAddResult operator()(const libzcash::InvalidEncoding& no) const;
 };
+#endif // ENABLE_WALLET

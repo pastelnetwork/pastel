@@ -662,7 +662,7 @@ Examples:
     KeyIO keyIO(Params());
     UniValue jsonGroupings(UniValue::VARR);
     const auto balanceMap = pwalletMain->GetAddressBalances(isminetype::ALL);
-    for (const set<CTxDestination>& grouping : pwalletMain->GetAddressGroupings())
+    for (const auto& grouping: pwalletMain->GetAddressGroupings())
     {
         UniValue jsonGrouping(UniValue::VARR);
         for (const CTxDestination& address : grouping)
@@ -845,7 +845,7 @@ As a json rpc call
 
     // Get the set of pub keys assigned to account
     string strAccount = AccountFromValue(params[0]);
-    set<CTxDestination> setAddress = pwalletMain->GetAccountAddresses(strAccount);
+    auto setAddress = pwalletMain->GetAccountAddresses(strAccount);
 
     // Tally
     CAmount nAmount = 0;
@@ -1232,7 +1232,7 @@ As a json rpc call
 		}
 	}
 
-    set<CTxDestination> destinations;
+    txdest_set_t destinations;
     vector<CRecipient> vecSend;
 
     CAmount totalAmount = 0;
@@ -2697,7 +2697,7 @@ Examples
         nMaxDepth = params[1].get_int();
 
     KeyIO keyIO(Params());
-    set<CTxDestination> destinations;
+    txdest_set_t destinations;
     if (params.size() > 2)
     {
         const UniValue &inputs = params[2].get_array();
@@ -3153,7 +3153,7 @@ Examples:
 
 CAmount getBalanceTaddr(const string &transparentAddress, int minDepth=1, bool ignoreUnspendable=true)
 {
-    set<CTxDestination> destinations;
+    txdest_set_t destinations;
     CAmount balance = 0;
 
     KeyIO keyIO(Params());
@@ -4094,7 +4094,7 @@ Examples:
     bool maxedOutFlag = false;
 
     // Set of addresses to filter utxos by
-    set<CTxDestination> destinations = {};
+    txdest_set_t destinations;
     if (!isFromWildcard)
         destinations.insert(taddr);
 
@@ -4277,7 +4277,7 @@ Examples:
 
     bool useAnyUTXO = false;
     bool useAnySapling = false;
-    set<CTxDestination> taddrs = {};
+    txdest_set_t taddrs;
     set<libzcash::PaymentAddress> zaddrs = {};
 
     UniValue addresses = params[0].get_array();

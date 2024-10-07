@@ -16,10 +16,7 @@
 #include <mining/miner.h>
 #include <mining/mining-settings.h>
 #include <pubkey.h>
-//#include "pow/tromp/equi_miner.h"
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif
 
 using namespace testing;
 using namespace std;

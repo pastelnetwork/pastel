@@ -27,6 +27,31 @@ AC_CONFIG_MACRO_DIR([build-aux/m4])
 AC_CONFIG_HEADERS([univalue-config.h])
 AM_INIT_AUTOMAKE([subdir-objects foreign])
 
+AC_CANONICAL_HOST
+
+dnl Check for C++ compiler and options
+AC_PROG_CXX
+AC_SUBST([CXX])
+
+dnl By default, libtool for mingw refuses to link static libs into a dll for
+dnl fear of mixing pic/non-pic objects, and import/export complications. Since
+dnl we have those under control, re-enable that functionality.
+case "${host}" in
+  *mingw*)
+     lt_cv_deplibs_check_method="pass_all"
+     dnl Require C++17 compiler (no GNU extensions)
+     AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory], [nodefault])
+  ;;
+  *darwin*)
+     lt_cv_deplibs_check_method="pass_all"
+dnl Require C++17 compiler (no GNU extensions)
+AX_CXX_COMPILE_STDCXX([17], [noext], [mandatory], [nodefault])
+     ;;
+  *)
+    dnl Require C++20 compiler (no GNU extensions)
+    AX_CXX_COMPILE_STDCXX([20], [noext], [mandatory], [nodefault])
+esac
+
 LIBUNIVALUE_MAJOR_VERSION=libunivalue_major_version
 LIBUNIVALUE_MINOR_VERSION=libunivalue_minor_version
 LIBUNIVALUE_MICRO_VERSION=libunivalue_micro_version

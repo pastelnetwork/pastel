@@ -11,10 +11,7 @@
 #include <mnode/ticket-mempool-processor.h>
 #include <mnode/mnode-controller.h>
 #include <mnode/mnode-badwords.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
 
 using json = nlohmann::json;
 using namespace std;

@@ -192,7 +192,7 @@ ticket_validation_t CTicketSigning::validate_signatures(const TxOrigin txOrigin,
         }
         if (!bIsPrincipal)
         {
-            // Check that MN1, MN2 and MN3 are all different = here by just PastleId
+            // Check that MN1, MN2 and MN3 are all different = here by just PastelId
             if (++pidCountMap[pastelIdRegTicket.getPastelID()] != 1)
             {
                 tv.state = TICKET_VALIDATION_STATE::INVALID;

@@ -11,10 +11,7 @@
 #include <script/script_error.h>
 #include <script/interpreter.h>
 #include <script/sign.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet_ismine.h>
-#endif
 
 #include <gtest/gtest.h>
 

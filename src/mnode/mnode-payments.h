@@ -13,8 +13,6 @@ class CMasternodePaymentVote;
 
 constexpr size_t MNPAYMENTS_SIGNATURES_REQUIRED  = 6;
 constexpr size_t MNPAYMENTS_SIGNATURES_TOTAL     = 20;
-constexpr auto MNPAYMENTS_CACHE_MAGIC_STR = "magicMasternodePaymentsCache";
-constexpr auto MNPAYMENTS_CACHE_FILENAME = "mnpayments.dat";
 
 /**
  * Class represents a single Masternode payee.

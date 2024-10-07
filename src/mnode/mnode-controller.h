@@ -20,10 +20,7 @@
 #include <mnode/mnode-notificationinterface.h>
 #include <mnode/ticket-processor.h>
 #include <mnode/tickets/ticket-types.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif
 
 class CMasterNodeController
 {  

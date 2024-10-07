@@ -29,9 +29,7 @@
 #include <script/script_error.h>
 #include <script/sign.h>
 #include <script/standard.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif
 
 using namespace std;
 
@@ -575,7 +573,7 @@ Examples:
     }
 
     KeyIO keyIO(chainparams);
-    set<CTxDestination> destinations;
+    txdest_set_t destinations;
     vector<string> addrList = sendTo.getKeys();
     for (const string& name_ : addrList)
     {

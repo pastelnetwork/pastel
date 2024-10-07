@@ -146,14 +146,17 @@ protected:
 class masternode_info_t
 {
 public:
-    masternode_info_t() noexcept {}
-    masternode_info_t(const MASTERNODE_STATE activeState, int protoVer, int64_t sTime) noexcept :
+    masternode_info_t() noexcept = default;
+    masternode_info_t(const masternode_info_t& other) noexcept = default;
+    masternode_info_t& operator=(masternode_info_t const& from) = default;
+    masternode_info_t(masternode_info_t&& other) noexcept = default;
+    masternode_info_t& operator=(masternode_info_t&& from) = default;
+    masternode_info_t(const MASTERNODE_STATE activeState, const int _nProtocolVersion, const int64_t _sigTime) noexcept :
         m_ActiveState{activeState},
-        nProtocolVersion{protoVer},
-        sigTime{sTime}
+        nProtocolVersion{_nProtocolVersion},
+        sigTime{_sigTime}
     {}
-
-    masternode_info_t(const MASTERNODE_STATE activeState, const int protoVer, const int64_t sTime,
+    masternode_info_t(const MASTERNODE_STATE activeState, const int _nProtocolVersion, const int64_t _sigTime,
         const COutPoint& outpoint, const CService& addr,
         const CPubKey& pkCollAddr, const CPubKey& pkMN,
         const std::string& extAddress, const std::string& extP2P, const std::string& extCfg,
@@ -187,8 +190,8 @@ public:
     int nProtocolVersion = 0;
     int64_t sigTime = 0; //mnb message time
 
-    CPubKey pubKeyCollateralAddress{};
-    CPubKey pubKeyMasternode{};
+    CPubKey pubKeyCollateralAddress;
+    CPubKey pubKeyMasternode;
 
     std::string strExtraLayerAddress;
     std::string strExtraLayerCfg;
@@ -205,8 +208,8 @@ protected:
     MASTERNODE_STATE m_ActiveState = MASTERNODE_STATE::PRE_ENABLED;
     std::string m_sMNPastelID; // Masternode's Pastel ID
     bool m_bEligibleForMining = false;
-    CTxIn m_vin{}; // input collateral transaction
-    CService m_addr{};
+    CTxIn m_vin; // input collateral transaction
+    CService m_addr;
 };
 
 //
@@ -231,7 +234,9 @@ public:
     CMasternode() noexcept;
     CMasternode(const CMasternode& other) noexcept;
     CMasternode(const CMasternodeBroadcast& mnb);
-    CMasternode& operator=(CMasternode const& from);
+    CMasternode& operator=(CMasternode const& from) noexcept;
+    CMasternode(CMasternode&& other) noexcept;
+    CMasternode& operator=(CMasternode&& from) noexcept;
 
     template <typename Stream>
     CMasternode(deserialize_type, Stream& s) :
@@ -239,6 +244,8 @@ public:
     {
         Unserialize(s);
     }
+
+    void SetMasternodeInfo(const masternode_info_t& mnInfo);
 
     ADD_SERIALIZE_METHODS;
 
@@ -458,6 +465,35 @@ public:
         CMasternode(mn),
         fRecovery(false)
     {}
+    CMasternodeBroadcast(const CMasternodeBroadcast& other) noexcept : 
+        CMasternode(other),
+        fRecovery(other.fRecovery)
+    {}
+    CMasternodeBroadcast& operator=(CMasternodeBroadcast const& from)
+    {
+        if (this != &from)
+        {
+            CMasternode::operator=(from);
+            fRecovery = from.fRecovery;
+        }
+        return *this;
+    }
+    CMasternodeBroadcast(CMasternodeBroadcast&& other) noexcept : 
+        CMasternode(std::move(other)),
+        fRecovery(other.fRecovery)
+    {
+        other.fRecovery = false;
+    }
+    CMasternodeBroadcast& operator=(CMasternodeBroadcast&& from)
+    {
+        if (this != &from)
+        {
+            CMasternode::operator=(std::move(from));
+            fRecovery = from.fRecovery;
+            from.fRecovery = false;
+        }
+        return *this;
+    }
 
     enum class MNB_UPDATE_RESULT : int
     {
@@ -561,13 +597,13 @@ public:
 class CMasternodeVerification
 {
 public:
-    CTxIn vin1{};
-    CTxIn vin2{};
-    CService addr{};
+    CTxIn vin1;
+    CTxIn vin2;
+    CService addr;
     int nonce{};
     uint32_t nBlockHeight{};
-    v_uint8 vchSig1{};
-    v_uint8 vchSig2{};
+    v_uint8 vchSig1;
+    v_uint8 vchSig2;
 
     CMasternodeVerification() = default;
 

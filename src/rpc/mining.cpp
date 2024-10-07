@@ -34,9 +34,7 @@
 #include <txmempool.h>
 #include <validationinterface.h>
 #include <netmsg/nodemanager.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif
 #include <mnode/mnode-controller.h>
 
 using namespace std;

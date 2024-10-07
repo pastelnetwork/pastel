@@ -11,6 +11,7 @@
 #include <utils/serialize.h>
 #include <utils/streams.h>
 #include <utils/hash.h>
+#include <utils/timer.h>
 
 /** 
 *   Generic Dumping and Loading
@@ -85,7 +86,8 @@ private:
         //LOCK(objToLoad.cs);
 
         error.clear();
-        const int64_t nStart = GetTimeMillis();
+        CTimer timer;
+        timer.start();
         // open input file, and associate with CAutoFile
         FILE* file = nullptr;
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
@@ -163,8 +165,8 @@ private:
                 ssObj.getReadPos(), nDataSize, e.what());
             return ReadResult::IncorrectFormat;
         }
-
-        LogFnPrintf("Loaded info from %s  %dms", strFilename, GetTimeMillis() - nStart);
+        timer.stop();
+        LogFnPrintf("Loaded info from %s  %zums", strFilename, timer.elapsedMilliseconds());
         LogFnPrintf("     %s", objToLoad.ToString());
         if (!fDryRun)
         {

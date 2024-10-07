@@ -126,6 +126,9 @@ analyze:
 test:
 	./qa/test-suite/full_test_suite.py $(filter-out $@,$(MAKECMDGOALS))
 
+gtest:
+	./src/pastel-gtest
+
 .INTERMEDIATE: $(COVERAGE_INFO)
 
 DISTCHECK_CONFIGURE_FLAGS = --enable-man

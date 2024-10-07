@@ -12,6 +12,9 @@
     <Filter Include="Source Files\vc_port">
       <UniqueIdentifier>{be472ca1-06a6-49ee-926e-d81d64ab14f5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="autoconf">
+      <UniqueIdentifier>{930cd7c7-d12d-44d4-b583-73c891b3cc3b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\secp256k1\include\secp256k1.h">
@@ -148,5 +151,13 @@
     <ClCompile Include="..\..\vs\port\unistd.cpp">
       <Filter>Source Files\vc_port</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\src\secp256k1\configure.ac">
+      <Filter>autoconf</Filter>
+    </None>
+    <None Include="..\..\..\src\secp256k1\Makefile.am">
+      <Filter>autoconf</Filter>
+    </None>
   </ItemGroup>
 </Project>

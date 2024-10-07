@@ -50,6 +50,7 @@ pastel_gtest_SOURCES +=\
 	gtest/test_mnode/mock_p2fms_txbuilder.h\
 	gtest/test_mnode/mock_p2fms_txbuilder.cpp\
 	gtest/test_mnode/test_governance.cpp\
+	gtest/test_mnode/test_mnode_cache.cpp\
 	gtest/test_mnode/test_mnode_rpc.cpp\
 	gtest/test_mnode/test_pastel.cpp\
 	gtest/test_mnode/test_pastelid.cpp\
@@ -155,7 +156,7 @@ pastel_gtest_SOURCES += \
 endif
 
 pastel_gtest_CPPFLAGS = $(AM_CPPFLAGS) -DBINARY_OUTPUT -DCURVE_ALT_BN128 -DSTATIC $(PASTEL_INCLUDES) -I$(srcdir)/gtest 
-pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest
+pastel_gtest_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) -I$(srcdir)/gtest -DENABLE_WALLET
 
 pastel_gtest_LDADD =\
  -lgtest\

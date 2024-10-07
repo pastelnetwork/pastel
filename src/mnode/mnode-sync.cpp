@@ -232,7 +232,7 @@ void CMasternodeSync::ProcessTick()
                 currentTime - nTimeLastBumped > MNSyncCheckInterval * 60 &&
                 nReSyncAttempt < 3)
             {
-                LogFnPrintf("Check that has enough top 10 supernodes: %d seconds after previous check",
+                LogFnPrintf("Check that has enough top 10 supernodes: %" PRId64 " seconds after previous check",
                             secsFromPrevious + (MNSyncCheckInterval * 60));
                 uint32_t nHeight = gl_nChainHeight;
                 if (nHeight == 0)
@@ -241,7 +241,7 @@ void CMasternodeSync::ProcessTick()
                 string error;
                 masternode_vector_t topBlockMNs;
                 auto status = masterNodeCtrl.masternodeManager.GetTopMNsForBlock(error, topBlockMNs, static_cast<int>(nHeight), false);
-                LogFnPrintf("GetTopMNsForBlock: %s, status = %d, topBlockMNs.size = %d", error, to_integral_type(status), topBlockMNs.size());
+                LogFnPrintf("GetTopMNsForBlock: %s, status = %d, topBlockMNs.size = %zu", error, to_integral_type(status), topBlockMNs.size());
                 if (topBlockMNs.size() < 10)
                 {
                     if (nReSyncAttempt == 0)

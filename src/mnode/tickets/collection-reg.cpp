@@ -14,10 +14,7 @@
 #include <mnode/tickets/pastelid-reg.h>
 #include <mnode/tickets/collection-reg.h>
 #include <mnode/tickets/action-reg.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
 
 using json = nlohmann::json;
 using namespace std;

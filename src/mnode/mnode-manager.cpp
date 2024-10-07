@@ -15,6 +15,7 @@
 
 #include <utils/util.h>
 #include <utils/str_utils.h>
+#include <utils/utiltime.h>
 #include <addrman.h>
 #include <script/standard.h>
 #include <main.h>
@@ -63,10 +64,85 @@ struct CompareByAddr
     }
 };
 
-CMasternodeMan::CMasternodeMan() :
+CMasternodeMan::CMasternodeMan() noexcept:
     nCachedBlockHeight(0),
     nLastWatchdogVoteTime(0)
 {}
+
+/**
+ * Convert old historical top MNs map to the new format with MN index (2 maps).
+ * Should be call under cs_mnMgr lock.
+ * 
+ * \param tempMapHistoricalTopMNs
+ */
+void CMasternodeMan::ConvertOldHistoricalMNs(masternode_history_map_t&& tempMapHistoricalTopMNs)
+{
+    if (tempMapHistoricalTopMNs.empty())
+        return;
+
+    LogFnPrint("masternode", "Converting old historical top MNs map to the new format");
+
+    v_uint32 vBlockTopMN;
+    vBlockTopMN.reserve(20);
+
+    {
+        LOCK(cs_mnHist);
+        for (auto& [nBlockHeight, vTopMN] : tempMapHistoricalTopMNs)
+        {
+            vBlockTopMN.clear();
+            for (auto& pmn : vTopMN)
+            {
+                if (!pmn)
+                    continue;
+
+                const auto& outpoint = pmn->getOutPoint();
+                const auto& sOutpoint = outpoint.ToStringShort();
+                
+                uint32_t nMNCacheId;
+                const auto& it = m_mapHistoricalMNCacheOutpoints.find(sOutpoint);
+                if (it == m_mapHistoricalMNCacheOutpoints.cend())
+                {
+                    nMNCacheId = m_nLastHistoricalMNCacheID++;
+                    m_mapHistoricalMNCacheOutpoints.emplace(sOutpoint, nMNCacheId);
+                } else
+                    nMNCacheId = it->second;
+                vBlockTopMN.push_back(nMNCacheId);
+                if (m_mapHistoricalMNCache.find(nMNCacheId) == m_mapHistoricalMNCache.cend())
+                {
+                    // try to find this masternode in the masternodes map
+                    auto itMN = mapMasternodes.find(outpoint);
+                    if (itMN != mapMasternodes.end())
+                        m_mapHistoricalMNCache.emplace(nMNCacheId, itMN->second);
+                    else
+                        m_mapHistoricalMNCache.emplace(nMNCacheId, std::move(pmn));
+                }
+            }
+            m_mapHistoricalTopMNs.insert_or_assign(nBlockHeight, std::move(vBlockTopMN));
+        }
+    }
+    tempMapHistoricalTopMNs.clear();
+}
+
+/**
+ * Find MNs in historical cache that already exist in masternodes map.
+ */
+void CMasternodeMan::ProcessHistoricalMNCache()
+{
+    LOCK(cs_mnHist);
+
+    for (auto& [sOutpoint, pmn] : m_mapHistoricalMNCache)
+    {
+        if (!pmn)
+            continue;
+
+        const auto& outpoint = pmn->getOutPoint();
+        auto itMN = mapMasternodes.find(outpoint);
+        if (itMN == mapMasternodes.end())
+            continue;
+        // use the shared_ptr from the masternodes map
+        pmn = itMN->second;
+    }
+}
 
 /**
  * Add new masternode to the list.
@@ -299,6 +375,65 @@ void CMasternodeMan::CheckAndRemove()
     CleanupMaps();
 }
 
+void CMasternodeMan::CleanupMnbs()
+{
+    map<COutPoint, pair<time_t, uint256>> mapMNs;
+
+    // cleanup duplicate mapSeenMasternodeBroadcast entries by age
+    LOCK2(cs_main, cs_mnMgr);
+
+    const size_t nPrevMapSize = mapSeenMasternodeBroadcast.size();
+    time_t nNow = GetTime();
+    for (const auto& [hash, mnbPair]: mapSeenMasternodeBroadcast)
+    {
+        const auto& mnb = mnbPair.second;
+        const auto& mnbTime = mnbPair.first;
+        const auto& outpoint = mnb.getOutPoint();
+
+        // remove mnbs with last pings older than 24hrs
+        const auto& lastPing = mnb.getLastPing();
+        if (lastPing.getAgeInSecs() > DAYS)
+            continue;
+        
+        // if we don't know this masternode, remove this mnb
+        if (mapMasternodes.find(outpoint) == mapMasternodes.cend())
+            continue;
+
+        auto it = mapMNs.find(outpoint);
+        if (it == mapMNs.cend())
+            mapMNs[outpoint] = make_pair(mnbTime, hash);
+        else if (mnbTime < it->second.first)
+            mapMNs[outpoint] = make_pair(mnbTime, hash);
+    }
+
+    const size_t nNewMapSize = mapMNs.size();
+    // now generate new map with only the latest mnbs for each masternode
+    decltype(mapSeenMasternodeBroadcast) mapSeenMasternodeBroadcastNew;
+    for (auto& [_, mnbPair] : mapMNs)
+    {
+        const auto& hash = mnbPair.second;
+        mapSeenMasternodeBroadcastNew[hash] = std::move(mapSeenMasternodeBroadcast[hash]);
+    }
+    mapSeenMasternodeBroadcast = std::move(mapSeenMasternodeBroadcastNew);
+    LogFnPrintf("Removed %zu mnbs, new size=%zu", nPrevMapSize - nNewMapSize, nNewMapSize);
+}
+
+void CMasternodeMan::CleanupMnps(const bool bLock)
+{
+    LOCK2_COND(bLock, cs_main, bLock, cs_mnMgr);
+
+    // remove expired mapSeenMasternodePing
+    mapEraseIf("SeenMasternodePing map", mapSeenMasternodePing, [&](const auto& pair)
+    {
+        const auto& mnp = pair.second;
+        const bool bIsExpired = mnp.IsExpired();
+        if (bIsExpired)
+            LogPrint("masternode", "Removing expired mnp [%s]  (%" PRId64 " secs old) : hash=%s\n",
+                mnp.GetDesc(), mnp.getAgeInSecs(), mnp.GetHash().ToString());
+        return bIsExpired;
+    });
+}
+
 /**
  * Cleanup cache maps - called from CheckAndRemove.
  */
@@ -353,16 +488,7 @@ void CMasternodeMan::CleanupMaps()
 
     // NOTE: do not expire mapSeenMasternodeBroadcast entries here, clean them on mnb updates!
 
-    // remove expired mapSeenMasternodePing
-    mapEraseIf("SeenMasternodePing map", mapSeenMasternodePing, [&](const auto& pair)
-    {
-        const auto& mnp = pair.second;
-        const bool bIsExpired = mnp.IsExpired();
-        if (bIsExpired)
-            LogPrint("masternode", "Removing expired mnp [%s]  (%" PRId64 " secs old) : hash=%s\n",
-                mnp.GetDesc(), mnp.getAgeInSecs(), mnp.GetHash().ToString());
-        return bIsExpired;
-    });
+    CleanupMnps(false);
 
     // remove expired mapSeenMasternodeVerification
     mapEraseIf("SeenMasternodeVerification map", mapSeenMasternodeVerification, [&](const auto& pair)
@@ -494,7 +620,9 @@ void CMasternodeMan::ClearCache(const std::set<MNCacheItem> &setCacheItems)
     }
     if (setCacheItems.count(MNCacheItem::HISTORICAL_TOP_MNS))
     {
-        mapHistoricalTopMNs.clear();
+        LOCK(cs_mnHist);
+        m_mapHistoricalMNCache.clear();
+        m_mapHistoricalTopMNs.clear();
         LogFnPrintf("Cleared Masternode historical top MNs cache");
     }
 }
@@ -1174,12 +1302,14 @@ void CMasternodeMan::ProcessMessage(node_t& pfrom, string& strCommand, CDataStre
             if (pmn->IsUpdateRequired() || pmn->hasPartialInfo())
                 continue; 
 
-            LogFnPrint("masternode", "DSEG -- Sending Masternode entry v%hd: masternode='%s' %s addr=%s", 
-                pmn->GetVersion(), outpoint.ToStringShort(), MasternodeStateToString(pmn->GetActiveState()), pmn->get_address());
             CMasternodeBroadcast mnb(*pmn);
             CMasterNodePing mnp(pmn->getLastPing());
             const uint256 hashMNB = mnb.GetHash();
             const uint256 hashMNP = mnp.GetHash();
+            LogFnPrint("masternode", "DSEG -- Sending Masternode entry v%hd: masternode='%s' %s addr=%s, mnb='%s', mnp='%s'", 
+                pmn->GetVersion(), outpoint.ToStringShort(), MasternodeStateToString(pmn->GetActiveState()), 
+                pmn->get_address(), hashMNB.ToString(), hashMNP.ToString());
+            LogFnPrint("masternode", "MNB v%hd: %s", mnb.GetVersion(), mnb.GetDesc());
             SetSeenMnb(hashMNB, GetTime(), mnb);
             SetSeenMnp(hashMNP, mnp);
 
@@ -1778,9 +1908,13 @@ void CMasternodeMan::RelayScheduledMnp()
 
 string CMasternodeMan::ToString() const
 {
+    LOCK(cs_mnMgr);
+
     ostringstream info;
 
-    info << "Masternodes: " << mapMasternodes.size() <<
+    info << "Masternodes: " << mapMasternodes.size() << 
+            ", mnbs: " << mapSeenMasternodeBroadcast.size() << 
+            ", mnps: " << mapSeenMasternodePing.size() <<
             ", peers who asked us for Masternode list: " << mAskedUsForMasternodeList.size() <<
             ", peers we asked for Masternode list: " << mWeAskedForMasternodeList.size() <<
             ", entries in Masternode list we asked for: " << mWeAskedForMasternodeListEntry.size();
@@ -2315,11 +2449,34 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
     
     // SELECT AND STORE TOP MASTERNODEs
     string error;
-    masternode_vector_t topMNs;
-    const GetTopMasterNodeStatus status = CalculateTopMNsForBlock(error, topMNs, nCachedBlockHeight);
+    masternode_vector_t vTopMNs;
+    v_uint32 vTopMNCacheIds;
+    const GetTopMasterNodeStatus status = CalculateTopMNsForBlock(error, vTopMNs, nCachedBlockHeight);
     if (status == GetTopMasterNodeStatus::SUCCEEDED)
-        mapHistoricalTopMNs.emplace(nCachedBlockHeight, std::move(topMNs));
-    else if (status != GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY)
+    {
+        vTopMNCacheIds.reserve(vTopMNs.size());
+        LOCK(cs_mnHist);
+        for (const auto& pMN : vTopMNs)
+        {
+            if (!pMN)
+                continue;
+            const auto& sOutpoint = pMN->getOutPoint().ToStringShort();
+            const auto it = m_mapHistoricalMNCacheOutpoints.find(sOutpoint);
+            if (it == m_mapHistoricalMNCacheOutpoints.cend())
+            {
+                const auto nMNCacheId = m_nLastHistoricalMNCacheID++;
+                m_mapHistoricalMNCacheOutpoints.emplace(sOutpoint, nMNCacheId);
+                m_mapHistoricalMNCache.emplace(nMNCacheId, pMN);
+                vTopMNCacheIds.push_back(nMNCacheId);
+            } else
+                vTopMNCacheIds.push_back(it->second);
+        }
+
+        m_mapHistoricalTopMNs.emplace(nCachedBlockHeight, std::move(vTopMNCacheIds));
+    }
+    else if (!is_enum_any_of(status, 
+                GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY,
+                GetTopMasterNodeStatus::MN_NOT_SYNCED))
         LogFnPrintf("ERROR: Failed to find enough Top MasterNodes. %s", error);
 }
 
@@ -2327,14 +2484,14 @@ void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
  * Calculate top masternodes for the given block.
  * 
  * \param error - error message
- * \param topMNs - vector of top masternodes
+ * \param vTopMNs - vector of top masternodes
  * \param nBlockHeight - block height
  * \param bSkipValidCheck - skip masternode valid for payment check
  * \return - status of the operation
  */
-GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, masternode_vector_t &topMNs, int nBlockHeight, bool bSkipValidCheck)
+GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, masternode_vector_t &vTopMNs, int nBlockHeight, bool bSkipValidCheck)
 {
-    topMNs.clear();
+    vTopMNs.clear();
     error.clear();
     rank_pair_vec_t vMasternodeRanks;
     GetTopMasterNodeStatus status = GetMasternodeRanks(error, vMasternodeRanks, nBlockHeight);
@@ -2350,30 +2507,48 @@ GetTopMasterNodeStatus CMasternodeMan::CalculateTopMNsForBlock(string &error, ma
     for (auto &[rank, pmn]: vMasternodeRanks)
     {
         if (bSkipValidCheck || pmn->IsValidForPayment())
-            topMNs.push_back(pmn);
-        if (topMNs.size() == masterNodeCtrl.getMasternodeTopMNsNumber())
+            vTopMNs.push_back(pmn);
+        if (vTopMNs.size() == masterNodeCtrl.getMasternodeTopMNsNumber())
             break;
     }
     return GetTopMasterNodeStatus::SUCCEEDED;
 }
 
-GetTopMasterNodeStatus CMasternodeMan::GetTopMNsForBlock(string &error, masternode_vector_t &topMNs, int nBlockHeight, bool bCalculateIfNotSeen)
+GetTopMasterNodeStatus CMasternodeMan::GetTopMNsForBlock(string &error, masternode_vector_t &vTopMNs, int nBlockHeight, bool bCalculateIfNotSeen)
 {
     if (nBlockHeight == -1)
         nBlockHeight = gl_nChainHeight;
 
     error.clear();
-    const auto it = mapHistoricalTopMNs.find(nBlockHeight);
-    if (it != mapHistoricalTopMNs.cend())
+
     {
-        topMNs = it->second;
-        if (topMNs.size() >= masterNodeCtrl.getMasternodeTopMNsNumberMin())
-            return GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY;
-        error = strprintf("Top MNs historical ranks count (%zu) for block %d are less than required (%zu)",
-            topMNs.size(), nBlockHeight, masterNodeCtrl.getMasternodeTopMNsNumberMin());
-    } else
-        error = strprintf("Top MNs historical ranks for block %d not found", nBlockHeight);
+        LOCK(cs_mnHist);
+
+        const auto it = m_mapHistoricalTopMNs.find(nBlockHeight);
+        if (it != m_mapHistoricalTopMNs.cend())
+        {
+            vTopMNs.clear();
+            const auto& vTopMNCacheIds = it->second;
+            vTopMNs.reserve(vTopMNCacheIds.size());
+            for (const auto& nMNCacheId : vTopMNCacheIds)
+            {
+                const auto it = m_mapHistoricalMNCache.find(nMNCacheId);
+                if (it == m_mapHistoricalMNCache.cend())
+                {
+                    error = strprintf("Historical MN #%d not found", nMNCacheId);
+                    return GetTopMasterNodeStatus::HISTORY_NOT_FOUND;
+                }
+                vTopMNs.push_back(it->second);
+            }
+            if (vTopMNs.size() >= masterNodeCtrl.getMasternodeTopMNsNumberMin())
+                return GetTopMasterNodeStatus::SUCCEEDED_FROM_HISTORY;
+            error = strprintf("Top MNs historical ranks count (%zu) for block %d are less than required (%zu)",
+                vTopMNs.size(), nBlockHeight, masterNodeCtrl.getMasternodeTopMNsNumberMin());
+        }
+        else
+            error = strprintf("Top MNs historical ranks for block %d not found", nBlockHeight);
+    }
     if (bCalculateIfNotSeen)
-        return CalculateTopMNsForBlock(error, topMNs, nBlockHeight, bCalculateIfNotSeen);
+        return CalculateTopMNsForBlock(error, vTopMNs, nBlockHeight, bCalculateIfNotSeen);
     return GetTopMasterNodeStatus::HISTORY_NOT_FOUND;
 }

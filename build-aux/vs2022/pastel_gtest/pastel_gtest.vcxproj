@@ -123,7 +123,7 @@
     <ClCompile Include="..\..\..\src\gtest\test_hash.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_main.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_governance.cpp" />
-    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_payments.cpp" />
+    <ClCompile Include="..\..\..\src\gtest\test_mnode\test_mnode_cache.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_p2fms_txbuilder.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastel.cpp" />
     <ClCompile Include="..\..\..\src\gtest\test_mnode\test_pastelid.cpp" />

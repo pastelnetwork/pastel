@@ -33,6 +33,7 @@ public:
 
     // map of <mn_outpoint> -> <masternode_t>
     using recovery_masternodes_t = std::map<COutPoint, masternode_t> ;
+    using masternode_history_map_t = std::unordered_map<uint32_t, masternode_vector_t>;
 
 public:
     // Keep track of all broadcasts I've seen
@@ -51,6 +52,7 @@ public:
         std::string strVersion;
         const bool bRead = ser_action == SERIALIZE_ACTION::Read;
         bool bProtectedMode = !bRead;
+        bool bOldMNHistMode = true;
         auto guardMNReadMode = sg::make_scope_guard([&]() noexcept 
         {
             CMasternode::fCompatibilityReadMode = false;
@@ -70,14 +72,17 @@ public:
                 bProtectedMode = false;
                 CMasternode::fCompatibilityReadMode = true;
             }
-            else if (nVersion == MNCACHE_VERSION_PROTECTED)
+            else if (nVersion >= MNCACHE_VERSION_PROTECTED && nVersion <= MNCACHE_VERSION_PROTECTED_HIST)
+            {
                 bProtectedMode = true;
+                bOldMNHistMode = nVersion == MNCACHE_VERSION_PROTECTED;
+            } 
             else
                 throw unexpected_serialization_version(strprintf("CMasternodeManager: unexpected serialization version: '%s'", strVersion));
         }
         else
         {
-            strVersion = MNCACHE_SERIALIZATION_VERSION_PREFIX + std::to_string(MNCACHE_VERSION_PROTECTED);
+            strVersion = MNCACHE_SERIALIZATION_VERSION_PREFIX + std::to_string(MNCACHE_VERSION_PROTECTED_HIST);
             READWRITE(strVersion);
         }
         try
@@ -88,6 +93,7 @@ public:
             decltype(mAskedUsForMasternodeList) dummyMapAskedUsForMasternodeList;
             decltype(mWeAskedForMasternodeList) dummyMapWeAskedForMasternodeList;
             decltype(mWeAskedForMasternodeListEntry) dummyMapWeAskedForMasternodeListEntry;
+            masternode_history_map_t tempMapHistoricalTopMNs;
             if (bProtectedMode)
             {
                 READWRITE_PROTECTED(mapMasternodes);
@@ -112,14 +118,40 @@ public:
             {
                 READWRITE_PROTECTED(mapSeenMasternodeBroadcast);
                 READWRITE_PROTECTED(mapSeenMasternodePing);
-                READWRITE_PROTECTED(mapHistoricalTopMNs);
+                if (bRead)
+                {
+                    if (bOldMNHistMode)
+                        READWRITE_PROTECTED(tempMapHistoricalTopMNs);
+                    else
+                    {
+                        READWRITE_PROTECTED(m_mapHistoricalMNCache);
+                        READWRITE_PROTECTED(m_mapHistoricalTopMNs);
+                        READWRITE_PROTECTED(m_mapHistoricalMNCacheOutpoints);
+                        READWRITE(m_nLastHistoricalMNCacheID);
+                    }
+                }
+                else // write mode
+                {
+                    READWRITE_PROTECTED(m_mapHistoricalMNCache);
+                    READWRITE_PROTECTED(m_mapHistoricalTopMNs);
+                    READWRITE_PROTECTED(m_mapHistoricalMNCacheOutpoints);
+                    READWRITE(m_nLastHistoricalMNCacheID);
+                }
             }
             else
             {
                 READWRITE(mapSeenMasternodeBroadcast);
                 READWRITE(mapSeenMasternodePing);
-                READWRITE(mapHistoricalTopMNs);
+                READWRITE(tempMapHistoricalTopMNs);
             }
+            if (bRead)
+            {
+                if (bOldMNHistMode)
+                    ConvertOldHistoricalMNs(std::move(tempMapHistoricalTopMNs));
+                else
+                    ProcessHistoricalMNCache();
+            }
+
         } catch (const std::exception& e)
         {
 			LogPrintf("CMasternodeManager: serialization error: %s\n", e.what());
@@ -128,7 +160,9 @@ public:
         }
     }
 
-    CMasternodeMan();
+    CMasternodeMan() noexcept;
+
+    void ConvertOldHistoricalMNs(masternode_history_map_t && tempMapHistoricalTopMNs);
 
     /// Add an entry
     bool Add(masternode_t &mn);
@@ -146,6 +180,8 @@ public:
 
     /// Clear Masternode vector
     void Clear();
+    void CleanupMnbs();
+    void CleanupMnps(const bool bLock);
 
     uint32_t CountMasternodes(const std::function<bool(const masternode_t&)> &fnMnFilter,
         const int nProtocolVersion = -1) const noexcept;
@@ -243,8 +279,8 @@ public:
 
     void UpdatedBlockTip(const CBlockIndex *pindex);
     
-    GetTopMasterNodeStatus GetTopMNsForBlock(std::string &error, masternode_vector_t &topMNs, int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
-    GetTopMasterNodeStatus CalculateTopMNsForBlock(std::string &error, masternode_vector_t &topMNs, int nBlockHeight = -1, bool bSkipValidCheck = false);
+    GetTopMasterNodeStatus GetTopMNsForBlock(std::string &error, masternode_vector_t &vTopMNs, int nBlockHeight = -1, bool bCalculateIfNotSeen = false);
+    GetTopMasterNodeStatus CalculateTopMNsForBlock(std::string &error, masternode_vector_t &vTopMNs, int nBlockHeight = -1, bool bSkipValidCheck = false);
 
     void EraseSeenMnb(const uint256& hash);
     void SetSeenMnb(const uint256& hash, const int64_t nTime, const CMasternodeBroadcast& mnb);
@@ -256,6 +292,7 @@ public:
 private:
     // critical section to protect the inner data structures
     mutable CCriticalSection cs_mnMgr;
+    mutable CCriticalSection cs_mnHist;
 
     // Keep track of current block height
     std::atomic_uint32_t nCachedBlockHeight;
@@ -281,10 +318,18 @@ private:
     std::map<uint256, std::vector<CMasternodeBroadcast>> m_mapMnRecoveryGoodReplies;
     std::list<std::pair<CService, uint256>> listScheduledMnbRequestConnections;
     
-    std::unordered_map<uint32_t, masternode_vector_t> mapHistoricalTopMNs;
     std::map<uint256, COutPoint> m_mapScheduledMnbForRelay;
     std::map<uint256, COutPoint> m_mapScheduledMnpForRelay;
-    
+
+    // these maps are protected by cs_mnHist
+    // map of <mn historical cache id> -> <mn shared_ptr>
+    std::unordered_map<uint32_t, masternode_t> m_mapHistoricalMNCache;
+    // map of <block height> -> <vector of top masternodes (represented as mn historical cache ids)>
+    std::unordered_map<uint32_t, v_uint32> m_mapHistoricalTopMNs;
+    // map of <mn outpoint> -> <mn historical cache id>
+    std::unordered_map<std::string, uint32_t> m_mapHistoricalMNCacheOutpoints;
+    uint32_t m_nLastHistoricalMNCacheID = 0;
+
     int64_t nLastWatchdogVoteTime;
 
     friend class CMasternodeSync;
@@ -294,4 +339,5 @@ private:
     bool ProcessRecoveryReply(const uint256 &hashMNB, const node_t& pfrom, const CMasternodeBroadcast &mnb, masternode_t &pmn);
     void PopulateMasternodeRecoveryList(recovery_masternodes_t &mapRecoveryMasternodes) const;
     void CleanupMaps();
+    void ProcessHistoricalMNCache();
 };

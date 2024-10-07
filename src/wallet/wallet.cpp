@@ -246,8 +246,8 @@ bool CWallet::AddCryptedKey(const CPubKey &vchPubKey,
         return true;
     {
         LOCK(cs_wallet);
-        if (pwalletdbEncryption)
-            return pwalletdbEncryption->WriteCryptedKey(vchPubKey,
+        if (pWalletDbEncryption)
+            return pWalletDbEncryption->WriteCryptedKey(vchPubKey,
                                                         vchCryptedSecret,
                                                         mapKeyMetadata[vchPubKey.GetID()]);
         else
@@ -267,8 +267,8 @@ bool CWallet::AddCryptedSaplingSpendingKey(const libzcash::SaplingExtendedFullVi
         return true;
     {
         LOCK(cs_wallet);
-        if (pwalletdbEncryption) {
-            return pwalletdbEncryption->WriteCryptedSaplingZKey(extfvk,
+        if (pWalletDbEncryption) {
+            return pWalletDbEncryption->WriteCryptedSaplingZKey(extfvk,
                                                          vchCryptedSecret,
                                                          mapSaplingZKeyMetadata[extfvk.fvk.in_viewing_key()]);
         } else {
@@ -1011,21 +1011,22 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
         mapMasterKeys[++nMasterKeyMaxID] = kMasterKey;
         if (fFileBacked)
         {
-            assert(!pwalletdbEncryption);
-            pwalletdbEncryption = new CWalletDB(strWalletFile);
-            if (!pwalletdbEncryption->TxnBegin()) {
-                delete pwalletdbEncryption;
-                pwalletdbEncryption = nullptr;
+            assert(!pWalletDbEncryption);
+            pWalletDbEncryption = make_unique<CWalletDB>(strWalletFile);
+            if (!pWalletDbEncryption->TxnBegin())
+            {
+                pWalletDbEncryption.reset();
                 return false;
             }
-            pwalletdbEncryption->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
+            pWalletDbEncryption->WriteMasterKey(nMasterKeyMaxID, kMasterKey);
         }
 
         if (!EncryptKeys(vMasterKey))
         {
-            if (fFileBacked) {
-                pwalletdbEncryption->TxnAbort();
-                delete pwalletdbEncryption;
+            if (fFileBacked)
+            {
+                pWalletDbEncryption->TxnAbort();
+                pWalletDbEncryption.reset();
             }
             // We now probably have half of our keys encrypted in memory, and half not...
             // die and let the user reload the unencrypted wallet.
@@ -1033,19 +1034,19 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
         }
 
         // Encryption was introduced in version 0.4.0
-        SetMinVersion(FEATURE_WALLETCRYPT, pwalletdbEncryption, true);
+        SetMinVersion(FEATURE_WALLETCRYPT, pWalletDbEncryption.get(), true);
 
         if (fFileBacked)
         {
-            if (!pwalletdbEncryption->TxnCommit()) {
-                delete pwalletdbEncryption;
+            if (!pWalletDbEncryption->TxnCommit())
+            {
+                pWalletDbEncryption.reset();
                 // We now have keys encrypted in memory, but not on disk...
                 // die to avoid confusion and let the user reload the unencrypted wallet.
                 assert(false);
             }
 
-            delete pwalletdbEncryption;
-            pwalletdbEncryption = nullptr;
+            pWalletDbEncryption.reset();
         }
 
         Lock();
@@ -1750,8 +1751,8 @@ bool CWallet::SetCryptedHDSeed(const uint256& seedFp, const v_uint8 &vchCryptedS
 
     {
         LOCK(cs_wallet);
-        if (pwalletdbEncryption)
-            return pwalletdbEncryption->WriteCryptedHDSeed(seedFp, vchCryptedSecret);
+        if (pWalletDbEncryption)
+            return pWalletDbEncryption->WriteCryptedHDSeed(seedFp, vchCryptedSecret);
         else
             return CWalletDB(strWalletFile).WriteCryptedHDSeed(seedFp, vchCryptedSecret);
     }
@@ -3410,38 +3411,36 @@ bool CWallet::NewKeyPool()
             walletdb.WritePool(nIndex, CKeyPool(GenerateNewKey()));
             setKeyPool.insert(nIndex);
         }
-        LogFnPrintf("wrote %" PRId64 " new keys", nKeys);
+        LogFnPrint("wallet", "wrote %" PRId64 " new keys", nKeys);
     }
     return true;
 }
 
 bool CWallet::TopUpKeyPool(unsigned int kpSize)
 {
+    LOCK(cs_wallet);
+
+    if (IsLocked())
+        return false;
+
+    CWalletDB walletdb(strWalletFile);
+
+    // Top up key pool
+    uint64_t nTargetSize;
+    if (kpSize > 0)
+        nTargetSize = kpSize;
+    else
+        nTargetSize = static_cast<uint64_t>(max(GetArg("-keypool", 100), (int64_t) 0));
+
+    while (setKeyPool.size() < (nTargetSize + 1))
     {
-        LOCK(cs_wallet);
-
-        if (IsLocked())
-            return false;
-
-        CWalletDB walletdb(strWalletFile);
-
-        // Top up key pool
-        uint64_t nTargetSize;
-        if (kpSize > 0)
-            nTargetSize = kpSize;
-        else
-            nTargetSize = static_cast<uint64_t>(max(GetArg("-keypool", 100), (int64_t) 0));
-
-        while (setKeyPool.size() < (nTargetSize + 1))
-        {
-            int64_t nEnd = 1;
-            if (!setKeyPool.empty())
-                nEnd = *(--setKeyPool.end()) + 1;
-            if (!walletdb.WritePool(nEnd, CKeyPool(GenerateNewKey())))
-                throw runtime_error("TopUpKeyPool(): writing generated key failed");
-            setKeyPool.insert(nEnd);
-            LogPrintf("keypool added key %d, size=%u\n", nEnd, setKeyPool.size());
-        }
+        int64_t nEnd = 1;
+        if (!setKeyPool.empty())
+            nEnd = *(--setKeyPool.end()) + 1;
+        if (!walletdb.WritePool(nEnd, CKeyPool(GenerateNewKey())))
+            throw runtime_error("TopUpKeyPool(): writing generated key failed");
+        setKeyPool.insert(nEnd);
+        LogPrint("wallet", "keypool added key %" PRId64 ", size=%zu\n", nEnd, setKeyPool.size());
     }
     return true;
 }
@@ -3456,24 +3455,29 @@ void CWallet::ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& keypool)
         if (!IsLocked())
             TopUpKeyPool();
 
-        // Get the oldest key
-        if(setKeyPool.empty())
+        if (setKeyPool.empty())
             return;
 
-        CWalletDB walletdb(strWalletFile);
-
-        nIndex = *(setKeyPool.begin());
-        setKeyPool.erase(setKeyPool.begin());
-        if (!walletdb.ReadPool(nIndex, keypool))
-            throw runtime_error("ReserveKeyFromKeyPool(): read failed");
-        if (!HaveKey(keypool.vchPubKey.GetID()))
-            throw runtime_error("ReserveKeyFromKeyPool(): unknown key in key pool");
-        assert(keypool.vchPubKey.IsValid());
-        LogPrintf("keypool reserve %d\n", nIndex);
+        // Get the oldest key
+        auto it = setKeyPool.begin();
+        nIndex = *it;
+        setKeyPool.erase(it);
     }
+
+    // Lazy initialization after key retrieval
+    CWalletDB walletdb(strWalletFile);
+
+    if (!walletdb.ReadPool(nIndex, keypool))
+        throw runtime_error("ReserveKeyFromKeyPool(): read failed");
+
+    if (!HaveKey(keypool.vchPubKey.GetID()))
+        throw runtime_error("ReserveKeyFromKeyPool(): unknown key in key pool");
+
+    assert(keypool.vchPubKey.IsValid());
+    LogPrint("wallet", "keypool reserve %" PRId64 "\n", nIndex);
 }
 
-void CWallet::KeepKey(int64_t nIndex)
+void CWallet::KeepKey(const int64_t nIndex)
 {
     // Remove from key pool
     if (fFileBacked)
@@ -3481,17 +3485,17 @@ void CWallet::KeepKey(int64_t nIndex)
         CWalletDB walletdb(strWalletFile);
         walletdb.ErasePool(nIndex);
     }
-    LogPrintf("keypool keep %d\n", nIndex);
+    LogPrint("wallet", "keypool keep %" PRId64 "\n", nIndex);
 }
 
-void CWallet::ReturnKey(int64_t nIndex)
+void CWallet::ReturnKey(const int64_t nIndex)
 {
     // Return to key pool
     {
         LOCK(cs_wallet);
         setKeyPool.insert(nIndex);
     }
-    LogPrintf("keypool return %d\n", nIndex);
+    LogPrint("wallet", "keypool return %" PRId64 "\n", nIndex);
 }
 
 bool CWallet::GetKeyFromPool(CPubKey& result)
@@ -3561,15 +3565,16 @@ BalanceMap_t CWallet::GetAddressBalances(const isminetype isMineFilter)
     return balanceMap;
 }
 
-set< set<CTxDestination> > CWallet::GetAddressGroupings()
+txdest_group_set_t CWallet::GetAddressGroupings()
 {
     AssertLockHeld(cs_wallet); // mapWallet
-    set< set<CTxDestination> > groupings;
-    set<CTxDestination> grouping;
+    // groupings of addresses that are linked by inputs and change
+    txdest_group_set_t groupings;
+    txdest_set_t grouping;
 
     for (const auto& [hash, coin] : mapWallet)
     {
-        if (coin.vin.size() > 0)
+        if (!coin.vin.empty())
         {
             bool any_mine = false;
             // group all input addresses with each other
@@ -3578,7 +3583,7 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
                 CTxDestination address;
                 if (!IsMine(txin)) /* If this input isn't mine, ignore it */
                     continue;
-                if(!ExtractDestination(mapWallet[txin.prevout.hash].vout[txin.prevout.n].scriptPubKey, address))
+                if (!ExtractDestination(mapWallet[txin.prevout.hash].vout[txin.prevout.n].scriptPubKey, address))
                     continue;
                 grouping.insert(address);
                 any_mine = true;
@@ -3587,77 +3592,73 @@ set< set<CTxDestination> > CWallet::GetAddressGroupings()
             // group change with input addresses
             if (any_mine)
             {
-               for (const auto &txout : coin.vout)
-                   if (IsChange(txout))
-                   {
-                       CTxDestination txoutAddr;
-                       if(!ExtractDestination(txout.scriptPubKey, txoutAddr))
-                           continue;
-                       grouping.insert(txoutAddr);
-                   }
+                for (const auto& txout : coin.vout)
+                {
+                    if (!IsChange(txout))
+                        continue;
+
+                    CTxDestination txoutAddr;
+                    if (!ExtractDestination(txout.scriptPubKey, txoutAddr))
+                        continue;
+                    grouping.insert(txoutAddr);
+                }
             }
-            if (grouping.size() > 0)
-            {
-                groupings.insert(grouping);
-                grouping.clear();
-            }
+            if (!grouping.empty())
+                groupings.insert(std::move(grouping));
         }
 
         // group lone addrs by themselves
         for (unsigned int i = 0; i < coin.vout.size(); i++)
         {
-            if (IsMine(coin.vout[i]))
-            {
-                CTxDestination address;
-                if(!ExtractDestination(coin.vout[i].scriptPubKey, address))
-                    continue;
-                grouping.insert(address);
-                groupings.insert(grouping);
-                grouping.clear();
-            }
+            if (!IsMine(coin.vout[i]))
+                continue;
+
+            CTxDestination address;
+            if (!ExtractDestination(coin.vout[i].scriptPubKey, address))
+                continue;
+            grouping.insert(address);
+            groupings.insert(std::move(grouping));
         }
     }
 
-    set< set<CTxDestination>* > uniqueGroupings; // a set of pointers to groups of addresses
-    map< CTxDestination, set<CTxDestination>* > setmap;  // map addresses to the unique group containing it
-    for(const auto &grouping : groupings)
+    txdest_unique_group_set_t uniqueGroupings; // a set of pointers to groups of addresses
+    map<CTxDestination, txdest_unique_group_set_t::iterator> setmap; // map addresses to the unique group containing it
+    for (const auto &grouping : groupings)
     {
         // make a set of all the groups hit by this new group
-        set< set<CTxDestination>* > hits;
-        map< CTxDestination, set<CTxDestination>* >::iterator it;
-        for (const auto &address : grouping)
-            if ((it = setmap.find(address)) != setmap.end())
-                hits.insert((*it).second);
+        set<txdest_unique_group_set_t::iterator, CompareTxDestConstIterator> hits;
+        for (const auto& address : grouping)
+        {
+            auto it = setmap.find(address);
+            if (it != setmap.end())
+                hits.insert(it->second);
+        }
 
         // merge all hit groups into a new single group and delete old groups
-        set<CTxDestination>* merged = new set<CTxDestination>(grouping);
-        for (auto hit : hits)
+        auto merged = make_unique<txdest_set_t>(grouping);
+        for (const auto &hit: hits)
         {
-            merged->insert(hit->begin(), hit->end());
+            merged->insert((*hit)->begin(), (*hit)->end());
             uniqueGroupings.erase(hit);
-            delete hit;
         }
-        uniqueGroupings.insert(merged);
+        auto inserted = uniqueGroupings.insert(std::move(merged));
 
         // update setmap
-        for (const auto &element : *merged)
-            setmap[element] = merged;
+        for (const auto &element : **inserted.first)
+            setmap[element] = inserted.first;
     }
 
-    set< set<CTxDestination> > ret;
-    for (auto uniqueGrouping : uniqueGroupings)
-    {
+    txdest_group_set_t ret;
+    for (const auto &uniqueGrouping: uniqueGroupings)
         ret.insert(*uniqueGrouping);
-        delete uniqueGrouping;
-    }
 
     return ret;
 }
 
-set<CTxDestination> CWallet::GetAccountAddresses(const string& strAccount) const
+txdest_set_t CWallet::GetAccountAddresses(const string& strAccount) const
 {
     LOCK(cs_wallet);
-    set<CTxDestination> result;
+    txdest_set_t result;
     for (const auto &[address, addressBookData] : mapAddressBook)
     {
         const string& strName = addressBookData.name;
@@ -3673,11 +3674,10 @@ bool CReserveKey::GetReservedKey(CPubKey& pubkey)
     {
         CKeyPool keypool;
         pwallet->ReserveKeyFromKeyPool(nIndex, keypool);
-        if (nIndex != -1)
-            vchPubKey = keypool.vchPubKey;
-        else {
+        if (nIndex == -1)
             return false;
-        }
+
+        vchPubKey = keypool.vchPubKey;
     }
     assert(vchPubKey.IsValid());
     pubkey = vchPubKey;
@@ -3711,24 +3711,22 @@ void CWallet::GetAllReserveKeys(set<CKeyID>& setAddress) const
     {
         CKeyPool keypool;
         if (!walletdb.ReadPool(id, keypool))
-            throw runtime_error("GetAllReserveKeyHashes(): read failed");
+            throw runtime_error("GetAllReserveKeys(): read failed");
         assert(keypool.vchPubKey.IsValid());
         CKeyID keyID = keypool.vchPubKey.GetID();
         if (!HaveKey(keyID))
-            throw runtime_error("GetAllReserveKeyHashes(): unknown key in key pool");
+            throw runtime_error("GetAllReserveKeys(): unknown key in key pool");
         setAddress.insert(keyID);
     }
 }
 
 void CWallet::UpdatedTransaction(const uint256 &hashTx)
 {
-    {
-        LOCK(cs_wallet);
-        // Only notify UI if this transaction is in this wallet
-        auto mi = mapWallet.find(hashTx);
-        if (mi != mapWallet.end())
-            NotifyTransactionChanged(this, hashTx, CT_UPDATED);
-    }
+    LOCK(cs_wallet);
+    // Only notify UI if this transaction is in this wallet
+    auto mi = mapWallet.find(hashTx);
+    if (mi != mapWallet.end())
+        NotifyTransactionChanged(this, hashTx, CT_UPDATED);
 }
 
 void CWallet::LockCoin(const COutPoint& output)
@@ -3846,7 +3844,7 @@ void CWallet::GetKeyBirthTimes(map<CKeyID, int64_t> &mapKeyBirth) const
             mapKeyBirth[it->first] = it->second.nCreateTime;
 
     // map in which we'll infer heights of other keys
-    CBlockIndex *pindexMax = chainActive[max(0, chainActive.Height() - 144)]; // the tip can be reorganised; use a 144-block safety margin
+    CBlockIndex *pindexMax = chainActive[max(0, chainActive.Height() - 144)]; // the tip can be reorganized; use a 144-block safety margin
     map<CKeyID, CBlockIndex*> mapKeyFirstBlock;
     for (const auto &keyid : GetKeys())
     {

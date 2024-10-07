@@ -12,6 +12,9 @@
     <Filter Include="Source Files\vc_port">
       <UniqueIdentifier>{4580c955-f71f-4d68-96ae-42c398fc382c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="packages">
+      <UniqueIdentifier>{2ee15f7c-e20e-42dc-a088-6bf7471c4b31}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\vs\port\unistd.cpp">
@@ -44,5 +47,171 @@
       <Filter>Source Files</Filter>
     </None>
     <None Include="..\..\..\Makefile.am" />
+    <None Include="..\..\..\build.sh" />
+    <None Include="..\..\..\depends\packages\bdb.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\boost.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_aes.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_aes_soft.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_aesni.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_arrayvec.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_bellman.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_bit_vec.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_bitflags.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_blake2_rfc.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_block_cipher_trait.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_byte_tools.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_byteorder.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_constant_time_eq.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_crossbeam.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_digest.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_fpe.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_fuchsia_zircon.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_fuchsia_zircon_sys.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_futures.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_futures_cpupool.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_generic_array.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_lazy_static.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_libc.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_nodrop.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_num_bigint.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_num_cpus.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_num_integer.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_num_traits.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_opaque_debug.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_pairing.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_rand.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_sapling_crypto.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_stream_cipher.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_typenum.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_winapi.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_winapi_i686_pc_windows_gnu.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_winapi_x86_64_pc_windows_gnu.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\crate_zip32.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\googletest.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\libevent.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\libgmp.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\librustzcash.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\libsodium.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\macosx_sdk.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\native_b2.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\native_ccache.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\native_cctools.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\native_clang.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\native_rust.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\openssl.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\packages.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\proton.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\zeromq.mk">
+      <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\depends\packages\zstd.mk">
+      <Filter>packages</Filter>
+    </None>
   </ItemGroup>
 </Project>

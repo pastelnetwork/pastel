@@ -15,10 +15,7 @@
 #include <mnode/tickets/collection-reg.h>
 #include <mnode/tickets/collection-act.h>
 #include <mnode/mnode-controller.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
 
 using json = nlohmann::json;
 using namespace std;

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2022 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -11,9 +11,8 @@
 #include <init.h>
 #include <mnode/mnode-masternode.h>
 #include <mnode/mnode-controller.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
+
 using namespace std;
 
 bool DecodeHexVecMnb(vector<CMasternodeBroadcast>& vecMnb, const string& strHexMnb)

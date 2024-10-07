@@ -8,9 +8,7 @@
 #include <main.h>
 #include <init.h>
 #include <key_io.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif
 
 using namespace std;
 

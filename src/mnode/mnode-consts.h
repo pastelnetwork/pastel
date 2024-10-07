@@ -74,6 +74,10 @@ constexpr int MNB_RECOVERY_RETRY_SECONDS     = 3 * 60 * 60;
 constexpr auto MNCACHE_FILENAME = "mncache.dat";
 constexpr auto MNCACHE_CACHE_MAGIC_STR = "magicMasternodeCache";
 constexpr auto MNCACHE_SERIALIZATION_VERSION_PREFIX = "CMasternodeMan-Version-";
+// mncache.dat versions
 constexpr uint32_t MNCACHE_VERSION_OLD = 7;
 constexpr uint32_t MNCACHE_VERSION_PROTECTED = 8;
+constexpr uint32_t MNCACHE_VERSION_PROTECTED_HIST = 9;
 
+constexpr auto MNPAYMENTS_CACHE_MAGIC_STR = "magicMasternodePaymentsCache";
+constexpr auto MNPAYMENTS_CACHE_FILENAME = "mnpayments.dat";

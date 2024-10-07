@@ -9,9 +9,7 @@
 #include <utils/streams.h>
 #include <primitives/transaction.h>
 #include <script/standard.h>
-#ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
-#endif // ENABLE_WALLET
 
 #ifdef ENABLE_WALLET
 

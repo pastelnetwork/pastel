@@ -15,10 +15,7 @@
 #include <script/script.h>
 #include <script/script_error.h>
 #include <script/sign.h>
-
-#ifdef ENABLE_WALLET
 #include <wallet/wallet_ismine.h>
-#endif
 
 using namespace std;
 using namespace testing;
