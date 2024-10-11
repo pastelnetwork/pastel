@@ -7,7 +7,7 @@ $(package)_dependencies=
 $(package)_config_opts=
 
 define $(package)_set_vars
-$(package)_cflags+=-mno-avx512f
+$(package)_cflags+=-mno-avx512f -mno-avx2
 $(package)_config_env=CC="$($(package)_cc)" CFLAGS="$($(package)_cflags)"
 $(package)_config_opts =--enable-static
 $(package)_config_opts+=--disable-shared
