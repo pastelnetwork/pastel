@@ -6,17 +6,8 @@ $(package)_sha256_hash=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18
 $(package)_dependencies=
 $(package)_config_opts=
 
-# Add OS detection
-OS := $(shell uname -s)
-
 define $(package)_set_vars
-$(package)_cflags+=-mno-avx512f
-
-# Conditionally add -mno-avx2 and -mno-avx if OS is Darwin
-ifeq ($(OS), Darwin)
-$(package)_cflags+=-mno-avx2 -mno-avx
-endif
-
+$(package)_cflags+=-mno-avx512f -mno-avx2 -mno-avx -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-ssse3 -mno-sse4.1 -mno-sse4.2 -mno-aes -mno-pclmul -mno-rdrnd
 $(package)_config_env=CC="$($(package)_cc)" CFLAGS="$($(package)_cflags)"
 $(package)_config_opts =--enable-static
 $(package)_config_opts+=--disable-shared
