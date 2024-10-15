@@ -7,14 +7,13 @@ $(package)_dependencies=
 $(package)_config_opts=
 
 define $(package)_set_vars
-$(package)_cflags+=-mno-avx512f -mno-avx2 -mno-avx -mno-mmx -mno-sse -mno-sse2 -mno-sse3 -mno-ssse3 -mno-sse4.1 -mno-sse4.2 -mno-aes -mno-pclmul -mno-rdrnd
+$(package)_cflags+=-mno-avx512f
+$(package)_cflags_darwin=-mno-avx
 $(package)_config_env=CC="$($(package)_cc)" CFLAGS="$($(package)_cflags)"
 $(package)_config_opts =--enable-static
 $(package)_config_opts+=--disable-shared
-$(package)_config_opts+=--disable-tests
-$(package)_config_opts+=--disable-assert
-$(package)_config_opts+=--disable-benchmarks
-$(package)_config_opts+=--enable-opt
+$(package)_config_opts_linux+=--enable-opt
+$(package)_config_opts_mingw32+=--enable-opt
 $(package)_config_opts_release=--disable-debug
 $(package)_config_opts_debug=--enable-debug
 $(package)_cxxflags+=-std=c++20
