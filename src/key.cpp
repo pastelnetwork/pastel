@@ -314,8 +314,9 @@ bool CExtKey::Derive(CExtKey &out, unsigned int nChild) const
     return key.Derive(out.key, out.chaincode, nChild, chaincode);
 }
 
-void CExtKey::SetMaster(const unsigned char *seed, unsigned int nSeedLen) {
-    static const unsigned char hashkey[] = {'B','i','t','c','o','i','n',' ','s','e','e','d'};
+void CExtKey::SetMaster(const unsigned char *seed, unsigned int nSeedLen)
+{
+    constexpr unsigned char hashkey[] = {'B','i','t','c','o','i','n',' ','s','e','e','d'};
     vector<unsigned char, secure_allocator<unsigned char>> vout(64);
     CHMAC_SHA512(hashkey, sizeof(hashkey)).Write(seed, nSeedLen).Finalize(vout.data());
     key.Set(&vout[0], &vout[32], true);

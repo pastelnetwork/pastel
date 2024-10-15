@@ -1,4 +1,7 @@
 #pragma once
+// Copyright (c) 2018-2024 The Pastel Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #ifdef _MSC_VER
 #include <intrin.h>
 #include <cstdint>
@@ -7,14 +10,14 @@ static inline int __builtin_ctz(unsigned x)
 {
     unsigned long ret;
     _BitScanForward(&ret, x);
-    return (int)ret;
+    return static_cast<int>(ret);
 }
 
 static inline int __builtin_ctzll(unsigned long long x)
 {
     unsigned long ret;
     _BitScanForward64(&ret, x);
-    return (int)ret;
+    return static_cast<int>(ret);
 }
 
 static inline int __builtin_ctzl(unsigned long x)
@@ -24,12 +27,12 @@ static inline int __builtin_ctzl(unsigned long x)
 
 static inline int __builtin_clz(unsigned x)
 {
-    return (int)__lzcnt(x);
+    return __lzcnt(x);
 }
 
 static inline int __builtin_clzll(unsigned long long x)
 {
-     return (int)__lzcnt64(x);
+     return static_cast<int>(__lzcnt64(x));
 }
 
 static inline int __builtin_clzl(unsigned long x)

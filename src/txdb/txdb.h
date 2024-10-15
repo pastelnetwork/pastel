@@ -23,11 +23,11 @@ class CBlockIndex;
 struct CDiskTxPos;
 
 //! -dbcache default (MiB)
-static const int64_t nDefaultDbCache = 450;
+constexpr int64_t nDefaultDbCache = 450;
 //! max. -dbcache (MiB)
-static const int64_t nMaxDbCache = sizeof(void*) > 4 ? 16384 : 1024;
+constexpr int64_t nMaxDbCache = sizeof(void*) > 4 ? 16384 : 1024;
 //! min. -dbcache in (MiB)
-static const int64_t nMinDbCache = 4;
+constexpr int64_t nMinDbCache = 4;
 
 constexpr auto TXDB_FLAG_INSIGHT_EXPLORER   = "insightexplorer";
 constexpr auto TXDB_FLAG_FUNDSTRANSFERINDEX = "fundstransferindex";

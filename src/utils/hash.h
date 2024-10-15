@@ -73,7 +73,7 @@ public:
 template<typename T1>
 inline uint256 Hash(const T1 pbegin, const T1 pend)
 {
-    static const unsigned char pblank[1] = {};
+    constexpr unsigned char pblank[1] = {};
     uint256 result;
     CHash256().Write(pbegin == pend ? pblank : (const unsigned char*)&pbegin[0], (pend - pbegin) * sizeof(pbegin[0]))
               .Finalize((unsigned char*)&result);
@@ -84,7 +84,7 @@ inline uint256 Hash(const T1 pbegin, const T1 pend)
 template<typename T1, typename T2>
 inline uint256 Hash(const T1 p1begin, const T1 p1end,
                     const T2 p2begin, const T2 p2end) {
-    static const unsigned char pblank[1] = {};
+    constexpr unsigned char pblank[1] = {};
     uint256 result;
     CHash256().Write(p1begin == p1end ? pblank : (const unsigned char*)&p1begin[0], (p1end - p1begin) * sizeof(p1begin[0]))
               .Write(p2begin == p2end ? pblank : (const unsigned char*)&p2begin[0], (p2end - p2begin) * sizeof(p2begin[0]))
@@ -97,7 +97,7 @@ template<typename T1, typename T2, typename T3>
 inline uint256 Hash(const T1 p1begin, const T1 p1end,
                     const T2 p2begin, const T2 p2end,
                     const T3 p3begin, const T3 p3end) {
-    static const unsigned char pblank[1] = {};
+    constexpr unsigned char pblank[1] = {};
     uint256 result;
     CHash256().Write(p1begin == p1end ? pblank : (const unsigned char*)&p1begin[0], (p1end - p1begin) * sizeof(p1begin[0]))
               .Write(p2begin == p2end ? pblank : (const unsigned char*)&p2begin[0], (p2end - p2begin) * sizeof(p2begin[0]))

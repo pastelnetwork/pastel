@@ -19,8 +19,6 @@
 #include <ui_interface.h>
 #include <asyncrpcqueue.h>
 
-#include <boost/iostreams/concepts.hpp>
-#include <boost/iostreams/stream.hpp>
 #include <boost/signals2/signal.hpp>
 
 using namespace RPCServer;
@@ -55,12 +53,12 @@ void RPCServer::OnStopped(function<void ()> slot)
 
 void RPCServer::OnPreCommand(function<void (const CRPCCommand&)> slot)
 {
-    g_rpcSignals.PreCommand.connect(bind(slot, placeholders::_1));
+    g_rpcSignals.PreCommand.connect(slot);
 }
 
 void RPCServer::OnPostCommand(function<void (const CRPCCommand&)> slot)
 {
-    g_rpcSignals.PostCommand.connect(bind(slot, placeholders::_1));
+    g_rpcSignals.PostCommand.connect(slot);
 }
 
 void RPCTypeCheck(const UniValue& params,

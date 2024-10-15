@@ -22,14 +22,14 @@
 #include <zcash/Note.hpp>
 
 // Overwinter transaction version
-static const int32_t OVERWINTER_TX_VERSION = 3;
+constexpr int32_t OVERWINTER_TX_VERSION = 3;
 static_assert(OVERWINTER_TX_VERSION >= OVERWINTER_MIN_TX_VERSION,
     "Overwinter tx version must not be lower than minimum");
 static_assert(OVERWINTER_TX_VERSION <= OVERWINTER_MAX_TX_VERSION,
     "Overwinter tx version must not be higher than maximum");
 
 // Sapling transaction version
-static const int32_t SAPLING_TX_VERSION = 4;
+constexpr int32_t SAPLING_TX_VERSION = 4;
 static_assert(SAPLING_TX_VERSION >= SAPLING_MIN_TX_VERSION,
     "Sapling tx version must not be lower than minimum");
 static_assert(SAPLING_TX_VERSION <= SAPLING_MAX_TX_VERSION,

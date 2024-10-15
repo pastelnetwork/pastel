@@ -1,6 +1,6 @@
 // Copyright (c) 2015-2017 The Bitcoin Core developers
 // Copyright (c) 2017 The Zcash developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <vector>
@@ -25,28 +25,27 @@
 #include <event2/event.h>
 #include <event2/thread.h>
 
-using namespace boost::placeholders;
 using namespace std;
 
     /** Default control port */
 const string DEFAULT_TOR_CONTROL = "127.0.0.1:9051";
 /** Tor cookie size (from control-spec.txt) */
-static const int TOR_COOKIE_SIZE = 32;
+constexpr int TOR_COOKIE_SIZE = 32;
 /** Size of client/server nonce for SAFECOOKIE */
-static const int TOR_NONCE_SIZE = 32;
+constexpr int TOR_NONCE_SIZE = 32;
 /** For computing serverHash in SAFECOOKIE */
 static const string TOR_SAFE_SERVERKEY = "Tor safe cookie authentication server-to-controller hash";
 /** For computing clientHash in SAFECOOKIE */
 static const string TOR_SAFE_CLIENTKEY = "Tor safe cookie authentication controller-to-server hash";
 /** Exponential backoff configuration - initial timeout in seconds */
-static const float RECONNECT_TIMEOUT_START = 1.0;
+constexpr float RECONNECT_TIMEOUT_START = 1.0;
 /** Exponential backoff configuration - growth factor */
-static const float RECONNECT_TIMEOUT_EXP = 1.5;
+constexpr float RECONNECT_TIMEOUT_EXP = 1.5;
 /** Maximum length for lines received on TorControlConnection.
  * tor-control-spec.txt mentions that there is explicitly no limit defined to line length,
  * this is belt-and-suspenders sanity limit to prevent memory exhaustion.
  */
-static const int MAX_LINE_LENGTH = 100000;
+constexpr int MAX_LINE_LENGTH = 100000;
 
 /****** Low-level TorControlConnection ********/
 
@@ -470,8 +469,10 @@ TorController::TorController(struct event_base* baseIn, const string& target):
     if (!reconnect_ev)
         LogPrintf("tor: Failed to create event for reconnection: out of memory?\n");
     // Start connection attempts immediately
-    if (!conn.Connect(target, boost::bind(&TorController::connected_cb, this, _1),
-        boost::bind(&TorController::disconnected_cb, this, _1))) {
+    if (!conn.Connect(target, 
+        [this](TorControlConnection& conn) { connected_cb(conn); },
+        [this](TorControlConnection& conn) { disconnected_cb(conn); }))
+    {
         LogPrintf("tor: Initiating connection to Tor control port %s failed\n", target);
     }
     // Read service private key if cached
@@ -551,7 +552,7 @@ void TorController::auth_cb(TorControlConnection& conn, const TorControlReply& r
         // Note that the 'virtual' port doesn't have to be the same as our internal port, but this is just a convenient
         // choice.  TODO; refactor the shutdown sequence some day.
         conn.Command(strprintf("ADD_ONION %s Port=%i,127.0.0.1:%i", private_key, GetListenPort(), GetListenPort()),
-        boost::bind(&TorController::add_onion_cb, this, _1, _2));
+                     [this](TorControlConnection& conn, const TorControlReply& reply) { add_onion_cb(conn, reply); });
     } else {
         LogPrintf("tor: Authentication failed\n");
     }
@@ -610,7 +611,8 @@ void TorController::authchallenge_cb(TorControlConnection& conn, const TorContro
             }
 
             vector<uint8_t> computedClientHash = ComputeResponse(TOR_SAFE_CLIENTKEY, cookie, clientNonce, serverNonce);
-            conn.Command("AUTHENTICATE " + HexStr(computedClientHash), boost::bind(&TorController::auth_cb, this, _1, _2));
+            conn.Command("AUTHENTICATE " + HexStr(computedClientHash),
+                [this](TorControlConnection& conn, const TorControlReply& reply) { auth_cb(conn, reply); });
         } else {
             LogPrintf("tor: Invalid reply to AUTHCHALLENGE\n");
         }
@@ -659,13 +661,15 @@ void TorController::protocolinfo_cb(TorControlConnection& conn, const TorControl
             if (methods.count("HASHEDPASSWORD")) {
                 LogPrint("tor", "tor: Using HASHEDPASSWORD authentication\n");
                 replaceAll(torpassword, "\"", "\\\"");
-                conn.Command("AUTHENTICATE \"" + torpassword + "\"", boost::bind(&TorController::auth_cb, this, _1, _2));
+                conn.Command("AUTHENTICATE \"" + torpassword + "\"", 
+                    [this](TorControlConnection& conn, const TorControlReply& reply) { auth_cb(conn, reply); });
             } else {
                 LogPrintf("tor: Password provided with -torpassword, but HASHEDPASSWORD authentication is not available\n");
             }
         } else if (methods.count("NULL")) {
             LogPrint("tor", "tor: Using NULL authentication\n");
-            conn.Command("AUTHENTICATE", boost::bind(&TorController::auth_cb, this, _1, _2));
+            conn.Command("AUTHENTICATE",
+                [this](TorControlConnection& conn, const TorControlReply& reply) { auth_cb(conn, reply); });
         } else if (methods.count("SAFECOOKIE")) {
             // Cookie: hexdump -e '32/1 "%02x""\n"'  ~/.tor/control_auth_cookie
             LogPrint("tor", "tor: Using SAFECOOKIE authentication, reading cookie authentication from %s\n", cookiefile);
@@ -675,7 +679,8 @@ void TorController::protocolinfo_cb(TorControlConnection& conn, const TorControl
                 cookie = vector<uint8_t>(status_cookie.second.begin(), status_cookie.second.end());
                 clientNonce = vector<uint8_t>(TOR_NONCE_SIZE, 0);
                 GetRandBytes(&clientNonce[0], TOR_NONCE_SIZE);
-                conn.Command("AUTHCHALLENGE SAFECOOKIE " + HexStr(clientNonce), boost::bind(&TorController::authchallenge_cb, this, _1, _2));
+                conn.Command("AUTHCHALLENGE SAFECOOKIE " + HexStr(clientNonce),
+                    [this](TorControlConnection& conn, const TorControlReply& reply) { authchallenge_cb(conn, reply); });
             } else {
                 if (status_cookie.first) {
                     LogPrintf("tor: Authentication cookie %s is not exactly %i bytes, as is required by the spec\n", cookiefile, TOR_COOKIE_SIZE);
@@ -697,8 +702,11 @@ void TorController::connected_cb(TorControlConnection& conn)
 {
     reconnect_timeout = RECONNECT_TIMEOUT_START;
     // First send a PROTOCOLINFO command to figure out what authentication is expected
-    if (!conn.Command("PROTOCOLINFO 1", boost::bind(&TorController::protocolinfo_cb, this, _1, _2)))
+    if (!conn.Command("PROTOCOLINFO 1",
+        [this](TorControlConnection& conn, const TorControlReply& reply) { protocolinfo_cb(conn, reply); }))
+    {
         LogPrintf("tor: Error sending initial protocolinfo command\n");
+    }
 }
 
 void TorController::disconnected_cb(TorControlConnection& conn)
@@ -724,8 +732,10 @@ void TorController::Reconnect()
     /* Try to reconnect and reestablish if we get booted - for example, Tor
      * may be restarting.
      */
-    if (!conn.Connect(target, boost::bind(&TorController::connected_cb, this, _1),
-         boost::bind(&TorController::disconnected_cb, this, _1) )) {
+    if (!conn.Connect(target, 
+        [this](TorControlConnection& conn) { connected_cb(conn); },
+        [this](TorControlConnection& conn) { disconnected_cb(conn); }))
+    {
         LogPrintf("tor: Re-initiating connection to Tor control port %s failed\n", target);
     }
 }

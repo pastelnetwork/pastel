@@ -286,7 +286,7 @@ TEST(test_univalue, univalue_object)
     EXPECT_EQ(obj.size(), 0);
 }
 
-static const char *json1 =
+constexpr auto json1 =
 "[1.10000000,{\"key1\":\"str\\u0000\",\"key2\":800,\"key3\":{\"name\":\"martian http://test.com\"}}]";
 
 TEST(test_univalue, univalue_readwrite)

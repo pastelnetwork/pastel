@@ -1,4 +1,5 @@
 // Copyright (c) 2014 The Bitcoin Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -184,7 +185,7 @@ CSHA512& CSHA512::Write(const unsigned char* data, size_t len)
 
 void CSHA512::Finalize(unsigned char hash[OUTPUT_SIZE])
 {
-    static const unsigned char pad[128] = {0x80};
+    static constexpr unsigned char pad[128] = {0x80};
     unsigned char sizedesc[16] = {0x00};
     WriteBE64(sizedesc + 8, bytes << 3);
     Write(pad, 1 + ((239 - (bytes % 128)) % 128));

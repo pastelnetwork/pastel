@@ -232,9 +232,9 @@ bool SoftSetBoolArg(const string& strArg, bool fValue)
         return SoftSetArg(strArg, string("0"));
 }
 
-static const int screenWidth = 79;
-static const int optIndent = 2;
-static const int msgIndent = 7;
+constexpr int screenWidth = 79;
+constexpr int optIndent = 2;
+constexpr int msgIndent = 7;
 
 string HelpMessageGroup(const string &message)
 {

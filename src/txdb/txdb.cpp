@@ -21,29 +21,29 @@ unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
 
 // NOTE: Per issue #3277, do not use the prefix 'X' or 'x' as they were
 // previously used by DB_SAPLING_ANCHOR and DB_BEST_SAPLING_ANCHOR.
-static constexpr char DB_SPROUT_ANCHOR = 'A';
-static constexpr char DB_SAPLING_ANCHOR = 'Z';
-static constexpr char DB_NULLIFIER = 's';
-static constexpr char DB_SAPLING_NULLIFIER = 'S';
-static constexpr char DB_COINS = 'c';
-static constexpr char DB_BLOCK_FILES = 'f';
-static constexpr char DB_TXINDEX = 't';
-static constexpr char DB_BLOCK_INDEX = 'b';
+constexpr char DB_SPROUT_ANCHOR = 'A';
+constexpr char DB_SAPLING_ANCHOR = 'Z';
+constexpr char DB_NULLIFIER = 's';
+constexpr char DB_SAPLING_NULLIFIER = 'S';
+constexpr char DB_COINS = 'c';
+constexpr char DB_BLOCK_FILES = 'f';
+constexpr char DB_TXINDEX = 't';
+constexpr char DB_BLOCK_INDEX = 'b';
 
-static constexpr char DB_BEST_BLOCK = 'B';
-static constexpr char DB_BEST_SPROUT_ANCHOR = 'a';
-static constexpr char DB_BEST_SAPLING_ANCHOR = 'z';
-static constexpr char DB_FLAG = 'F';
-static constexpr char DB_REINDEX_FLAG = 'R';
-static constexpr char DB_LAST_BLOCK = 'l';
+constexpr char DB_BEST_BLOCK = 'B';
+constexpr char DB_BEST_SPROUT_ANCHOR = 'a';
+constexpr char DB_BEST_SAPLING_ANCHOR = 'z';
+constexpr char DB_FLAG = 'F';
+constexpr char DB_REINDEX_FLAG = 'R';
+constexpr char DB_LAST_BLOCK = 'l';
 
 // insightexplorer
-static const char DB_ADDRESSINDEX = 'd';
-static const char DB_ADDRESSUNSPENTINDEX = 'u';
-static constexpr char DB_SPENTINDEX = 'p';
-static const char DB_TIMESTAMPINDEX = 'T';
-static const char DB_BLOCKHASHINDEX = 'h';
-static const char DB_FUNDSTRANSFERINDEX = 'D';
+constexpr char DB_ADDRESSINDEX = 'd';
+constexpr char DB_ADDRESSUNSPENTINDEX = 'u';
+constexpr char DB_SPENTINDEX = 'p';
+constexpr char DB_TIMESTAMPINDEX = 'T';
+constexpr char DB_BLOCKHASHINDEX = 'h';
+constexpr char DB_FUNDSTRANSFERINDEX = 'D';
 
 CCoinsViewDB::CCoinsViewDB(string dbName, size_t nCacheSize, bool fMemory, bool fWipe) :
     db(GetDataDir() / dbName, nCacheSize, fMemory, fWipe)
