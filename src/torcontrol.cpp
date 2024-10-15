@@ -28,7 +28,7 @@
 using namespace std;
 
     /** Default control port */
-static const string DEFAULT_TOR_CONTROL = "127.0.0.1:9051";
+const string DEFAULT_TOR_CONTROL = "127.0.0.1:9051";
 /** Tor cookie size (from control-spec.txt) */
 constexpr int TOR_COOKIE_SIZE = 32;
 /** Size of client/server nonce for SAFECOOKIE */
