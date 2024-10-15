@@ -1,5 +1,5 @@
 // Copyright (c) 2014 The Bitcoin Core developers
-// Copyright (c) 2021-2023 The Pastel Core developers
+// Copyright (c) 2021-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <vector>
@@ -702,7 +702,7 @@ INSTANTIATE_TEST_SUITE_P(anchors_test, PTestCoins, Values(
 ));
 
 
-static const unsigned int NUM_SIMULATION_ITERATIONS = 40000;
+constexpr unsigned int NUM_SIMULATION_ITERATIONS = 40000;
 
 // This is a large randomized insert/remove simulation test on a variable-size
 // stack of caches on top of CCoinsViewTest.

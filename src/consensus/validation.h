@@ -8,16 +8,16 @@
 #include <string>
 
 /** "reject" message codes */
-static const unsigned char REJECT_MALFORMED = 0x01;
-static const unsigned char REJECT_INVALID = 0x10;
-static const unsigned char REJECT_OBSOLETE = 0x11;
-static const unsigned char REJECT_DUPLICATE = 0x12;
-static const unsigned char REJECT_NONSTANDARD = 0x40;
-static const unsigned char REJECT_DUST = 0x41;
-static const unsigned char REJECT_INSUFFICIENTFEE = 0x42;
-static const unsigned char REJECT_CHECKPOINT = 0x43;
-static const unsigned char REJECT_MISSING_INPUTS = 0x44;
-static const unsigned char REJECT_SIGNATURE_ERROR = 0x45;
+constexpr unsigned char REJECT_MALFORMED = 0x01;
+constexpr unsigned char REJECT_INVALID = 0x10;
+constexpr unsigned char REJECT_OBSOLETE = 0x11;
+constexpr unsigned char REJECT_DUPLICATE = 0x12;
+constexpr unsigned char REJECT_NONSTANDARD = 0x40;
+constexpr unsigned char REJECT_DUST = 0x41;
+constexpr unsigned char REJECT_INSUFFICIENTFEE = 0x42;
+constexpr unsigned char REJECT_CHECKPOINT = 0x43;
+constexpr unsigned char REJECT_MISSING_INPUTS = 0x44;
+constexpr unsigned char REJECT_SIGNATURE_ERROR = 0x45;
 
 // origin of the transaction
 typedef enum class _TxOriginEnum: uint8_t

@@ -53,14 +53,14 @@
 // The motivation for this implementation is as a binary message wrapper for serial
 // communication; in that application, white space is used for message framing.
 
-static const uint8_t base_char = 33u; // '!' -- note that (85 + 33) < 128
+constexpr uint8_t base_char = 33u; // '!' -- note that (85 + 33) < 128
 
-static const int32_t ascii85_in_length_max = 65536;
+constexpr int32_t ascii85_in_length_max = 65536;
 
-static const bool ascii85_decode_z_for_zero  = true;
-static const bool ascii85_encode_z_for_zero  = true;
+constexpr bool ascii85_decode_z_for_zero  = true;
+constexpr bool ascii85_encode_z_for_zero  = true;
 
-static const bool ascii85_check_decode_chars = true;
+constexpr bool ascii85_check_decode_chars = true;
 
 #if 0
 static inline bool ascii85_char_ok (uint8_t c)

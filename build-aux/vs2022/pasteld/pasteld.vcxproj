@@ -140,6 +140,8 @@
     <ResourceCompile Include="..\..\..\src\pasteld-res.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\.circleci\config.yml" />
+    <None Include="..\..\..\.circleci\Dockerfile" />
     <None Include="..\..\..\build.sh" />
     <None Include="..\..\..\configure.ac" />
     <None Include="..\..\..\depends\packages\bdb.mk" />

@@ -243,7 +243,7 @@ static void __mineGenBlock(string network, bool tromp, unsigned int n, unsigned 
 
 // ** 2020 December 25th **
 static const v_uint8 PastelGenesisPubKey = ParseHex("04b71877e98be12cf80216bdbf54afcac969cdb48e511d19a338ec9bb775e7a840fe64b93d319a6f028e5a9464c6fcf8a7fd2b958559991995c8bed5b5df136d02");
-static const char* PastelGenesisTimestamp = "Pascalfa9f9ecb4d2a411ce792e4e64324d91bd26f8376ca83dc914468e6b1c83cdb59";
+constexpr auto PastelGenesisTimestamp = "Pascalfa9f9ecb4d2a411ce792e4e64324d91bd26f8376ca83dc914468e6b1c83cdb59";
 static const uint32_t EpocTime = 1608854400;
 
 static const string MainnetNonce = "000000000000000000000000000000000000000000000000000000000000093a";

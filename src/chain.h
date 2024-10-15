@@ -110,7 +110,7 @@ enum BlockStatus: uint32_t
 
 //! Short-hand for the highest consensus validity we implement.
 //! Blocks with this validity are assumed to satisfy all consensus rules.
-static const BlockStatus BLOCK_VALID_CONSENSUS = BLOCK_VALID_SCRIPTS;
+constexpr BlockStatus BLOCK_VALID_CONSENSUS = BLOCK_VALID_SCRIPTS;
 
 /** The block chain is a tree shaped structure starting with the
  * genesis block at the root, with each block potentially having multiple

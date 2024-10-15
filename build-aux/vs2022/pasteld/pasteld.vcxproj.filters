@@ -15,6 +15,15 @@
     <Filter Include="packages">
       <UniqueIdentifier>{2ee15f7c-e20e-42dc-a088-6bf7471c4b31}</UniqueIdentifier>
     </Filter>
+    <Filter Include="build-files">
+      <UniqueIdentifier>{4ec4a7e8-3496-4683-bd70-4b17c968d703}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="build-files\src">
+      <UniqueIdentifier>{5917639d-b938-438f-814f-6316d01fe2ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="build-files\.circleci">
+      <UniqueIdentifier>{4f4f4d1b-a1bc-4d9a-8d94-d7dbe885c67d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\vs\port\unistd.cpp">
@@ -41,13 +50,6 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\configure.ac" />
-    <None Include="..\..\..\README.md" />
-    <None Include="..\..\..\src\Makefile.am">
-      <Filter>Source Files</Filter>
-    </None>
-    <None Include="..\..\..\Makefile.am" />
-    <None Include="..\..\..\build.sh" />
     <None Include="..\..\..\depends\packages\bdb.mk">
       <Filter>packages</Filter>
     </None>
@@ -212,6 +214,27 @@
     </None>
     <None Include="..\..\..\depends\packages\zstd.mk">
       <Filter>packages</Filter>
+    </None>
+    <None Include="..\..\..\src\Makefile.am">
+      <Filter>build-files\src</Filter>
+    </None>
+    <None Include="..\..\..\configure.ac">
+      <Filter>build-files</Filter>
+    </None>
+    <None Include="..\..\..\Makefile.am">
+      <Filter>build-files</Filter>
+    </None>
+    <None Include="..\..\..\README.md">
+      <Filter>build-files</Filter>
+    </None>
+    <None Include="..\..\..\build.sh">
+      <Filter>build-files</Filter>
+    </None>
+    <None Include="..\..\..\.circleci\config.yml">
+      <Filter>build-files\.circleci</Filter>
+    </None>
+    <None Include="..\..\..\.circleci\Dockerfile">
+      <Filter>build-files\.circleci</Filter>
     </None>
   </ItemGroup>
 </Project>

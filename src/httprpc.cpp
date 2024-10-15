@@ -20,7 +20,7 @@
 using namespace std;
 
 /** WWW-Authenticate to present with 401 Unauthorized response */
-static const char* WWW_AUTH_HEADER_DATA = "Basic realm=\"jsonrpc\"";
+constexpr auto WWW_AUTH_HEADER_DATA = "Basic realm=\"jsonrpc\"";
 
 /** Simple one-shot callback timer to be used by the RPC mechanism to e.g.
  * re-lock the wallet.

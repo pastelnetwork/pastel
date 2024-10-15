@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2023 The Pastel developers
+// Copyright (c) 2021-2024 The Pastel developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <cinttypes>
@@ -244,7 +244,7 @@ INSTANTIATE_TEST_SUITE_P(ParseDouble, PTest_ParseDouble, Values(
     make_tuple("1e10000", 0.0, false)
 ));
 
-static const unsigned char TEST_PARSEHEX_ARRAY[] =
+constexpr unsigned char TEST_PARSEHEX_ARRAY[] =
 {
     0x04, 0x67, 0x8a, 0xfd, 0xb0, 0xfe, 0x55, 0x48, 0x27, 0x19, 0x67, 0xf1, 0xa6, 0x71, 0x30, 0xb7,
     0x10, 0x5c, 0xd6, 0xa8, 0x28, 0xe0, 0x39, 0x09, 0xa6, 0x79, 0x62, 0xe0, 0xea, 0x1f, 0x61, 0xde,

@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2022-2023 The Pastel Core developers
+// Copyright (c) 2022-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -10,7 +10,7 @@
 #include <utils/scheduler.h>
 
 extern const std::string DEFAULT_TOR_CONTROL;
-static const bool DEFAULT_LISTEN_ONION = true;
+constexpr bool DEFAULT_LISTEN_ONION = true;
 
 class CTorControlThread : public CServiceThread
 {

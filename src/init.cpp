@@ -107,7 +107,7 @@ enum BindFlags {
     BF_WHITELIST    = (1U << 2),
 };
 
-static const char* FEE_ESTIMATES_FILENAME="fee_estimates.dat";
+constexpr auto FEE_ESTIMATES_FILENAME = "fee_estimates.dat";
 CClientUIInterface uiInterface; // Declared but not defined in ui_interface.h
 
 //////////////////////////////////////////////////////////////////////////////

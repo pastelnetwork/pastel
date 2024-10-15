@@ -482,7 +482,7 @@ TEST_F(test_bloom, rolling_bloom)
     CRollingBloomFilter rb1(100, 0.01);
 
     // Overfill:
-    static const int DATASIZE=399;
+    constexpr int DATASIZE = 399;
     v_uint8 data[DATASIZE];
     for (int i = 0; i < DATASIZE; i++) {
         data[i] = RandomData();

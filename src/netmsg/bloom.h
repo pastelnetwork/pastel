@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2012-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <utils/vector_types.h>
@@ -11,8 +11,8 @@ class CTransaction;
 class uint256;
 
 //! 20,000 items with fp rate < 0.1% or 10,000 items and <0.0001%
-static const unsigned int MAX_BLOOM_FILTER_SIZE = 36000; // bytes
-static const unsigned int MAX_HASH_FUNCS = 50;
+constexpr unsigned int MAX_BLOOM_FILTER_SIZE = 36000; // bytes
+constexpr unsigned int MAX_HASH_FUNCS = 50;
 
 /**
  * First two bits of nFlags control how much IsRelevantAndUpdate actually updates
