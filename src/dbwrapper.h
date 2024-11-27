@@ -268,6 +268,40 @@ public:
         return std::make_unique<CDBIterator>(*this, pdb->NewIterator(iteroptions));
     }
 
+    std::unique_ptr<CDBIterator> NewIteratorFromChar(const char ch) const
+    {
+        // Convert the char into a LevelDB Slice key
+        std::string startKey(1, ch); // Create a single-char string
+        leveldb::Slice sliceStartKey(startKey);
+
+        // Create a new iterator and position it to the start key
+        auto it = pdb->NewIterator(iteroptions);
+        it->Seek(sliceStartKey);
+
+        // Return the iterator wrapped in CDBIterator
+        return std::make_unique<CDBIterator>(*this, it);
+    }
+
+    size_t EstimateSliceItemCount(const char ch) const
+    {
+        // Convert the char into a LevelDB Slice key
+        std::string startKey(1, ch); // Create a single-char string
+        leveldb::Slice sliceStartKey(startKey);
+
+        // Create a new iterator and position it to the start key
+        auto it = pdb->NewIterator(iteroptions);
+        it->Seek(sliceStartKey);
+
+        // Count the number of items in the slice
+        size_t count = 0;
+        while (it->Valid() && it->key()[0] == ch) {
+            count++;
+            it->Next();
+        }
+
+        return count;
+    }
+
     /**
      * Return true if the database managed by this class contains no entries.
      */

@@ -695,15 +695,24 @@ static void getAddressesInHeightRange(
     address_vector_t& vAddresses,
     address_index_vector_t &vAddressIndex)
 {
-    if (!getAddressesFromParams(params, vAddresses))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-    
-    for (const auto& [addressHash, addressType] : vAddresses)
+    bool bAllAddresses = params[0].isStr() && params[0].get_str() == "*";
+    if (bAllAddresses)
     {
-        if (!GetAddressIndex(addressHash, addressType, vAddressIndex, height_range))
+        if (!GetAddressIndexAll(vAddressIndex, height_range))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
+    }
+    else
+    {
+        if (!getAddressesFromParams(params, vAddresses))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+
+        for (const auto& [addressHash, addressType] : vAddresses)
         {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
-                "No information available for address");
+            if (!GetAddressIndex(addressHash, addressType, vAddressIndex, height_range))
+            {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                    "No information available for address");
+            }
         }
     }
 }
@@ -794,10 +803,15 @@ Arguments:
     [
       "address"  (string) The base58check encoded address
       ,...
-    ]
+    ],
+   "includeEmpty": true, (boolean, optional, default=false) Include addresses with a balance of zero in the results
+   "start": NNN,  (number, optional) The start block height
+   "end": NNN     (number, optional) The end block height
 }
 (or)
 "address"  (string) The base58check encoded address
+(or)
+"*"        (string) All addresses
 
 Result:
 {
@@ -819,11 +833,20 @@ Examples:
 
     rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSBALANCE);
 
+    bool bIncludeEmpty = false;
+    height_range_opt_t height_range;
+    if (params[0].isObject())
+    {
+        const auto& includeEmpty = find_value(params[0].get_obj(), "includeEmpty");
+        if (!includeEmpty.isNull())
+            bIncludeEmpty = get_bool_value(includeEmpty);
+
+        height_range = rpc_get_height_range(params);
+    }
+
     address_vector_t vAddresses;
     address_index_vector_t vAddressIndex;
-    // this method doesn't take start and end block height params, so set
-    // to zero (full range, entire blockchain)
-    getAddressesInHeightRange(params, nullopt, vAddresses, vAddressIndex);
+    getAddressesInHeightRange(params, height_range, vAddresses, vAddressIndex);
 
     CAmount balance = 0;
     CAmount received = 0;
@@ -847,6 +870,9 @@ Examples:
     addresses.reserve(addressesMap.size());
     for (const auto& [sAddress, amount] : addressesMap)
     {
+        if (amount == 0 && !bIncludeEmpty)
+            continue;
+
         UniValue addr_obj(UniValue::VOBJ);
         addr_obj.pushKV("address", sAddress);
         addr_obj.pushKV("balance", amount);

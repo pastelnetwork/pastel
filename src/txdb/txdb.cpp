@@ -468,6 +468,45 @@ bool CBlockTreeDB::ReadAddressIndex(
     return true;
 }
 
+bool CBlockTreeDB::ReadAddressIndexAll(address_index_vector_t& addressIndex, const height_range_opt_t& height_range) const
+{
+    // use NewIteratorFromChar to get an iterator that starts at the first key
+    unique_ptr<CDBIterator> pcursor(NewIteratorFromChar(DB_ADDRESSINDEX));
+    if (!pcursor->Valid())
+        return true;
+
+    uint32_t nStartHeight = 0;
+    uint32_t nEndHeight = 0;
+    if (height_range) {
+        tie(nStartHeight, nEndHeight) = height_range.value();
+        LogFnPrint("txdb", "AddressIndex - reading all addresses, height range [%u..%u]", nStartHeight, nEndHeight);
+    } else
+        LogFnPrint("txdb", "AddressIndex - reading all addresses");
+
+    size_t nEstimatedCount = EstimateSliceItemCount(DB_ADDRESSINDEX);
+    addressIndex.reserve(nEstimatedCount);
+
+    while (pcursor->Valid())
+    {
+        func_thread_interrupt_point();
+        pair<char, CAddressIndexKey> key;
+        if (!(pcursor->GetKey(key) && (key.first == DB_ADDRESSINDEX)))
+            break;
+
+        if (height_range && nStartHeight > 0 && key.second.blockHeight < nStartHeight)
+            continue;
+        if (height_range && nEndHeight > 0 && key.second.blockHeight > nEndHeight)
+            break;
+
+        CAmount nValue;
+        if (!pcursor->GetValue(nValue))
+            return error("failed to get address index value");
+        addressIndex.emplace_back(key.second, nValue);
+        pcursor->Next();
+    }
+    return true;
+}
+
 bool CBlockTreeDB::UpdateAddressUnspentIndex(const address_unspent_vector_t &v)
 {
     if (v.empty())
@@ -713,6 +752,23 @@ bool GetAddressIndex(const uint160& addressHash, const ScriptType addressType,
     if (!gl_pBlockTreeDB->ReadAddressIndex(addressHash, addressType, vAddressIndex, height_range))
     {
         LogPrint("rpc", "Unable to get txids for address\n");
+        return false;
+    }
+    return true;
+}
+
+bool GetAddressIndexAll(address_index_vector_t& vAddressIndex,
+    const height_range_opt_t& height_range)
+{
+    if (!fAddressIndex)
+    {
+        LogPrint("rpc", "Address index not enabled\n");
+        return false;
+    }
+
+    if (!gl_pBlockTreeDB->ReadAddressIndexAll(vAddressIndex, height_range))
+    {
+        LogPrint("rpc", "Unable to get all address index information\n");
         return false;
     }
     return true;
