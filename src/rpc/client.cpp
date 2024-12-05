@@ -186,10 +186,24 @@ static CRPCParamConvert gl_RPCParamConvert;
  */
 UniValue ParseNonRFCJSONValue(const string& strVal)
 {
+    // Determine if quoting is needed for strings
+    bool needsQuoting = true;
+    if (strVal == "true" || strVal == "false" || strVal == "null" || isdigit(strVal[0]) || strVal[0] == '-' ||
+        strVal[0] == '[' || strVal[0] == '{')
+    {
+        needsQuoting = false; // Valid JSON starts without quotes
+    }
+
+    // Wrap bare strings in quotes if needed
+    string jsonInput = needsQuoting ? ("\"" + strVal + "\"") : strVal;
+
+    // Wrap the JSON input in an array for parsing
+    jsonInput = "[" + jsonInput + "]";
+
     UniValue jVal;
-    if (!jVal.read(string("[")+strVal+string("]")) ||
-        !jVal.isArray() || jVal.size()!=1)
-        throw runtime_error(string("Error parsing JSON:")+strVal);
+    if (!jVal.read(jsonInput) || !jVal.isArray() || jVal.size() != 1)
+        throw runtime_error(string("Error parsing JSON: ") + strVal);
+
     return jVal[0];
 }
 
