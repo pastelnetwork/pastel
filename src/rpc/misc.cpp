@@ -577,11 +577,20 @@ static address_opt_t getAddressFromParams(const UniValue& params, const string &
     return make_optional<address_t>(move(addressHash), addressType);
 }
 
-static bool getAddressesFromParams(const UniValue& params, address_vector_t &vAddresses)
+static bool getAddressesFromParams(const UniValue& params, address_vector_t &vAddresses, bool &bAllAddresses)
 {
     unordered_map<string, bool> vParamAddresses;
+    bAllAddresses = false;
+    if (params.empty())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No addresses provided");
+
     if (params[0].isStr())
-        vParamAddresses[params[0].get_str()] = true;
+    {
+        if (params[0].get_str() == "*")
+            bAllAddresses = true;
+        else
+            vParamAddresses[params[0].get_str()] = true;
+    }
     else if (params[0].isObject())
     {
         const auto &addressValues = find_value(params[0].get_obj(), "addresses");
@@ -591,7 +600,16 @@ static bool getAddressesFromParams(const UniValue& params, address_vector_t &vAd
                 "Addresses is expected to be an array");
         }
         for (const auto& it : addressValues.getValues())
+        {
+            if (!it.isStr())
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            if (it.get_str() == "*")
+            {
+                bAllAddresses = true;
+                break;
+            }
             vParamAddresses[it.get_str()] = true;
+        }
     } else
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
@@ -651,7 +669,8 @@ Examples:)"
 
     address_vector_t vAddresses;
 
-    if (!getAddressesFromParams(params, vAddresses))
+    bool bAllAddresses = false;
+    if (!getAddressesFromParams(params, vAddresses, bAllAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
     vector<pair<CMempoolAddressDeltaKey, CMempoolAddressDelta>> vIndexes;
@@ -693,19 +712,27 @@ static void getAddressesInHeightRange(
     const UniValue& params,
     const height_range_opt_t &height_range,
     address_vector_t& vAddresses,
-    address_index_vector_t &vAddressIndex)
+    address_index_vector_t &vAddressIndex,
+    bool &bAllAddresses)
 {
-    if (!getAddressesFromParams(params, vAddresses))
+    bAllAddresses = false;
+    if (!getAddressesFromParams(params, vAddresses, bAllAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
-    
-    for (const auto& [addressHash, addressType] : vAddresses)
+
+    if (bAllAddresses)
     {
-        if (!GetAddressIndex(addressHash, addressType, vAddressIndex, height_range))
-        {
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
-                "No information available for address");
-        }
+        if (!GetAddressIndexAll(vAddressIndex, height_range))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "No information available for address");
     }
+    else 
+        for (const auto& [addressHash, addressType] : vAddresses)
+        {
+            if (!GetAddressIndex(addressHash, addressType, vAddressIndex, height_range))
+            {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                    "No information available for address");
+            }
+        }
 }
 
 // insightexplorer
@@ -751,9 +778,10 @@ Examples:
 
     const auto height_range = rpc_get_height_range(params);
 
+    bool bAllAddresses = false;
     address_vector_t vAddresses;
     address_index_vector_t vAddressIndex;
-    getAddressesInHeightRange(params, height_range, vAddresses, vAddressIndex);
+    getAddressesInHeightRange(params, height_range, vAddresses, vAddressIndex, bAllAddresses);
 
     // This is an ordered set, sorted by (height, txindex) so result also sorted by height.
     set<tuple<uint32_t, uint32_t, string>> txids;
@@ -777,6 +805,81 @@ Examples:
     return result;
 }
 
+void ProcessAddressIndex(const address_index_vector_t& vAddressIndex,
+    size_t nStartIndex, const size_t nEndIndex,
+    unordered_map<string, CAmount>& addressesMap,
+    CAmount& balance, CAmount& received, mutex& mtx)
+{
+    CAmount localBalance = 0;
+    CAmount localReceived = 0;
+    unordered_map<string, CAmount> localAddressesMap;
+
+    string sAddress;
+    for (size_t i = nStartIndex; i < nEndIndex; ++i)
+    {
+        const auto& [key, amount] = vAddressIndex[i];
+        if (amount > 0)
+            localReceived += amount;
+
+        localBalance += amount;
+
+        sAddress.clear();
+        if (!getAddressFromIndex(key.type, key.addressHash, sAddress))
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
+
+        localAddressesMap[sAddress] += amount;
+    }
+
+    {
+        lock_guard<mutex> lock(mtx);
+        balance += localBalance;
+        received += localReceived;
+        for (const auto& [sAddress, amount] : localAddressesMap)
+            addressesMap[sAddress] += amount;
+    }
+}
+
+void CalculateBalances(const address_index_vector_t& vAddressIndex,
+                       CAmount& balance,
+                       CAmount& received,
+                       unordered_map<string, CAmount>& addressesMap)
+{
+    balance = 0;
+    received = 0;
+    addressesMap.clear();
+
+    vector<thread> vThreads;
+    unsigned int numThreads = thread::hardware_concurrency();
+    if (numThreads == 0 || vAddressIndex.size() < 1000)
+        numThreads = 1;
+    size_t nBatchSize = vAddressIndex.size() / numThreads;
+
+    exception_ptr threadException = nullptr;
+    mutex exceptionMutex, balanceMutex;
+
+    for (unsigned int i = 0; i < numThreads; ++i)
+    {
+        size_t nStartIndex = i * nBatchSize;
+        size_t nEndIndex = (i == numThreads - 1) ? vAddressIndex.size() : (i + 1) * nBatchSize;
+
+        vThreads.emplace_back([&]() {
+            try {
+                ProcessAddressIndex(vAddressIndex, nStartIndex, nEndIndex, addressesMap, balance, received, balanceMutex);
+            } catch (...) {
+                lock_guard<mutex> lock(exceptionMutex);
+                if (!threadException)
+                    threadException = current_exception();
+            }
+        });
+    }
+
+    for (auto& thread : vThreads)
+        thread.join();
+
+    if (threadException)
+        rethrow_exception(threadException);
+}
+
 // insightexplorer
 UniValue getaddressbalance(const UniValue& params, bool fHelp)
 {
@@ -792,24 +895,34 @@ Arguments:
 {
   "addresses":
     [
-      "address"  (string) The base58check encoded address
+      "address"  (string) The base58check encoded address or "*" for all addresses
       ,...
-    ]
+    ],
+   "includeEmpty": true, (boolean, optional, default=false) Include addresses with a balance of zero in the results
+   "start": NNN,  (number, optional) The start block height
+   "end": NNN     (number, optional) The end block height
 }
 (or)
 "address"  (string) The base58check encoded address
+(or)
+"*"        (string) All addresses
 
 Result:
+CSV format in "all addresses" mode:
+  "address1","balance1"
+  "address2","balance2"
+...
+otherwise
 {
   "addresses":
     [
       {
         "address"     (string)  The base58check encoded address
-        "balance"     (string)  (string) The current balance of the address in )" + MINOR_CURRENCY_UNIT + R"(
+        "balance"     (number)  The current balance of the address in )" + MINOR_CURRENCY_UNIT + R"(
       }, ...
     ],
-  "balance"  (string) The total current balance in )" + MINOR_CURRENCY_UNIT + R"(on all addresses in the request
-  "received"  (string) The total number of )" + MINOR_CURRENCY_UNIT + R"( received (including change) by all addresses in the request
+  "balance"  (number) The total current balance in )" + MINOR_CURRENCY_UNIT + R"(on all addresses in the request
+  "received" (number) The total number of )" + MINOR_CURRENCY_UNIT + R"( received (including change) by all addresses in the request
 }
 
 Examples:
@@ -819,45 +932,61 @@ Examples:
 
     rpcDisabledThrowMsg(fInsightExplorer, RPC_API_GETADDRESSBALANCE);
 
+    bool bIncludeEmpty = false;
+    height_range_opt_t height_range;
+    if (params[0].isObject())
+    {
+        const auto& includeEmpty = find_value(params[0].get_obj(), "includeEmpty");
+        if (!includeEmpty.isNull())
+            bIncludeEmpty = get_bool_value(includeEmpty);
+
+        height_range = rpc_get_height_range(params);
+    }
+
+    bool bAllAddresses = false;
     address_vector_t vAddresses;
     address_index_vector_t vAddressIndex;
-    // this method doesn't take start and end block height params, so set
-    // to zero (full range, entire blockchain)
-    getAddressesInHeightRange(params, nullopt, vAddresses, vAddressIndex);
+    getAddressesInHeightRange(params, height_range, vAddresses, vAddressIndex, bAllAddresses);
 
     CAmount balance = 0;
     CAmount received = 0;
     unordered_map<string, CAmount> addressesMap;
-    string sAddress;
-    for (const auto& [key, amount] : vAddressIndex)
+
+    CalculateBalances(vAddressIndex, balance, received, addressesMap);
+
+    if (bAllAddresses)
     {
-        if (amount > 0)
-            received += amount;
+        // generate result in CSV format
+        ostringstream csv;
+        for (const auto& [sAddress, amount] : addressesMap) {
+            if (amount == 0 && !bIncludeEmpty)
+                continue;
 
-        balance += amount;
-
-        sAddress.clear();
-        if (!getAddressFromIndex(key.type, key.addressHash, sAddress))
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown address type");
-
-        addressesMap[sAddress] += amount;
+            csv << "\"" << sAddress << "\",\"" << amount << "\"\n";
+        }
+        return csv.str();
     }
-
-    UniValue addresses(UniValue::VARR);
-    addresses.reserve(addressesMap.size());
-    for (const auto& [sAddress, amount] : addressesMap)
+    else
     {
-        UniValue addr_obj(UniValue::VOBJ);
-        addr_obj.pushKV("address", sAddress);
-        addr_obj.pushKV("balance", amount);
-        addresses.push_back(std::move(addr_obj));
-    }
+        UniValue addresses(UniValue::VARR);
+        addresses.reserve(addressesMap.size());
+        for (const auto& [sAddress, amount] : addressesMap)
+        {
+            if (amount == 0 && !bIncludeEmpty)
+                continue;
 
-    UniValue result(UniValue::VOBJ);
-    result.pushKV("addresses", std::move(addresses));
-    result.pushKV("balance", balance);
-    result.pushKV("received", received);
-    return result;
+            UniValue addr_obj(UniValue::VOBJ);
+            addr_obj.pushKV("address", sAddress);
+            addr_obj.pushKV("balance", amount);
+            addresses.push_back(std::move(addr_obj));
+        }
+
+        UniValue result(UniValue::VOBJ);
+        result.pushKV("addresses", std::move(addresses));
+        result.pushKV("balance", balance);
+        result.pushKV("received", received);
+        return result;
+    }
 }
 
 // insightexplorer
@@ -933,9 +1062,10 @@ Examples:
 
     const auto height_range = rpc_get_height_range(params);
 
+    bool bAllAddresses = false;
     address_vector_t vAddresses;
     address_index_vector_t vAddressIndex;
-    getAddressesInHeightRange(params, height_range, vAddresses, vAddressIndex);
+    getAddressesInHeightRange(params, height_range, vAddresses, vAddressIndex, bAllAddresses);
 
     bool includeChainInfo = false;
     if (params[0].isObject())
@@ -1334,8 +1464,10 @@ Examples:
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid status parameter");
         }
     }
+
+    bool bAllAddresses = false;
     address_vector_t vDestAddresses;
-    if (!getAddressesFromParams(params, vDestAddresses))
+    if (!getAddressesFromParams(params, vDestAddresses, bAllAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
 
     UniValue utxos = getUtxosData(vDestAddresses, nullopt, nullopt, false, false, false, sStatus);
@@ -1450,8 +1582,10 @@ Examples:
         if (!mempool.isNull())
 			bScanMempoolTxs = get_bool_value(mempool);
     }
+
+    bool bAllAddresses = false;
     address_vector_t vDestAddresses;
-    if (!getAddressesFromParams(params, vDestAddresses))
+    if (!getAddressesFromParams(params, vDestAddresses, bAllAddresses))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel destination address");
 
     UniValue utxos = getUtxosData(vDestAddresses, height_range, senderAddress, true, bSimpleInfo, bScanMempoolTxs, "all");

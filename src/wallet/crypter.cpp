@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php .
 #include <string>
@@ -363,17 +363,24 @@ bool CCryptoKeyStore::AddCryptedKey(const CPubKey& vchPubKey, const v_uint8& vch
     return true;
 }
 
+/**
+ * Get private key from CryptoKeyStore by address.
+ * 
+ * \param address - key ID
+ * \param keyOut - private key
+ * \return true if private key is found and decrypted successfully
+ */
 bool CCryptoKeyStore::GetKey(const CKeyID &address, CKey& keyOut) const
 {
     LOCK(cs_KeyStore);
     if (!fUseCrypto)
         return CBasicKeyStore::GetKey(address, keyOut);
 
-    CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
-    if (mi != mapCryptedKeys.end())
+    const auto mi = mapCryptedKeys.find(address);
+    if (mi != mapCryptedKeys.cend())
     {
-        const CPubKey &vchPubKey = (*mi).second.first;
-        const v_uint8& vchCryptedSecret = (*mi).second.second;
+        const CPubKey &vchPubKey = mi->second.first;
+        const v_uint8& vchCryptedSecret = mi->second.second;
         return DecryptKey(vMasterKey, vchCryptedSecret, vchPubKey, keyOut);
     }
     return false;
@@ -385,10 +392,10 @@ bool CCryptoKeyStore::GetPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) co
     if (!fUseCrypto)
         return CBasicKeyStore::GetPubKey(address, vchPubKeyOut);
 
-    CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
-    if (mi != mapCryptedKeys.end())
+    const auto mi = mapCryptedKeys.find(address);
+    if (mi != mapCryptedKeys.cend())
     {
-        vchPubKeyOut = (*mi).second.first;
+        vchPubKeyOut = mi->second.first;
         return true;
     }
     // Check for watch-only pubkeys

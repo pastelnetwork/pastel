@@ -1,6 +1,6 @@
 #pragma once
 // Copyright (c) 2014-2017 The Dash Core developers
-// Copyright (c) 2018-2023 The Pastel Core developers
+// Copyright (c) 2018-2024 The Pastel Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 #include <utils/vector_types.h>
@@ -25,7 +25,7 @@ class CHashSigner
 {
 public:
     /// Sign the hash, returns true if successful
-    static bool SignHash(const uint256& hash, const CKey key, v_uint8& vchSigRet);
+    static bool SignHash(const uint256& hash, const CKey &key, v_uint8& vchSigRet);
     /// Verify the hash signature, returns true if succcessful
-    static bool VerifyHash(const uint256& hash, const CPubKey pubkey, const v_uint8& vchSig, std::string& strErrorRet);
+    static bool VerifyHash(const uint256& hash, const CPubKey &pubkey, const v_uint8& vchSig, std::string& strErrorRet);
 };

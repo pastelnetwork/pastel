@@ -93,6 +93,7 @@ public:
     bool EraseAddressIndex(const address_index_vector_t &vect);
     bool ReadAddressIndex(const uint160 &addressHash, const ScriptType addressType, address_index_vector_t &addressIndex, 
         const height_range_opt_t &height_range) const;
+    bool ReadAddressIndexAll(address_index_vector_t& addressIndex, const height_range_opt_t& height_range) const;
 
     bool ReadSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value) const;
     bool UpdateSpentIndex(const spent_index_vector_t &vect);
@@ -121,6 +122,8 @@ extern std::unique_ptr<CBlockTreeDB> gl_pBlockTreeDB;
 bool GetSpentIndex(CSpentIndexKey &key, CSpentIndexValue &value);
 bool GetAddressIndex(const uint160& addressHash, const ScriptType addressType,
     address_index_vector_t& vAddressIndex,
+    const height_range_opt_t& height_range);
+bool GetAddressIndexAll(address_index_vector_t& vAddressIndex,
     const height_range_opt_t& height_range);
 bool GetAddressUnspent(const uint160& addressHash, const ScriptType addressType,
     address_unspent_vector_t& unspentOutputs);

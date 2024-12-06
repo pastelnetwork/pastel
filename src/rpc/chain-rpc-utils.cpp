@@ -99,16 +99,16 @@ height_range_opt_t rpc_get_height_range(const UniValue& params)
         const auto &endValue = find_value(params[0].get_obj(), "end");
 
         // If either is not specified, the other is ignored.
-        if (!startValue.isNull() && !endValue.isNull())
-        {
-            nStartHeight = rpc_parse_height_param(startValue);
-            nEndHeight = rpc_parse_height_param(endValue);
+        if (startValue.isNull() || endValue.isNull())
+            return nullopt;
 
-            if (nEndHeight < nStartHeight)
-            {
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
-                    "End value is expected to be greater than or equal to start");
-            }
+        nStartHeight = rpc_parse_height_param(startValue);
+        nEndHeight = rpc_parse_height_param(endValue);
+
+        if (nEndHeight < nStartHeight)
+        {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY,
+                "End value is expected to be greater than or equal to start");
         }
     }
 

@@ -12,6 +12,8 @@
 
 #include <utils/util.h>
 #include <utils/utiltime.h>
+#include <utils/utilstrencodings.h>
+#include <utils/bech32.h>
 #include <amount.h>
 #include <consensus/upgrades.h>
 #include <consensus/consensus.h>
@@ -174,6 +176,115 @@ Examples:
     return keyIO.EncodeDestination(keyID);
 }
 
+bool IsValidCosmosAddress(const string& sCosmosAddress, string &error)
+{
+    // check if the address is a valid bech32 address, returns pair<HRP, data> or {}
+    const auto bech32_decoded = bech32::Decode(sCosmosAddress);
+    if (bech32_decoded.first.empty() || bech32_decoded.second.empty())
+    {
+        error = "Invalid Cosmos address";
+        return false;
+    }
+
+    static const v_strings validPrefixes = {"pastel", "pastelpub", "pastelvaloper", "pastelvalcons"};
+    // validate the human-readable part matches the expected prefixes
+    if (find(validPrefixes.begin(), validPrefixes.end(), bech32_decoded.first) == validPrefixes.end()) {
+        error = "Invalid Cosmos address human-readable part (HRP)";
+        return false;
+    }
+
+    v_uint8 vDecodedData;
+    if (!ConvertBits<5, 8, false>([&](unsigned char ch) { vDecodedData.push_back(ch); }, bech32_decoded.second.begin(), bech32_decoded.second.end()))
+    {
+        error = "Failed to convert Cosmos address data part from bech32";
+        return false;
+    }
+
+    // check the data part is of the expected length
+    if (vDecodedData.size() != 20) {
+        error = "Invalid Cosmos address data part length";
+        return false;
+    }
+    return true;
+}
+
+UniValue signclaim(const UniValue& params, bool fHelp)
+{
+    if (!EnsureWalletIsAvailable(fHelp))
+        return NullUniValue;
+
+    if (fHelp || params.size() != 2)
+        throw runtime_error(
+R"(signclaim "old-address" "new-address"
+
+Generate a signature for a claim message.
+
+Arguments:
+1. "old-address" (string, required) The transparent address to claim from.
+2" "new-address" (string, required) The new Cosmos address to claim to.
+
+Result:
+{
+  "old_address"    (string) The transparent address to claim from.
+  "new_address"    (string) The new Cosmos address to claim to.
+  "public_key"     (string) The public key of the message signer encoded in hex
+  "signature"      (string) The signature of the message encoded in hex
+}
+
+Examples:
+)" + HelpExampleCli("signclaim", R"("PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n" "pastel1k5kfqapumay9xv6hjtmcsgmcql30y4cekzuswp")")
+   + HelpExampleRpc("signclaim", R"("PtczsZ91Bt3oDPDQotzUsrx1wjmsFVgf28n", "pastel1k5kfqapumay9xv6hjtmcsgmcql30y4cekzuswp")")
+);
+
+    LOCK2(cs_main, pwalletMain->cs_wallet);
+
+    EnsureWalletIsUnlocked();
+
+    if (!params[0].isStr())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid old t-address");
+    if (!params[1].isStr())
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid new address");
+
+    string sOldAddress = params[0].get_str();
+    string sNewAddress = params[1].get_str();
+
+    KeyIO keyIO(Params());
+    const auto oldAddress = keyIO.DecodeDestination(sOldAddress);
+    if (!IsValidDestination(oldAddress))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
+    const auto pKeyID = get_if<CKeyID>(&oldAddress);
+    if (!pKeyID)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Old Pastel address does not refer to a key");
+    string error;
+    if (!IsValidCosmosAddress(sNewAddress, error))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, error);
+
+    CKey privKey;
+    if (!pwalletMain->GetKey(*pKeyID, privKey))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + sOldAddress + " is not known");
+
+    CPubKey pubKey = privKey.GetPubKey();
+    // hex-encoded public key
+    string sPubKey = HexStr(pubKey.begin(), pubKey.end());
+
+    string sMsg = strprintf("%s.%s.%s", sOldAddress, sPubKey, sNewAddress);
+    // calculate message hash
+    uint256 hash = Hash(sMsg.begin(), sMsg.end());
+    // sign the message
+    v_uint8 vCompactSignature;
+    if (!privKey.SignCompact(hash, vCompactSignature))
+        throw JSONRPCError(RPC_WALLET_ERROR, "Failed to sign the claim message");
+
+    // hex-encoded signature
+    string sSignature = HexStr(vCompactSignature.begin(), vCompactSignature.end());
+
+    UniValue result(UniValue::VOBJ);
+    result.pushKV("old_address", sOldAddress);
+    result.pushKV("new_address", sNewAddress);
+    result.pushKV("public_key", sPubKey);
+    result.pushKV("signature", sSignature);
+    return result;
+}
 
 CTxDestination GetAccountAddress(string strAccount, bool bForceNew=false)
 {
@@ -5099,6 +5210,7 @@ static const CRPCCommand commands[] =
     { "wallet",          "setaccount",                   &setaccount,               true  },
     { "wallet",          "settxfee",                     &settxfee,                 true  },
     { "wallet",          "signmessage",                  &signmessage,              true  },
+    { "wallet",          "signclaim",                    &signclaim,                false },
     { "wallet",          "walletlock",                   &walletlock,               true  },
     { "wallet",          "walletpassphrasechange",       &walletpassphrasechange,   true  },
     { "wallet",          "walletpassphrase",             &walletpassphrase,         true  },

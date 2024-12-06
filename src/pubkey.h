@@ -179,15 +179,15 @@ public:
      * Verify a DER signature (~72 bytes).
      * If this public key is not fully valid, the return value will be false.
      */
-    bool Verify(const uint256& hash, const std::vector<unsigned char>& vchSig) const;
+    bool Verify(const uint256& hash, const v_uint8& vchSig) const;
 
     /**
      * Check whether a signature is normalized (lower-S).
      */
-    static bool CheckLowS(const std::vector<unsigned char>& vchSig);
+    static bool CheckLowS(const v_uint8& vchSig);
 
     //! Recover a public key from a compact signature.
-    bool RecoverCompact(const uint256& hash, const std::vector<unsigned char>& vchSig);
+    bool RecoverCompact(const uint256& hash, const v_uint8& vchSig);
 
     //! Turn this public key into an uncompressed public key.
     bool Decompress();

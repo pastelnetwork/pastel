@@ -484,15 +484,15 @@ Examples:
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Pastel address");
     }
-    const CKeyID *keyID = get_if<CKeyID>(&dest);
-    if (!keyID) {
+    const auto pKeyID = get_if<CKeyID>(&dest);
+    if (!pKeyID) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
     }
-    CKey vchSecret;
-    if (!pwalletMain->GetKey(*keyID, vchSecret)) {
+    CKey vchPrivKey;
+    if (!pwalletMain->GetKey(*pKeyID, vchPrivKey)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
     }
-    return keyIO.EncodeSecret(vchSecret);
+    return keyIO.EncodeSecret(vchPrivKey);
 }
 
 
