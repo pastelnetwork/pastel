@@ -560,3 +560,9 @@ static std::string str_join(const v_strings& v, const char* szDelimiter)
     return s;
 }
 
+static bool str_is_quoted(const std::string& s)
+{
+    if (s.size() < 2)
+        return false;
+    return (s.front() == '\"' && s.back() == '\"') || (s.front() == '\'' && s.back() == '\'');
+}

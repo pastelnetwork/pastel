@@ -514,5 +514,5 @@ TEST_F(TestInsightExplorerRPC, getblockhashes)
     CheckRPCThrows(RPC_API_GETBLOCKHASHES, R"(1477641360 1477641360 {"noOrphans":true,"logicalTimes":1})",
         "JSON value is not a boolean as expected");
     CheckRPCThrows(RPC_API_GETBLOCKHASHES, R"(1477641360 1477641360 {"noOrphans":True,"logicalTimes":false})",
-        "Error parsing JSON:{\"noOrphans\":True,\"logicalTimes\":false}");
+        "Error parsing JSON: {\"noOrphans\":True,\"logicalTimes\":false}");
 }
