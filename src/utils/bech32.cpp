@@ -97,8 +97,10 @@ inline unsigned char LowerCase(unsigned char c)
     return (c >= 'A' && c <= 'Z') ? (c - 'A') + 'a' : c;
 }
 
+using namespace std;
+
 /** Expand a HRP for use in checksum computation. */
-v_uint8 ExpandHRP(const std::string& hrp)
+v_uint8 ExpandHRP(const string& hrp)
 {
     v_uint8 ret;
     ret.reserve(hrp.size() + 90);
@@ -113,7 +115,7 @@ v_uint8 ExpandHRP(const std::string& hrp)
 }
 
 /** Verify a checksum. */
-bool VerifyChecksum(const std::string& hrp, const v_uint8& values)
+bool VerifyChecksum(const string& hrp, const v_uint8& values)
 {
     // PolyMod computes what value to xor into the final values to make the checksum 0. However,
     // if we required that the checksum was 0, it would be the case that appending a 0 to a valid
@@ -125,7 +127,7 @@ bool VerifyChecksum(const std::string& hrp, const v_uint8& values)
 }
 
 /** Create a checksum. */
-v_uint8 CreateChecksum(const std::string& hrp, const v_uint8& values)
+v_uint8 CreateChecksum(const string& hrp, const v_uint8& values)
 {
     auto v = ExpandHRP(hrp);
     CatVectors(v, values);
@@ -144,12 +146,12 @@ namespace bech32
 {
 
 /** Encode a Bech32 string. */
-std::string Encode(const std::string& hrp, const v_uint8& values)
+string Encode(const string& hrp, const v_uint8& values)
 {
     v_uint8 vCheckSum = CreateChecksum(hrp, values);
     v_uint8 vCombined(values);
     CatVectors(vCombined, vCheckSum);
-    std::string ret = hrp + '1';
+    string ret = hrp + '1';
     ret.reserve(ret.size() + vCombined.size());
     for (auto c : vCombined)
     {
@@ -161,7 +163,7 @@ std::string Encode(const std::string& hrp, const v_uint8& values)
 }
 
 /** Decode a Bech32 string. */
-std::pair<std::string, v_uint8> Decode(const std::string& str)
+pair<string, v_uint8> Decode(const string& str)
 {
     bool bLower = false, bUpper = false;
     for (const auto ch : str)
@@ -189,7 +191,7 @@ std::pair<std::string, v_uint8> Decode(const std::string& str)
             return {};
         values[i] = rev;
     }
-    std::string hrp;
+    string hrp;
     for (size_t i = 0; i < pos; ++i)
         hrp += LowerCase(str[i]);
     if (!VerifyChecksum(hrp, values))

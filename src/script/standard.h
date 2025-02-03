@@ -130,8 +130,8 @@ struct CompareTxDestConstIterator
 
 /**
  * Parse a scriptPubKey and identify script type for standard scripts. If
- * successful, returns script type and parsed pubkeys or hashes, depending on 
- * the type. For example, for a P2SH script, vSolutionsRet will contain the 
+ * successful, returns script type and parsed pubkeys or hashes, depending on
+ * the type. For example, for a P2SH script, vSolutionsRet will contain the
  * script hash, for P2PKH it will contain the key hash, etc.
  *
  * @param[in]   scriptPubKey   Script to parse
@@ -145,7 +145,7 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType);
 /**
  * Parse a standard scriptPubKey for the destination address. Assigns result to
  * the addressRet parameter and returns true if successful. For multisig
- * scripts (that can have multiple destination addresses), instead use ExtractDestinations. 
+ * scripts (that can have multiple destination addresses), instead use ExtractDestinations.
  * Currently only works for P2PK, P2PKH, and P2SH scripts.
  */
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet, txnouttype* pScriptType = nullptr);

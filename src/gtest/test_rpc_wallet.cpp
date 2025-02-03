@@ -1188,7 +1188,7 @@ TEST_F(TestRpcWallet2, rpc_z_mergetoaddress_parameters)
 
     // bad from address
     CheckRPCThrows("z_mergetoaddress", "[" + taddr1 + "] " + taddr2,
-        "Error parsing JSON:[" + taddr1 + "]");
+        "Error parsing JSON: [" + taddr1 + "]");
 
     // bad to address
     CheckRPCThrows("z_mergetoaddress", "[\"" + taddr1 + "\"] INVALID" + taddr2,
