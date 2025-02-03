@@ -32,7 +32,10 @@ TEST_P(PTest_LegRoast, sign_Legendre_Middle)
     string error;
     CLegRoast<algorithm::Legendre_Middle> lr;
 	const auto &sMsg = GetParam();
-	lr.keygen();
+	// lr.keygen();
+    array<unsigned char, SEED_BYTES> seed = { 42, 27, 251, 236, 198, 244, 224, 12, 145, 63, 239, 83, 159, 251, 242, 158 };
+    lr.set_private_key(error, seed.data(), seed.size());
+
  	// sign the message
 	EXPECT_TRUE(lr.sign(error, sMsg.c_str(), sMsg.length())) << error;
 	// verify signature

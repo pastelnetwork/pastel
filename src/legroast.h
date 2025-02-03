@@ -17,7 +17,9 @@
 #include <openssl/rand.h>
 #include <openssl/evp.h>
 
+#include <compat/endian.h>
 #include <utils/tinyformat.h>
+#include <utils/hash.h>
 
 #ifdef _MSC_VER
 #include <uint128.h>
@@ -221,6 +223,11 @@ public:
     {
         RAND_bytes(m_sk, SEED_BYTES);
 
+        generate_public_key();
+    }
+
+    void generate_public_key()
+    {
         uint128_t key;
         sample_mod_p(m_sk, &key);
 
@@ -232,7 +239,8 @@ public:
             {
                 uint128_t temp = compute_index(i);
                 add_mod_p(&temp, key);
-                m_pk[i / 8] |= legendre_symbol_ct(&temp) << (i % 8);
+                auto bit = legendre_symbol_ct(&temp) << (i % 8);
+                m_pk[i / 8] |= bit;
             }
         }
         else
@@ -264,6 +272,7 @@ public:
                 break;
             }
             memcpy(m_sk, sk, SK_BYTES);
+            generate_public_key();
             bRet = true;
         } while (false);
         return bRet;
@@ -557,6 +566,15 @@ private:
             indices[i] = compute_index(a[i]);
     }
 
+    // Generate deterministic seed for debugging
+    void deterministicSeed(uint32_t round, unsigned char* seed, size_t seedBytes)
+    {
+        uint32_t roundLE = htole32(round);
+        unsigned char hash[CHash256::OUTPUT_SIZE];
+        CHash256().Write((const unsigned char*)&roundLE, sizeof(roundLE)).Finalize(hash);
+        memcpy(seed, hash, seedBytes); // Use the first seedBytes of the hash
+    }
+
     void commit(unsigned char* message1)
     {
         memset(message1, 0, Params().MESSAGE1_BYTES);
@@ -573,6 +591,7 @@ private:
             auto& pSums = m_prover_state->sums[nRound];
             // pick root seed
             RAND_bytes(pSeedTrees, SEED_BYTES);
+//            deterministicSeed(nRound, pSeedTrees, SEED_BYTES);
 
             // generate seeds
             generate_seed_tree(pSeedTrees);
@@ -695,11 +714,14 @@ private:
             reduce_mod_p(alpha);
 
             // import lambda and compute beta in the clear
-            uint128_t* lambda = (uint128_t*)(challenge2 + Params().CHALLENGE2_LAMBDA) + nRound * Params().nResiduosity_Symbols_Per_Round;
+            uint128_t *lambda = (uint128_t*)(challenge2 + Params().CHALLENGE2_LAMBDA) + nRound * Params().nResiduosity_Symbols_Per_Round;
 
             *beta = pSums[SHARES_TRIPLE + 1];
             for (uint32_t i = 0; i < Params().nResiduosity_Symbols_Per_Round; ++i)
-                mul_add_mod_p(beta, lambda + i, &pSums[SHARES_R + i]);
+            {
+                uint128_t a(lambda[i]);
+                mul_add_mod_p(beta, &a, &pSums[SHARES_R + i]);
+            }
             reduce_mod_p(beta);
 
             // computes shares of alpha, beta and v
@@ -717,20 +739,21 @@ private:
                 *p1 = pShares[i][SHARES_TRIPLE + 1];
                 for (uint32_t j = 0; j < Params().nResiduosity_Symbols_Per_Round; ++j)
                 {
+                    uint128_t a(lambda[j]);
                     // share of beta
-                    mul_add_mod_p(p1, &pShares[i][SHARES_R + j], lambda + j);
+                    mul_add_mod_p(p1, &pShares[i][SHARES_R + j], &a);
                     reduce_mod_p(p1);
 
                     // share of z
                     uint128_t temp2 = 0;
-                    mul_add_mod_p(&temp2, &pShares[i][SHARES_R + j], lambda + j); // this multiplication is done earlier, reuse result
+                    mul_add_mod_p(&temp2, &pShares[i][SHARES_R + j], &a); // this multiplication is done earlier, reuse result
                     reduce_mod_p(&temp2);
                     temp2 = m127 - temp2;
                     uint128_t index = m_prover_state->indices[nRound * Params().nResiduosity_Symbols_Per_Round + j];
                     mul_add_mod_p(&z_share, &temp2, &index);
 
                     if (i == 0)
-                        mul_add_mod_p(&z_share, lambda + j, ((uint128_t*)(message2)) + nRound * Params().nResiduosity_Symbols_Per_Round + j);
+                        mul_add_mod_p(&z_share, &a, ((uint128_t*)(message2)) + nRound * Params().nResiduosity_Symbols_Per_Round + j);
                 }
 
                 // compute sharing of v
@@ -956,7 +979,8 @@ private:
     uint128_t compute_index(const uint32_t a) noexcept
     {
         uint128_t out = 0;
-        LR_EXPAND((unsigned char*)&a, sizeof(a), (unsigned char*)&out, sizeof(uint128_t));
+        const uint32_t aLE = htole32(a);
+        LR_EXPAND((const unsigned char*)&aLE, sizeof(aLE), (unsigned char*)&out, sizeof(uint128_t));
         return out;
     }
 

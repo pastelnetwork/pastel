@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2014 The Bitcoin Core developers
 // Copyright (c) 2017 The Zcash developers
-// Copyright (c) 2018-2023 The Pastel core developers
+// Copyright (c) 2018-2024 The Pastel core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://www.opensource.org/licenses/mit-license.php.
 
@@ -139,4 +139,15 @@ bool CExtPubKey::Derive(CExtPubKey &out, unsigned int nChild) const
     if (!secp256k1_ecdsa_signature_parse_der(secp256k1_context_verify, &sig, &vchSig[0], vchSig.size()))
         return false;
     return (!secp256k1_ecdsa_signature_normalize(secp256k1_context_verify, nullptr, &sig));
+}
+
+CKeyID CPubKey::GetID() const
+{
+    return CKeyID(Hash160(vch, vch + size()));
+}
+
+//! Get the 256-bit hash of this public key.
+uint256 CPubKey::GetHash() const
+{
+    return Hash(vch, vch + size());
 }

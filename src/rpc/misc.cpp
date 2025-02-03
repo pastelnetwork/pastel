@@ -862,7 +862,7 @@ void CalculateBalances(const address_index_vector_t& vAddressIndex,
         size_t nStartIndex = i * nBatchSize;
         size_t nEndIndex = (i == numThreads - 1) ? vAddressIndex.size() : (i + 1) * nBatchSize;
 
-        vThreads.emplace_back([&]() {
+        vThreads.emplace_back([nStartIndex, nEndIndex, &vAddressIndex, &addressesMap, &balance, &received, &balanceMutex, &exceptionMutex, &threadException]() {
             try {
                 ProcessAddressIndex(vAddressIndex, nStartIndex, nEndIndex, addressesMap, balance, received, balanceMutex);
             } catch (...) {
@@ -954,11 +954,25 @@ Examples:
 
     CalculateBalances(vAddressIndex, balance, received, addressesMap);
 
+    // Build a vector from addressesMap, filtering out zero balances if needed.
+    vector<pair<string, CAmount>> vSortedAddresses;
+    vSortedAddresses.reserve(addressesMap.size());
+    for (const auto& entry : addressesMap) {
+        if (entry.second == 0 && !bIncludeEmpty)
+            continue;
+        vSortedAddresses.emplace_back(entry);
+    }
+
+    // Sort in descending order by balance.
+    sort(vSortedAddresses.begin(), vSortedAddresses.end(), [](const auto &a, const auto &b) {
+         return a.second > b.second;
+    });
+
     if (bAllAddresses)
     {
         // generate result in CSV format
         ostringstream csv;
-        for (const auto& [sAddress, amount] : addressesMap) {
+        for (const auto& [sAddress, amount] : vSortedAddresses) {
             if (amount == 0 && !bIncludeEmpty)
                 continue;
 
@@ -970,7 +984,7 @@ Examples:
     {
         UniValue addresses(UniValue::VARR);
         addresses.reserve(addressesMap.size());
-        for (const auto& [sAddress, amount] : addressesMap)
+        for (const auto& [sAddress, amount] : vSortedAddresses)
         {
             if (amount == 0 && !bIncludeEmpty)
                 continue;

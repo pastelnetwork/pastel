@@ -14,10 +14,6 @@ using namespace std;
 
 unsigned nMaxDatacarrierBytes = MAX_OP_RETURN_RELAY;
 
-CScriptID::CScriptID(const CScript& in) : 
-    uint160(Hash160(in.begin(), in.end()))
-{}
-
 const char* GetTxnOutputType(const txnouttype t)
 {
     switch (t)
@@ -298,6 +294,10 @@ bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, txdes
 
     return true;
 }
+
+CScriptID::CScriptID(const CScript& in) : 
+    uint160(Hash160(in.begin(), in.end()))
+{}
 
 namespace
 {
